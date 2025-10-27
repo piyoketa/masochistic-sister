@@ -56,7 +56,7 @@ const handleWindowClick = () => {
   background-color: #000000;
   color: #f5f5f5;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   text-align: center;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
@@ -64,8 +64,11 @@ const handleWindowClick = () => {
 }
 
 .window-body {
-  padding: 24px;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
   width: 100%;
+  height: 100%;
 }
 
 .game-window.clickable {

@@ -38,6 +38,7 @@ const navigateNext = () => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  margin: auto;
 }
 
 .title {
