@@ -1,28 +1,9 @@
 <script setup lang="ts">
 import GameLayout from '@/components/GameLayout.vue'
 import HpGauge from '@/components/HpGauge.vue'
-
-type EnemySkill = {
-  name: string
-  detail: string
-}
-
-type EnemyTrait = {
-  name: string
-  detail: string
-}
-
-type EnemyInfo = {
-  id: string
-  name: string
-  hp: {
-    current: number
-    max: number
-  }
-  skills: EnemySkill[]
-  traits?: EnemyTrait[]
-  image: string
-}
+import ActionCard from '@/components/ActionCard.vue'
+import EnemyCard from '@/components/EnemyCard.vue'
+import type { EnemyInfo, CardInfo } from '@/types/battle'
 
 const enemies: EnemyInfo[] = [
   {
@@ -37,7 +18,7 @@ const enemies: EnemyInfo[] = [
   },
   {
     id: 'orc-dancer',
-    name: 'オークダンサー',
+    name: 'オークダンサー（短剣）',
     hp: { current: 50, max: 50 },
     skills: [
       { name: '乱れ突き', detail: '10 × 2' },
@@ -79,6 +60,71 @@ const mana = {
 
 const deckCount = 18
 const discardCount = 5
+
+const baseCards: CardInfo[] = [
+  {
+    id: 'heaven-chain',
+    title: '天の鎖',
+    type: 'skill',
+    cost: 1,
+    illustration: '⛓️',
+    description: 'このターン、敵1体の動きを止める',
+    notes: ['［消費］使用すると、この戦闘中は除去される'],
+  },
+  {
+    id: 'battle-prep',
+    title: '戦いの準備',
+    type: 'skill',
+    cost: 1,
+    illustration: '🛡️',
+    description: '次のターン、マナ＋1',
+  },
+  {
+    id: 'slap',
+    title: 'はたく',
+    type: 'attack',
+    cost: 1,
+    illustration: '🤜',
+    description: '10ダメージ',
+    attackStyle: 'single',
+  },
+  {
+    id: 'flurry',
+    title: '乱れ突き',
+    type: 'attack',
+    cost: 1,
+    illustration: '🗡️',
+    description: '5ダメージ × 4',
+    attackStyle: 'multi',
+  },
+  {
+    id: 'melt',
+    title: '溶解',
+    type: 'status',
+    cost: 1,
+    illustration: '🔥',
+    description: 'ダメージを受ける時、＋10',
+    notes: ['［消費］使用すると、この戦闘中は除去される'],
+  },
+  {
+    id: 'sticky',
+    title: 'ねばねば',
+    type: 'status',
+    cost: 1,
+    illustration: '🕸️',
+    description: '連続攻撃を受ける時、回数＋1',
+    notes: ['［消費］使用すると、この戦闘中は除去される'],
+  },
+]
+
+const handCards: CardInfo[] = Array.from({ length: 20 }, (_, index) => {
+  const template = baseCards[index % baseCards.length]
+  return {
+    ...template,
+    id: `${template.id}-${index}`,
+    notes: template.notes ? [...template.notes] : undefined,
+  }
+})
 </script>
 
 <template>
@@ -100,64 +146,23 @@ const discardCount = 5
           <main class="battle-main">
             <section class="enemy-zone">
               <div class="enemy-grid">
-                <article
-                  class="enemy-card"
-                  v-for="enemy in enemies"
-                  :key="enemy.id"
-                  :style="{ backgroundImage: `url(${enemy.image})` }"
-                >
-                  <div class="enemy-overlay">
-                    <header class="enemy-header">
-                      <div class="enemy-title">
-                        <h4>{{ enemy.name }}</h4>
-                        <div class="enemy-hp">
-                          <HpGauge :current="enemy.hp.current" :max="enemy.hp.max" />
-                        </div>
-                      </div>
-                    </header>
-                    <section v-if="enemy.skills.length" class="enemy-skills">
-                      <div class="skill-line">
-                        <span class="skill-name">{{ enemy.skills[0].name }}</span>
-                        <span class="skill-detail">{{ enemy.skills[0].detail }}</span>
-                      </div>
-                    </section>
-                    <section v-if="enemy.traits?.length" class="enemy-traits">
-                      <h5>特性</h5>
-                      <ul>
-                        <li v-for="trait in enemy.traits" :key="trait.name">
-                          <span class="trait-name">{{ trait.name }}</span>
-                          <span class="trait-detail">{{ trait.detail }}</span>
-                        </li>
-                      </ul>
-                    </section>
-                  </div>
-                </article>
+                <EnemyCard v-for="enemy in enemies" :key="enemy.id ?? enemy.name" :enemy="enemy" />
               </div>
             </section>
 
             <section class="hand-zone">
-              <div class="hand-toolbar">
-                <div class="resource-group">
-                  <div class="resource">
-                    <span class="resource-label">マナ</span>
-                    <span class="resource-value">{{ mana.current }} / {{ mana.max }}</span>
-                  </div>
-                  <div class="resource">
-                    <span class="resource-label">デッキ</span>
-                    <span class="resource-value">{{ deckCount }}</span>
-                  </div>
-                  <div class="resource">
-                    <span class="resource-label">捨て札</span>
-                    <span class="resource-value">{{ discardCount }}</span>
-                  </div>
-                </div>
-                <button class="end-turn-button" type="button">エンドターン</button>
-              </div>
               <div class="hand-grid">
-                <div class="card-slot" v-for="card in 6" :key="card">
-                  <div class="card-title">記憶カード {{ card }}</div>
-                  <p class="card-body">被ダメージの記憶を再生し、敵へ反撃を行う。</p>
-                </div>
+                <ActionCard
+                  v-for="card in handCards"
+                  :key="card.id"
+                  :title="card.title"
+                  :type="card.type"
+                  :cost="card.cost"
+                  :illustration="card.illustration"
+                  :description="card.description"
+                  :notes="card.notes"
+                  :attack-style="card.attackStyle"
+                />
               </div>
             </section>
           </main>
@@ -170,15 +175,22 @@ const discardCount = 5
                 class="portrait-image"
                 decoding="async"
               />
-            </div>
-            <div class="player-info">
-              <h3>プレイヤー情報</h3>
-              <div class="stat-section">
-                <span class="stat-label">HP</span>
+              <div class="sidebar-overlay">
+                <div class="mana-pop">
+                  <span class="overlay-label">マナ</span>
+                  <span class="overlay-value">{{ mana.current }} / {{ mana.max }}</span>
+                </div>
                 <HpGauge :current="72" :max="80" />
+                <div class="overlay-row">
+                  <span class="overlay-label">デッキ</span>
+                  <span class="overlay-value">{{ deckCount }}</span>
+                </div>
+                <div class="overlay-row">
+                  <span class="overlay-label">捨て札</span>
+                  <span class="overlay-value">{{ discardCount }}</span>
+                </div>
+                <button class="end-turn-button overlay" type="button">ターン終了</button>
               </div>
-              <p>精神耐久 40 / 50</p>
-              <p>防御バフ +3</p>
             </div>
           </aside>
         </div>
@@ -265,132 +277,51 @@ const discardCount = 5
   background: rgba(255, 255, 255, 0.05);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-  padding: 20px;
+  padding: 16px;
   box-sizing: border-box;
   min-height: 0;
+}
+
+.enemy-zone {
+  flex: 0 0 38%;
+  max-height: 38%;
+}
+
+
+
+.hand-zone {
+  flex: 1 1 auto;
+  background: rgba(245, 245, 250, 0.18);
 }
 
 .enemy-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
+  gap: 14px;
   flex: 1;
   min-height: 0;
-}
-
-.enemy-card {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  min-height: 320px;
-  border-radius: 18px;
-  overflow: hidden;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
-}
-
-.enemy-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(12, 12, 20, 0.15) 20%, rgba(12, 12, 24, 0.8) 100%);
-}
-
-.enemy-overlay {
-  position: relative;
-  width: 100%;
-  margin: 0 18px 18px;
-  padding: 16px 18px;
-  background: rgba(10, 12, 26, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-  backdrop-filter: blur(6px);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
-}
-
-.enemy-title {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.enemy-title h4 {
-  margin: 0;
-  font-size: 18px;
-  letter-spacing: 0.06em;
-}
-
-.enemy-hp {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.enemy-skills,
-.enemy-traits {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.skill-line {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.enemy-traits ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.enemy-traits li {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.skill-name,
-.trait-name {
-  font-weight: 600;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-}
-
-.skill-detail,
-.trait-detail {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.82);
-  line-height: 1.5;
+  align-content: start;
 }
 
 .hand-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
 .resource-group {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 
 .resource {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 10px 14px;
+  padding: 8px 10px;
   background: rgba(12, 12, 24, 0.65);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -398,26 +329,26 @@ const discardCount = 5
 }
 
 .resource-label {
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.65);
 }
 
 .resource-value {
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: 0.08em;
 }
 
 .end-turn-button {
   background: linear-gradient(135deg, #f24a6d, #ff758c);
   color: #ffffff;
-  font-size: 16px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   border: none;
   border-radius: 999px;
-  padding: 12px 26px;
+  padding: 10px 20px;
   cursor: pointer;
   box-shadow: 0 12px 24px rgba(242, 74, 109, 0.35);
   transition: transform 120ms ease, box-shadow 120ms ease;
@@ -430,32 +361,16 @@ const discardCount = 5
 
 .hand-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 18px 24px;
   flex: 1;
   min-height: 0;
-}
-
-.card-slot {
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-  padding: 16px;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.card-title {
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
-.card-body {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.85);
+  justify-items: center;
+  align-content: start;
+  overflow-y: auto;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
 }
 
 .battle-sidebar {
@@ -469,50 +384,12 @@ const discardCount = 5
   overflow: hidden;
 }
 
-.player-info {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
-  background: rgba(12, 12, 25, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 14px;
-  padding: 14px 18px;
-  text-align: left;
-  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(6px);
-}
-
-.player-info h3 {
-  margin: 0 0 10px;
-  font-size: 17px;
-  letter-spacing: 0.06em;
-}
-
-.stat-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.stat-label {
-  font-size: 13px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.76);
-}
-
-.player-info p {
-  margin: 4px 0;
-  font-size: 14px;
-}
-
 .portrait {
   flex: 1;
   display: flex;
   align-items: stretch;
   justify-content: stretch;
+  position: relative;
 }
 
 .portrait-image {
@@ -521,6 +398,62 @@ const discardCount = 5
   object-fit: cover;
   object-position: center;
   border-radius: 10px;
+}
+
+.sidebar-overlay {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(12, 12, 25, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.45);
+}
+
+.mana-pop {
+  position: absolute;
+  top: -64px;
+  right: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 227, 115, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
+}
+
+.mana-pop .overlay-label,
+.mana-pop .overlay-value {
+  color: #402510;
+  font-weight: 700;
+}
+
+.sidebar-overlay .end-turn-button.overlay {
+  align-self: flex-end;
+}
+
+.overlay-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+.overlay-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.overlay-value {
+  color: rgba(255, 255, 255, 0.95);
 }
 
 ol {
