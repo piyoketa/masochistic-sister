@@ -99,6 +99,7 @@ ${baseDefinition.description}`
   memoryEnemyAttack(damages: Damages, baseAttack: Attack, battle?: Battle): Card {
     const card = this.createNewAttack(damages, baseAttack)
     if (battle) {
+      // プレイヤーが被弾した時のみ発火する想定。バトル側に渡して手札へ追加する。
       battle.addCardToPlayerHand(card)
     }
     return card

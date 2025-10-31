@@ -206,6 +206,7 @@ export abstract class Attack extends Action {
   }
 
   execute(context: ActionContext): void {
+    // プレイヤー側からの攻撃なのか、敵側からの攻撃なのかでデフォルトの対象が異なるため、先に判別する
     const isPlayerSource = 'currentMana' in context.source
     const target = context.target ?? this.resolveTarget(context)
     const defender = target ?? (isPlayerSource ? undefined : context.battle.player)
@@ -213,8 +214,10 @@ export abstract class Attack extends Action {
       throw new Error('Attack target is not resolved')
     }
 
+    // 各攻撃固有の事前処理（追加コスト徴収など）がある場合はここで定義する
     this.beforeAttack(context, defender)
 
+    // ダメージ計算はAttack共通のcalcDamagesで行い、返り値には与ダメ合計だけでなく参照したState情報も含める
     const damages = this.calcDamages(context.source, defender)
     const totalDamage = Math.max(0, damages.amount * damages.count)
 
@@ -240,6 +243,7 @@ export abstract class Attack extends Action {
   }
 
   calcDamages(attacker: Player | Enemy, defender: Player | Enemy): Damages {
+    // beforeAttackで上書きダメージを指定した場合は優先的に利用する
     if (this.overrideDamagesInstance) {
       const damages = this.overrideDamagesInstance
       this.overrideDamagesInstance = undefined

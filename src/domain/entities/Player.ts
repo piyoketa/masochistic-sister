@@ -76,6 +76,8 @@ export class Player {
   }
 
   addState(state: State, options?: { battle?: Battle }): void {
+    // プレイヤーの状態異常は手札に対応カードを追加して覚えておく設計のため、
+    // State自体も内部状態として保持しつつ、必要であればBattle経由で記憶カードを生成する
     this.states.push(state)
 
     const battle = options?.battle

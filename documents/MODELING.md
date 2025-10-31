@@ -1,227 +1,122 @@
-# データモデリングについて
-カード戦闘ロジックは、Vueとは関係なく、素のTypeScriptのクラスの集まりによってモデリングを行う。
-そのため、戦闘ロジックは、Vueと無関係にテストを行うことができる。
+# 戦闘ドメイン モデリングガイド
 
-戦闘ロジックを表現するクラスは、Vueが描画に使用するためのメソッドを持たない構造体を出力する機能を持つ。
-Vue.js側は、主にBattle Classにアクセスし、その構造体を受け取ることで、現在の戦闘状況をフロントエンドで描画する。
+戦闘システム（`src/domain` 配下）はフロントエンドから独立した TypeScript のドメイン層として設計されています。本書では主要クラス・プロパティ・メソッドの役割と、攻撃処理の流れを整理します。
 
-# 戦闘ロジックを表現する主要モデル
-## 概要
-- １回の戦闘の盤面状況全体を保持するClassがBattleであり、各データのID管理や、フロントとのインターフェースの役割も果たす。
-- class Cardのインスタンスが、1枚のCardを表現する。
-- Cardの置き場として、Hand(手札), Deck(デッキ), DiscardPile(捨て札置き場), ExilePile(除外ゾーン)がある
-- 敵を表現するclassとして、Enemyがあり、敵の一団をEnemyTeamで表現する。EnemyTeamは、敵一味のメンバーと、その行動順を保持し、敵ターンの行動を管理する。
-- プレイヤーキャラを表現するclassとして、Playerがある。Playerは、現在の体力やマナ残量などを管理する。
-- このゲームに特殊な要素として、敵やプレイヤーの"技"を「Action」というクラスで表現する。
-  - このゲームのコンセプトとして、プレイヤーが敵の技を受けた時、その技を「カード」として手札に加えることができる、というものがある。そのため、「技」という概念を取りまわしやすくするために、Actionというクラスを作る。
-- それゆえ、Cardは、基本的にそのカードの使用時に放つ「技」を表現したActionのインスタンスを内部に保持する形で作成される。
-- もう一つ特徴的なこととして、このゲームでは「状態異常」が非常によく使われる。
-  - 敵が持つ「相手を状態異常にする技」をプレイヤーが受けることで、プレイヤーも同じ「相手を状態異常にする技」を使えるようになる。
-  - つまり、敵もプレイヤーが同じ状態異常にかかることがある。
-  - プレイヤーの状態異常は、手札の「状態異常カード」として管理される。例えば、プレイヤーが「腐食(1)」の状態異常にかかっているとき、手札に「腐食」のカードが一枚追加されることで表現される。
-    - プレイヤーは、コスト1を払い、「腐食」のカードを使用して捨て札にすることで、「腐食(1)」の状態異常を解除できる。
-  - このような仕様のため、状態異常（State）の管理には特別な関心を払う。状態異常に関する処理をまとめるState classを作成する。
+---
 
-## Battle
-- 「戦闘」の現在状況を全て保持する。
-- 以下の要素で構成される。
-    - Player
-    - EnemyTeam
-    - Deck
-    - Hand
-    - DiscardPile
-    - ターン情報（今がどちらのターンのどの段階か）
-    - 各種Events
-        - どこかのタイミングで処理する必要があるイベントを保持する
-- また、Battleは、現在盤面に存在する全てのカードをID付きで管理する役割を持つ。
-    - 新しく作られたカードのＩＤの採番などを担う。
+## Battle ― 戦闘全体の集約
+| 役割 | 1 回の戦闘状況を表す集約ルート。ID 採番、カード移動、ターン管理などの戦闘進行機能を司る。 |
+| --- | --- |
+| 主なプロパティ | `player` (`Player`)、`enemyTeam` (`EnemyTeam`)、`deck` / `hand` / `discardPile` / `exilePile`、`events`、`cardRepository` |
+| 主なメソッド | `playCard(cardId, operations)` / `performEnemyAction(enemyId)` / `damagePlayer(amount)` / `addCardToPlayerHand(card)` / `getSnapshot()` |
 
-## Enemy
-- 定義
-    - クラス：敵種族の特徴を定義する
-        - 例：「オーク（EnemyOak）」は、オークという種族全体の特徴（最大HPは50）を表す
-    - インスタンス：特定の敵一体の現在の戦闘中の状況を含めて表現する
-        - 例：EnemyOak classのインスタンスは、目の前にできたオーク１体（現在のHPは30）を表す
-- プロパティ
-    - 固定値
-        - キャラクター名（例：オーク）
-        - 最大HP（例：オークの最大HPは50）
-        - 技一覧
-            - 技（Action）の配列
-            - 例：オークは、以下の２つの技を持つ
-                - たいあたり：20ダメージ
-                - ビルドアップ：攻撃力を+10する
-        - 特性一覧
-            - 特性（State）の配列
-                - 例：かたつむりは、特性「硬い殻」を持つ
-            - 特性とは、敵が初期から持っている状態（State）のこと
-        - 画像（例：オークの画像）
-    - 初期化時に指定
-        - 現在のHP
-        - 現在の状態変化一覧
-            - 状態（State）の配列を持つ
-                - Stateの例：「筋力上昇（１０）」
-- メソッド
-    - NextAction()
-        - 次の行動予定の行動を返す
-        - 技の発動順処理
-            - 技の発動順を管理する変数とメソッドを裏側に持つ
-            - 例：オークは、２つの技を交互にうつ。どちらが最初かは、Enemyの初期化時にランダムに決める。
-            - ちなみに、「天の鎖」などで行動が止められたときは、行動カウントを進めず、次のターンは先ほど止められた技を発動する。
-    - Act()
-        - 次の行動を実行する
-            - 例：たいあたりを発動する
-    - Damage()
-        - HPにダメージを与える
-        - プレイヤーや自分のAct()から呼び出される
-    - AddState()
-        - 状態変化を追加する（例：ビルドアップ発動。攻撃力＋１０を自分の状態に追加する）
-        - プレイヤーや自分のAct()から呼び出される
+- `cardRepository`: 戦闘中のカード ID を一括管理し、記憶カード生成などのユーティリティも提供します。
+- `playCard` は `Card` インスタンスへ委譲するだけの薄いラッパー。操作バリデーション（ターン確認など）だけを担い、ドメインロジックを `Card`/`Action` に寄せています。
 
-## EnemyTeam
-- 敵の一群。Enemyの配列を行動順に持つ。
+---
 
-## Action
-- 定義
-    - クラス：敵／自分の１つの「技」を表すクラス
-    - インスタンス：
-- 継承関係
-    - Action
-        - Attack
-            - SingleAttack
-                - 酸を吐く
-                - 吸血（具体的な攻撃）
-            - **ContinuousAttack**
-        - Skill
-- プロパティ（固定値）
-    - カードになったときのUI要素
-        - 絵
-        - コスト
-        - 説明文
+## Card ― カード本体
+| 役割 | アクションカードまたは状態カード 1 枚を表す。 |
+| --- | --- |
+| 主なプロパティ | `action` (`Action`)、`state` (`State`)、`cardTags`、`definition`（タイトル・コスト等の表示用定義） |
+| 主なメソッド | `play(battle, operations)` / `copyWith(overrides)` |
 
-### SingleAttack/ContinuousAttack
+- `play` 内で `Action.prepareContext` を呼び、Operation 収集→バリデーション→対象選択→効果実行→墓地/除外移動までを順序立てて処理します。
+- `copyWith` はデッキ生成などで同一アクションを別定義で扱いたい場合に使用します。
 
-- 発動時のベースの処理を定義する
-- プロパティ（固定値）
-    - 初期ダメージ量
-    - 初期攻撃回数
-- メソッド
-    - 現在のダメージ量（getMethodでもいいかも？）
-        - 計算ロジック
-            - 引数（攻撃を打つ側のStates一覧、攻撃を打たれる側のStates一覧）
-                - 元のAttackの定義と合わせて、攻撃を計算する
-            - 一回計算したらキャッシュしておくこと
-    - 現在の攻撃回数（getMethodでもいいかも？）
+---
 
-- 酸を吐く
-    - SingleAttack 5点
-    - 追加効果
-        - 説明文：相手の状態に「溶解」を１つ追加する
-        - ToEnemy()
-        - ToPlayer()
-- 吸血
-    - 具体的な攻撃（特殊効果）
+## Action と Attack
+### Action (基底)
+| メソッド/プロパティ | 説明 |
+| --- | --- |
+| `prepareContext({ battle, source, operations })` | 操作入力を `Operation` クラスへ委譲して検証し、`ActionContext` を生成します。ここで `resolveTarget` を呼び出し、`context.target` をセットします。 |
+| `buildOperations()` / `shouldRequireOperation()` | 必須 Operation の宣言と要否判定。攻撃以外の特殊アクションにも使えるよう、Hook で判断可能。 |
+| `resolveTarget(context)` | 既定実装は `TargetEnemyOperation` から敵を取得します。敵選択不要なアクションは `buildOperations` で `TargetEnemyOperation` を返さないことで、`context.target` が `undefined` のままになります。 |
+
+### Attack (Action の派生)
+| 追加プロパティ/メソッド | 説明 |
+| --- | --- |
+| `baseDamages` (`Damages`) | 技の基本ダメージ定義。ダメージ量・回数・参照 State の記録をまとめて扱います。 |
+| `execute(context)` | 攻撃共通フロー（事前処理→ダメージ計算→HP 減算→記憶カード生成）を実装。`beforeAttack`/`onAfterDamage` で個別の副次効果を差し込めます。 |
+| `calcDamages(attacker, defender)` | 筋力/加速/腐食/硬い殻 など双方の `State` を走査して最終ダメージを算出し、参照した State を `Damages` 内に格納します。 |
+| `cloneWithDamages(damages, overrides)` | 同一アクションをダメージのみ変更した「記憶カード」として複製するためのユーティリティ。 |
+| `setOverrideDamages(damages)` | `beforeAttack` などでダメージを上書きしたいときに使用します。`calcDamages` 呼び出し前に 1 度だけ有効。 |
+
+> ※ `Attack.execute` の冒頭にある日本語コメントは、ターゲット解決やプレイヤー被弾時の記憶カード生成など共通処理の意図を説明しています。
+
+---
+
+## Damages
+`amount`（1 回の与ダメ量）、`count`（ヒット数）、`type`（single/multi）、`attackerStates` / `defenderStates`（ダメージ補正に利用した状態の記録）をまとめた値オブジェクト。`Attack.calcDamages` の結果として利用し、記憶カードにも同じ値を転写します。
+
+---
+
+## Operation
+| クラス | 用途 |
+| --- | --- |
+| `TargetEnemyOperation` | `payload` から敵のリポジトリ ID を取得し、`Battle.enemyTeam` から `Enemy` を検索する。 |
+| `SelectHandCardOperation` | 手札のカード ID を受け取り、`Hand` から該当カードを返す。 |
+
+Operation は `Action.prepareContext` 内で順番に解決され、`ActionContext.operations` に保存されます。各 Operation は `toMetadata()` を返し、`ActionContext.metadata` にマージされるため、追加情報が必要な特殊アクションでも活用できます。
+
+---
+
+## Player / Enemy
+### Player
+| プロパティ | 説明 |
+| --- | --- |
+| `states` | プレイヤーに付与された状態異常（`State` 配列）。 |
+| `addState(state, { battle? })` | 状態追加と同時に、対応する状態カードを手札へ記憶。`battle` が渡された場合のみカード化します。※コードに日本語コメントあり。 |
+
+### Enemy
+| プロパティ | 説明 |
+| --- | --- |
+| `actions` | 敵が順番に使用する `Action` 配列。 |
+| `traits` / `states` | 固有特性・戦闘中の状態異常。 |
+| `act(battle)` | 次の `Action` を取得し、`prepareContext` → `execute` までを実行。 |
+
+`EnemyTeam` は敵リポジトリを保持し、数値 ID 管理・行動順の決定を担当します。
+
+---
+
+## CardRepository
+| ユーティリティ | 説明 |
+| --- | --- |
+| `create<T>(factory)` / `register(card)` | 戦闘中カードの ID 採番と登録。 |
+| `createNewAttack(damages, baseAttack)` | 元アクションを `cloneWithDamages` で複製し、記憶カード定義を上書き。 |
+| `memoryEnemyAttack(damages, baseAttack, battle?)` | 記憶カードを生成し、バトルが指定されていれば手札に直接追加。※内部コメントあり。 |
+| `createStateCard(state)` / `memoryState(state, battle)` | 状態異常をカード化し、手札に追加するヘルパー。 |
+
+---
 
 ## State
-- 定義
-    - インスタンス：特性や状態異常を表すクラス
-- 例
-    - 硬い殻(20)：ダメージを-20する
-    - 腐食(1)：ダメージを+10する
-- プロパティ
-    - 数値
-        - 筋力上昇（10）の10の部分
-- メソッド
-    - 解説文
-        - 例えば、硬い殻(20)なら、「ダメージを-20する」という文字列を返す
+状態異常・特性の共通表現。`magnitude`（威力）、`description`、`cardDefinition`（カード化時の定義）を持ちます。特定の行動で参照される ID は以下が代表例です。
 
-## Card
-- プロパティ
-    - 元となるAction/State
-    - 付与されたStates
-        - 攻撃を打つ側のStates一覧
-        - 攻撃を打たれる側のStates一覧
+| State ID | 効果 |
+| --- | --- |
+| `state-strength` | ダメージ量に加算。 |
+| `state-acceleration` | 攻撃ヒット数を増加。 |
+| `state-corrosion` | 被ダメージに +10 を加算。 |
+| `state-hard-shell` | 被ダメージから一定量を減算。 |
 
-## CardTag
-- 定義：カードに付与される特性のこと
-    - 例：［消費］使用すると、捨て札にならず戦闘終了まで除外される
-- プロパティ（固定）
-    - タイトル
-        - 例：消費
-    - 説明文
-        - 例：使用すると、捨て札にならず戦闘終了まで除外される
+---
 
-## Player
-- 定義：
-    - インスタンス：プレイヤー（主人公のシスター）を表す。
-- プロパティ
-    - HP
-    - 最大マナ数
-    - 現在マナ数
-- プレイヤーの状態異常は、Handに追加された状態異常として表現されるので、PlayerはStatesは持たない
+## 攻撃処理の時系列まとめ
+1. `Card.play` → `Action.prepareContext`
+   - 必須 Operation を解決し、`ActionContext` を構築 (`context.target` も決まる)。
+2. `Attack.execute`
+   1. 事前フック `beforeAttack`（カードコスト消費・選択カード破棄など）。
+   2. `calcDamages` でダメージと参照 State を算出。
+   3. HP 変動 (`Battle.damagePlayer` / `Enemy.takeDamage`)。
+   4. 事後フック `onAfterDamage`（状態異常付与など）。
+   5. プレイヤー被弾時は `CardRepository.memoryEnemyAttack` で記憶カードを生成・手札追加。
+3. `Card` 自身は `moveToNextZone` で捨て札 or 除外処理。
 
+---
 
+## documents から読むべきポイント
+- `Attack.execute` / `calcDamages` には日本語コメントを添付し、共通処理の意図が読み取りやすくなっています。
+- `Player.addState` や `CardRepository.memoryEnemyAttack` にもコメントを加え、状態カード追加や記憶カード生成のトリガータイミングを補足しています。
 
-
-# インターフェース
-ゲームロジック全体を、どのような単位で管理していくか、大まかな方針を記載する。
-
-## 最大単位：Instruction：プレイヤーの操作
-
-- Battleは、「プレイヤーの操作」を受け付けるインターフェースを持つ。
-    1. `play_card(cardId, operation)`
-        - プレイヤーが、手札の特定のカードを使用した時に呼び出される。（Vue.jsのフロントから呼び出される）
-        - `operation`には、そのカード発動時に指定する情報が入っていなければならない。
-            - 例：アタックなら、そのアタック先のEnemyの情報が必要。
-            - 例：手札を捨てるカードなら、捨てる手札の情報が必要。
-        - `operation`の型要求は、Cardが持つ。
-            - 例：`card.valid?(operation)` みたいな
-            - `operation`は、例えば「敵を選択する」などの特定のUI操作を要求を発行する。
-        - 自分のターンではない、マナが足りない、などの理由で発動できない場合は、エラーを返す。
-    2. `end_turn()` 
-        - 自分のターンを終了し、敵のターンを開始する。（Vue.jsのフロントから呼び出される）
-        - 現在が、自分のメインフェイズではない場合、エラーを返す。
-
-## 中くらいの単位：Card Action/Enemy Action/System Action
-- Card Action/Enemy Action
-  - Action Class１つに対応する単位。
-  - メインメソッド
-    - `Card.play(operation)`
-        - 手札にあるカードを使用する。
-        - `operation` に必要な情報が足りていない場合、エラー。
-    - `Enemy.act()`
-        - 敵が行動する。
-- System Action
-    - 「ターン開始時のドロー」など、プレイヤーの入力起因ではないが、通常のゲーム進行上で発生する、ゲーム上の重要なアクションを表すもの。
-        - `Deck.draw()`
-        - `Player.set_mana(3)`
-
-## アタック処理
-Card Action/Enemy Actionが、Manipurationに分解されるまでの過程で呼び出されるメソッドについて、メモとしてまとめておく
-
-- 被ダメージの処理は単体でメソッドを考える必要がありそう
-1. Attackの場合：攻撃の点数計算
-    - SingleAttack/ContinuousAttackのメソッド
-        - `calcDamages(攻撃を打つ側のStates一覧、攻撃を打たれる側のStates一覧）`
-        - 乱れ突きの元の設定は、10ダメージ × 2回
-        - Playerは手札に「腐食」が１枚あるので、+10ダメージ。
-        - オークダンサーはState「加速(1)」を持つので、攻撃回数+1
-        - よって、20ダメージ × 3回。
-    - `Player.damages([20,20,20])`
-        - プレイヤーのHPが20になる
-2. State追加処理：プレイヤーの手札にStateが追加される
-    - 「吸血」などのカードの効果で処理する
-        - `Action.effect()`
-            - `Player.addState(state)` を呼び出す
-3. カードの追加：プレイヤーの手札にアタックを追加する
-    - 「吸血」などのカードの効果で処理する
-    - `Action.createCard(newDamages, 攻撃を打つ側のStates一覧、攻撃を打たれる側のStates一覧)`
-        - `newDamages`: ContinuousAttackのインスタンス？
-
-## 最小単位：Manipuration
-- 「カード一枚を捨て札に移動する」など、システムの用語で表現可能な操作の１単位。
-- 例えば、「コスト1 手札を１枚捨て、２枚ドロー」というカードなら、このCard Actionを以下４つのManipurationの合計として表せる。
-    - マナー１
-    - 選択した手札１枚を捨て札に移動
-    - ドロー
-    - ドロー
+この構成により、敵/プレイヤー双方が同じ `Action`・`State` を共有しつつ、攻撃のダメージ計算・記憶カード生成・状態管理が統一されたパイプラインで処理できるようになっています。今後新しい技を追加する際は、`Action` のフック (`beforeAttack` / `onAfterDamage`) と `Damages` の再利用を意識すると、安全かつ効率的に拡張できます。
