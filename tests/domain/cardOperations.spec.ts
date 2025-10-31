@@ -16,6 +16,7 @@ import { MasochisticAuraAction, HandSwapAction, BattlePrepAction } from '@/domai
 import { Attack, type ActionContext } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
 import type { Enemy } from '@/domain/entities/Enemy'
+import type { Player } from '@/domain/entities/Player'
 import { SelectHandCardOperation, type CardOperation } from '@/domain/entities/operations'
 
 function createBattleWithHand(
@@ -72,7 +73,7 @@ class TestChaosStrikeAction extends Attack {
     return [...super.buildOperations(), new SelectHandCardOperation()]
   }
 
-  override execute(context: ActionContext): void {
+  protected override beforeAttack(context: ActionContext, _defender: Player | Enemy): void {
     const selectOperation = context.operations?.find(
       (operation) => operation.type === SelectHandCardOperation.TYPE,
     ) as SelectHandCardOperation | undefined
@@ -85,14 +86,13 @@ class TestChaosStrikeAction extends Attack {
     context.battle.hand.remove(selectedCard)
     context.battle.discardPile.add(selectedCard)
 
-    const damage = Math.max(0, selectedCard.cost) * 10
-    const target = context.target as Enemy | undefined
-
-    if (!target) {
-      throw new Error('Test Chaos Strike requires a target enemy')
-    }
-
-    target.takeDamage(damage)
+    this.setOverrideDamages(
+      new Damages({
+        type: 'single',
+        amount: Math.max(0, selectedCard.cost) * 10,
+        count: 1,
+      }),
+    )
   }
 }
 

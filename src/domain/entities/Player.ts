@@ -1,4 +1,5 @@
 import type { State } from './State'
+import type { Battle } from '../battle/Battle'
 
 export interface PlayerProps {
   id: string
@@ -74,8 +75,13 @@ export class Player {
     this.currentManaValue = this.maxManaValue
   }
 
-  addState(state: State): void {
+  addState(state: State, options?: { battle?: Battle }): void {
     this.states.push(state)
+
+    const battle = options?.battle
+    if (battle && state.cardDefinitionBase) {
+      battle.cardRepository.memoryState(state, battle)
+    }
   }
 
   removeState(stateId: string): void {

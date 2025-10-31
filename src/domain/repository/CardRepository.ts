@@ -1,7 +1,8 @@
 import { Card } from '../entities/Card'
 import { Attack } from '../entities/Action'
-import type { Damages } from '../entities/Damages'
+import { Damages } from '../entities/Damages'
 import type { Battle } from '../battle/Battle'
+import type { State } from '../entities/State'
 
 export type CardFactory<T extends Card = Card> = () => T
 
@@ -84,7 +85,12 @@ ${baseDefinition.description}`
 
   createNewAttack(damages: Damages, baseAttack: Attack): Card {
     const overrides = this.buildMemoryOverrides(baseAttack, damages)
-    const action = baseAttack.cloneWithDamages(damages, overrides)
+    const memoryDamages = new Damages({
+      type: damages.type,
+      amount: damages.amount,
+      count: damages.count,
+    })
+    const action = baseAttack.cloneWithDamages(memoryDamages, overrides)
     return this.create(() => new Card({ action }))
   }
 
@@ -95,6 +101,16 @@ ${baseDefinition.description}`
     if (battle) {
       battle.addCardToPlayerHand(card)
     }
+    return card
+  }
+
+  createStateCard(state: State): Card {
+    return this.create(() => new Card({ state }))
+  }
+
+  memoryState(state: State, battle: Battle): Card {
+    const card = this.createStateCard(state)
+    battle.addCardToPlayerHand(card)
     return card
   }
 

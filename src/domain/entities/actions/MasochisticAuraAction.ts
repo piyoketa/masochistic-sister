@@ -38,15 +38,4 @@ export class MasochisticAuraAction extends Skill {
     context.battle.performEnemyAction(targetId)
   }
 
-  protected override resolveTarget(
-    metadata: Record<string, unknown> | undefined,
-    context: ActionContext,
-  ): Enemy | undefined {
-    const targetEnemyId = (metadata as { targetEnemyId?: number } | undefined)?.targetEnemyId
-    if (typeof targetEnemyId !== 'number') {
-      return undefined
-    }
-
-    return context.battle.enemyTeam.findEnemyByNumericId(targetEnemyId)
-  }
 }

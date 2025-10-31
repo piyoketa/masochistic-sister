@@ -117,15 +117,16 @@ export abstract class Action {
       throw new Error('Unexpected operations were supplied')
     }
 
-    const target = this.resolveTarget(metadata, params)
-
-    return {
+    const context: ActionContext = {
       battle: params.battle,
       source: params.source,
-      target,
       metadata,
       operations: completedOperations,
     }
+
+    context.target = this.resolveTarget(context)
+
+    return context
   }
 
   protected buildOperations(): Operation[] {
@@ -140,11 +141,12 @@ export abstract class Action {
     return true
   }
 
-  protected resolveTarget(
-    _metadata: Record<string, unknown> | undefined,
-    _context: { battle: Battle; source: Player | Enemy },
-  ): Player | Enemy | undefined {
-    return undefined
+  protected resolveTarget(context: ActionContext): Player | Enemy | undefined {
+    const targetOperation = context.operations?.find(
+      (operation) => operation.type === TargetEnemyOperation.TYPE,
+    ) as TargetEnemyOperation | undefined
+
+    return targetOperation?.enemy
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -169,6 +171,7 @@ export interface AttackProps extends BaseActionProps {
 
 export abstract class Attack extends Action {
   protected readonly baseDamagesValue: Damages
+  private overrideDamagesInstance?: Damages
 
   protected constructor(props: AttackProps) {
     super(props)
@@ -202,7 +205,47 @@ export abstract class Attack extends Action {
     return clone
   }
 
+  execute(context: ActionContext): void {
+    const isPlayerSource = 'currentMana' in context.source
+    const target = context.target ?? this.resolveTarget(context)
+    const defender = target ?? (isPlayerSource ? undefined : context.battle.player)
+    if (!defender) {
+      throw new Error('Attack target is not resolved')
+    }
+
+    this.beforeAttack(context, defender)
+
+    const damages = this.calcDamages(context.source, defender)
+    const totalDamage = Math.max(0, damages.amount * damages.count)
+
+    if (this.isPlayer(defender)) {
+      context.battle.damagePlayer(totalDamage)
+    } else {
+      defender.takeDamage(totalDamage)
+    }
+
+    this.onAfterDamage(context, damages, defender)
+
+    if (this.isPlayer(defender)) {
+      context.battle.cardRepository.memoryEnemyAttack(damages, this, context.battle)
+    }
+  }
+
+  protected beforeAttack(_context: ActionContext, _defender: Player | Enemy): void {}
+
+  protected onAfterDamage(_context: ActionContext, _damages: Damages, _defender: Player | Enemy): void {}
+
+  protected setOverrideDamages(damages: Damages): void {
+    this.overrideDamagesInstance = damages
+  }
+
   calcDamages(attacker: Player | Enemy, defender: Player | Enemy): Damages {
+    if (this.overrideDamagesInstance) {
+      const damages = this.overrideDamagesInstance
+      this.overrideDamagesInstance = undefined
+      return damages
+    }
+
     const base = this.baseDamagesValue
     let amount = base.amount
     let count = base.count
@@ -269,26 +312,8 @@ export abstract class Attack extends Action {
     return true
   }
 
-  protected override resolveTarget(
-    metadata: Record<string, unknown> | undefined,
-    context: { battle: Battle; source: Player | Enemy },
-  ): Player | Enemy | undefined {
-    const isPlayerSource = 'currentMana' in context.source
-    if (isPlayerSource) {
-      const targetId = (metadata as { targetEnemyId?: number } | undefined)?.targetEnemyId
-      if (typeof targetId !== 'number') {
-        throw new Error('Attack requires targetEnemyId')
-      }
-
-      const target = context.battle.enemyTeam.findEnemyByNumericId(targetId)
-      if (!target) {
-        throw new Error(`Enemy ${targetId} not found`)
-      }
-
-      return target
-    }
-
-    return context.battle.player
+  private isPlayer(entity: Player | Enemy): entity is Player {
+    return 'currentMana' in entity
   }
 
   private collectStates(entity: Player | Enemy): State[] {

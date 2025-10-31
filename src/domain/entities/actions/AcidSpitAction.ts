@@ -1,6 +1,7 @@
 import { Attack, type ActionContext } from '../Action'
+import type { Enemy } from '../Enemy'
+import type { Player } from '../Player'
 import { Damages } from '../Damages'
-import { Card } from '../Card'
 import { CorrosionState } from '../states/CorrosionState'
 
 export class AcidSpitAction extends Attack {
@@ -17,16 +18,9 @@ export class AcidSpitAction extends Attack {
       },
     })
   }
-  override execute(context: ActionContext): void {
-    const battle = context.battle
-    const damages = this.calcDamages(context.source, battle.player)
-    battle.damagePlayer(damages.amount * damages.count)
-
-    const repository = battle.cardRepository
-
-    repository.memoryEnemyAttack(damages, this, battle)
-    const corrosionCard = repository.create(() => new Card({ state: new CorrosionState() }))
-
-    battle.addCardToPlayerHand(corrosionCard)
+  protected override onAfterDamage(context: ActionContext, _damages: Damages, defender: Player | Enemy): void {
+    if ('currentMana' in defender) {
+      defender.addState(new CorrosionState(), { battle: context.battle })
+    }
   }
 }
