@@ -11,9 +11,15 @@ export class DiscardPile {
     return [...this.cards]
   }
 
-  add(card: Card): void {}
+  add(card: Card): void {
+    this.cards.push(card)
+  }
 
-  addMany(cards: Card[]): void {}
+  addMany(cards: Card[]): void {
+    this.cards.push(...cards)
+  }
 
-  clear(): void {}
+  clear(): void {
+    this.cards.length = 0
+  }
 }

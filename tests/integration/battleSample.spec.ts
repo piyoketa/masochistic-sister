@@ -166,7 +166,7 @@ describe('Battle sample scenario', () => {
     expect(snapshot.player.currentHp).toBe(100)
   })
 
-  it.skip('被虐のオーラを発動し、かたつむりを即座に行動させる', () => {
+  it('被虐のオーラを発動し、かたつむりを即座に行動させる', () => {
     const fixture = createBattleFixture()
     drawOpeningHand(fixture)
     playMasochisticAura(fixture)

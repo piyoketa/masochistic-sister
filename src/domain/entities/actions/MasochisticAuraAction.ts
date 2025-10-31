@@ -1,5 +1,7 @@
-import { Skill } from '../Action'
+import { Skill, type ActionContext } from '../Action'
 import { ArcaneCardTag } from '../cardTags'
+import type { Enemy } from '../Enemy'
+import { assertTargetEnemyOperation, type TargetEnemyOperation } from '../operations'
 
 export class MasochisticAuraAction extends Skill {
   constructor() {
@@ -15,5 +17,22 @@ export class MasochisticAuraAction extends Skill {
         cardTags: [new ArcaneCardTag()],
       },
     })
+  }
+
+  override execute(context: ActionContext): void {
+    const metadata = context.metadata as TargetEnemyOperation | undefined
+    const target = (context.target as Enemy | undefined)
+      ?? (metadata ? context.battle.enemyTeam.findEnemy(metadata.targetEnemyId) : undefined)
+
+    if (!target) {
+      throw new Error('Target enemy is required for Masochistic Aura')
+    }
+
+    context.battle.performEnemyAction(target.id)
+  }
+
+  protected override validateOperation(operation: unknown): Record<string, unknown> | undefined {
+    assertTargetEnemyOperation(operation)
+    return operation as TargetEnemyOperation
   }
 }

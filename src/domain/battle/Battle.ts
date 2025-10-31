@@ -1,4 +1,6 @@
-import type { Card, CardOperation } from '../entities/Card'
+
+import { Card, type CardOperation } from '../entities/Card'
+import type { ActionContext } from '../entities/Action'
 import type { Player } from '../entities/Player'
 import type { Enemy } from '../entities/Enemy'
 import type { EnemyTeam } from '../entities/EnemyTeam'
@@ -164,17 +166,71 @@ export class Battle {
     this.deck.draw(count, this.hand)
   }
 
-  playCard(cardId: string, operation?: CardOperation): void {}
+  playCard(cardId: string, operation?: CardOperation): void {
+    if (this.turn.current.activeSide !== 'player') {
+      throw new Error('It is not the player turn')
+    }
+
+    const card = this.hand.find(cardId)
+    if (!card) {
+      throw new Error(`Card ${cardId} not found in hand`)
+    }
+
+    const action = card.action
+    let preparedContext: ActionContext | undefined
+
+    if (action) {
+      preparedContext = action.prepareContext({
+        battle: this,
+        source: this.player,
+        operation,
+      })
+    }
+
+    this.player.spendMana(card.cost)
+
+    // TODO カードの移動に関する処理は、Cardクラスに移す
+    this.hand.remove(cardId)
+
+    const cardTags = card.cardTags ?? []
+    const isExhaust = cardTags.some((tag) => tag.id === 'tag-exhaust')
+
+    if (isExhaust) {
+      this.exilePile.add(card)
+    } else {
+      this.discardPile.add(card)
+    }
+
+    // Card使用時の要求する「必要情報」は、カードによって異なるため、バリデーション処理を含めてCardクラスに移す。
+    if (action && preparedContext) {
+      action.execute(preparedContext)
+    }
+  }
 
   endPlayerTurn(): void {}
 
   startEnemyTurn(): void {}
 
-  performEnemyAction(enemyId: string): void {}
+  performEnemyAction(enemyId: string): void {
+    const enemy = this.enemyTeam.findEnemy(enemyId)
+    if (!enemy) {
+      throw new Error(`Enemy ${enemyId} not found`)
+    }
+
+    enemy.act(this)
+  }
 
   resolveEvents(): void {}
 
   enqueueEvent(event: BattleEvent): void {}
 
   addLogEntry(entry: Parameters<BattleLog['record']>[0]): void {}
+
+  damagePlayer(amount: number): void {
+    this.player.takeDamage(amount)
+  }
+
+  addCardToPlayerHand(card: Card): void {
+    this.hand.add(card)
+  }
 }

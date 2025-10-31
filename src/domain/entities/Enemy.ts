@@ -11,6 +11,7 @@ export interface EnemyProps {
   traits?: State[]
   states?: State[]
   image?: string
+  startingActionIndex?: number
 }
 
 export class Enemy {
@@ -22,6 +23,7 @@ export class Enemy {
   private readonly traitsValue: State[]
   private readonly statesValue: State[]
   private readonly imageValue?: string
+  private actionPointer: number
 
   constructor(props: EnemyProps) {
     this.idValue = props.id
@@ -32,6 +34,7 @@ export class Enemy {
     this.traitsValue = props.traits ?? []
     this.statesValue = props.states ?? []
     this.imageValue = props.image
+    this.actionPointer = props.startingActionIndex ?? 0
   }
 
   get id(): string {
@@ -66,11 +69,31 @@ export class Enemy {
     return this.imageValue
   }
 
+  // TODO: 敵の行動管理の方式を変更する
   nextAction(): Action | undefined {
-    return undefined
+    if (this.actionsValue.length === 0) {
+      return undefined
+    }
+
+    return this.actionsValue[this.actionPointer % this.actionsValue.length]
   }
 
-  act(battle: Battle): void {}
+  act(battle: Battle): void {
+    const action = this.nextAction()
+    if (!action) {
+      return
+    }
+
+    const preparedContext = action.prepareContext({
+      battle,
+      source: this,
+      operation: undefined,
+    })
+
+    action.execute(preparedContext)
+
+    this.advanceActionPointer()
+  }
 
   takeDamage(amount: number): void {}
 
@@ -79,4 +102,8 @@ export class Enemy {
   removeState(stateId: string): void {}
 
   resetTurn(): void {}
+
+  private advanceActionPointer(): void {
+    this.actionPointer = (this.actionPointer + 1) % Math.max(1, this.actionsValue.length)
+  }
 }

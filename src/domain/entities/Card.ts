@@ -1,7 +1,6 @@
 import type { Action } from './Action'
 import type { CardTag } from './CardTag'
 import type { State } from './State'
-import type { Battle } from '../battle/Battle'
 import type { CardDefinition } from './CardDefinition'
 
 export type CardOperation = Record<string, unknown>
@@ -110,8 +109,6 @@ export class Card {
   get image(): string | undefined {
     return this.definition.image
   }
-
-  play(_battle: Battle, _operation?: CardOperation): void {}
 
   copyWith(overrides: Partial<CardProps>): Card {
     return new Card({

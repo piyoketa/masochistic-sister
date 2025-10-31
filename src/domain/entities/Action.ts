@@ -2,6 +2,7 @@ import type { Battle } from '../battle/Battle'
 import type { CardDefinition, CardDefinitionBase } from './CardDefinition'
 import type { Enemy } from './Enemy'
 import type { Player } from './Player'
+import { assertTargetEnemyOperation, type TargetEnemyOperation } from './operations'
 
 export type ActionType = 'attack' | 'skill'
 
@@ -65,6 +66,42 @@ export abstract class Action {
     }
   }
 
+  prepareContext(params: { battle: Battle; source: Player | Enemy; operation?: unknown }): ActionContext {
+    const metadata = this.validateOperation(params.operation, params)
+    const target = this.resolveTarget(metadata, params)
+
+    return {
+      battle: params.battle,
+      source: params.source,
+      target,
+      metadata,
+    }
+  }
+
+  protected validateOperation(
+    operation: unknown,
+    _context: { battle: Battle; source: Player | Enemy },
+  ): Record<string, unknown> | undefined {
+    if (operation === undefined) {
+      return undefined
+    }
+
+    if (typeof operation !== 'object' || operation === null) {
+      throw new Error('Invalid operation payload')
+    }
+
+    return operation as Record<string, unknown>
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected resolveTarget(
+    _metadata: Record<string, unknown> | undefined,
+    _context: { battle: Battle; source: Player | Enemy },
+  ): Player | Enemy | undefined {
+    return undefined
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   execute(_context: ActionContext): void {}
 }
 
@@ -107,8 +144,43 @@ export abstract class Attack extends Action {
     return this.hitCountValue
   }
 
-  calculateDamage(context?: ActionContext): number[] {
+  calculateDamage(_context?: ActionContext): number[] {
     return []
+  }
+
+  protected override validateOperation(
+    operation: unknown,
+    context: { battle: Battle; source: Player | Enemy },
+  ): Record<string, unknown> | undefined {
+    const isPlayerSource = 'currentMana' in context.source
+    if (isPlayerSource) {
+      assertTargetEnemyOperation(operation)
+      return operation as TargetEnemyOperation
+    }
+
+    return super.validateOperation(operation, context)
+  }
+
+  protected override resolveTarget(
+    metadata: Record<string, unknown> | undefined,
+    context: { battle: Battle; source: Player | Enemy },
+  ): Player | Enemy | undefined {
+    const isPlayerSource = 'currentMana' in context.source
+    if (isPlayerSource) {
+      const targetEnemyId = (metadata as TargetEnemyOperation | undefined)?.targetEnemyId
+      if (!targetEnemyId) {
+        throw new Error('Attack requires targetEnemyId')
+      }
+
+      const target = context.battle.enemyTeam.findEnemy(targetEnemyId)
+      if (!target) {
+        throw new Error(`Enemy ${targetEnemyId} not found`)
+      }
+
+      return target
+    }
+
+    return context.battle.player
   }
 }
 
