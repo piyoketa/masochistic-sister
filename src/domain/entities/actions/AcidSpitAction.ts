@@ -19,7 +19,7 @@ export class AcidSpitAction extends SingleAttack {
   }
   override execute(context: ActionContext): void {
     const battle = context.battle
-    const [damage] = this.calculateDamage(context)
+    const [damage] = this.calculateDamage()
     if (typeof damage !== 'number') {
       throw new Error('Failed to calculate damage for Acid Spit')
     }

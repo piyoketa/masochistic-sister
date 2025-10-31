@@ -1,7 +1,8 @@
 import { Skill, type ActionContext } from '../Action'
 import { ArcaneCardTag } from '../cardTags'
 import type { Enemy } from '../Enemy'
-import { assertTargetEnemyOperation, type TargetEnemyOperation } from '../operations'
+import { TargetEnemyOperation } from '../operations'
+import type { Operation } from '../operations'
 
 export class MasochisticAuraAction extends Skill {
   constructor() {
@@ -19,20 +20,34 @@ export class MasochisticAuraAction extends Skill {
     })
   }
 
+  protected override buildOperations(): Operation[] {
+    return [new TargetEnemyOperation()]
+  }
+
   override execute(context: ActionContext): void {
-    const metadata = context.metadata as TargetEnemyOperation | undefined
-    const target = (context.target as Enemy | undefined)
-      ?? (metadata ? context.battle.enemyTeam.findEnemy(metadata.targetEnemyId) : undefined)
+    const target = context.target as Enemy | undefined
 
     if (!target) {
       throw new Error('Target enemy is required for Masochistic Aura')
     }
 
-    context.battle.performEnemyAction(target.id)
+    const targetId = target.numericId
+    if (targetId === undefined) {
+      throw new Error('Target enemy has no repository id')
+    }
+
+    context.battle.performEnemyAction(targetId)
   }
 
-  protected override validateOperation(operation: unknown): Record<string, unknown> | undefined {
-    assertTargetEnemyOperation(operation)
-    return operation as TargetEnemyOperation
+  protected override resolveTarget(
+    metadata: Record<string, unknown> | undefined,
+    context: ActionContext,
+  ): Enemy | undefined {
+    const targetEnemyId = (metadata as { targetEnemyId?: number } | undefined)?.targetEnemyId
+    if (typeof targetEnemyId !== 'number') {
+      return undefined
+    }
+
+    return context.battle.enemyTeam.findEnemyByNumericId(targetEnemyId)
   }
 }

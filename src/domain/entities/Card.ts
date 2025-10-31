@@ -1,9 +1,9 @@
-import type { Action } from './Action'
+import type { Action, ActionContext } from './Action'
 import type { CardTag } from './CardTag'
 import type { State } from './State'
 import type { CardDefinition } from './CardDefinition'
-
-export type CardOperation = Record<string, unknown>
+import type { Battle } from '../battle/Battle'
+import type { CardOperation } from './operations'
 
 export interface CardProps {
   action?: Action
@@ -110,6 +110,26 @@ export class Card {
     return this.definition.image
   }
 
+  play(battle: Battle, operations: CardOperation[]): void {
+    const action = this.actionRef
+    if (!action) {
+      throw new Error('Card cannot be played without an action')
+    }
+
+    const context: ActionContext = action.prepareContext({
+      battle,
+      source: battle.player,
+      operations,
+    })
+
+    battle.player.spendMana(this.cost)
+    battle.hand.remove(this.id)
+
+    action.execute(context)
+
+    this.moveToNextZone(battle)
+  }
+
   copyWith(overrides: Partial<CardProps>): Card {
     return new Card({
       action: overrides.action ?? this.actionRef,
@@ -119,6 +139,17 @@ export class Card {
       defensiveStates: overrides.defensiveStates ?? this.defensiveStatesValue,
       definitionOverrides: overrides.definitionOverrides ?? this.definitionOverridesValue,
     })
+  }
+
+  private moveToNextZone(battle: Battle): void {
+    const cardTags = this.cardTags ?? []
+    const isExhaust = cardTags.some((tag) => tag.id === 'tag-exhaust')
+
+    if (isExhaust) {
+      battle.exilePile.add(this)
+    } else {
+      battle.discardPile.add(this)
+    }
   }
 
   private composeDefinition(): CardDefinition {

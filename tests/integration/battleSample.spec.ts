@@ -17,15 +17,15 @@ import { SnailTeam } from '@/domain/entities/enemyTeams'
 interface BattleFixture {
   battle: Battle
   cards: {
-    heavenChains: Card[]
-    battlePreps: Card[]
+    heavenChains: readonly [Card, Card, Card, Card, Card]
+    battlePreps: readonly [Card, Card]
     masochisticAura: Card
   }
   enemyIds: {
-    orc: string
-    orcDancer: string
-    tentacle: string
-    snail: string
+    orc: number
+    orcDancer: number
+    tentacle: number
+    snail: number
   }
 }
 
@@ -37,7 +37,24 @@ function createBattleFixture(): BattleFixture {
   const player = new ProtagonistPlayer()
 
   const enemyTeam = new SnailTeam()
-  const [orc, orcDancer, tentacle, snail] = enemyTeam.members
+  const members = enemyTeam.members
+  if (members.length < 4) {
+    throw new Error('Snail team requires four enemies')
+  }
+
+  const orc = members[0]!
+  const orcDancer = members[1]!
+  const tentacle = members[2]!
+  const snail = members[3]!
+
+  if (
+    orc.numericId === undefined ||
+    orcDancer.numericId === undefined ||
+    tentacle.numericId === undefined ||
+    snail.numericId === undefined
+  ) {
+    throw new Error('Enemy repository IDs are not assigned')
+  }
 
   const battle = new Battle({
     id: 'battle-1',
@@ -61,10 +78,10 @@ function createBattleFixture(): BattleFixture {
       masochisticAura,
     },
     enemyIds: {
-      orc: orc.id,
-      orcDancer: orcDancer.id,
-      tentacle: tentacle.id,
-      snail: snail.id,
+      orc: orc.numericId,
+      orcDancer: orcDancer.numericId,
+      tentacle: tentacle.numericId,
+      snail: snail.numericId,
     },
   }
 }
@@ -75,15 +92,15 @@ function drawOpeningHand(fixture: BattleFixture): void {
 }
 
 function playMasochisticAura(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.masochisticAura.id, {
-    targetEnemyId: fixture.enemyIds.snail,
-  })
+  fixture.battle.playCard(fixture.cards.masochisticAura.id, [
+    { type: 'target-enemy', payload: fixture.enemyIds.snail },
+  ])
 }
 
 function playHeavenChainOnOrc(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.heavenChains[0].id, {
-    targetEnemyId: fixture.enemyIds.orc,
-  })
+  fixture.battle.playCard(fixture.cards.heavenChains[0].id, [
+    { type: 'target-enemy', payload: fixture.enemyIds.orc },
+  ])
 }
 
 function playBattlePrep(fixture: BattleFixture): void {
@@ -110,15 +127,15 @@ function startSecondPlayerTurn(fixture: BattleFixture): void {
 }
 
 function playHeavenChainOnTentacle(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.heavenChains[1].id, {
-    targetEnemyId: fixture.enemyIds.tentacle,
-  })
+  fixture.battle.playCard(fixture.cards.heavenChains[1].id, [
+    { type: 'target-enemy', payload: fixture.enemyIds.tentacle },
+  ])
 }
 
 function playHeavenChainOnSnail(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.heavenChains[2].id, {
-    targetEnemyId: fixture.enemyIds.snail,
-  })
+  fixture.battle.playCard(fixture.cards.heavenChains[2].id, [
+    { type: 'target-enemy', payload: fixture.enemyIds.snail },
+  ])
 }
 
 function playAcidSpitOnSnail(fixture: BattleFixture): void {
@@ -132,9 +149,9 @@ function playAcidSpitOnSnail(fixture: BattleFixture): void {
   const snapshot = fixture.battle.getSnapshot()
   expect(snapshot.hand.some((card) => card.id === acidCard.id)).toBe(true)
 
-  fixture.battle.playCard(acidCard.id, {
-    targetEnemyId: fixture.enemyIds.snail,
-  })
+  fixture.battle.playCard(acidCard.id, [
+    { type: 'target-enemy', payload: fixture.enemyIds.snail },
+  ])
 }
 
 function startThirdPlayerTurn(fixture: BattleFixture): void {
@@ -218,7 +235,7 @@ describe('Battle sample scenario', () => {
     performOrcDancerAction(fixture)
 
     const snapshot = fixture.battle.getSnapshot()
-    const orcDancer = snapshot.enemies.find((enemy) => enemy.id === fixture.enemyIds.orcDancer)
+    const orcDancer = snapshot.enemies.find((enemy) => enemy.numericId === fixture.enemyIds.orcDancer)
     expect(orcDancer?.states.some((state) => state.name === '加速')).toBe(true)
   })
 
@@ -310,7 +327,7 @@ describe('Battle sample scenario', () => {
     playAcidSpitOnSnail(fixture)
 
     const snapshot = fixture.battle.getSnapshot()
-    const snail = snapshot.enemies.find((enemy) => enemy.id === fixture.enemyIds.snail)
+    const snail = snapshot.enemies.find((enemy) => enemy.numericId === fixture.enemyIds.snail)
     expect(snail?.states.some((state) => state.name === '腐食')).toBe(true)
     const acidCard = snapshot.discardPile.find((card) => card.title === '酸を吐く')
     expect(acidCard).toBeDefined()

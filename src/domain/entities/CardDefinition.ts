@@ -10,6 +10,7 @@ export interface CardDefinition {
   image?: string
   notes?: string[]
   cardTags?: CardTag[]
+  operations?: string[]
 }
 
 export interface CardDefinitionBase extends Omit<CardDefinition, 'description'> {

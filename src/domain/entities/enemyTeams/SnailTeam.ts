@@ -11,7 +11,6 @@ export class SnailTeam extends EnemyTeam {
     super({
       id: 'enemy-team-snail-encounter',
       members: [orc, orcDancer, tentacle, snail],
-      turnOrder: [orc.id, orcDancer.id, tentacle.id, snail.id],
     })
   }
 }

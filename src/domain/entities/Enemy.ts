@@ -24,6 +24,7 @@ export class Enemy {
   private readonly statesValue: State[]
   private readonly imageValue?: string
   private actionPointer: number
+  private repositoryId?: number
 
   constructor(props: EnemyProps) {
     this.idValue = props.id
@@ -69,6 +70,22 @@ export class Enemy {
     return this.imageValue
   }
 
+  get numericId(): number | undefined {
+    return this.repositoryId
+  }
+
+  assignRepositoryId(id: number): void {
+    if (this.repositoryId !== undefined && this.repositoryId !== id) {
+      throw new Error(`Enemy already assigned to repository id ${this.repositoryId}`)
+    }
+
+    this.repositoryId = id
+  }
+
+  hasRepositoryId(): boolean {
+    return this.repositoryId !== undefined
+  }
+
   // TODO: 敵の行動管理の方式を変更する
   nextAction(): Action | undefined {
     if (this.actionsValue.length === 0) {
@@ -87,7 +104,7 @@ export class Enemy {
     const preparedContext = action.prepareContext({
       battle,
       source: this,
-      operation: undefined,
+      operations: [],
     })
 
     action.execute(preparedContext)
@@ -95,7 +112,9 @@ export class Enemy {
     this.advanceActionPointer()
   }
 
-  takeDamage(amount: number): void {}
+  takeDamage(amount: number): void {
+    this.currentHpValue = Math.max(0, this.currentHpValue - Math.max(0, Math.floor(amount)))
+  }
 
   addState(state: State): void {}
 

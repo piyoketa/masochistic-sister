@@ -6,19 +6,19 @@ import type { CardRepository } from '../../repository/CardRepository'
 
 export interface DefaultDeckResult {
   deck: Card[]
-  heavenChains: Card[]
-  battlePreps: Card[]
+  heavenChains: readonly [Card, Card, Card, Card, Card]
+  battlePreps: readonly [Card, Card]
   masochisticAura: Card
 }
 
 export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckResult {
-  const heavenChains: Card[] = Array.from({ length: 5 }, () =>
+  const heavenChains = Array.from({ length: 5 }, () =>
     cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
-  )
+  ) as [Card, Card, Card, Card, Card]
 
-  const battlePreps: Card[] = Array.from({ length: 2 }, () =>
+  const battlePreps = Array.from({ length: 2 }, () =>
     cardRepository.create(() => new Card({ action: new BattlePrepAction() })),
-  )
+  ) as [Card, Card]
 
   const masochisticAura = cardRepository.create(() => new Card({ action: new MasochisticAuraAction() }))
 

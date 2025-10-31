@@ -1,6 +1,6 @@
 
-import { Card, type CardOperation } from '../entities/Card'
-import type { ActionContext } from '../entities/Action'
+import { Card } from '../entities/Card'
+import type { CardOperation } from '../entities/operations'
 import type { Player } from '../entities/Player'
 import type { Enemy } from '../entities/Enemy'
 import type { EnemyTeam } from '../entities/EnemyTeam'
@@ -40,6 +40,7 @@ export interface BattleSnapshot {
   }
   enemies: Array<{
     id: string
+    numericId: number
     name: string
     currentHp: number
     maxHp: number
@@ -137,14 +138,22 @@ export class Battle {
         currentMana: this.playerValue.currentMana,
         maxMana: this.playerValue.maxMana,
       },
-      enemies: this.enemyTeamValue.members.map<BattleSnapshot['enemies'][number]>((enemy: Enemy) => ({
-        id: enemy.id,
-        name: enemy.name,
-        currentHp: enemy.currentHp,
-        maxHp: enemy.maxHp,
-        traits: enemy.traits,
-        states: enemy.states,
-      })),
+      enemies: this.enemyTeamValue.members.map<BattleSnapshot['enemies'][number]>((enemy: Enemy) => {
+        const numericId = enemy.numericId
+        if (numericId === undefined) {
+          throw new Error(`Enemy ${enemy.id} has no repository id`)
+        }
+
+        return {
+          id: enemy.id,
+          numericId,
+          name: enemy.name,
+          currentHp: enemy.currentHp,
+          maxHp: enemy.maxHp,
+          traits: enemy.traits,
+          states: enemy.states,
+        }
+      }),
       deck: this.deckValue.list(),
       hand: this.handValue.list(),
       discardPile: this.discardPileValue.list(),
@@ -166,7 +175,7 @@ export class Battle {
     this.deck.draw(count, this.hand)
   }
 
-  playCard(cardId: string, operation?: CardOperation): void {
+  playCard(cardId: string, operations: CardOperation[] = []): void {
     if (this.turn.current.activeSide !== 'player') {
       throw new Error('It is not the player turn')
     }
@@ -175,43 +184,14 @@ export class Battle {
     if (!card) {
       throw new Error(`Card ${cardId} not found in hand`)
     }
-
-    const action = card.action
-    let preparedContext: ActionContext | undefined
-
-    if (action) {
-      preparedContext = action.prepareContext({
-        battle: this,
-        source: this.player,
-        operation,
-      })
-    }
-
-    this.player.spendMana(card.cost)
-
-    // TODO カードの移動に関する処理は、Cardクラスに移す
-    this.hand.remove(cardId)
-
-    const cardTags = card.cardTags ?? []
-    const isExhaust = cardTags.some((tag) => tag.id === 'tag-exhaust')
-
-    if (isExhaust) {
-      this.exilePile.add(card)
-    } else {
-      this.discardPile.add(card)
-    }
-
-    // Card使用時の要求する「必要情報」は、カードによって異なるため、バリデーション処理を含めてCardクラスに移す。
-    if (action && preparedContext) {
-      action.execute(preparedContext)
-    }
+    card.play(this, operations)
   }
 
   endPlayerTurn(): void {}
 
   startEnemyTurn(): void {}
 
-  performEnemyAction(enemyId: string): void {
+  performEnemyAction(enemyId: number | string): void {
     const enemy = this.enemyTeam.findEnemy(enemyId)
     if (!enemy) {
       throw new Error(`Enemy ${enemyId} not found`)
