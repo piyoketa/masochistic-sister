@@ -39,7 +39,6 @@ export interface BattleSnapshot {
     maxMana: number
   }
   enemies: Array<{
-    id: string
     numericId: number
     name: string
     currentHp: number
@@ -141,11 +140,10 @@ export class Battle {
       enemies: this.enemyTeamValue.members.map<BattleSnapshot['enemies'][number]>((enemy: Enemy) => {
         const numericId = enemy.numericId
         if (numericId === undefined) {
-          throw new Error(`Enemy ${enemy.id} has no repository id`)
+          throw new Error(`Enemy ${enemy.name} has no repository id`)
         }
 
         return {
-          id: enemy.id,
           numericId,
           name: enemy.name,
           currentHp: enemy.currentHp,
@@ -191,7 +189,7 @@ export class Battle {
 
   startEnemyTurn(): void {}
 
-  performEnemyAction(enemyId: number | string): void {
+  performEnemyAction(enemyId: number): void {
     const enemy = this.enemyTeam.findEnemy(enemyId)
     if (!enemy) {
       throw new Error(`Enemy ${enemyId} not found`)

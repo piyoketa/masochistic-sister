@@ -7,7 +7,7 @@ import type { EnemyInfo, CardInfo } from '@/types/battle'
 
 const enemies: EnemyInfo[] = [
   {
-    id: 'orc',
+    numericId: 0,
     name: 'オーク',
     hp: { current: 50, max: 50 },
     skills: [
@@ -17,7 +17,7 @@ const enemies: EnemyInfo[] = [
     image: '/assets/enemies/orc.jpg',
   },
   {
-    id: 'orc-dancer',
+    numericId: 1,
     name: 'オークダンサー（短剣）',
     hp: { current: 50, max: 50 },
     skills: [
@@ -27,7 +27,7 @@ const enemies: EnemyInfo[] = [
     image: '/assets/enemies/orc-dancer.jpg',
   },
   {
-    id: 'snail',
+    numericId: 2,
     name: 'かたつむり',
     hp: { current: 10, max: 10 },
     skills: [
@@ -38,7 +38,7 @@ const enemies: EnemyInfo[] = [
     image: '/assets/enemies/snail.jpg',
   },
   {
-    id: 'kamaitachi',
+    numericId: 3,
     name: 'かまいたち',
     hp: { current: 20, max: 20 },
     skills: [
@@ -146,7 +146,7 @@ const handCards: CardInfo[] = Array.from({ length: 20 }, (_, index) => {
           <main class="battle-main">
             <section class="enemy-zone">
               <div class="enemy-grid">
-                <EnemyCard v-for="enemy in enemies" :key="enemy.id ?? enemy.name" :enemy="enemy" />
+                <EnemyCard v-for="enemy in enemies" :key="enemy.numericId" :enemy="enemy" />
               </div>
             </section>
 

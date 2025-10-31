@@ -5,7 +5,6 @@ import { MucusShotAction } from '../actions/MucusShotAction'
 export class TentacleEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     super({
-      id: 'enemy-tentacle',
       name: '触手',
       maxHp: 30,
       currentHp: 30,

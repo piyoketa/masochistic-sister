@@ -9,7 +9,7 @@ export type EnemyTrait = {
 }
 
 export type EnemyInfo = {
-  id?: string
+  numericId: number
   name: string
   image: string
   hp: {

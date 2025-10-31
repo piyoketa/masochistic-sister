@@ -3,7 +3,6 @@ import type { State } from './State'
 import type { Battle } from '../battle/Battle'
 
 export interface EnemyProps {
-  id: string
   name: string
   maxHp: number
   currentHp: number
@@ -15,7 +14,6 @@ export interface EnemyProps {
 }
 
 export class Enemy {
-  private readonly idValue: string
   private readonly nameValue: string
   private readonly maxHpValue: number
   private currentHpValue: number
@@ -27,7 +25,6 @@ export class Enemy {
   private repositoryId?: number
 
   constructor(props: EnemyProps) {
-    this.idValue = props.id
     this.nameValue = props.name
     this.maxHpValue = props.maxHp
     this.currentHpValue = props.currentHp
@@ -36,10 +33,6 @@ export class Enemy {
     this.statesValue = props.states ?? []
     this.imageValue = props.image
     this.actionPointer = props.startingActionIndex ?? 0
-  }
-
-  get id(): string {
-    return this.idValue
   }
 
   get name(): string {

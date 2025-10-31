@@ -5,7 +5,6 @@ import { BuildUpAction } from '../actions/BuildUpAction'
 export class OrcEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     super({
-      id: 'enemy-orc',
       name: 'オーク',
       maxHp: 50,
       currentHp: 50,
