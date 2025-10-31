@@ -99,7 +99,7 @@ Vue.js側は、主にBattle Classにアクセスし、その構造体を受け�
         - コスト
         - 説明文
 
-### SingleAttack/**ContinuousAttack**
+### SingleAttack/ContinuousAttack
 
 - 発動時のベースの処理を定義する
 - プロパティ（固定値）
