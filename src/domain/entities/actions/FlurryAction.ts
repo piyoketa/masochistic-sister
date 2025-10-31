@@ -1,11 +1,10 @@
-import { Action } from '../Action'
+import { ContinuousAttack } from '../Action'
 
-export class FlurryAction extends Action {
+export class FlurryAction extends ContinuousAttack {
   constructor() {
     super({
       id: 'action-flurry',
       name: '乱れ突き',
-      category: 'attack',
       baseDamage: 10,
       hitCount: 2,
       description: '10ダメージ × 2',

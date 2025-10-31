@@ -1,13 +1,11 @@
-import { Action } from '../Action'
+import { SingleAttack } from '../Action'
 
-export class TackleAction extends Action {
+export class TackleAction extends SingleAttack {
   constructor() {
     super({
       id: 'action-tackle',
       name: 'たいあたり',
-      category: 'attack',
       baseDamage: 20,
-      hitCount: 1,
       description: '20ダメージ',
       cardDefinition: {
         title: 'たいあたり',

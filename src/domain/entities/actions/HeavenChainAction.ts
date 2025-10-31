@@ -1,11 +1,10 @@
-import { Action } from '../Action'
+import { Skill } from '../Action'
 
-export class HeavenChainAction extends Action {
+export class HeavenChainAction extends Skill {
   constructor() {
     super({
       id: 'action-heaven-chain',
       name: '天の鎖',
-      category: 'skill',
       description: 'このターン、敵1体の動きを止める',
       cardDefinition: {
         title: '天の鎖',

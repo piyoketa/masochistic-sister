@@ -1,11 +1,10 @@
-import { Action } from '../Action'
+import { ContinuousAttack } from '../Action'
 
-export class TentacleFlurryAction extends Action {
+export class TentacleFlurryAction extends ContinuousAttack {
   constructor() {
     super({
       id: 'action-tentacle-flurry',
       name: '乱れ突き',
-      category: 'attack',
       baseDamage: 10,
       hitCount: 3,
       description: '10ダメージ × 3',

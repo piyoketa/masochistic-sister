@@ -21,12 +21,6 @@ import {
   MucusShotAction,
   AcidSpitAction,
 } from '@/domain/entities/actions'
-import {
-  HardShellState,
-  CorrosionState,
-  AccelerationState,
-  StickyState,
-} from '@/domain/entities/states'
 import { HeavenChainCard, BattlePrepCard, MasochisticAuraCard } from '@/domain/entities/cards'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { OrcEnemy, OrcDancerEnemy, TentacleEnemy, SnailEnemy } from '@/domain/entities/enemies'
@@ -45,13 +39,6 @@ interface BattleFixture {
     tentacle: string
     snail: string
   }
-}
-
-const STATES = {
-  hardShell: new HardShellState(20),
-  corrosion: new CorrosionState(1),
-  acceleration: new AccelerationState(1),
-  sticky: new StickyState(1),
 }
 
 const ACTIONS = {

@@ -1,11 +1,10 @@
-import { Action } from '../Action'
+import { Skill } from '../Action'
 
-export class BuildUpAction extends Action {
+export class BuildUpAction extends Skill {
   constructor() {
     super({
       id: 'action-build-up',
       name: 'ビルドアップ',
-      category: 'skill',
       description: '自身の状態に筋力上昇を追加する',
       cardDefinition: {
         title: 'ビルドアップ',

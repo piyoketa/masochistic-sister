@@ -1,11 +1,10 @@
-import { Action } from '../Action'
+import { Skill } from '../Action'
 
-export class BattlePrepAction extends Action {
+export class BattlePrepAction extends Skill {
   constructor() {
     super({
       id: 'action-battle-prep',
       name: '戦いの準備',
-      category: 'skill',
       description: '次のターン、マナ+1',
       cardDefinition: {
         title: '戦いの準備',
