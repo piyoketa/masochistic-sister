@@ -173,7 +173,7 @@ export class Battle {
     this.deck.draw(count, this.hand)
   }
 
-  playCard(cardId: string, operations: CardOperation[] = []): void {
+  playCard(cardId: number, operations: CardOperation[] = []): void {
     if (this.turn.current.activeSide !== 'player') {
       throw new Error('It is not the player turn')
     }

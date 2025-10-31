@@ -4,11 +4,8 @@ import { SelectHandCardOperation } from '../operations'
 import type { Enemy } from '../Enemy'
 
 export class ChaosStrikeAction extends SingleAttack {
-  static readonly ID = 'action-chaos-strike'
-
   constructor() {
     super({
-      id: ChaosStrikeAction.ID,
       name: '混迷',
       baseDamage: 0,
       description: '手札を1枚捨て、そのカードのコスト×10ダメージを与える',
@@ -35,7 +32,7 @@ export class ChaosStrikeAction extends SingleAttack {
     }
 
     const selectedCard = selectOperation.card
-    context.battle.hand.remove(selectedCard.id)
+    context.battle.hand.remove(selectedCard)
     context.battle.discardPile.add(selectedCard)
 
     const damage = Math.max(0, selectedCard.cost) * 10

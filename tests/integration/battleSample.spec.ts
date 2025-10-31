@@ -21,12 +21,26 @@ interface BattleFixture {
     battlePreps: readonly [Card, Card]
     masochisticAura: Card
   }
+  cardIds: {
+    heavenChains: readonly [number, number, number, number, number]
+    battlePreps: readonly [number, number]
+    masochisticAura: number
+  }
   enemyIds: {
     orc: number
     orcDancer: number
     tentacle: number
     snail: number
   }
+}
+
+function requireCardId(card: Card): number {
+  const id = card.numericId
+  if (id === undefined) {
+    throw new Error('Card missing repository id')
+  }
+
+  return id
 }
 
 function createBattleFixture(): BattleFixture {
@@ -70,12 +84,30 @@ function createBattleFixture(): BattleFixture {
     turn: new TurnManager(),
   })
 
+  const [heavenChain0, heavenChain1, heavenChain2, heavenChain3, heavenChain4] = heavenChains
+  const heavenChainIds: readonly [number, number, number, number, number] = [
+    requireCardId(heavenChain0),
+    requireCardId(heavenChain1),
+    requireCardId(heavenChain2),
+    requireCardId(heavenChain3),
+    requireCardId(heavenChain4),
+  ]
+
+  const [battlePrep0, battlePrep1] = battlePreps
+  const battlePrepIds: readonly [number, number] = [requireCardId(battlePrep0), requireCardId(battlePrep1)]
+  const masochisticAuraId: number = requireCardId(masochisticAura)
+
   return {
     battle,
     cards: {
       heavenChains,
       battlePreps,
       masochisticAura,
+    },
+    cardIds: {
+      heavenChains: heavenChainIds,
+      battlePreps: battlePrepIds,
+      masochisticAura: masochisticAuraId,
     },
     enemyIds: {
       orc: orc.numericId,
@@ -92,19 +124,19 @@ function drawOpeningHand(fixture: BattleFixture): void {
 }
 
 function playMasochisticAura(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.masochisticAura.id, [
+  fixture.battle.playCard(fixture.cardIds.masochisticAura, [
     { type: 'target-enemy', payload: fixture.enemyIds.snail },
   ])
 }
 
 function playHeavenChainOnOrc(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.heavenChains[0].id, [
+  fixture.battle.playCard(fixture.cardIds.heavenChains[0], [
     { type: 'target-enemy', payload: fixture.enemyIds.orc },
   ])
 }
 
 function playBattlePrep(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.battlePreps[0].id)
+  fixture.battle.playCard(fixture.cardIds.battlePreps[0])
 }
 
 function progressToEnemyTurn(fixture: BattleFixture): void {
@@ -127,13 +159,13 @@ function startSecondPlayerTurn(fixture: BattleFixture): void {
 }
 
 function playHeavenChainOnTentacle(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.heavenChains[1].id, [
+  fixture.battle.playCard(fixture.cardIds.heavenChains[1], [
     { type: 'target-enemy', payload: fixture.enemyIds.tentacle },
   ])
 }
 
 function playHeavenChainOnSnail(fixture: BattleFixture): void {
-  fixture.battle.playCard(fixture.cards.heavenChains[2].id, [
+  fixture.battle.playCard(fixture.cardIds.heavenChains[2], [
     { type: 'target-enemy', payload: fixture.enemyIds.snail },
   ])
 }
@@ -146,10 +178,11 @@ function playAcidSpitOnSnail(fixture: BattleFixture): void {
     return
   }
 
+  const acidCardId = requireCardId(acidCard)
   const snapshot = fixture.battle.getSnapshot()
-  expect(snapshot.hand.some((card) => card.id === acidCard.id)).toBe(true)
+  expect(snapshot.hand.some((card) => card.numericId === acidCardId)).toBe(true)
 
-  fixture.battle.playCard(acidCard.id, [
+  fixture.battle.playCard(acidCardId, [
     { type: 'target-enemy', payload: fixture.enemyIds.snail },
   ])
 }
@@ -167,17 +200,17 @@ describe('Battle sample scenario', () => {
     drawOpeningHand(fixture)
 
     const snapshot = fixture.battle.getSnapshot()
-    expect(snapshot.hand.map((card) => card.id)).toEqual([
-      fixture.cards.heavenChains[0].id,
-      fixture.cards.heavenChains[1].id,
-      fixture.cards.heavenChains[2].id,
-      fixture.cards.battlePreps[0].id,
-      fixture.cards.masochisticAura.id,
+    expect(snapshot.hand.map(requireCardId)).toEqual([
+      fixture.cardIds.heavenChains[0],
+      fixture.cardIds.heavenChains[1],
+      fixture.cardIds.heavenChains[2],
+      fixture.cardIds.battlePreps[0],
+      fixture.cardIds.masochisticAura,
     ])
-    expect(snapshot.deck.map((card) => card.id)).toEqual([
-      fixture.cards.heavenChains[3].id,
-      fixture.cards.battlePreps[1].id,
-      fixture.cards.heavenChains[4].id,
+    expect(snapshot.deck.map(requireCardId)).toEqual([
+      fixture.cardIds.heavenChains[3],
+      fixture.cardIds.battlePreps[1],
+      fixture.cardIds.heavenChains[4],
     ])
     expect(snapshot.player.currentMana).toBe(3)
     expect(snapshot.player.currentHp).toBe(100)
@@ -193,7 +226,7 @@ describe('Battle sample scenario', () => {
     expect(snapshot.player.currentHp).toBe(95)
     expect(snapshot.hand.some((card) => card.title === '酸を吐く')).toBe(true)
     expect(snapshot.hand.some((card) => card.title === '腐食')).toBe(true)
-    expect(snapshot.discardPile.map((card) => card.id)).toContain(fixture.cards.masochisticAura.id)
+    expect(snapshot.discardPile.map(requireCardId)).toContain(fixture.cardIds.masochisticAura)
     expect(snapshot.exilePile).toHaveLength(0)
   })
 
@@ -205,8 +238,8 @@ describe('Battle sample scenario', () => {
 
     const snapshot = fixture.battle.getSnapshot()
     expect(snapshot.player.currentMana).toBe(1)
-    expect(snapshot.hand.map((card) => card.id)).not.toContain(fixture.cards.heavenChains[0].id)
-    expect(snapshot.exilePile.map((card) => card.id)).toContain(fixture.cards.heavenChains[0].id)
+    expect(snapshot.hand.map(requireCardId)).not.toContain(fixture.cardIds.heavenChains[0])
+    expect(snapshot.exilePile.map(requireCardId)).toContain(fixture.cardIds.heavenChains[0])
   })
 
   it.skip('戦いの準備で次ターンのマナ+1イベントを積む', () => {
@@ -218,9 +251,9 @@ describe('Battle sample scenario', () => {
 
     const snapshot = fixture.battle.getSnapshot()
     expect(snapshot.player.currentMana).toBe(0)
-    expect(snapshot.discardPile.map((card) => card.id)).toEqual([
-      fixture.cards.masochisticAura.id,
-      fixture.cards.battlePreps[0].id,
+    expect(snapshot.discardPile.map(requireCardId)).toEqual([
+      fixture.cardIds.masochisticAura,
+      fixture.cardIds.battlePreps[0],
     ])
     expect(snapshot.events.length).toBeGreaterThanOrEqual(1)
   })
@@ -270,8 +303,8 @@ describe('Battle sample scenario', () => {
     const snapshot = fixture.battle.getSnapshot()
     expect(snapshot.player.currentMana).toBe(4)
     expect(snapshot.hand).toHaveLength(8)
-    expect(snapshot.hand.map((card) => card.id)).toContain(fixture.cards.heavenChains[3].id)
-    expect(snapshot.hand.map((card) => card.id)).toContain(fixture.cards.battlePreps[1].id)
+    expect(snapshot.hand.map(requireCardId)).toContain(fixture.cardIds.heavenChains[3])
+    expect(snapshot.hand.map(requireCardId)).toContain(fixture.cardIds.battlePreps[1])
   })
 
   it.skip('２ターン目に天の鎖で触手を封じる', () => {
@@ -289,7 +322,7 @@ describe('Battle sample scenario', () => {
 
     const snapshot = fixture.battle.getSnapshot()
     expect(snapshot.player.currentMana).toBe(3)
-    expect(snapshot.exilePile.map((card) => card.id)).toContain(fixture.cards.heavenChains[1].id)
+    expect(snapshot.exilePile.map(requireCardId)).toContain(fixture.cardIds.heavenChains[1])
   })
 
   it.skip('２ターン目に天の鎖でかたつむりを封じる', () => {
@@ -308,7 +341,7 @@ describe('Battle sample scenario', () => {
 
     const snapshot = fixture.battle.getSnapshot()
     expect(snapshot.player.currentMana).toBe(2)
-    expect(snapshot.exilePile.map((card) => card.id)).toContain(fixture.cards.heavenChains[2].id)
+    expect(snapshot.exilePile.map(requireCardId)).toContain(fixture.cardIds.heavenChains[2])
   })
 
   it.skip('酸を吐くでかたつむりに腐食(1)を付与する', () => {
@@ -351,8 +384,8 @@ describe('Battle sample scenario', () => {
 
     const snapshot = fixture.battle.getSnapshot()
     expect(snapshot.player.currentMana).toBe(3)
-    expect(snapshot.hand.some((card) => card.id === fixture.cards.heavenChains[4].id)).toBe(true)
-    expect(snapshot.hand.some((card) => card.id === fixture.cards.masochisticAura.id)).toBe(true)
+    expect(snapshot.hand.some((card) => card.numericId === fixture.cardIds.heavenChains[4])).toBe(true)
+    expect(snapshot.hand.some((card) => card.numericId === fixture.cardIds.masochisticAura)).toBe(true)
     expect(snapshot.discardPile.length).toBeLessThanOrEqual(2)
     expect(snapshot.deck.length).toBeGreaterThanOrEqual(1)
   })

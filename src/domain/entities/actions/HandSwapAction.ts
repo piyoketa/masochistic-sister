@@ -3,11 +3,8 @@ import { SelectHandCardOperation } from '../operations'
 import type { Operation } from '../operations'
 
 export class HandSwapAction extends Skill {
-  static readonly ID = 'action-hand-swap'
-
   constructor() {
     super({
-      id: HandSwapAction.ID,
       name: '手札入れ替え',
       description: '手札を1枚捨て、1枚ドローする',
       cardDefinition: {
@@ -33,7 +30,7 @@ export class HandSwapAction extends Skill {
     }
 
     const selectedCard = selectOperation.card
-    context.battle.hand.remove(selectedCard.id)
+    context.battle.hand.remove(selectedCard)
     context.battle.discardPile.add(selectedCard)
     context.battle.drawForPlayer(1)
   }

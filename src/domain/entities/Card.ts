@@ -38,14 +38,6 @@ export class Card {
     this.definitionValue = this.composeDefinition()
   }
 
-  get id(): string {
-    if (this.repositoryId === undefined) {
-      throw new Error('Card has no repository id assigned')
-    }
-
-    return this.repositoryId.toString()
-  }
-
   get numericId(): number | undefined {
     return this.repositoryId
   }
@@ -123,7 +115,7 @@ export class Card {
     })
 
     battle.player.spendMana(this.cost)
-    battle.hand.remove(this.id)
+    battle.hand.remove(this)
 
     action.execute(context)
 

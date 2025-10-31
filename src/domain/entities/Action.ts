@@ -20,7 +20,6 @@ export interface ActionContext {
 }
 
 export interface BaseActionProps {
-  id: string
   name: string
   description?: string
   descriptionBuilder?: (context: ActionContext) => string
@@ -35,10 +34,6 @@ export abstract class Action {
   }
 
   abstract get type(): ActionType
-
-  get id(): string {
-    return this.props.id
-  }
 
   get name(): string {
     return this.props.name

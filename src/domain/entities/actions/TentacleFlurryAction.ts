@@ -3,7 +3,6 @@ import { ContinuousAttack } from '../Action'
 export class TentacleFlurryAction extends ContinuousAttack {
   constructor() {
     super({
-      id: 'action-tentacle-flurry',
       name: '乱れ突き',
       baseDamage: 10,
       hitCount: 3,

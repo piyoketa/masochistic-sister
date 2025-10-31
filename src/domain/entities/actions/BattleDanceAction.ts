@@ -3,7 +3,6 @@ import { Skill } from '../Action'
 export class BattleDanceAction extends Skill {
   constructor() {
     super({
-      id: 'action-battle-dance',
       name: '戦いの舞い',
       description: '自身に加速(1)を付与する',
       cardDefinition: {

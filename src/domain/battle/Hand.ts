@@ -19,15 +19,15 @@ export class Hand {
     this.cards.push(...cards)
   }
 
-  remove(cardId: string): void {
-    const index = this.cards.findIndex((card) => card.id === cardId)
+  remove(card: Card): void {
+    const index = this.cards.indexOf(card)
     if (index >= 0) {
       this.cards.splice(index, 1)
     }
   }
 
-  find(cardId: string): Card | undefined {
-    return this.cards.find((card) => card.id === cardId)
+  find(cardId: number): Card | undefined {
+    return this.cards.find((card) => card.numericId === cardId)
   }
 
   clear(): void {

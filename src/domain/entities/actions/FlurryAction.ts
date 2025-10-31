@@ -3,7 +3,6 @@ import { ContinuousAttack } from '../Action'
 export class FlurryAction extends ContinuousAttack {
   constructor() {
     super({
-      id: 'action-flurry',
       name: '乱れ突き',
       baseDamage: 10,
       hitCount: 2,

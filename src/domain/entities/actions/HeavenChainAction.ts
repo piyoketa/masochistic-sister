@@ -4,7 +4,6 @@ import { ExhaustCardTag, SacredCardTag } from '../cardTags'
 export class HeavenChainAction extends Skill {
   constructor() {
     super({
-      id: 'action-heaven-chain',
       name: '天の鎖',
       description: 'このターン、敵1体の動きを止める',
       cardDefinition: {

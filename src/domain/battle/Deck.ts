@@ -42,8 +42,8 @@ export class Deck {
     this.cards.push(card)
   }
 
-  remove(cardId: string): void {
-    const index = this.cards.findIndex((card) => card.id === cardId)
+  remove(cardId: number): void {
+    const index = this.cards.findIndex((card) => card.numericId === cardId)
     if (index >= 0) {
       this.cards.splice(index, 1)
     }

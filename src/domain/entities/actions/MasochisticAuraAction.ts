@@ -7,7 +7,6 @@ import type { Operation } from '../operations'
 export class MasochisticAuraAction extends Skill {
   constructor() {
     super({
-      id: 'action-masochistic-aura',
       name: '被虐のオーラ',
       description: '選択した敵を即座に行動させる',
       cardDefinition: {

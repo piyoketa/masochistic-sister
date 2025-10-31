@@ -41,13 +41,24 @@ function createBattleWithHand(
   return battle
 }
 
+function requireCardId(card: Card): number {
+  const id = card.numericId
+  if (id === undefined) {
+    throw new Error('Card missing repository id')
+  }
+
+  return id
+}
+
 describe('Card operation validation', () => {
   it('throws when required target operation is missing', () => {
     const repo = new CardRepository()
     const auraCard = repo.create(() => new Card({ action: new MasochisticAuraAction() }))
     const battle = createBattleWithHand([auraCard], [], repo)
 
-    expect(() => battle.playCard(auraCard.id, [])).toThrow('Operation "target-enemy" is required but missing')
+    const auraCardId = requireCardId(auraCard)
+
+    expect(() => battle.playCard(auraCardId, [])).toThrow('Operation "target-enemy" is required but missing')
   })
 
   it('throws when target enemy id is invalid', () => {
@@ -55,7 +66,9 @@ describe('Card operation validation', () => {
     const auraCard = repo.create(() => new Card({ action: new MasochisticAuraAction() }))
     const battle = createBattleWithHand([auraCard], [], repo)
 
-    expect(() => battle.playCard(auraCard.id, [{ type: 'target-enemy', payload: 999 }])).toThrow('Enemy 999 not found')
+    const auraCardId = requireCardId(auraCard)
+
+    expect(() => battle.playCard(auraCardId, [{ type: 'target-enemy', payload: 999 }])).toThrow('Enemy 999 not found')
   })
 
   it('plays Masochistic Aura when valid target provided', () => {
@@ -65,10 +78,12 @@ describe('Card operation validation', () => {
     const snail = battle.enemyTeam.members.find((enemy) => enemy.name === 'かたつむり')
     expect(snail?.numericId).toBeDefined()
 
-    battle.playCard(auraCard.id, [{ type: 'target-enemy', payload: snail!.numericId }])
+    const auraCardId = requireCardId(auraCard)
 
-    expect(battle.hand.list().some((card) => card.id === auraCard.id)).toBe(false)
-    expect(battle.discardPile.list().some((card) => card.id === auraCard.id)).toBe(true)
+    battle.playCard(auraCardId, [{ type: 'target-enemy', payload: snail!.numericId }])
+
+    expect(battle.hand.list().some((card) => card.numericId === auraCardId)).toBe(false)
+    expect(battle.discardPile.list().some((card) => card.numericId === auraCardId)).toBe(true)
   })
 
   it('requires hand selection for Hand Swap', () => {
@@ -78,17 +93,21 @@ describe('Card operation validation', () => {
     const drawCard = repo.create(() => new Card({ action: new BattlePrepAction() }))
     const battle = createBattleWithHand([swapCard, extraCard], [drawCard], repo)
 
-    expect(() => battle.playCard(swapCard.id, [])).toThrow('Operation "select-hand-card" is required but missing')
+    const swapCardId = requireCardId(swapCard)
+    const extraCardId = requireCardId(extraCard)
+    const drawCardId = requireCardId(drawCard)
 
-    const invalidOperations: CardOperation[] = [{ type: 'select-hand-card', payload: 'invalid' }]
-    expect(() => battle.playCard(swapCard.id, invalidOperations)).toThrow('Card invalid not found in hand')
+    expect(() => battle.playCard(swapCardId, [])).toThrow('Operation "select-hand-card" is required but missing')
 
-    battle.playCard(swapCard.id, [{ type: 'select-hand-card', payload: extraCard.id }])
+    const invalidOperations: CardOperation[] = [{ type: 'select-hand-card', payload: 999 }]
+    expect(() => battle.playCard(swapCardId, invalidOperations)).toThrow('Card 999 not found in hand')
 
-    expect(battle.hand.list().some((card) => card.id === extraCard.id)).toBe(false)
-    expect(battle.discardPile.list().some((card) => card.id === extraCard.id)).toBe(true)
-    expect(battle.discardPile.list().some((card) => card.id === swapCard.id)).toBe(true)
-    expect(battle.hand.list().some((card) => card.id === drawCard.id)).toBe(true)
+    battle.playCard(swapCardId, [{ type: 'select-hand-card', payload: extraCardId }])
+
+    expect(battle.hand.list().some((card) => card.numericId === extraCardId)).toBe(false)
+    expect(battle.discardPile.list().some((card) => card.numericId === extraCardId)).toBe(true)
+    expect(battle.discardPile.list().some((card) => card.numericId === swapCardId)).toBe(true)
+    expect(battle.hand.list().some((card) => card.numericId === drawCardId)).toBe(true)
   })
 
   it('requires both operations for Chaos Strike and applies damage', () => {
@@ -99,22 +118,25 @@ describe('Card operation validation', () => {
     const target = battle.enemyTeam.members.find((enemy) => enemy.name === 'かたつむり')
     expect(target?.numericId).toBeDefined()
 
-    expect(() => battle.playCard(chaosCard.id, [{ type: 'target-enemy', payload: target!.numericId }])).toThrow(
+    const chaosCardId = requireCardId(chaosCard)
+    const sacrificeId = requireCardId(sacrifice)
+
+    expect(() => battle.playCard(chaosCardId, [{ type: 'target-enemy', payload: target!.numericId }])).toThrow(
       'Operation "select-hand-card" is required but missing',
     )
 
-    expect(() => battle.playCard(chaosCard.id, [{ type: 'select-hand-card', payload: sacrifice.id }])).toThrow(
+    expect(() => battle.playCard(chaosCardId, [{ type: 'select-hand-card', payload: sacrificeId }])).toThrow(
       'Operation "target-enemy" is required but missing',
     )
 
-    battle.playCard(chaosCard.id, [
+    battle.playCard(chaosCardId, [
       { type: 'target-enemy', payload: target!.numericId },
-      { type: 'select-hand-card', payload: sacrifice.id },
+      { type: 'select-hand-card', payload: sacrificeId },
     ])
 
-    expect(battle.hand.list().some((card) => card.id === sacrifice.id)).toBe(false)
-    expect(battle.discardPile.list().some((card) => card.id === sacrifice.id)).toBe(true)
-    expect(battle.discardPile.list().some((card) => card.id === chaosCard.id)).toBe(true)
+    expect(battle.hand.list().some((card) => card.numericId === sacrificeId)).toBe(false)
+    expect(battle.discardPile.list().some((card) => card.numericId === sacrificeId)).toBe(true)
+    expect(battle.discardPile.list().some((card) => card.numericId === chaosCardId)).toBe(true)
     expect(target!.currentHp).toBe(target!.maxHp - sacrifice.cost * 10)
   })
 })

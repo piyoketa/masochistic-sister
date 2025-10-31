@@ -114,24 +114,31 @@ export class SelectHandCardOperation extends Operation<Card> {
     return card
   }
 
-  private extractCardId(payload: unknown): string {
-    if (typeof payload === 'string') {
+  private extractCardId(payload: unknown): number {
+    if (typeof payload === 'number' && Number.isInteger(payload) && payload >= 0) {
       return payload
     }
 
     if (typeof payload === 'object' && payload !== null) {
-      const value = (payload as { cardId?: string }).cardId
-      if (typeof value === 'string') {
-        return value
+      const candidate = (payload as { cardId?: number; selectedHandCardId?: number }).cardId ??
+        (payload as { selectedHandCardId?: number }).selectedHandCardId
+
+      if (typeof candidate === 'number' && Number.isInteger(candidate) && candidate >= 0) {
+        return candidate
       }
     }
 
-    throw new Error('Operation requires a hand card id')
+    throw new Error('Operation requires a numeric hand card id')
   }
 
   override toMetadata(): Record<string, unknown> {
+    const id = this.card.numericId
+    if (id === undefined) {
+      throw new Error('Selected hand card missing repository id')
+    }
+
     return {
-      selectedHandCardId: this.card.id,
+      selectedHandCardId: id,
     }
   }
 
