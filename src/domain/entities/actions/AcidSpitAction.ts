@@ -1,12 +1,13 @@
-import { SingleAttack, type ActionContext } from '../Action'
+import { Attack, type ActionContext } from '../Action'
+import { Damages } from '../Damages'
 import { Card } from '../Card'
 import { CorrosionState } from '../states/CorrosionState'
 
-export class AcidSpitAction extends SingleAttack {
+export class AcidSpitAction extends Attack {
   constructor() {
     super({
       name: '酸を吐く',
-      baseDamage: 5,
+      baseDamages: Damages.single(5),
       description: '腐食(1)を付与する',
       cardDefinition: {
         title: '酸を吐く',
@@ -18,19 +19,14 @@ export class AcidSpitAction extends SingleAttack {
   }
   override execute(context: ActionContext): void {
     const battle = context.battle
-    const [damage] = this.calculateDamage()
-    if (typeof damage !== 'number') {
-      throw new Error('Failed to calculate damage for Acid Spit')
-    }
-
-    battle.damagePlayer(damage)
+    const damages = this.calcDamages(context.source, battle.player)
+    battle.damagePlayer(damages.amount * damages.count)
 
     const repository = battle.cardRepository
 
-    const acidCard = repository.create(() => new Card({ action: new AcidSpitAction() }))
+    repository.memoryEnemyAttack(damages, this, battle)
     const corrosionCard = repository.create(() => new Card({ state: new CorrosionState() }))
 
-    battle.addCardToPlayerHand(acidCard)
     battle.addCardToPlayerHand(corrosionCard)
   }
 }

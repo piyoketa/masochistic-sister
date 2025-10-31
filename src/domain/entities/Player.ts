@@ -84,4 +84,8 @@ export class Player {
       this.states.splice(index, 1)
     }
   }
+
+  getStates(): State[] {
+    return [...this.states]
+  }
 }

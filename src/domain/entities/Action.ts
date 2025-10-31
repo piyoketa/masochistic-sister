@@ -2,6 +2,8 @@ import type { Battle } from '../battle/Battle'
 import type { CardDefinition, CardDefinitionBase } from './CardDefinition'
 import type { Enemy } from './Enemy'
 import type { Player } from './Player'
+import type { State } from './State'
+import { Damages } from './Damages'
 import {
   TargetEnemyOperation,
   type CardOperation,
@@ -162,34 +164,93 @@ export abstract class Skill extends Action {
 }
 
 export interface AttackProps extends BaseActionProps {
-  baseDamage: number
-  hitCount?: number
+  baseDamages: Damages
 }
 
 export abstract class Attack extends Action {
-  protected readonly baseDamageValue: number
-  protected readonly hitCountValue: number
+  protected readonly baseDamagesValue: Damages
 
   protected constructor(props: AttackProps) {
     super(props)
-    this.baseDamageValue = props.baseDamage
-    this.hitCountValue = props.hitCount ?? 1
+    this.baseDamagesValue = props.baseDamages
   }
 
   get type(): ActionType {
     return 'attack'
   }
 
-  get baseDamage(): number {
-    return this.baseDamageValue
+  get baseDamages(): Damages {
+    return this.baseDamagesValue
   }
 
-  get hitCount(): number {
-    return this.hitCountValue
+  cloneWithDamages(damages: Damages, overrides?: Partial<BaseActionProps>): Attack {
+    const clone = Object.create(Object.getPrototypeOf(this)) as Attack
+    const currentProps = (this as unknown as { props: BaseActionProps }).props
+    const mergedProps: BaseActionProps = {
+      ...currentProps,
+      ...(overrides ?? {}),
+      cardDefinition: {
+        ...currentProps.cardDefinition,
+        ...(overrides?.cardDefinition ?? {}),
+      },
+    }
+
+    Object.assign(clone, this)
+    ;(clone as unknown as { baseDamagesValue: Damages }).baseDamagesValue = damages
+    ;(clone as unknown as { props: BaseActionProps }).props = mergedProps
+
+    return clone
   }
 
-  calculateDamage(_context?: ActionContext): number[] {
-    return []
+  calcDamages(attacker: Player | Enemy, defender: Player | Enemy): Damages {
+    const base = this.baseDamagesValue
+    let amount = base.amount
+    let count = base.count
+
+    const attackerStates = this.collectStates(attacker)
+    const defenderStates = this.collectStates(defender)
+    const usedAttackerStates: Set<State> = new Set()
+    const usedDefenderStates: Set<State> = new Set()
+
+    const strengthStates = attackerStates.filter((state) => state.id === 'state-strength')
+    const strengthBonus = strengthStates.reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
+    if (strengthBonus !== 0) {
+      amount += strengthBonus
+      strengthStates.forEach((state) => usedAttackerStates.add(state))
+    }
+
+    const accelerationStates = attackerStates.filter((state) => state.id === 'state-acceleration')
+    const accelerationBonus = accelerationStates.reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
+    if (accelerationBonus > 0) {
+      count += accelerationBonus
+      accelerationStates.forEach((state) => usedAttackerStates.add(state))
+    }
+
+    const corrosionStates = defenderStates.filter((state) => state.id === 'state-corrosion')
+    const corrosionBonus = corrosionStates.reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
+    if (corrosionBonus !== 0) {
+      amount += corrosionBonus * 10
+      corrosionStates.forEach((state) => usedDefenderStates.add(state))
+    }
+
+    const hardShellStates = defenderStates.filter((state) => state.id === 'state-hard-shell')
+    const hardShellReduction = hardShellStates.reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
+    if (hardShellReduction > 0) {
+      amount = Math.max(0, amount - hardShellReduction)
+      hardShellStates.forEach((state) => usedDefenderStates.add(state))
+    }
+
+    const finalCount = Math.max(1, Math.floor(count))
+    const finalAmount = Math.max(0, amount)
+    const type = finalCount > 1 ? 'multi' : 'single'
+
+    return new Damages({
+      type,
+      amount: finalAmount,
+      count: finalCount,
+      attackerStates: Array.from(usedAttackerStates),
+      defenderStates: Array.from(usedDefenderStates),
+    })
   }
 
   protected override buildOperations(): Operation[] {
@@ -229,24 +290,12 @@ export abstract class Attack extends Action {
 
     return context.battle.player
   }
-}
 
-export abstract class SingleAttack extends Attack {
-  protected constructor(props: AttackProps) {
-    super({ ...props, hitCount: 1 })
-  }
+  private collectStates(entity: Player | Enemy): State[] {
+    if ('getStates' in entity && typeof entity.getStates === 'function') {
+      return [...entity.getStates()]
+    }
 
-  override calculateDamage(): number[] {
-    return [this.baseDamage]
-  }
-}
-
-export abstract class ContinuousAttack extends Attack {
-  protected constructor(props: AttackProps & { hitCount: number }) {
-    super(props)
-  }
-
-  override calculateDamage(): number[] {
-    return Array.from({ length: this.hitCount }, () => this.baseDamage)
+    return []
   }
 }

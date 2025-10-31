@@ -1,11 +1,11 @@
-import { ContinuousAttack } from '../Action'
+import { Attack } from '../Action'
+import { Damages } from '../Damages'
 
-export class FlurryAction extends ContinuousAttack {
+export class FlurryAction extends Attack {
   constructor() {
     super({
       name: '乱れ突き',
-      baseDamage: 10,
-      hitCount: 2,
+      baseDamages: Damages.multi(10, 2),
       description: '10ダメージ × 2',
       cardDefinition: {
         title: '乱れ突き',

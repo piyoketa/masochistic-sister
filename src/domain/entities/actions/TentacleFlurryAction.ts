@@ -1,11 +1,11 @@
-import { ContinuousAttack } from '../Action'
+import { Attack } from '../Action'
+import { Damages } from '../Damages'
 
-export class TentacleFlurryAction extends ContinuousAttack {
+export class TentacleFlurryAction extends Attack {
   constructor() {
     super({
       name: '乱れ突き',
-      baseDamage: 10,
-      hitCount: 3,
+      baseDamages: Damages.multi(10, 3),
       description: '10ダメージ × 3',
       cardDefinition: {
         title: '乱れ突き',

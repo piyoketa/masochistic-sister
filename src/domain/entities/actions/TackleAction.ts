@@ -1,10 +1,11 @@
-import { SingleAttack } from '../Action'
+import { Attack } from '../Action'
+import { Damages } from '../Damages'
 
-export class TackleAction extends SingleAttack {
+export class TackleAction extends Attack {
   constructor() {
     super({
       name: 'たいあたり',
-      baseDamage: 20,
+      baseDamages: Damages.single(20),
       description: '20ダメージ',
       cardDefinition: {
         title: 'たいあたり',

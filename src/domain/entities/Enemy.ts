@@ -115,6 +115,10 @@ export class Enemy {
 
   resetTurn(): void {}
 
+  getStates(): State[] {
+    return [...this.traitsValue, ...this.statesValue]
+  }
+
   private advanceActionPointer(): void {
     this.actionPointer = (this.actionPointer + 1) % Math.max(1, this.actionsValue.length)
   }

@@ -171,8 +171,8 @@ function playHeavenChainOnSnail(fixture: BattleFixture): void {
 }
 
 function playAcidSpitOnSnail(fixture: BattleFixture): void {
-  const acidCard = fixture.battle.cardRepository.find((card) => card.title === '酸を吐く')
-  expect(acidCard, '酸を吐くのカードが手札に存在する').toBeDefined()
+  const acidCard = fixture.battle.cardRepository.find((card) => card.title === '記憶：酸を吐く')
+  expect(acidCard, '記憶：酸を吐くのカードが手札に存在する').toBeDefined()
 
   if (!acidCard) {
     return
@@ -224,7 +224,7 @@ describe('Battle sample scenario', () => {
     const snapshot = fixture.battle.getSnapshot()
     expect(snapshot.player.currentMana).toBe(2)
     expect(snapshot.player.currentHp).toBe(95)
-    expect(snapshot.hand.some((card) => card.title === '酸を吐く')).toBe(true)
+    expect(snapshot.hand.some((card) => card.title === '記憶：酸を吐く')).toBe(true)
     expect(snapshot.hand.some((card) => card.title === '腐食')).toBe(true)
     expect(snapshot.discardPile.map(requireCardId)).toContain(fixture.cardIds.masochisticAura)
     expect(snapshot.exilePile).toHaveLength(0)
@@ -362,7 +362,7 @@ describe('Battle sample scenario', () => {
     const snapshot = fixture.battle.getSnapshot()
     const snail = snapshot.enemies.find((enemy) => enemy.numericId === fixture.enemyIds.snail)
     expect(snail?.states.some((state) => state.name === '腐食')).toBe(true)
-    const acidCard = snapshot.discardPile.find((card) => card.title === '酸を吐く')
+    const acidCard = snapshot.discardPile.find((card) => card.title === '記憶：酸を吐く')
     expect(acidCard).toBeDefined()
   })
 

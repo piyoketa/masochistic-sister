@@ -1,10 +1,11 @@
-import { SingleAttack } from '../Action'
+import { Attack } from '../Action'
+import { Damages } from '../Damages'
 
-export class MucusShotAction extends SingleAttack {
+export class MucusShotAction extends Attack {
   constructor() {
     super({
       name: '粘液飛ばし',
-      baseDamage: 5,
+      baseDamages: Damages.single(5),
       description: 'ねばねば(1)を付与する',
       cardDefinition: {
         title: '粘液飛ばし',

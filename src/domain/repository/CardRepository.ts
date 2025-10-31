@@ -1,4 +1,7 @@
-import type { Card } from '../entities/Card'
+import { Card } from '../entities/Card'
+import { Attack } from '../entities/Action'
+import type { Damages } from '../entities/Damages'
+import type { Battle } from '../battle/Battle'
 
 export type CardFactory<T extends Card = Card> = () => T
 
@@ -55,6 +58,44 @@ export class CardRepository {
   clear(): void {
     this.cards.clear()
     this.counter = 0
+  }
+
+  private buildMemoryOverrides(baseAttack: Attack, damages: Damages) {
+    const baseDefinition = baseAttack.createCardDefinition()
+    const title = `記憶：${baseAttack.name}`
+    const description = damages.count <= 1
+      ? `${damages.amount}ダメージ`
+      : `${damages.amount}ダメージ × ${damages.count}`
+    const fullDescription = baseDefinition.description
+      ? `${description}
+${baseDefinition.description}`
+      : description
+
+    return {
+      name: baseAttack.name,
+      description: fullDescription,
+      cardDefinition: {
+        ...baseDefinition,
+        title,
+        description: fullDescription,
+      },
+    }
+  }
+
+  createNewAttack(damages: Damages, baseAttack: Attack): Card {
+    const overrides = this.buildMemoryOverrides(baseAttack, damages)
+    const action = baseAttack.cloneWithDamages(damages, overrides)
+    return this.create(() => new Card({ action }))
+  }
+
+  memoryEnemyAttack(damages: Damages, baseAttack: Attack): Card
+  memoryEnemyAttack(damages: Damages, baseAttack: Attack, battle: Battle): Card
+  memoryEnemyAttack(damages: Damages, baseAttack: Attack, battle?: Battle): Card {
+    const card = this.createNewAttack(damages, baseAttack)
+    if (battle) {
+      battle.addCardToPlayerHand(card)
+    }
+    return card
   }
 
   private generateId(): number {
