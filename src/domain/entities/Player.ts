@@ -16,6 +16,7 @@ export class Player {
   private readonly maxManaValue: number
   private currentHpValue: number
   private currentManaValue: number
+  private readonly states: State[] = []
 
   constructor(props: PlayerProps) {
     this.idValue = props.id
@@ -50,17 +51,37 @@ export class Player {
     return this.currentManaValue
   }
 
-  takeDamage(amount: number): void {}
+  takeDamage(amount: number): void {
+    this.currentHpValue = Math.max(0, this.currentHpValue - Math.max(0, Math.floor(amount)))
+  }
 
-  heal(amount: number): void {}
+  heal(amount: number): void {
+    this.currentHpValue = Math.min(this.maxHpValue, this.currentHpValue + Math.max(0, Math.floor(amount)))
+  }
 
-  spendMana(cost: number): void {}
+  spendMana(cost: number): void {
+    if (cost > this.currentManaValue) {
+      throw new Error('Not enough mana')
+    }
+    this.currentManaValue -= cost
+  }
 
-  gainMana(amount: number): void {}
+  gainMana(amount: number): void {
+    this.currentManaValue = Math.min(this.maxManaValue, this.currentManaValue + Math.max(0, Math.floor(amount)))
+  }
 
-  resetMana(): void {}
+  resetMana(): void {
+    this.currentManaValue = this.maxManaValue
+  }
 
-  addState(state: State): void {}
+  addState(state: State): void {
+    this.states.push(state)
+  }
 
-  removeState(stateId: string): void {}
+  removeState(stateId: string): void {
+    const index = this.states.findIndex((state) => state.id === stateId)
+    if (index >= 0) {
+      this.states.splice(index, 1)
+    }
+  }
 }

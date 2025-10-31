@@ -155,9 +155,14 @@ export class Battle {
 
   initialize(): void {}
 
-  startPlayerTurn(): void {}
+  startPlayerTurn(): void {
+    this.turn.startPlayerTurn()
+    this.player.resetMana()
+  }
 
-  drawForPlayer(count: number): void {}
+  drawForPlayer(count: number): void {
+    this.deck.draw(count, this.hand)
+  }
 
   playCard(cardId: string, operation?: CardOperation): void {}
 

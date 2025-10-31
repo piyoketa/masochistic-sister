@@ -25,11 +25,35 @@ export class TurnManager {
     return this.state
   }
 
-  startPlayerTurn(): void {}
+  startPlayerTurn(): void {
+    const turnCount = this.state.activeSide === 'enemy' ? this.state.turnCount + 1 : this.state.turnCount
+    this.state = {
+      turnCount,
+      activeSide: 'player',
+      phase: 'player-draw',
+    }
+  }
 
-  moveToPhase(phase: TurnPhase): void {}
+  moveToPhase(phase: TurnPhase): void {
+    this.state = {
+      ...this.state,
+      phase,
+    }
+  }
 
-  startEnemyTurn(): void {}
+  startEnemyTurn(): void {
+    this.state = {
+      turnCount: this.state.turnCount,
+      activeSide: 'enemy',
+      phase: 'enemy',
+    }
+  }
 
-  advanceTurn(): void {}
+  advanceTurn(): void {
+    this.state = {
+      turnCount: this.state.turnCount + 1,
+      activeSide: 'player',
+      phase: 'player-draw',
+    }
+  }
 }
