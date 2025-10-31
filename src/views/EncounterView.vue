@@ -118,7 +118,7 @@ const baseCards: CardInfo[] = [
 ]
 
 const handCards: CardInfo[] = Array.from({ length: 20 }, (_, index) => {
-  const template = baseCards[index % baseCards.length]
+  const template = baseCards[index % baseCards.length]!
   return {
     ...template,
     id: `${template.id}-${index}`,

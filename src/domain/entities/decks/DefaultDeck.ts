@@ -12,19 +12,17 @@ export interface DefaultDeckResult {
 }
 
 export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckResult {
-  const heavenChains = Array.from({ length: 5 }).map(() =>
+  const heavenChains: Card[] = Array.from({ length: 5 }, () =>
     cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
   )
 
-  const battlePreps = Array.from({ length: 2 }).map(() =>
+  const battlePreps: Card[] = Array.from({ length: 2 }, () =>
     cardRepository.create(() => new Card({ action: new BattlePrepAction() })),
   )
 
-  const masochisticAura = cardRepository.create(
-    () => new Card({ action: new MasochisticAuraAction() }),
-  )
+  const masochisticAura = cardRepository.create(() => new Card({ action: new MasochisticAuraAction() }))
 
-  const deck = [
+  const deck: Card[] = [
     heavenChains[0],
     heavenChains[1],
     heavenChains[2],
