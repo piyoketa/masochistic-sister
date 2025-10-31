@@ -68,7 +68,7 @@ const baseCards: CardInfo[] = [
     type: 'skill',
     cost: 1,
     illustration: '⛓️',
-    description: 'このターン、敵1体の動きを止める',
+    description: 'このターン\n敵1体の動きを止める',
     notes: ['［消費］使用すると、この戦闘中は除去される'],
   },
   {
@@ -77,7 +77,7 @@ const baseCards: CardInfo[] = [
     type: 'skill',
     cost: 1,
     illustration: '🛡️',
-    description: '次のターン、マナ＋1',
+    description: '次のターン\nマナ＋1',
   },
   {
     id: 'slap',
@@ -103,7 +103,7 @@ const baseCards: CardInfo[] = [
     type: 'status',
     cost: 1,
     illustration: '🔥',
-    description: 'ダメージを受ける時、＋10',
+    description: 'ダメージを受ける時\n＋10',
     notes: ['［消費］使用すると、この戦闘中は除去される'],
   },
   {
@@ -112,7 +112,7 @@ const baseCards: CardInfo[] = [
     type: 'status',
     cost: 1,
     illustration: '🕸️',
-    description: '連続攻撃を受ける時、回数＋1',
+    description: '連続攻撃を受ける時\n回数＋1',
     notes: ['［消費］使用すると、この戦闘中は除去される'],
   },
 ]
@@ -175,21 +175,22 @@ const handCards: CardInfo[] = Array.from({ length: 20 }, (_, index) => {
                 class="portrait-image"
                 decoding="async"
               />
-              <div class="sidebar-overlay">
-                <div class="mana-pop">
-                  <span class="overlay-label">マナ</span>
-                  <span class="overlay-value">{{ mana.current }} / {{ mana.max }}</span>
+              <div class="sidebar-overlay-container">
+                <div class="sidebar-overlay">
+                  <div class="mana-pop">
+                    <span class="overlay-value">マナ {{ mana.current }} / {{ mana.max }}</span>
+                  </div>
+                  <HpGauge :current="72" :max="80" />
+                  <div class="overlay-row">
+                    <span class="overlay-label">デッキ</span>
+                    <span class="overlay-value">{{ deckCount }}</span>
+                  </div>
+                  <div class="overlay-row">
+                    <span class="overlay-label">捨て札</span>
+                    <span class="overlay-value">{{ discardCount }}</span>
+                  </div>
                 </div>
-                <HpGauge :current="72" :max="80" />
-                <div class="overlay-row">
-                  <span class="overlay-label">デッキ</span>
-                  <span class="overlay-value">{{ deckCount }}</span>
-                </div>
-                <div class="overlay-row">
-                  <span class="overlay-label">捨て札</span>
-                  <span class="overlay-value">{{ discardCount }}</span>
-                </div>
-                <button class="end-turn-button overlay" type="button">ターン終了</button>
+                <button class="end-turn-button sidebar-action" type="button">ターン終了</button>
               </div>
             </div>
           </aside>
@@ -400,11 +401,18 @@ const handCards: CardInfo[] = Array.from({ length: 20 }, (_, index) => {
   border-radius: 10px;
 }
 
-.sidebar-overlay {
+.sidebar-overlay-container {
   position: absolute;
   left: 16px;
   right: 16px;
   bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar-overlay {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -436,10 +444,6 @@ const handCards: CardInfo[] = Array.from({ length: 20 }, (_, index) => {
   font-weight: 700;
 }
 
-.sidebar-overlay .end-turn-button.overlay {
-  align-self: flex-end;
-}
-
 .overlay-row {
   display: flex;
   justify-content: space-between;
@@ -454,6 +458,11 @@ const handCards: CardInfo[] = Array.from({ length: 20 }, (_, index) => {
 
 .overlay-value {
   color: rgba(255, 255, 255, 0.95);
+}
+
+.sidebar-action {
+  width: 100%;
+  align-self: stretch;
 }
 
 ol {
