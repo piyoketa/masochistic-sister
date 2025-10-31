@@ -1,3 +1,5 @@
+import type { CardTag } from './CardTag'
+
 export type CardType = 'attack' | 'skill' | 'status'
 
 export interface CardDefinition {
@@ -7,6 +9,7 @@ export interface CardDefinition {
   description: string
   image?: string
   notes?: string[]
+  cardTags?: CardTag[]
 }
 
 export interface CardDefinitionBase extends Omit<CardDefinition, 'description'> {

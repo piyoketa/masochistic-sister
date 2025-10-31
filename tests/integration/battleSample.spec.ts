@@ -9,19 +9,8 @@ import { BattleEventQueue } from '@/domain/battle/BattleEvent'
 import { BattleLog } from '@/domain/battle/BattleLog'
 import { TurnManager } from '@/domain/battle/TurnManager'
 import { Card } from '@/domain/entities/Card'
-import {
-  HeavenChainAction,
-  BattlePrepAction,
-  MasochisticAuraAction,
-  TackleAction,
-  BuildUpAction,
-  FlurryAction,
-  BattleDanceAction,
-  TentacleFlurryAction,
-  MucusShotAction,
-  AcidSpitAction,
-} from '@/domain/entities/actions'
-import { HeavenChainCard, BattlePrepCard, MasochisticAuraCard } from '@/domain/entities/cards'
+import { CardRepository } from '@/domain/repository/CardRepository'
+import { buildDefaultDeck } from '@/domain/entities/decks'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { OrcEnemy, OrcDancerEnemy, TentacleEnemy, SnailEnemy } from '@/domain/entities/enemies'
 import { DefaultEnemyTeam } from '@/domain/entities/enemyTeams'
@@ -41,46 +30,10 @@ interface BattleFixture {
   }
 }
 
-const ACTIONS = {
-  heavenChain: new HeavenChainAction(),
-  battlePrep: new BattlePrepAction(),
-  masochisticAura: new MasochisticAuraAction(),
-  tackle: new TackleAction(),
-  buildUp: new BuildUpAction(),
-  flurry: new FlurryAction(),
-  battleDance: new BattleDanceAction(),
-  tentacleFlurry: new TentacleFlurryAction(),
-  mucusShot: new MucusShotAction(),
-  acidSpit: new AcidSpitAction(),
-} as const
-
-function createHeavenChain(id: number): Card {
-  return new HeavenChainCard(`card-heaven-chain-${id}`, ACTIONS.heavenChain)
-}
-
-function createBattlePrep(id: number): Card {
-  return new BattlePrepCard(`card-battle-prep-${id}`, ACTIONS.battlePrep)
-}
-
-function createMasochisticAura(): Card {
-  return new MasochisticAuraCard('card-masochistic-aura-1', ACTIONS.masochisticAura)
-}
-
 function createBattleFixture(): BattleFixture {
-  const heavenChains = Array.from({ length: 5 }).map((_, index) => createHeavenChain(index + 1))
-  const battlePreps = Array.from({ length: 2 }).map((_, index) => createBattlePrep(index + 1))
-  const masochisticAura = createMasochisticAura()
-
-  const deckCards = [
-    heavenChains[0],
-    heavenChains[1],
-    heavenChains[2],
-    battlePreps[0],
-    masochisticAura,
-    heavenChains[3],
-    battlePreps[1],
-    heavenChains[4],
-  ]
+  const cardRepository = new CardRepository()
+  const defaultDeck = buildDefaultDeck(cardRepository)
+  const { deck: deckCards, heavenChains, battlePreps, masochisticAura } = defaultDeck
 
   const player = new ProtagonistPlayer()
 
@@ -98,6 +51,7 @@ function createBattleFixture(): BattleFixture {
 
   const battle = new Battle({
     id: 'battle-1',
+    cardRepository,
     player,
     enemyTeam,
     deck: new Deck(deckCards),
@@ -178,13 +132,15 @@ function playHeavenChainOnSnail(fixture: BattleFixture): void {
 }
 
 function playAcidSpitOnSnail(fixture: BattleFixture): void {
-  const snapshot = fixture.battle.getSnapshot()
-  const acidCard = snapshot.hand.find((card) => card.title === '酸を吐く')
+  const acidCard = fixture.battle.cardRepository.find((card) => card.title === '酸を吐く')
   expect(acidCard, '酸を吐くのカードが手札に存在する').toBeDefined()
 
   if (!acidCard) {
     return
   }
+
+  const snapshot = fixture.battle.getSnapshot()
+  expect(snapshot.hand.some((card) => card.id === acidCard.id)).toBe(true)
 
   fixture.battle.playCard(acidCard.id, {
     targetEnemyId: fixture.enemyIds.snail,

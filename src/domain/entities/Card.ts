@@ -7,7 +7,6 @@ import type { CardDefinition } from './CardDefinition'
 export type CardOperation = Record<string, unknown>
 
 export interface CardProps {
-  id: string
   action?: Action
   state?: State
   cardTags?: CardTag[]
@@ -17,7 +16,7 @@ export interface CardProps {
 }
 
 export class Card {
-  private readonly idValue: string
+  private repositoryId?: number
   private readonly actionRef?: Action
   private readonly stateRef?: State
   private readonly cardTagsValue?: CardTag[]
@@ -31,7 +30,6 @@ export class Card {
       throw new Error('Card requires an action or a state reference')
     }
 
-    this.idValue = props.id
     this.actionRef = props.action
     this.stateRef = props.state
     this.cardTagsValue = props.cardTags
@@ -42,7 +40,27 @@ export class Card {
   }
 
   get id(): string {
-    return this.idValue
+    if (this.repositoryId === undefined) {
+      throw new Error('Card has no repository id assigned')
+    }
+
+    return this.repositoryId.toString()
+  }
+
+  get numericId(): number | undefined {
+    return this.repositoryId
+  }
+
+  assignRepositoryId(id: number): void {
+    if (this.repositoryId !== undefined && this.repositoryId !== id) {
+      throw new Error(`Card already assigned to repository id ${this.repositoryId}`)
+    }
+
+    this.repositoryId = id
+  }
+
+  hasRepositoryId(): boolean {
+    return this.repositoryId !== undefined
   }
 
   get action(): Action | undefined {
@@ -54,7 +72,7 @@ export class Card {
   }
 
   get cardTags(): CardTag[] | undefined {
-    return this.cardTagsValue
+    return this.cardTagsValue ?? this.definition.cardTags
   }
 
   get offensiveStates(): State[] | undefined {
@@ -67,6 +85,10 @@ export class Card {
 
   get definition(): CardDefinition {
     return this.definitionValue
+  }
+
+  get definitionOverrides(): Partial<CardDefinition> | undefined {
+    return this.definitionOverridesValue
   }
 
   get title(): string {
@@ -89,11 +111,10 @@ export class Card {
     return this.definition.image
   }
 
-  play(battle: Battle, operation?: CardOperation): void {}
+  play(_battle: Battle, _operation?: CardOperation): void {}
 
   copyWith(overrides: Partial<CardProps>): Card {
     return new Card({
-      id: overrides.id ?? this.idValue,
       action: overrides.action ?? this.actionRef,
       state: overrides.state ?? this.stateRef,
       cardTags: overrides.cardTags ?? this.cardTagsValue,
@@ -115,6 +136,3 @@ export class Card {
     }
   }
 }
-  get definitionOverrides(): Partial<CardDefinition> | undefined {
-    return this.definitionOverridesValue
-  }

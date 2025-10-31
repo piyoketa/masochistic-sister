@@ -10,6 +10,7 @@ import { ExilePile } from './ExilePile'
 import { BattleEventQueue, type BattleEvent } from './BattleEvent'
 import { BattleLog } from './BattleLog'
 import { TurnManager, type TurnState } from './TurnManager'
+import { CardRepository } from '../repository/CardRepository'
 
 export interface BattleConfig {
   id: string
@@ -22,6 +23,7 @@ export interface BattleConfig {
   events?: BattleEventQueue
   log?: BattleLog
   turn?: TurnManager
+  cardRepository?: CardRepository
 }
 
 export interface BattleSnapshot {
@@ -62,6 +64,7 @@ export class Battle {
   private readonly eventsValue: BattleEventQueue
   private readonly logValue: BattleLog
   private readonly turnValue: TurnManager
+  private readonly cardRepositoryValue: CardRepository
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -74,6 +77,7 @@ export class Battle {
     this.eventsValue = config.events ?? new BattleEventQueue()
     this.logValue = config.log ?? new BattleLog()
     this.turnValue = config.turn ?? new TurnManager()
+    this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
   }
 
   get id(): string {
@@ -114,6 +118,10 @@ export class Battle {
 
   get turn(): TurnManager {
     return this.turnValue
+  }
+
+  get cardRepository(): CardRepository {
+    return this.cardRepositoryValue
   }
 
   getSnapshot(): BattleSnapshot {

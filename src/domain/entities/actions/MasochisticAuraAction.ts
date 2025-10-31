@@ -1,4 +1,5 @@
 import { Skill } from '../Action'
+import { ArcaneCardTag } from '../cardTags'
 
 export class MasochisticAuraAction extends Skill {
   constructor() {
@@ -11,6 +12,7 @@ export class MasochisticAuraAction extends Skill {
         type: 'skill',
         cost: 1,
         description: '選択した敵を即座に行動させる',
+        cardTags: [new ArcaneCardTag()],
       },
     })
   }
