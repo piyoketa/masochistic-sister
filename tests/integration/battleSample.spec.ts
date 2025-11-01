@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest'
 
 import { Battle } from '@/domain/battle/Battle'
+import type { BattleSnapshot } from '@/domain/battle/Battle'
 import { Deck } from '@/domain/battle/Deck'
 import { Hand } from '@/domain/battle/Hand'
 import { DiscardPile } from '@/domain/battle/DiscardPile'
@@ -25,39 +26,11 @@ import { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { OrcEnemy, OrcDancerEnemy, TentacleEnemy, SnailEnemy } from '@/domain/entities/enemies'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { AccelerationState } from '@/domain/entities/states/AccelerationState'
+import { StickyState } from '@/domain/entities/states/StickyState'
 import { StrengthState } from '@/domain/entities/states/StrengthState'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 
-type ScenarioSteps = {
-  battleStart: number
-  playerTurn1Start: number
-  playMasochisticAura: number
-  playHeavenChainOnOrc: number
-  playBattlePrep: number
-  endPlayerTurn1: number
-  startEnemyTurn1: number
-  orcActs: number
-  orcDancerActs: number
-  tentacleActs: number
-  snailActs: number
-  endEnemyTurn1: number
-  startPlayerTurn2: number
-  playHeavenChainOnTentacle: number
-  playHeavenChainOnSnail: number
-  playAcidSpitOnSnail: number
-  endPlayerTurn2: number
-  startEnemyTurn2: number
-  orcActsSecond: number
-  orcDancerActsSecond: number
-  tentacleActsSecond: number
-  snailActsSecond: number
-  endEnemyTurn2: number
-  startPlayerTurn3: number
-  playFlurryOnSnail: number
-  endPlayerTurn3: number
-  startEnemyTurn3: number
-  orcActsThird: number
-}
+type ScenarioSteps = Record<string, number>
 
 function requireCardId(card: Card | undefined): number {
   if (!card || card.numericId === undefined) {
@@ -83,79 +56,75 @@ interface BattleScenario {
   }
 }
 
-const battleSampleScenario = createBattleSampleScenario()
-const Steps = battleSampleScenario.steps
-const Refs = battleSampleScenario.references
-const firstHeavenChainId = Refs.heavenChainIds[0]!
-const secondHeavenChainId = Refs.heavenChainIds[1]!
-const thirdHeavenChainId = Refs.heavenChainIds[2]!
-const firstBattlePrepId = Refs.battlePrepIds[0]!
-const fourthHeavenChainId = Refs.heavenChainIds[3]!
-const secondBattlePrepId = Refs.battlePrepIds[1]!
-const fifthHeavenChainId = Refs.heavenChainIds[4]!
-
-function runScenario(stepIndex: number) {
-  // ActionLogReplayerで指定インデックスまで再生し、試験用のバトル状態を取得するユーティリティ
-  return battleSampleScenario.replayer.run(stepIndex)
+interface ScenarioReferences {
+  masochisticAuraId: number
+  heavenChainIds: [number, number, number, number, number]
+  battlePrepIds: [number, number]
+  enemyIds: {
+    orc: number
+    orcDancer: number
+    tentacle: number
+    snail: number
+  }
 }
 
-function createBattleSampleScenario(): BattleScenario {
-  // ===== テスト専用のバトル初期化関数 =====
-  // 1. 既定デッキを生成しカードIDを採取
-  // 2. 敵チームはRNGを固定して行動パターンを決定論的にする
-  // 3. ActionLogを構築し、再生用の環境を返す
-  const createBattle = (): Battle => {
-    const cardRepository = new CardRepository()
-    const defaultDeck = buildDefaultDeck(cardRepository)
-    const player = new ProtagonistPlayer()
-    const enemyTeam = new EnemyTeam({
-      id: 'enemy-team-snail-encounter',
-      members: [
-        new OrcEnemy({ rng: () => 0.05 }),
-        new OrcDancerEnemy({ rng: () => 0.85 }),
-        new TentacleEnemy({ rng: () => 0.85 }),
-        new SnailEnemy({ rng: () => 0.95 }),
-      ],
-    })
+type ThirdTurnBuilder = (args: {
+  actionLog: ActionLog
+  references: ScenarioReferences
+}) => Record<string, number>
 
-    return new Battle({
-      id: 'battle-1',
-      cardRepository,
-      player,
-      enemyTeam,
-      deck: new Deck(defaultDeck.deck),
-      hand: new Hand(),
-      discardPile: new DiscardPile(),
-      exilePile: new ExilePile(),
-      events: new BattleEventQueue(),
-      log: new BattleLog(),
-      turn: new TurnManager(),
-    })
-  }
+function createBaseBattle(): Battle {
+  const cardRepository = new CardRepository()
+  const defaultDeck = buildDefaultDeck(cardRepository)
+  const player = new ProtagonistPlayer()
+  const enemyTeam = new EnemyTeam({
+    id: 'enemy-team-snail-encounter',
+    members: [
+      new OrcEnemy({ rng: () => 0.05 }),
+      new OrcDancerEnemy({ rng: () => 0.85 }),
+      new TentacleEnemy({ rng: () => 0.85 }),
+      new SnailEnemy({ rng: () => 0.95 }),
+    ],
+  })
 
-  const sampleBattle = createBattle()
-  const sampleSnapshot = sampleBattle.getSnapshot()
+  return new Battle({
+    id: 'battle-1',
+    cardRepository,
+    player,
+    enemyTeam,
+    deck: new Deck(defaultDeck.deck),
+    hand: new Hand(),
+    discardPile: new DiscardPile(),
+    exilePile: new ExilePile(),
+    events: new BattleEventQueue(),
+    log: new BattleLog(),
+    turn: new TurnManager(),
+  })
+}
 
-  // ===== デッキ内カードのIDを抽出 =====
+function collectScenarioReferences(snapshot: BattleSnapshot): ScenarioReferences {
   const collectCardIdsByTitle = (title: string): number[] =>
-    sampleSnapshot.deck.filter((card) => card.title === title).map((card) => requireCardId(card))
+    snapshot.deck.filter((card) => card.title === title).map((card) => requireCardId(card))
 
   const heavenChainIds = collectCardIdsByTitle('天の鎖')
   const battlePrepIds = collectCardIdsByTitle('戦いの準備')
 
-  if (heavenChainIds.length < 3) {
-    throw new Error('デフォルトデッキに天の鎖が3枚未満です')
+  if (heavenChainIds.length < 5) {
+    throw new Error('デフォルトデッキに天の鎖が5枚未満です')
   }
-  if (battlePrepIds.length < 1) {
-    throw new Error('デフォルトデッキに戦いの準備が含まれていません')
+  if (battlePrepIds.length < 2) {
+    throw new Error('デフォルトデッキに戦いの準備が2枚未満です')
   }
 
+  const heavenChainTuple = heavenChainIds.slice(0, 5) as [number, number, number, number, number]
+  const battlePrepTuple = battlePrepIds.slice(0, 2) as [number, number]
+
   const masochisticAuraId = requireCardId(
-    sampleSnapshot.deck.find((card) => card.title === '被虐のオーラ'),
+    snapshot.deck.find((card) => card.title === '被虐のオーラ'),
   )
 
   const findEnemyId = (name: string): number => {
-    const enemy = sampleSnapshot.enemies.find((candidate) => candidate.name === name)
+    const enemy = snapshot.enemies.find((candidate) => candidate.name === name)
     if (!enemy) {
       throw new Error(`Enemy ${name} not found in sample snapshot`)
     }
@@ -163,20 +132,23 @@ function createBattleSampleScenario(): BattleScenario {
     return enemy.numericId
   }
 
-  const enemyIds = {
-    orc: findEnemyId('オーク'),
-   orcDancer: findEnemyId('オークダンサー（短剣）'),
-   tentacle: findEnemyId('触手'),
-   snail: findEnemyId('かたつむり'),
+  return {
+    masochisticAuraId,
+    heavenChainIds: heavenChainTuple,
+    battlePrepIds: battlePrepTuple,
+    enemyIds: {
+      orc: findEnemyId('オーク'),
+      orcDancer: findEnemyId('オークダンサー（短剣）'),
+      tentacle: findEnemyId('触手'),
+      snail: findEnemyId('かたつむり'),
+    },
   }
+}
 
-  // ===== 再生する行動ログの構築 =====
-  // 戦闘ログの順序は以下の通り
-  //  - 1ターン目：プレイヤー開始 → 被虐のオーラ → 天の鎖（オーク） → 戦いの準備
-  //  - 1ターン目敵：オーク → ダンサー → 触手 → かたつむり
-  //  - 2ターン目：プレイヤー開始 → 天の鎖（触手） → 天の鎖（かたつむり） → 記憶：酸を吐く
-  //  - 2ターン目敵：オーク → ダンサー → 触手 → かたつむり
-  //  - 3ターン目開始確認ステップ
+function createBattleScenario(thirdTurnBuilder: ThirdTurnBuilder): BattleScenario {
+  const createBattle = () => createBaseBattle()
+  const sampleSnapshot = createBattle().getSnapshot()
+  const references = collectScenarioReferences(sampleSnapshot)
   const actionLog = new ActionLog()
 
   const steps = {
@@ -184,35 +156,35 @@ function createBattleSampleScenario(): BattleScenario {
     playerTurn1Start: actionLog.push({ type: 'start-player-turn', draw: 5 }),
     playMasochisticAura: actionLog.push({
       type: 'play-card',
-      card: masochisticAuraId,
-      operations: [{ type: 'target-enemy', payload: enemyIds.snail }],
+      card: references.masochisticAuraId,
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
     }),
     playHeavenChainOnOrc: actionLog.push({
       type: 'play-card',
-      card: heavenChainIds[0]!,
-      operations: [{ type: 'target-enemy', payload: enemyIds.orc }],
+      card: references.heavenChainIds[0]!,
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
     }),
     playBattlePrep: actionLog.push({
       type: 'play-card',
-      card: battlePrepIds[0]!,
+      card: references.battlePrepIds[0]!,
     }),
     endPlayerTurn1: actionLog.push({ type: 'end-player-turn' }),
     startEnemyTurn1: actionLog.push({ type: 'start-enemy-turn' }),
-    orcActs: actionLog.push({ type: 'enemy-action', enemy: enemyIds.orc }),
-    orcDancerActs: actionLog.push({ type: 'enemy-action', enemy: enemyIds.orcDancer }),
-    tentacleActs: actionLog.push({ type: 'enemy-action', enemy: enemyIds.tentacle }),
-    snailActs: actionLog.push({ type: 'enemy-action', enemy: enemyIds.snail }),
+    orcActs: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orc }),
+    orcDancerActs: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orcDancer }),
+    tentacleActs: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.tentacle }),
+    snailActs: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.snail }),
     endEnemyTurn1: actionLog.push({ type: 'end-player-turn' }),
     startPlayerTurn2: actionLog.push({ type: 'start-player-turn', draw: 2 }),
     playHeavenChainOnTentacle: actionLog.push({
       type: 'play-card',
-      card: heavenChainIds[1]!,
-      operations: [{ type: 'target-enemy', payload: enemyIds.tentacle }],
+      card: references.heavenChainIds[1]!,
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
     }),
     playHeavenChainOnSnail: actionLog.push({
       type: 'play-card',
-      card: heavenChainIds[2]!,
-      operations: [{ type: 'target-enemy', payload: enemyIds.snail }],
+      card: references.heavenChainIds[2]!,
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
     }),
     playAcidSpitOnSnail: actionLog.push({
       type: 'play-card',
@@ -224,16 +196,46 @@ function createBattleSampleScenario(): BattleScenario {
 
         return requireCardId(card)
       },
-      operations: [{ type: 'target-enemy', payload: enemyIds.snail }],
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
     }),
     endPlayerTurn2: actionLog.push({ type: 'end-player-turn' }),
     startEnemyTurn2: actionLog.push({ type: 'start-enemy-turn' }),
-    orcActsSecond: actionLog.push({ type: 'enemy-action', enemy: enemyIds.orc }),
-    orcDancerActsSecond: actionLog.push({ type: 'enemy-action', enemy: enemyIds.orcDancer }),
-    tentacleActsSecond: actionLog.push({ type: 'enemy-action', enemy: enemyIds.tentacle }),
-    snailActsSecond: actionLog.push({ type: 'enemy-action', enemy: enemyIds.snail }),
+    orcActsSecond: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orc }),
+    orcDancerActsSecond: actionLog.push({
+      type: 'enemy-action',
+      enemy: references.enemyIds.orcDancer,
+    }),
+    tentacleActsSecond: actionLog.push({
+      type: 'enemy-action',
+      enemy: references.enemyIds.tentacle,
+    }),
+    snailActsSecond: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.snail }),
     endEnemyTurn2: actionLog.push({ type: 'end-player-turn' }),
     startPlayerTurn3: actionLog.push({ type: 'start-player-turn', draw: 2 }),
+  } as const
+
+  const thirdTurnSteps = thirdTurnBuilder({ actionLog, references })
+  const combinedSteps = { ...steps, ...thirdTurnSteps } as const
+
+  return {
+    replayer: new ActionLogReplayer({
+      createBattle,
+      actionLog,
+    }),
+    steps: combinedSteps,
+    references,
+  }
+}
+
+function buildThirdTurnPattern1({
+  actionLog,
+  references,
+}: {
+  actionLog: ActionLog
+  references: ScenarioReferences
+}) {
+  const fifthHeavenChainId = references.heavenChainIds[4]!
+  return {
     playFlurryOnSnail: actionLog.push({
       type: 'play-card',
       card: (battle) => {
@@ -243,28 +245,106 @@ function createBattleSampleScenario(): BattleScenario {
         }
         return requireCardId(card)
       },
-      operations: [{ type: 'target-enemy', payload: enemyIds.snail }],
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
     }),
     endPlayerTurn3: actionLog.push({ type: 'end-player-turn' }),
     startEnemyTurn3: actionLog.push({ type: 'start-enemy-turn' }),
-    orcActsThird: actionLog.push({ type: 'enemy-action', enemy: enemyIds.orc }),
+    orcActsThird: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orc }),
   } as const
+}
 
-  const replayer = new ActionLogReplayer({
-    createBattle,
-    actionLog,
-  })
-
+function buildThirdTurnPattern2({
+  actionLog,
+  references,
+}: {
+  actionLog: ActionLog
+  references: ScenarioReferences
+}) {
+  const fifthHeavenChainId = references.heavenChainIds[4]!
   return {
-    replayer,
-    steps,
-    references: {
-      masochisticAuraId,
-      heavenChainIds,
-      battlePrepIds,
-      enemyIds,
-    },
+    playFlurryOnOrc: actionLog.push({
+      type: 'play-card',
+      card: (battle) => {
+        const card = battle.cardRepository.find((candidate) => candidate.title === '記憶：乱れ突き')
+        if (!card) {
+          throw new Error('手札に記憶：乱れ突きが存在しません')
+        }
+        return requireCardId(card)
+      },
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
+    }),
+    playMucusShotOnOrcDancer: actionLog.push({
+      type: 'play-card',
+      card: (battle) => {
+        const card = battle.cardRepository.find(
+          (candidate) => candidate.title === '記憶：粘液飛ばし',
+        )
+        if (!card) {
+          throw new Error('手札に記憶：粘液飛ばしが存在しません')
+        }
+        return requireCardId(card)
+      },
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
+    }),
+    playHeavenChainOnTentacleTurn3: actionLog.push({
+      type: 'play-card',
+      card: fifthHeavenChainId,
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
+    }),
+    endPlayerTurn3Pattern2: actionLog.push({ type: 'end-player-turn' }),
+    startEnemyTurn3Pattern2: actionLog.push({ type: 'start-enemy-turn' }),
+    orcDancerActsThirdAlt: actionLog.push({
+      type: 'enemy-action',
+      enemy: references.enemyIds.orcDancer,
+    }),
+    tentacleActsThirdAlt: actionLog.push({
+      type: 'enemy-action',
+      enemy: references.enemyIds.tentacle,
+    }),
+    snailActsThirdAlt: actionLog.push({
+      type: 'enemy-action',
+      enemy: references.enemyIds.snail,
+    }),
+  } as const
+}
+
+const battleSampleScenario = createBattleSampleScenario()
+const Steps = battleSampleScenario.steps as Record<string, number>
+const Refs = battleSampleScenario.references
+const firstHeavenChainId = Refs.heavenChainIds[0]!
+const secondHeavenChainId = Refs.heavenChainIds[1]!
+const thirdHeavenChainId = Refs.heavenChainIds[2]!
+const firstBattlePrepId = Refs.battlePrepIds[0]!
+const fourthHeavenChainId = Refs.heavenChainIds[3]!
+const secondBattlePrepId = Refs.battlePrepIds[1]!
+const fifthHeavenChainId = Refs.heavenChainIds[4]!
+
+function runScenario(stepIndex: number | undefined) {
+  if (stepIndex === undefined) {
+    throw new Error('Step index is undefined')
   }
+  // ActionLogReplayerで指定インデックスまで再生し、試験用のバトル状態を取得するユーティリティ
+  return battleSampleScenario.replayer.run(stepIndex)
+}
+
+const battleSampleScenarioPattern2 = createBattleSampleScenarioPattern2()
+const StepsPattern2 = battleSampleScenarioPattern2.steps as Record<string, number>
+const RefsPattern2 = battleSampleScenarioPattern2.references
+const fifthHeavenChainIdPattern2 = RefsPattern2.heavenChainIds[4]!
+
+function runScenarioPattern2(stepIndex: number | undefined) {
+  if (stepIndex === undefined) {
+    throw new Error('Step index is undefined')
+  }
+  return battleSampleScenarioPattern2.replayer.run(stepIndex)
+}
+
+function createBattleSampleScenario(): BattleScenario {
+  return createBattleScenario(buildThirdTurnPattern1)
+}
+
+function createBattleSampleScenarioPattern2(): BattleScenario {
+  return createBattleScenario(buildThirdTurnPattern2)
 }
 
 describe('Battle sample scenario', () => {
@@ -639,5 +719,100 @@ describe('Battle sample scenario', () => {
     const history = orc?.actionLog ?? []
     const finalAction = history[history.length - 1]
     expect(finalAction).toBeInstanceOf(TackleAction)
+  })
+
+  it('記憶：乱れ突きでオークを撃破する（パターン2）', () => {
+    const { battle, snapshot, lastEntry } = runScenarioPattern2(StepsPattern2.playFlurryOnOrc)
+
+    expect(lastEntry?.type).toBe('play-card')
+    if (lastEntry?.type === 'play-card') {
+      expect(lastEntry.targetEnemyId).toBe(RefsPattern2.enemyIds.orc)
+    }
+
+    expect(snapshot.player.currentMana).toBe(2)
+
+    const orc = snapshot.enemies.find((enemy) => enemy.numericId === RefsPattern2.enemyIds.orc)
+    expect(orc?.currentHp).toBe(0)
+    expect(snapshot.discardPile.some((card) => card.title === '記憶：乱れ突き')).toBe(true)
+    expect(battle.hand.hasCardOf(FlurryAction)).toBe(false)
+  })
+
+  it('記憶：粘液飛ばしでオークダンサーにねばねばを付与する（パターン2）', () => {
+    const { battle, snapshot, lastEntry } = runScenarioPattern2(StepsPattern2.playMucusShotOnOrcDancer)
+
+    expect(lastEntry?.type).toBe('play-card')
+    if (lastEntry?.type === 'play-card') {
+      expect(lastEntry.targetEnemyId).toBe(RefsPattern2.enemyIds.orcDancer)
+    }
+
+    expect(snapshot.player.currentMana).toBe(1)
+
+    const orcDancer = snapshot.enemies.find(
+      (enemy) => enemy.numericId === RefsPattern2.enemyIds.orcDancer,
+    )
+    expect(orcDancer?.currentHp).toBe(35)
+    const stickyMagnitude = (orcDancer?.states ?? [])
+      .filter((state) => state instanceof StickyState)
+      .reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
+    expect(stickyMagnitude).toBe(1)
+
+    expect(snapshot.discardPile.some((card) => card.title === '記憶：粘液飛ばし')).toBe(true)
+    expect(battle.hand.hasCardOf(MucusShotAction)).toBe(false)
+  })
+
+  it('３枚目の天の鎖で触手を拘束する（パターン2）', () => {
+    const { battle, snapshot, lastEntry } = runScenarioPattern2(
+      StepsPattern2.playHeavenChainOnTentacleTurn3,
+    )
+
+    expect(lastEntry?.type).toBe('play-card')
+    if (lastEntry?.type === 'play-card') {
+      expect(lastEntry.targetEnemyId).toBe(RefsPattern2.enemyIds.tentacle)
+    }
+
+    expect(snapshot.player.currentMana).toBe(0)
+    expect(snapshot.exilePile.map(requireCardId)).toContain(fifthHeavenChainIdPattern2)
+
+    const tentacle = battle.enemyTeam.findEnemy(RefsPattern2.enemyIds.tentacle)
+    expect(tentacle?.queuedActions[0]).toBeInstanceOf(SkipTurnAction)
+  })
+
+  it('オークダンサーが戦いの舞いで加速(2)になる（パターン2）', () => {
+    const { battle, snapshot, lastEntry } = runScenarioPattern2(
+      StepsPattern2.orcDancerActsThirdAlt,
+    )
+
+    expect(lastEntry?.type).toBe('enemy-action')
+    if (lastEntry?.type === 'enemy-action') {
+      expect(lastEntry.enemy).toBe(RefsPattern2.enemyIds.orcDancer)
+    }
+
+    expect(snapshot.player.currentHp).toBe(20)
+
+    const orcDancer = battle.enemyTeam.findEnemy(RefsPattern2.enemyIds.orcDancer)
+    const accelerationMagnitude = (orcDancer?.states ?? [])
+      .filter((state) => state instanceof AccelerationState)
+      .reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
+    expect(accelerationMagnitude).toBe(2)
+  })
+
+  it('かたつむりの酸を吐くでHPが5になり腐食が2枚になる（パターン2）', () => {
+    const { battle, snapshot, lastEntry } = runScenarioPattern2(StepsPattern2.snailActsThirdAlt)
+
+    expect(lastEntry?.type).toBe('enemy-action')
+    if (lastEntry?.type === 'enemy-action') {
+      expect(lastEntry.enemy).toBe(RefsPattern2.enemyIds.snail)
+    }
+
+    expect(snapshot.player.currentHp).toBe(5)
+
+    const corrosionCards = battle.hand.list().filter((card) => card.state instanceof CorrosionState)
+    expect(corrosionCards).toHaveLength(2)
+
+    const totalCorrosion = battle.player
+      .getStates()
+      .filter((state) => state instanceof CorrosionState)
+      .reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
+    expect(totalCorrosion).toBe(2)
   })
 })
