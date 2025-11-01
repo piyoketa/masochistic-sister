@@ -3,6 +3,7 @@ import type { Enemy } from '../Enemy'
 import type { Player } from '../Player'
 import { Damages } from '../Damages'
 import { CorrosionState } from '../states/CorrosionState'
+import { isPlayerEntity } from '../typeGuards'
 
 export class AcidSpitAction extends Attack {
   constructor() {
@@ -22,14 +23,10 @@ export class AcidSpitAction extends Attack {
   }
 
   protected override onAfterDamage(context: ActionContext, _damages: Damages, defender: Player | Enemy): void {
-    if (isPlayer(defender)) {
+    if (isPlayerEntity(defender)) {
       defender.addState(new CorrosionState(), { battle: context.battle })
     } else {
       defender.addState(new CorrosionState())
     }
   }
-}
-
-function isPlayer(entity: Player | Enemy): entity is Player {
-  return 'currentMana' in entity
 }

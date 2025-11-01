@@ -10,6 +10,7 @@ import {
   type Operation,
   type OperationContext,
 } from './operations'
+import { isPlayerEntity } from './typeGuards'
 
 export type ActionType = 'attack' | 'skill'
 
@@ -74,6 +75,36 @@ export abstract class Action {
     const requiredOperations = this.buildOperations().filter((operation) =>
       this.shouldRequireOperation(operation, params),
     )
+    const { completedOperations, metadata } = this.resolveRequiredOperations(
+      requiredOperations,
+      params,
+      operationContext,
+    )
+
+    const context: ActionContext = {
+      battle: params.battle,
+      source: params.source,
+      metadata,
+      operations: completedOperations,
+    }
+
+    context.target = this.resolveTarget(context)
+
+    return context
+  }
+
+  private resolveRequiredOperations(
+    requiredOperations: Operation[],
+    params: { battle: Battle; source: Player | Enemy; operations: CardOperation[] },
+    operationContext: OperationContext,
+  ): { completedOperations: Operation[]; metadata: Record<string, unknown> } {
+    if (requiredOperations.length === 0) {
+      if (params.operations.length > 0) {
+        throw new Error('Unexpected operations were supplied')
+      }
+      return { completedOperations: [], metadata: {} }
+    }
+
     const usedOperationIndex = new Set<number>()
     const completedOperations: Operation[] = []
     const metadata: Record<string, unknown> = {}
@@ -83,7 +114,6 @@ export abstract class Action {
         if (usedOperationIndex.has(index)) {
           return false
         }
-
         return candidate.type === operation.type
       })
 
@@ -104,19 +134,13 @@ export abstract class Action {
     }
 
     if (usedOperationIndex.size !== params.operations.length) {
-      throw new Error('Unexpected operations were supplied')
+      const unexpected = params.operations
+        .filter((_, index) => !usedOperationIndex.has(index))
+        .map((operation) => operation.type)
+      throw new Error(`Unexpected operations were supplied: ${unexpected.join(', ')}`)
     }
 
-    const context: ActionContext = {
-      battle: params.battle,
-      source: params.source,
-      metadata,
-      operations: completedOperations,
-    }
-
-    context.target = this.resolveTarget(context)
-
-    return context
+    return { completedOperations, metadata }
   }
 
   protected buildOperations(): Operation[] {
@@ -201,7 +225,7 @@ export abstract class Attack extends Action {
 
   execute(context: ActionContext): void {
     // プレイヤー側からの攻撃なのか、敵側からの攻撃なのかでデフォルトの対象が異なるため、先に判別する
-    const isPlayerSource = 'currentMana' in context.source
+    const isPlayerSource = isPlayerEntity(context.source)
     const target = context.target ?? this.resolveTarget(context)
     const defender = target ?? (isPlayerSource ? undefined : context.battle.player)
     if (!defender) {
@@ -260,7 +284,7 @@ export abstract class Attack extends Action {
     operation: Operation,
     context: { battle: Battle; source: Player | Enemy; operations: CardOperation[] },
   ): boolean {
-    const isPlayerSource = 'currentMana' in context.source
+    const isPlayerSource = isPlayerEntity(context.source)
     if (!isPlayerSource && operation.type === TargetEnemyOperation.TYPE) {
       return false
     }
@@ -269,7 +293,7 @@ export abstract class Attack extends Action {
   }
 
   private isPlayer(entity: Player | Enemy): entity is Player {
-    return 'currentMana' in entity
+    return isPlayerEntity(entity)
   }
 
   private collectStates(entity: Player | Enemy): State[] {

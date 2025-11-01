@@ -1,7 +1,6 @@
 import { Skill, type ActionContext } from '../Action'
 import { AccelerationState } from '../states/AccelerationState'
-import type { Player } from '../Player'
-import type { Enemy } from '../Enemy'
+import { isPlayerEntity } from '../typeGuards'
 
 export class BattleDanceAction extends Skill {
   constructor() {
@@ -23,14 +22,10 @@ export class BattleDanceAction extends Skill {
     const acceleration = new AccelerationState(1)
     const source = context.source
 
-    if (isPlayer(source)) {
+    if (isPlayerEntity(source)) {
       source.addState(acceleration, { battle: context.battle })
     } else {
       source.addState(acceleration)
     }
   }
-}
-
-function isPlayer(entity: Player | Enemy): entity is Player {
-  return 'currentMana' in entity
 }
