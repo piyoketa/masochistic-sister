@@ -5,7 +5,7 @@ import GameLayout from '@/components/GameLayout.vue'
 const router = useRouter()
 
 const navigateNext = () => {
-  router.push({ name: 'encounter' })
+  router.push({ name: 'battle' })
 }
 </script>
 

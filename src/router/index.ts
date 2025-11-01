@@ -9,9 +9,10 @@ const router = createRouter({
       component: () => import('@/views/TitleView.vue'),
     },
     {
-      path: '/encounter',
-      name: 'encounter',
-      component: () => import('@/views/EncounterView.vue'),
+      path: '/battle',
+      name: 'battle',
+      alias: ['/encounter'],
+      component: () => import('@/views/BattleView.vue'),
     },
   ],
 })
