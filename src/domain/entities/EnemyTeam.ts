@@ -56,7 +56,9 @@ export class EnemyTeam {
 
   reorder(order: number[]): void {}
 
-  startTurn(): void {}
+  startTurn(): void {
+    this.membersValue.forEach((enemy) => enemy.resetTurn())
+  }
 
   endTurn(): void {}
 }

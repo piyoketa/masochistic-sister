@@ -50,7 +50,7 @@ function createBattleFixture(): BattleFixture {
 
   const player = new ProtagonistPlayer()
 
-  const enemyTeam = new SnailTeam()
+  const enemyTeam = new SnailTeam({ snailOverrides: { rng: () => 0.9 } })
   const members = enemyTeam.members
   if (members.length < 4) {
     throw new Error('Snail team requires four enemies')

@@ -11,7 +11,6 @@ export class SnailEnemy extends Enemy {
       currentHp: 10,
       actions: [new TackleAction(), new AcidSpitAction()],
       traits: [new HardShellState()],
-      startingActionIndex: 1, // TODO 敵の初期行動は、初期化時にランダムに決定する
       ...overrides,
     })
   }

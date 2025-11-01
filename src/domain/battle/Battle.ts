@@ -11,6 +11,7 @@ import { DiscardPile } from './DiscardPile'
 import { ExilePile } from './ExilePile'
 import { BattleEventQueue, type BattleEvent } from './BattleEvent'
 import { BattleLog } from './BattleLog'
+import type { BattleLogEntry } from './BattleLog'
 import { TurnManager, type TurnState } from './TurnManager'
 import { CardRepository } from '../repository/CardRepository'
 
@@ -67,6 +68,7 @@ export class Battle {
   private readonly logValue: BattleLog
   private readonly turnValue: TurnManager
   private readonly cardRepositoryValue: CardRepository
+  private logSequence = 0
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -166,6 +168,7 @@ export class Battle {
 
   startPlayerTurn(): void {
     this.turn.startPlayerTurn()
+    this.enemyTeam.endTurn()
     this.player.resetMana()
   }
 
@@ -187,7 +190,10 @@ export class Battle {
 
   endPlayerTurn(): void {}
 
-  startEnemyTurn(): void {}
+  startEnemyTurn(): void {
+    this.turn.startEnemyTurn()
+    this.enemyTeam.startTurn()
+  }
 
   performEnemyAction(enemyId: number): void {
     const enemy = this.enemyTeam.findEnemy(enemyId)
@@ -202,7 +208,17 @@ export class Battle {
 
   enqueueEvent(event: BattleEvent): void {}
 
-  addLogEntry(entry: Parameters<BattleLog['record']>[0]): void {}
+  addLogEntry(entry: { message: string; metadata?: Record<string, unknown> }): void {
+    const logEntry: BattleLogEntry = {
+      id: `log-${this.logSequence + 1}`,
+      message: entry.message,
+      metadata: entry.metadata,
+      turn: this.turnValue.current.turnCount,
+      timestamp: new Date(),
+    }
+    this.logValue.record(logEntry)
+    this.logSequence += 1
+  }
 
   damagePlayer(amount: number): void {
     this.player.takeDamage(amount)
