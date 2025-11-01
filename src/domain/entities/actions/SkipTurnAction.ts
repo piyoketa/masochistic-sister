@@ -2,6 +2,7 @@ import { Action, type ActionContext } from '../Action'
 import type { Enemy } from '../Enemy'
 
 export class SkipTurnAction extends Action {
+  static readonly ICON = '⛓'
   private readonly messageTemplate: (enemy: Enemy) => string
 
   constructor(message?: string | ((enemy: Enemy) => string)) {

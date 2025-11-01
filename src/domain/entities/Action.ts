@@ -181,15 +181,18 @@ export abstract class Skill extends Action {
 
 export interface AttackProps extends BaseActionProps {
   baseDamage: Damages
+  inflictStates?: Array<() => State>
 }
 
 export abstract class Attack extends Action {
   protected readonly baseProfile: Damages
   private overrideDamagesInstance?: Damages
+  private readonly inflictStateFactories: Array<() => State>
 
   protected constructor(props: AttackProps) {
     super(props)
     this.baseProfile = props.baseDamage
+    this.inflictStateFactories = props.inflictStates ? [...props.inflictStates] : []
   }
 
   get type(): ActionType {
@@ -245,6 +248,7 @@ export abstract class Attack extends Action {
       defender.takeDamage(totalDamage)
     }
 
+    this.applyInflictedStates(context, defender)
     this.onAfterDamage(context, damages, defender)
 
     if (this.isPlayer(defender)) {
@@ -302,5 +306,33 @@ export abstract class Attack extends Action {
     }
 
     return []
+  }
+
+  get inflictStatePreviews(): State[] {
+    return this.inflictStateFactories.map((factory) => factory())
+  }
+
+  private applyInflictedStates(context: ActionContext, defender: Player | Enemy): void {
+    if (this.inflictStateFactories.length === 0) {
+      return
+    }
+
+    for (const factory of this.inflictStateFactories) {
+      const state = factory()
+      if (!this.canInflictState(context, defender, state)) {
+        continue
+      }
+
+      if (this.isPlayer(defender)) {
+        defender.addState(state, { battle: context.battle })
+      } else {
+        defender.addState(state)
+      }
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected canInflictState(_context: ActionContext, _defender: Player | Enemy, _state: State): boolean {
+    return true
   }
 }

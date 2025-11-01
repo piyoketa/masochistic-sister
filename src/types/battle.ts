@@ -8,6 +8,21 @@ export type EnemyTrait = {
   detail: string
 }
 
+export type EnemyActionHint = {
+  title: string
+  type: 'attack' | 'skill' | 'skip'
+  pattern?: {
+    amount: number
+    count?: number
+    type?: 'single' | 'multi'
+  }
+  status?: {
+    name: string
+    magnitude?: number
+  }
+  icon?: string
+}
+
 export type EnemyInfo = {
   numericId: number
   name: string
@@ -16,8 +31,10 @@ export type EnemyInfo = {
     current: number
     max: number
   }
+  nextActions?: EnemyActionHint[]
   skills: EnemySkill[]
   traits?: EnemyTrait[]
+  states?: EnemyTrait[]
 }
 
 export type CardType = 'attack' | 'skill' | 'status'
