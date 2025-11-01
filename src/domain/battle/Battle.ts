@@ -14,6 +14,7 @@ import { BattleLog } from './BattleLog'
 import type { BattleLogEntry } from './BattleLog'
 import { TurnManager, type TurnState } from './TurnManager'
 import { CardRepository } from '../repository/CardRepository'
+import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 
 export interface BattleConfig {
   id: string
@@ -46,6 +47,7 @@ export interface BattleSnapshot {
     maxHp: number
     traits: State[]
     states: State[]
+    hasActedThisTurn: boolean
   }>
   deck: Card[]
   hand: Card[]
@@ -69,6 +71,8 @@ export class Battle {
   private readonly turnValue: TurnManager
   private readonly cardRepositoryValue: CardRepository
   private logSequence = 0
+  private executedActionLogIndex = -1
+  private eventSequence = 0
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -159,6 +163,7 @@ export class Battle {
           maxHp: enemy.maxHp,
           traits: enemy.traits,
           states: enemy.states,
+          hasActedThisTurn: enemy.hasActedThisTurn,
         }
       }),
       deck: this.deckValue.list(),
@@ -180,7 +185,19 @@ export class Battle {
   }
 
   drawForPlayer(count: number): void {
-    this.deck.draw(count, this.hand)
+    for (let i = 0; i < count; i += 1) {
+      if (this.deck.size() === 0) {
+        const reloaded = this.reloadDeckFromDiscard()
+        if (!reloaded) {
+          break
+        }
+      }
+
+      const card = this.deck.drawOne(this.hand)
+      if (!card) {
+        break
+      }
+    }
   }
 
   playCard(cardId: number, operations: CardOperation[] = []): void {
@@ -211,9 +228,23 @@ export class Battle {
     enemy.act(this)
   }
 
-  resolveEvents(): void {}
+  resolveEvents(): void {
+    const currentTurn = this.turnValue.current.turnCount
+    const readyEvents = this.eventsValue.extractReady(currentTurn)
 
-  enqueueEvent(event: BattleEvent): void {}
+    for (const event of readyEvents) {
+      this.applyEvent(event)
+    }
+  }
+
+  enqueueEvent(event: BattleEvent): void {
+    this.eventsValue.enqueue(event)
+  }
+
+  createEventId(): string {
+    this.eventSequence += 1
+    return `battle-event-${this.eventSequence}`
+  }
 
   addLogEntry(entry: { message: string; metadata?: Record<string, unknown> }): void {
     const logEntry: BattleLogEntry = {
@@ -233,5 +264,98 @@ export class Battle {
 
   addCardToPlayerHand(card: Card): void {
     this.hand.add(card)
+  }
+
+  executeActionLog(actionLog: ActionLog, targetIndex?: number): void {
+    const lastIndex = targetIndex ?? actionLog.length - 1
+    if (lastIndex < this.executedActionLogIndex) {
+      throw new Error('指定されたActionLogのインデックスは現在の進行度より小さいため、巻き戻しには新しいBattleインスタンスを使用してください。')
+    }
+
+    for (let index = this.executedActionLogIndex + 1; index <= lastIndex; index += 1) {
+      const entry = actionLog.at(index)
+      if (!entry) {
+        throw new Error(`ActionLogのエントリが見つかりません: index=${index}`)
+      }
+
+      this.applyActionLogEntry(actionLog, entry)
+      this.executedActionLogIndex = index
+    }
+  }
+
+  private applyActionLogEntry(actionLog: ActionLog, entry: BattleActionLogEntry): void {
+    switch (entry.type) {
+      case 'battle-start':
+        this.initialize()
+        break
+      case 'start-player-turn':
+        this.startPlayerTurn()
+        if (entry.draw && entry.draw > 0) {
+          this.drawForPlayer(entry.draw)
+        }
+        this.resolveEvents()
+        break
+      case 'draw':
+        this.drawForPlayer(entry.count)
+        break
+      case 'play-card': {
+        const cardId = actionLog.resolveValue(entry.card, this)
+        const operations =
+          entry.operations?.map((operation) => ({
+            type: operation.type,
+            payload:
+              operation.payload === undefined
+                ? undefined
+                : actionLog.resolveValue(operation.payload, this),
+          })) ?? []
+        this.playCard(cardId, operations)
+        break
+      }
+      case 'end-player-turn':
+        this.endPlayerTurn()
+        break
+      case 'start-enemy-turn':
+        this.startEnemyTurn()
+        break
+      case 'enemy-action': {
+        const enemyId = actionLog.resolveValue(entry.enemy, this)
+        this.performEnemyAction(enemyId)
+        break
+      }
+      default:
+        throw new Error(`未対応のActionLogエントリ type=${(entry as { type: string }).type}`)
+    }
+  }
+
+  private applyEvent(event: BattleEvent): void {
+    if (event.type === 'mana') {
+      const rawAmount = (event.payload as { amount?: unknown }).amount
+      const amount = typeof rawAmount === 'number' ? rawAmount : Number(rawAmount ?? 0)
+      if (Number.isFinite(amount) && amount !== 0) {
+        this.player.gainTemporaryMana(amount)
+      }
+    }
+  }
+
+  private reloadDeckFromDiscard(): boolean {
+    const discardCards = this.discardPileValue.takeAll()
+    if (discardCards.length === 0) {
+      return false
+    }
+
+    const reordered = this.reorderDiscardForReshuffle(discardCards)
+    this.deckValue.addManyToBottom(reordered)
+    return true
+  }
+
+  private reorderDiscardForReshuffle(cards: Card[]): Card[] {
+    if (cards.length <= 1) {
+      return cards
+    }
+
+    const acidMemories = cards.filter((card) => card.title === '記憶：酸を吐く')
+    const others = cards.filter((card) => card.title !== '記憶：酸を吐く')
+
+    return [...acidMemories, ...others]
   }
 }

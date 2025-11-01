@@ -190,8 +190,8 @@ export abstract class Attack extends Action {
 
     Object.assign(clone, this)
     ;(clone as unknown as { baseProfile: Damages }).baseProfile = new Damages({
-      baseAmount: damages.baseAmount,
-      baseCount: damages.baseCount,
+      baseAmount: damages.amount,
+      baseCount: damages.count,
       type: damages.type,
     })
     ;(clone as unknown as { props: BaseActionProps }).props = mergedProps

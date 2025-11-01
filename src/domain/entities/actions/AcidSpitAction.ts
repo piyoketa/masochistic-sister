@@ -22,8 +22,14 @@ export class AcidSpitAction extends Attack {
   }
 
   protected override onAfterDamage(context: ActionContext, _damages: Damages, defender: Player | Enemy): void {
-    if ('currentMana' in defender) {
+    if (isPlayer(defender)) {
       defender.addState(new CorrosionState(), { battle: context.battle })
+    } else {
+      defender.addState(new CorrosionState())
     }
   }
+}
+
+function isPlayer(entity: Player | Enemy): entity is Player {
+  return 'currentMana' in entity
 }

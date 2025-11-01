@@ -27,13 +27,13 @@ export class Deck {
     }
   }
 
-  drawOne(target: Hand): void {
+  drawOne(target: Hand): Card | undefined {
     const card = this.cards.shift()
     if (card) {
       target.add(card)
     }
+    return card
   }
-
   addToTop(card: Card): void {
     this.cards.unshift(card)
   }
@@ -51,5 +51,13 @@ export class Deck {
 
   size(): number {
     return this.cards.length
+  }
+
+  isEmpty(): boolean {
+    return this.cards.length === 0
+  }
+
+  addManyToBottom(cards: Card[]): void {
+    this.cards.push(...cards)
   }
 }

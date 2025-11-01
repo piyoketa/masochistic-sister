@@ -2,6 +2,7 @@ import { Skill, type ActionContext } from '../Action'
 import { ExhaustCardTag, SacredCardTag } from '../cardTags'
 import type { Enemy } from '../Enemy'
 import { SkipTurnAction } from './SkipTurnAction'
+import { TargetEnemyOperation, type Operation } from '../operations'
 
 export class HeavenChainAction extends Skill {
   constructor() {
@@ -21,6 +22,10 @@ export class HeavenChainAction extends Skill {
     return 'このターン、選択した敵の行動を封じる'
   }
 
+  protected override buildOperations(): Operation[] {
+    return [new TargetEnemyOperation()]
+  }
+
   override execute(context: ActionContext): void {
     const target = context.target as Enemy | undefined
     if (!target) {
@@ -28,6 +33,7 @@ export class HeavenChainAction extends Skill {
     }
 
     const message = `${target.name}は天の鎖で縛られていて何もできない！`
+    target.discardNextScheduledAction()
     target.queueImmediateAction(new SkipTurnAction(message))
 
     context.battle.addLogEntry({

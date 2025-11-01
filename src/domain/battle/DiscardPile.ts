@@ -22,4 +22,10 @@ export class DiscardPile {
   clear(): void {
     this.cards.length = 0
   }
+
+  takeAll(): Card[] {
+    const snapshot = [...this.cards]
+    this.clear()
+    return snapshot
+  }
 }

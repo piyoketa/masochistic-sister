@@ -1,4 +1,4 @@
-import { Skill } from '../Action'
+import { Skill, type ActionContext } from '../Action'
 
 export class BattlePrepAction extends Skill {
   constructor() {
@@ -14,5 +14,17 @@ export class BattlePrepAction extends Skill {
 
   protected override description(): string {
     return '次のターンに獲得するマナを+1する'
+  }
+
+  override execute(context: ActionContext): void {
+    const battle = context.battle
+    const scheduledTurn = battle.turn.current.turnCount + 1
+
+    battle.enqueueEvent({
+      id: battle.createEventId(),
+      type: 'mana',
+      payload: { amount: 1 },
+      scheduledTurn,
+    })
   }
 }

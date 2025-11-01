@@ -1,6 +1,5 @@
 import { Attack } from '../Action'
 import { Damages } from '../Damages'
-
 export class MucusShotAction extends Attack {
   constructor() {
     super({
@@ -15,6 +14,6 @@ export class MucusShotAction extends Attack {
   }
 
   protected override description(): string {
-    return '対象にねばねば(1)を付与する'
+    return '粘液を浴びせ、対象に粘着ダメージを与える'
   }
 }

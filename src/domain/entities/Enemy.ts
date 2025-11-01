@@ -152,6 +152,13 @@ export class Enemy {
     return [...this.traitList, ...this.stateList]
   }
 
+  discardNextScheduledAction(): void {
+    if (this.futureActions.length > 0) {
+      this.futureActions.shift()
+    }
+    this.ensureFutureActions()
+  }
+
   queueImmediateAction(action: Action): void {
     this.futureActions.unshift(action)
     this.ensureFutureActions()

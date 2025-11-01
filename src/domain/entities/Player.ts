@@ -72,6 +72,13 @@ export class Player {
     this.currentManaValue = Math.min(this.maxManaValue, this.currentManaValue + Math.max(0, Math.floor(amount)))
   }
 
+  gainTemporaryMana(amount: number): void {
+    if (amount <= 0) {
+      return
+    }
+    this.currentManaValue += Math.floor(amount)
+  }
+
   resetMana(): void {
     this.currentManaValue = this.maxManaValue
   }
