@@ -5,7 +5,7 @@ export class MucusShotAction extends Attack {
   constructor() {
     super({
       name: '粘液飛ばし',
-      baseDamage: Damages.single(5),
+      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
       cardDefinition: {
         title: '粘液飛ばし',
         type: 'attack',

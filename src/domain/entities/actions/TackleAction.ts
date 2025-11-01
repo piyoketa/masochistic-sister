@@ -5,7 +5,7 @@ export class TackleAction extends Attack {
   constructor() {
     super({
       name: 'たいあたり',
-      baseDamage: Damages.single(20),
+      baseDamage: new Damages({ baseAmount: 20, baseCount: 1, type: 'single' }),
       cardDefinition: {
         title: 'たいあたり',
         type: 'attack',

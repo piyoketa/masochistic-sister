@@ -58,7 +58,7 @@ class TestChaosStrikeAction extends Attack {
   constructor() {
     super({
       name: '混迷（テスト）',
-      baseDamage: Damages.single(0),
+      baseDamage: new Damages({ baseAmount: 0, baseCount: 1, type: 'single' }),
       cardDefinition: {
         title: '混迷（テスト）',
         type: 'attack',

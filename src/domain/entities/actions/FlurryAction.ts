@@ -5,7 +5,7 @@ export class FlurryAction extends Attack {
   constructor() {
     super({
       name: '乱れ突き',
-      baseDamage: Damages.multi(10, 2),
+      baseDamage: new Damages({ baseAmount: 10, baseCount: 2, type: 'multi' }),
       cardDefinition: {
         title: '乱れ突き',
         type: 'attack',

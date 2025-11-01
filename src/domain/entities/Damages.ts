@@ -76,11 +76,4 @@ export class Damages {
     this.defenderStates = Object.freeze(appliedDefender)
   }
 
-  static single(amount: number): Damages {
-    return new Damages({ baseAmount: amount, baseCount: 1, type: 'single' })
-  }
-
-  static multi(amount: number, count: number): Damages {
-    return new Damages({ baseAmount: amount, baseCount: count, type: count > 1 ? 'multi' : 'single' })
-  }
 }
