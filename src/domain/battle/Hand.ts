@@ -1,4 +1,9 @@
 import type { Card } from '../entities/Card'
+import type { Action } from '../entities/Action'
+import type { State } from '../entities/State'
+
+type ActionConstructor<T extends Action = Action> = abstract new (...args: any[]) => T
+type StateConstructor<T extends State = State> = abstract new (...args: any[]) => T
 
 export class Hand {
   private readonly cards: Card[]
@@ -28,6 +33,18 @@ export class Hand {
 
   find(cardId: number): Card | undefined {
     return this.cards.find((card) => card.numericId === cardId)
+  }
+
+  hasCardOf(actionOrState: ActionConstructor | StateConstructor): boolean {
+    return this.cards.some((card) => {
+      const action = card.action
+      if (action && action instanceof actionOrState) {
+        return true
+      }
+
+      const state = card.state
+      return Boolean(state && state instanceof actionOrState)
+    })
   }
 
   clear(): void {

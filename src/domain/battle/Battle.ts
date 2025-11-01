@@ -83,6 +83,12 @@ export class Battle {
     this.turnValue = config.turn ?? new TurnManager()
     this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
     this.playerValue.bindHand(this.handValue)
+    this.cardRepositoryValue.bindZones({
+      deck: this.deckValue,
+      hand: this.handValue,
+      discardPile: this.discardPileValue,
+      exilePile: this.exilePileValue,
+    })
   }
 
   get id(): string {

@@ -11,8 +11,10 @@ import { TurnManager } from '@/domain/battle/TurnManager'
 import { Card } from '@/domain/entities/Card'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildDefaultDeck } from '@/domain/entities/decks'
+import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { SnailTeam } from '@/domain/entities/enemyTeams'
+import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 
 interface BattleFixture {
   battle: Battle
@@ -224,13 +226,15 @@ describe('Battle sample scenario', () => {
     const snapshot = fixture.battle.getSnapshot()
     expect(snapshot.player.currentMana).toBe(2)
     expect(snapshot.player.currentHp).toBe(95)
-    // TODO: Handに、特定のAction Class, State Classを渡すことで、そのカードが存在するか確認するメソッドを追加する
-    expect(snapshot.hand.some((card) => card.title === '記憶：酸を吐く')).toBe(true)
-    expect(snapshot.hand.some((card) => card.title === '腐食')).toBe(true)
-    // TODO: CardRepositoryにcardIDを渡すと、そのカードを取得し、そのカードがどこにあるかを判定できるようにする
-    expect(snapshot.discardPile.map(requireCardId)).toContain(fixture.cardIds.masochisticAura)
+    expect(fixture.battle.hand.hasCardOf(AcidSpitAction)).toBe(true)
+    expect(fixture.battle.hand.hasCardOf(CorrosionState)).toBe(true)
+    const masochisticAuraInfo = fixture.battle.cardRepository.findWithLocation(fixture.cardIds.masochisticAura)
+    expect(masochisticAuraInfo).toBeDefined()
+    expect(masochisticAuraInfo?.location).toBe('discardPile')
     expect(snapshot.exilePile).toHaveLength(0)
-    // TODO: かたつむりが「行動済み」ステータスになっていることを確認する
+
+    const snail = fixture.battle.enemyTeam.findEnemy(fixture.enemyIds.snail)
+    expect(snail?.hasActedThisTurn).toBe(true)
   })
 
   it.skip('天の鎖でオークの行動を封じる', () => {
