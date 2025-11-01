@@ -3,7 +3,7 @@ import type { CardDefinition, CardDefinitionBase } from './CardDefinition'
 import type { Enemy } from './Enemy'
 import type { Player } from './Player'
 import type { State } from './State'
-import { Damages } from './Damages'
+import { Damages, type DamagePattern } from './Damages'
 import {
   TargetEnemyOperation,
   type CardOperation,
@@ -23,8 +23,6 @@ export interface ActionContext {
 
 export interface BaseActionProps {
   name: string
-  description?: string
-  descriptionBuilder?: (context: ActionContext) => string
   cardDefinition: CardDefinitionBase
 }
 
@@ -41,23 +39,15 @@ export abstract class Action {
     return this.props.name
   }
 
-  get description(): string | undefined {
-    return this.props.description
-  }
-
   protected get cardDefinitionBase(): CardDefinitionBase {
     return this.props.cardDefinition
   }
 
-  createDescription(context?: ActionContext): string {
-    if (this.props.descriptionBuilder && context) {
-      return this.props.descriptionBuilder(context)
-    }
+  describe(context?: ActionContext): string {
+    return this.description(context)
+  }
 
-    if (this.props.description) {
-      return this.props.description
-    }
-
+  protected description(_context?: ActionContext): string {
     return ''
   }
 
@@ -66,7 +56,7 @@ export abstract class Action {
     const operations = this.buildOperations().map((operation) => operation.type)
     return {
       ...base,
-      description: this.createDescription(context),
+      description: this.describe(context),
       operations,
     }
   }
@@ -166,16 +156,16 @@ export abstract class Skill extends Action {
 }
 
 export interface AttackProps extends BaseActionProps {
-  baseDamages: Damages
+  baseDamage: Damages
 }
 
 export abstract class Attack extends Action {
-  protected readonly baseDamagesValue: Damages
+  protected readonly baseProfile: Damages
   private overrideDamagesInstance?: Damages
 
   protected constructor(props: AttackProps) {
     super(props)
-    this.baseDamagesValue = props.baseDamages
+    this.baseProfile = props.baseDamage
   }
 
   get type(): ActionType {
@@ -183,7 +173,7 @@ export abstract class Attack extends Action {
   }
 
   get baseDamages(): Damages {
-    return this.baseDamagesValue
+    return this.baseProfile
   }
 
   cloneWithDamages(damages: Damages, overrides?: Partial<BaseActionProps>): Attack {
@@ -199,7 +189,11 @@ export abstract class Attack extends Action {
     }
 
     Object.assign(clone, this)
-    ;(clone as unknown as { baseDamagesValue: Damages }).baseDamagesValue = damages
+    ;(clone as unknown as { baseProfile: Damages }).baseProfile = new Damages({
+      baseAmount: damages.baseAmount,
+      baseCount: damages.baseCount,
+      type: damages.type,
+    })
     ;(clone as unknown as { props: BaseActionProps }).props = mergedProps
 
     return clone
@@ -243,60 +237,18 @@ export abstract class Attack extends Action {
   }
 
   calcDamages(attacker: Player | Enemy, defender: Player | Enemy): Damages {
-    // beforeAttackで上書きダメージを指定した場合は優先的に利用する
     if (this.overrideDamagesInstance) {
       const damages = this.overrideDamagesInstance
       this.overrideDamagesInstance = undefined
       return damages
     }
 
-    const base = this.baseDamagesValue
-    let amount = base.amount
-    let count = base.count
-
-    const attackerStates = this.collectStates(attacker)
-    const defenderStates = this.collectStates(defender)
-    const usedAttackerStates: Set<State> = new Set()
-    const usedDefenderStates: Set<State> = new Set()
-
-    const strengthStates = attackerStates.filter((state) => state.id === 'state-strength')
-    const strengthBonus = strengthStates.reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
-    if (strengthBonus !== 0) {
-      amount += strengthBonus
-      strengthStates.forEach((state) => usedAttackerStates.add(state))
-    }
-
-    const accelerationStates = attackerStates.filter((state) => state.id === 'state-acceleration')
-    const accelerationBonus = accelerationStates.reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
-    if (accelerationBonus > 0) {
-      count += accelerationBonus
-      accelerationStates.forEach((state) => usedAttackerStates.add(state))
-    }
-
-    const corrosionStates = defenderStates.filter((state) => state.id === 'state-corrosion')
-    const corrosionBonus = corrosionStates.reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
-    if (corrosionBonus !== 0) {
-      amount += corrosionBonus * 10
-      corrosionStates.forEach((state) => usedDefenderStates.add(state))
-    }
-
-    const hardShellStates = defenderStates.filter((state) => state.id === 'state-hard-shell')
-    const hardShellReduction = hardShellStates.reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
-    if (hardShellReduction > 0) {
-      amount = Math.max(0, amount - hardShellReduction)
-      hardShellStates.forEach((state) => usedDefenderStates.add(state))
-    }
-
-    const finalCount = Math.max(1, Math.floor(count))
-    const finalAmount = Math.max(0, amount)
-    const type = finalCount > 1 ? 'multi' : 'single'
-
     return new Damages({
-      type,
-      amount: finalAmount,
-      count: finalCount,
-      attackerStates: Array.from(usedAttackerStates),
-      defenderStates: Array.from(usedDefenderStates),
+      baseAmount: this.baseProfile.baseAmount,
+      baseCount: this.baseProfile.baseCount,
+      type: this.baseProfile.type,
+      attackerStates: this.collectStates(attacker),
+      defenderStates: this.collectStates(defender),
     })
   }
 

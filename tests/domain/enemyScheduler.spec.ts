@@ -20,14 +20,16 @@ class LogSkillAction extends Skill {
   constructor(private readonly label: string) {
     super({
       name: label,
-      description: `${label}を実行する`,
       cardDefinition: {
         title: label,
         type: 'skill',
         cost: 0,
-        description: `${label}を実行する`,
       },
     })
+  }
+
+  protected override description(): string {
+    return `${this.label}を実行する`
   }
 
   override execute(context: ActionContext): void {

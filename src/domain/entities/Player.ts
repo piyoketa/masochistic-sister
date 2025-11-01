@@ -1,5 +1,6 @@
 import type { State } from './State'
 import type { Battle } from '../battle/Battle'
+import type { Hand } from '../battle/Hand'
 
 export interface PlayerProps {
   id: string
@@ -17,7 +18,7 @@ export class Player {
   private readonly maxManaValue: number
   private currentHpValue: number
   private currentManaValue: number
-  private readonly states: State[] = []
+  private handRef?: Hand
 
   constructor(props: PlayerProps) {
     this.idValue = props.id
@@ -76,10 +77,7 @@ export class Player {
   }
 
   addState(state: State, options?: { battle?: Battle }): void {
-    // プレイヤーの状態異常は手札に対応カードを追加して覚えておく設計のため、
-    // State自体も内部状態として保持しつつ、必要であればBattle経由で記憶カードを生成する
-    this.states.push(state)
-
+    // プレイヤーの状態異常は手札に対応カードとしてのみ管理する。
     const battle = options?.battle
     if (battle && state.cardDefinitionBase) {
       battle.cardRepository.memoryState(state, battle)
@@ -87,13 +85,33 @@ export class Player {
   }
 
   removeState(stateId: string): void {
-    const index = this.states.findIndex((state) => state.id === stateId)
-    if (index >= 0) {
-      this.states.splice(index, 1)
+    const hand = this.handRef
+    if (!hand) {
+      return
+    }
+
+    const targetCard = hand
+      .list()
+      .find((card) => card.state?.id === stateId)
+
+    if (targetCard) {
+      hand.remove(targetCard)
     }
   }
 
   getStates(): State[] {
-    return [...this.states]
+    const hand = this.handRef
+    if (!hand) {
+      return []
+    }
+
+    return hand
+      .list()
+      .map((card) => card.state)
+      .filter((state): state is State => state !== undefined)
+  }
+
+  bindHand(hand: Hand): void {
+    this.handRef = hand
   }
 }

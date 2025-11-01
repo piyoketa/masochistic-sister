@@ -1,4 +1,5 @@
 import { State } from '../State'
+import type { DamageCalculationParams } from '../Damages'
 
 export class StickyState extends State {
   constructor(magnitude = 1) {
@@ -6,13 +7,28 @@ export class StickyState extends State {
       id: 'state-sticky',
       name: 'ねばねば',
       magnitude,
-      description: '連続攻撃を受けるとき、回数+1',
       cardDefinition: {
         title: 'ねばねば',
         type: 'status',
         cost: 1,
-        description: '連続攻撃を受けるとき、回数+1',
       },
     })
+  }
+
+  override description(): string {
+    const bonus = this.magnitude ?? 0
+    return `連続攻撃を受けるとき、回数+${bonus}`
+  }
+
+  override modifyDamage(params: DamageCalculationParams): DamageCalculationParams {
+    if (params.role !== 'defender' || params.count <= 1) {
+      return params
+    }
+
+    const bonus = this.magnitude ?? 0
+    return {
+      ...params,
+      count: params.count + bonus,
+    }
   }
 }

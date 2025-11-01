@@ -4,13 +4,15 @@ export class BuildUpAction extends Skill {
   constructor() {
     super({
       name: 'ビルドアップ',
-      description: '自身の状態に筋力上昇を追加する',
       cardDefinition: {
         title: 'ビルドアップ',
         type: 'skill',
         cost: 1,
-        description: '自身の状態に筋力上昇を追加する',
       },
     })
+  }
+
+  protected override description(): string {
+    return '自身に筋力上昇を付与する'
   }
 }

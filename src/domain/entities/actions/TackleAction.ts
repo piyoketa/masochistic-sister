@@ -5,14 +5,16 @@ export class TackleAction extends Attack {
   constructor() {
     super({
       name: 'たいあたり',
-      baseDamages: Damages.single(20),
-      description: '20ダメージ',
+      baseDamage: Damages.single(20),
       cardDefinition: {
         title: 'たいあたり',
         type: 'attack',
         cost: 1,
-        description: '20ダメージ',
       },
     })
+  }
+
+  protected override description(): string {
+    return '敵単体に20ダメージを与える'
   }
 }

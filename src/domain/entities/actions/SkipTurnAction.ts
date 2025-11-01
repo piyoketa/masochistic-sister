@@ -11,7 +11,6 @@ export class SkipTurnAction extends Action {
         title: '足止め',
         type: 'skill',
         cost: 0,
-        description: '行動できない。',
       },
     })
 
@@ -26,6 +25,10 @@ export class SkipTurnAction extends Action {
 
   override get type(): 'skill' {
     return 'skill'
+  }
+
+  protected override description(): string {
+    return '何も行動しない'
   }
 
   override execute(context: ActionContext): void {

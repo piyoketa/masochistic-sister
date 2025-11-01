@@ -82,6 +82,7 @@ export class Battle {
     this.logValue = config.log ?? new BattleLog()
     this.turnValue = config.turn ?? new TurnManager()
     this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
+    this.playerValue.bindHand(this.handValue)
   }
 
   get id(): string {

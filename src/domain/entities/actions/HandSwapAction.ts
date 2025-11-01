@@ -6,14 +6,16 @@ export class HandSwapAction extends Skill {
   constructor() {
     super({
       name: '手札入れ替え',
-      description: '手札を1枚捨て、1枚ドローする',
       cardDefinition: {
         title: '手札入れ替え',
         type: 'skill',
         cost: 1,
-        description: '手札を1枚捨て、1枚ドローする',
       },
     })
+  }
+
+  protected override description(): string {
+    return '手札を1枚捨て、新たに1枚ドローする'
   }
 
   protected override buildOperations(): Operation[] {

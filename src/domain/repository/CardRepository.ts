@@ -85,12 +85,7 @@ ${baseDefinition.description}`
 
   createNewAttack(damages: Damages, baseAttack: Attack): Card {
     const overrides = this.buildMemoryOverrides(baseAttack, damages)
-    const memoryDamages = new Damages({
-      type: damages.type,
-      amount: damages.amount,
-      count: damages.count,
-    })
-    const action = baseAttack.cloneWithDamages(memoryDamages, overrides)
+    const action = baseAttack.cloneWithDamages(damages, overrides)
     return this.create(() => new Card({ action }))
   }
 

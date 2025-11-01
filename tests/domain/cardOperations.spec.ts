@@ -58,15 +58,17 @@ class TestChaosStrikeAction extends Attack {
   constructor() {
     super({
       name: '混迷（テスト）',
-      baseDamages: Damages.single(0),
-      description: 'テスト用の混迷',
+      baseDamage: Damages.single(0),
       cardDefinition: {
         title: '混迷（テスト）',
         type: 'attack',
         cost: 1,
-        description: '手札を1枚捨て、そのカードのコスト×10ダメージを与える',
       },
     })
+  }
+
+  protected override description(): string {
+    return '手札を1枚捨て、そのカードのコスト×10のダメージを与える'
   }
 
   protected override buildOperations() {
@@ -88,9 +90,9 @@ class TestChaosStrikeAction extends Attack {
 
     this.setOverrideDamages(
       new Damages({
+        baseAmount: Math.max(0, selectedCard.cost) * 10,
+        baseCount: 1,
         type: 'single',
-        amount: Math.max(0, selectedCard.cost) * 10,
-        count: 1,
       }),
     )
   }

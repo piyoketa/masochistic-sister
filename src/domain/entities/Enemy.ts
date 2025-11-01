@@ -19,8 +19,8 @@ export class Enemy {
   private readonly maxHpValue: number
   private currentHpValue: number
   private readonly actionCandidates: Action[]
-  private readonly traitsValue: State[]
-  private readonly statesValue: State[]
+  private readonly traitList: State[]
+  private readonly stateList: State[]
   private readonly imageValue?: string
   private readonly rng: () => number
   private readonly actionHistory: Action[] = []
@@ -33,8 +33,8 @@ export class Enemy {
     this.maxHpValue = props.maxHp
     this.currentHpValue = props.currentHp
     this.actionCandidates = [...props.actions]
-    this.traitsValue = props.traits ?? []
-    this.statesValue = props.states ?? []
+    this.traitList = [...(props.traits ?? [])]
+    this.stateList = [...(props.states ?? [])]
     this.imageValue = props.image
     this.futureActions = props.futureActions ? [...props.futureActions] : []
     this.rng = props.rng ?? Math.random
@@ -70,11 +70,11 @@ export class Enemy {
   }
 
   get traits(): State[] {
-    return this.traitsValue
+    return [...this.traitList]
   }
 
   get states(): State[] {
-    return this.statesValue
+    return [...this.stateList]
   }
 
   get image(): string | undefined {
@@ -132,9 +132,16 @@ export class Enemy {
     this.currentHpValue = Math.max(0, this.currentHpValue - Math.max(0, Math.floor(amount)))
   }
 
-  addState(state: State): void {}
+  addState(state: State): void {
+    this.stateList.push(state)
+  }
 
-  removeState(stateId: string): void {}
+  removeState(stateId: string): void {
+    const index = this.stateList.findIndex((state) => state.id === stateId)
+    if (index >= 0) {
+      this.stateList.splice(index, 1)
+    }
+  }
 
   resetTurn(): void {
     this.actedThisTurn = false
@@ -142,7 +149,7 @@ export class Enemy {
   }
 
   getStates(): State[] {
-    return [...this.traitsValue, ...this.statesValue]
+    return [...this.traitList, ...this.stateList]
   }
 
   queueImmediateAction(action: Action): void {

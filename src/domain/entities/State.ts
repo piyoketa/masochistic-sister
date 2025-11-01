@@ -1,4 +1,5 @@
 import type { CardDefinition, CardDefinitionBase } from './CardDefinition'
+import type { DamageCalculationParams } from './Damages'
 
 export interface StateProps {
   id: string
@@ -28,8 +29,8 @@ export class State {
     return this.props.magnitude
   }
 
-  get description(): string | undefined {
-    return this.props.description
+  description(): string {
+    return this.createDescription()
   }
 
   get cardDefinitionBase(): CardDefinitionBase | undefined {
@@ -56,11 +57,23 @@ export class State {
 
     return {
       ...base,
-      description: this.createDescription(),
+      description: this.description(),
     }
   }
 
   apply(): void {}
 
   remove(): void {}
+
+  affectsAttacker(): boolean {
+    return false
+  }
+
+  affectsDefender(): boolean {
+    return false
+  }
+
+  modifyDamage(params: DamageCalculationParams): DamageCalculationParams {
+    return params
+  }
 }

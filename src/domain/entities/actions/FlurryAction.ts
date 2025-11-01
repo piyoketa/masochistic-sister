@@ -5,14 +5,16 @@ export class FlurryAction extends Attack {
   constructor() {
     super({
       name: '乱れ突き',
-      baseDamages: Damages.multi(10, 2),
-      description: '10ダメージ × 2',
+      baseDamage: Damages.multi(10, 2),
       cardDefinition: {
         title: '乱れ突き',
         type: 'attack',
         cost: 1,
-        description: '10ダメージ × 2',
       },
     })
+  }
+
+  protected override description(): string {
+    return '敵単体に10ダメージを2回与える'
   }
 }
