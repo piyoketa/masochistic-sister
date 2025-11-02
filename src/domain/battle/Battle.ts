@@ -353,9 +353,17 @@ export class Battle {
       return cards
     }
 
-    const acidMemories = cards.filter((card) => card.title === '記憶：酸を吐く')
-    const others = cards.filter((card) => card.title !== '記憶：酸を吐く')
+    const acidMemories = cards.filter(
+      (card) => this.isMemoryCard(card) && card.action?.name === '酸を吐く',
+    )
+    const others = cards.filter(
+      (card) => !(this.isMemoryCard(card) && card.action?.name === '酸を吐く'),
+    )
 
     return [...acidMemories, ...others]
+  }
+
+  private isMemoryCard(card: Card): boolean {
+    return (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
   }
 }

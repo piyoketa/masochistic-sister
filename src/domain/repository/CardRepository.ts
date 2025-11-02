@@ -7,6 +7,7 @@ import type { Hand } from '../battle/Hand'
 import type { DiscardPile } from '../battle/DiscardPile'
 import type { ExilePile } from '../battle/ExilePile'
 import type { State } from '../entities/State'
+import { MemoryCardTag } from '../entities/cardTags'
 
 export type CardFactory<T extends Card = Card> = () => T
 
@@ -111,7 +112,6 @@ export class CardRepository {
 
   private buildMemoryOverrides(baseAttack: Attack, damages: Damages) {
     const baseDefinition = baseAttack.createCardDefinition()
-    const title = `記憶：${baseAttack.name}`
     const description = damages.count <= 1
       ? `${damages.amount}ダメージ`
       : `${damages.amount}ダメージ × ${damages.count}`
@@ -120,13 +120,18 @@ export class CardRepository {
 ${baseDefinition.description}`
       : description
 
+    const memoryTag = new MemoryCardTag()
+    const baseTags = baseDefinition.cardTags ?? []
+    const cardTags = [...baseTags, memoryTag]
+
     return {
       name: baseAttack.name,
       description: fullDescription,
       cardDefinition: {
         ...baseDefinition,
-        title,
+        title: baseDefinition.title ?? baseAttack.name,
         description: fullDescription,
+        cardTags,
       },
     }
   }

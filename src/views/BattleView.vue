@@ -31,6 +31,7 @@ import type { EnemyInfo, EnemyTrait, CardInfo, EnemyActionHint } from '@/types/b
 import type { Card } from '@/domain/entities/Card'
 import type { State } from '@/domain/entities/State'
 import { TargetEnemyOperation, type CardOperation } from '@/domain/entities/operations'
+import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const props = defineProps<{ viewManager?: ViewManager }>()
 const viewManager = props.viewManager ?? createDefaultViewManager()
@@ -65,6 +66,9 @@ const interactionState = reactive<{
   collectedOperations: [],
 })
 
+const layoutRef = ref<HTMLDivElement | null>(null)
+const { state: descriptionOverlay, hide: hideDescriptionOverlay } = useDescriptionOverlay()
+
 const snapshot = computed(() => managerState.snapshot)
 const isInitializing = computed(() => managerState.playback.status === 'initializing')
 const hasSnapshot = computed(() => !!snapshot.value)
@@ -74,6 +78,20 @@ const pendingInputCount = computed(() => managerState.input.queued.length)
 const isPlayerTurn = computed(() => snapshot.value?.turn.activeSide === 'player')
 const isSelectingEnemy = computed(() => interactionState.mode === 'selecting-target-enemy')
 const hoveredEnemyId = ref<number | null>(null)
+
+const descriptionOverlayStyle = computed(() => {
+  const layout = layoutRef.value
+  if (!layout) {
+    return { left: '0px', top: '0px' }
+  }
+  const rect = layout.getBoundingClientRect()
+  const offsetX = descriptionOverlay.x - rect.left + 12
+  const offsetY = descriptionOverlay.y - rect.top + 12
+  return {
+    left: `${offsetX}px`,
+    top: `${offsetY}px`,
+  }
+})
 
 function handleManagerEvent(event: ViewManagerEvent) {
   switch (event.type) {
@@ -535,6 +553,7 @@ function handleContextMenu(): void {
   if (isSelectingEnemy.value) {
     resetInteractionState()
   }
+  hideDescriptionOverlay()
 }
 
 function createDefaultViewManager(): ViewManager {
@@ -584,7 +603,7 @@ function createSampleBattle(): Battle {
 <template>
   <GameLayout>
     <template #window>
-      <div class="battle-layout" @contextmenu.prevent="handleContextMenu">
+      <div ref="layoutRef" class="battle-layout" @contextmenu.prevent="handleContextMenu">
         <header class="battle-header">
           <div class="header-left">
             <span class="phase-label">{{ phaseLabel }}</span>
@@ -680,6 +699,14 @@ function createSampleBattle(): Battle {
             </div>
           </aside>
         </div>
+        <div
+          class="description-overlay"
+          v-show="descriptionOverlay.visible"
+          :style="descriptionOverlayStyle"
+        >
+          {{ descriptionOverlay.text }}
+        </div>
+
         <footer class="battle-footer">
           <span class="footer-message">{{ footerMessage }}</span>
         </footer>
@@ -698,6 +725,7 @@ function createSampleBattle(): Battle {
 
 <style scoped>
 .battle-layout {
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -743,6 +771,25 @@ function createSampleBattle(): Battle {
   grid-template-columns: 1fr 200px;
   flex: 1;
   min-height: 0;
+}
+
+.description-overlay {
+  position: absolute;
+  min-width: 160px;
+  max-width: 280px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(8, 10, 22, 0.95);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  transform: translate(0, 0);
+  z-index: 20;
+  backdrop-filter: blur(6px);
 }
 
 .battle-main {

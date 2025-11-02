@@ -1,8 +1,18 @@
+/**
+ * EnemyCard
+ * =========
+ * 敵ステータスを表示し、次の行動予測やTraits/Statesの詳細を description overlay に流すコンポーネント。
+ * このカードは親ビュー(BattleView)から敵情報を受け取り、hoverイベントで description overlay を更新する。
+ * - props.enemy: 表示する敵情報 (EnemyInfo)
+ * - emits hover-start/hover-end: 親に現在の hover 状態を伝搬
+ * - useDescriptionOverlay: ツールチップ用のグローバルオーバーレイと連携
+ */
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed } from 'vue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { EnemyInfo, EnemySkill, EnemyTrait } from '@/types/battle'
 import { formatEnemyActionLabel } from '@/components/enemyActionFormatter'
+import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const props = defineProps<{
   enemy: EnemyInfo
@@ -15,6 +25,9 @@ const emit = defineEmits<{
   (event: 'hover-start'): void
   (event: 'hover-end'): void
 }>()
+
+const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
+  useDescriptionOverlay()
 
 const classes = computed(() => ({
   'enemy-card--selectable': props.selectable ?? false,
@@ -46,30 +59,31 @@ const formattedActions = computed(() => {
 const traitChips = computed(() => (props.enemy.traits ?? []).map(formatTraitChip))
 const stateChips = computed(() => (props.enemy.states ?? []).map(formatTraitChip))
 
-const tooltip = reactive({
-  visible: false,
-  text: '',
-})
-
 function handleEnter(): void {
   emit('hover-start')
 }
 
 function handleLeave(): void {
   emit('hover-end')
+  hideOverlay()
 }
 
-function showTooltip(text: string): void {
+function showTooltip(event: MouseEvent, text?: string): void {
   if (!text) {
     return
   }
-  tooltip.visible = true
-  tooltip.text = text
+  showOverlay(text, { x: event.clientX, y: event.clientY })
+}
+
+function updateTooltipPosition(event: MouseEvent): void {
+  if (!descriptionOverlay.visible) {
+    return
+  }
+  updatePosition({ x: event.clientX, y: event.clientY })
 }
 
 function hideTooltip(): void {
-  tooltip.visible = false
-  tooltip.text = ''
+  hideOverlay()
 }
 
 function formatStatus(name: string, magnitude?: number): string {
@@ -152,7 +166,8 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
           v-for="action in formattedActions"
           :key="action.key"
           class="enemy-card__chip"
-          @mouseenter="showTooltip(action.description)"
+          @mouseenter="(event) => showTooltip(event, action.description ?? action.label)"
+          @mousemove="updateTooltipPosition"
           @mouseleave="hideTooltip"
         >
           <span v-if="action.icon" class="enemy-card__chip-icon">{{ action.icon }}</span>
@@ -168,7 +183,8 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
           v-for="trait in traitChips"
           :key="trait.key"
           class="enemy-card__chip enemy-card__chip--plain"
-          @mouseenter="showTooltip(trait.description)"
+          @mouseenter="(event) => showTooltip(event, trait.description)"
+          @mousemove="updateTooltipPosition"
           @mouseleave="hideTooltip"
         >
           {{ trait.label }}
@@ -183,19 +199,14 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
           v-for="state in stateChips"
           :key="state.key"
           class="enemy-card__chip enemy-card__chip--plain"
-          @mouseenter="showTooltip(state.description)"
+          @mouseenter="(event) => showTooltip(event, state.description)"
+          @mousemove="updateTooltipPosition"
           @mouseleave="hideTooltip"
         >
           {{ state.label }}
         </li>
       </ul>
     </section>
-
-    <transition name="tooltip">
-      <div v-if="tooltip.visible" class="enemy-card__tooltip">
-        {{ tooltip.text }}
-      </div>
-    </transition>
   </article>
 </template>
 
@@ -292,34 +303,5 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
 
 .enemy-card__chip-icon {
   font-size: 13px;
-}
-
-.enemy-card__tooltip {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(10, 12, 26, 0.92);
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 12px;
-  line-height: 1.4;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
-  text-align: center;
-  letter-spacing: 0.04em;
-  pointer-events: none;
-}
-
-.tooltip-enter-active,
-.tooltip-leave-active {
-  transition: opacity 120ms ease, transform 120ms ease;
-}
-
-.tooltip-enter-from,
-.tooltip-leave-to {
-  opacity: 0;
-  transform: translateY(6px);
 }
 </style>

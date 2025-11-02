@@ -31,6 +31,19 @@ const fourthHeavenChainId = Refs.heavenChainIds[3]!
 const secondBattlePrepId = Refs.battlePrepIds[1]!
 const fifthHeavenChainId = Refs.heavenChainIds[4]!
 
+const isMemoryCard = (card: { cardTags?: Array<{ id: string }>; title: string }): boolean =>
+  (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
+
+const isMemoryCardWithTitle = (
+  card: { cardTags?: Array<{ id: string }>; title: string },
+  title: string,
+): boolean => card.title === title && isMemoryCard(card)
+
+const countMemoryCards = (
+  cards: Array<{ cardTags?: Array<{ id: string }>; title: string }>,
+  title: string,
+): number => cards.filter((card) => isMemoryCardWithTitle(card, title)).length
+
 function runScenario(stepIndex: number | undefined) {
   if (stepIndex === undefined) {
     throw new Error('Step index is undefined')
@@ -106,7 +119,7 @@ describe('Battle sample scenario', () => {
     expect(snapshot.player.currentHp).toBe(95)
     // 手札枚数が6枚になっていることを確認する
     expect(snapshot.hand).toHaveLength(6)
-    // 手札に記憶：酸を吐くが存在することを確認する
+    // 手札に酸を吐く（記憶カード）が存在することを確認する
     expect(battle.hand.hasCardOf(AcidSpitAction)).toBe(true)
     // 手札に状態カード：腐食が存在することを確認する
     expect(battle.hand.hasCardOf(CorrosionState)).toBe(true)
@@ -250,7 +263,7 @@ describe('Battle sample scenario', () => {
     const currentHandSize = battle.hand.list().length
     // 敵攻撃後の手札枚数が6枚であることを確認する
     expect(currentHandSize).toBe(6)
-    // 手札に「記憶：粘液飛ばし」と「状態異常：ねばねば」が追加されていることを確認する
+    // 手札に粘液飛ばし（記憶カード）と状態カードねばねばが追加されていることを確認する
     expect(battle.hand.hasCardOf(MucusShotAction)).toBe(true)
     expect(battle.hand.hasCardOf(StickyState)).toBe(true)
   })
@@ -272,12 +285,11 @@ describe('Battle sample scenario', () => {
     const hand = battle.hand.list()
     // 手札枚数が6枚のままであることを確認する（ねばねばが手札に残っている）
     expect(hand).toHaveLength(6)
-    // 手札内の記憶：酸を吐くの枚数が1枚であることを確認する
-    const acidMemoryCount = hand.filter((card) => card.title === '記憶：酸を吐く').length
-    // 記憶：酸を吐くの枚数が1枚に保たれていることを確認する
+    // 手札内の酸を吐く（記憶カード）の枚数が1枚であることを確認する
+    const acidMemoryCount = countMemoryCards(hand, '酸を吐く')
     expect(acidMemoryCount).toBe(1)
-    // 手札に記憶：たいあたりが存在しないことを確認する
-    expect(hand.some((card) => card.title === '記憶：たいあたり')).toBe(false)
+    // 手札にたいあたりの記憶カードが存在しないことを確認する
+    expect(hand.some((card) => isMemoryCardWithTitle(card, 'たいあたり'))).toBe(false)
     // 手札にTackleActionカードが存在しないことを確認する
     expect(battle.hand.hasCardOf(TackleAction)).toBe(false)
   })
@@ -379,9 +391,9 @@ describe('Battle sample scenario', () => {
 
   it('酸を吐くでかたつむりに腐食(1)を付与する', () => {
     // -- 状況設定 --
-    // 記憶：酸を吐くをかたつむりへ使用した直後のスナップショットを取得する
+    // 酸を吐く（記憶カード）をかたつむりへ使用した直後のスナップショットを取得する
     const { snapshot, battle, lastEntry } = runScenario(Steps.playAcidSpitOnSnail)
-    // 状況確認：記憶：酸を吐くがかたつむりを対象にプレイされたログであることを確認する
+    // 状況確認：酸を吐く（記憶カード）がかたつむりを対象にプレイされたログであることを確認する
     expect(lastEntry?.type).toBe('play-card')
     if (lastEntry?.type === 'play-card') {
       // 対象敵がかたつむりであることを確認する
@@ -400,9 +412,9 @@ describe('Battle sample scenario', () => {
     expect(
       snail?.states.some((state) => state instanceof CorrosionState && state.magnitude === 1),
     ).toBe(true)
-    // 使用した記憶：酸を吐くが捨て札に移動していることを確認する
-    expect(snapshot.discardPile.some((card) => card.title === '記憶：酸を吐く')).toBe(true)
-    // 手札から記憶：酸を吐くがなくなっていることを確認する
+    // 使用した酸を吐く（記憶カード）が捨て札に移動していることを確認する
+    expect(snapshot.discardPile.some((card) => isMemoryCardWithTitle(card, '酸を吐く'))).toBe(true)
+    // 手札から酸を吐く（記憶カード）がなくなっていることを確認する
     expect(battle.hand.hasCardOf(AcidSpitAction)).toBe(false)
   })
 
@@ -487,14 +499,14 @@ describe('Battle sample scenario', () => {
     const currentHandSize = battle.hand.list().length
     // 乱れ突きの記憶が追加された結果、手札枚数が5枚に戻っていることを確認する
     expect(currentHandSize).toBe(5)
-    // 手札に記憶：乱れ突きが存在することを確認する
+    // 手札に乱れ突きの記憶カードが存在することを確認する
     expect(battle.hand.hasCardOf(FlurryAction)).toBe(true)
     // 手札に状態カード：腐食が残っていることを確認する
     expect(battle.hand.hasCardOf(CorrosionState)).toBe(true)
 
     const rememberedFlurry = battle.hand
       .list()
-      .find((card) => card.title === '記憶：乱れ突き')
+      .find((card) => isMemoryCardWithTitle(card, '乱れ突き'))
     // 追加された記憶カードが存在することを確認する
     expect(rememberedFlurry).toBeDefined()
     const action = rememberedFlurry?.action
@@ -566,8 +578,8 @@ describe('Battle sample scenario', () => {
     expect(snapshot.hand.map(requireCardId)).toEqual(
       expect.arrayContaining([fifthHeavenChainId]),
     )
-    // 手札に記憶：酸を吐くが含まれていることを確認する
-    expect(snapshot.hand.some((card) => card.title === '記憶：酸を吐く')).toBe(true)
+    // 手札に酸を吐く（記憶カード）が含まれていることを確認する
+    expect(snapshot.hand.some((card) => isMemoryCardWithTitle(card, '酸を吐く'))).toBe(true)
     // 捨て札が空であることを確認する
     expect(snapshot.discardPile).toHaveLength(0)
     // 山札に被虐のオーラと戦いの準備が戻っていることを確認する
@@ -578,14 +590,14 @@ describe('Battle sample scenario', () => {
     expect(snapshot.deck).toHaveLength(2)
   })
 
-  it('記憶：乱れ突きでかたつむりを撃破する', () => {
+  it('乱れ突き（記憶カード）でかたつむりを撃破する', () => {
     // -- 状況設定 --
-    // ３ターン目に記憶：乱れ突きをかたつむりへ使用した直後のスナップショットを取得する
+    // ３ターン目に乱れ突き（記憶カード）をかたつむりへ使用した直後のスナップショットを取得する
     const { battle, snapshot, lastEntry } = runScenario(Steps.playFlurryOnSnail)
-    // 状況確認：記憶：乱れ突きがかたつむりを対象にプレイされたログであることを確認する
+    // 状況確認：乱れ突き（記憶カード）がかたつむりを対象にプレイされたログであることを確認する
     expect(lastEntry?.type).toBe('play-card')
     if (lastEntry?.type === 'play-card') {
-      // 記憶：乱れ突きがプレイされていることを確認する
+      // 乱れ突きの記憶カードがプレイされていることを確認する
       expect(lastEntry.cardId).toBeDefined()
       // 対象敵がかたつむりであることを確認する
       expect(lastEntry.targetEnemyId).toBe(Refs.enemyIds.snail)
@@ -601,9 +613,9 @@ describe('Battle sample scenario', () => {
     expect(snail?.currentHp).toBe(0)
     // 腐食状態が維持されていることを確認する
     expect(snail?.states.some((state) => state instanceof CorrosionState)).toBe(true)
-    // 記憶：乱れ突きが捨て札に移動していることを確認する
-    expect(snapshot.discardPile.some((card) => card.title === '記憶：乱れ突き')).toBe(true)
-    // 手札から記憶：乱れ突きがなくなっていることを確認する
+    // 乱れ突きの記憶カードが捨て札に移動していることを確認する
+    expect(snapshot.discardPile.some((card) => isMemoryCardWithTitle(card, '乱れ突き'))).toBe(true)
+    // 手札から乱れ突きの記憶カードがなくなっていることを確認する
     expect(battle.hand.hasCardOf(FlurryAction)).toBe(false)
   })
 
@@ -628,11 +640,11 @@ describe('Battle sample scenario', () => {
     expect(finalAction).toBeInstanceOf(TackleAction)
   })
 
-  it('記憶：乱れ突きでオークを撃破する（パターン2）', () => {
+  it('乱れ突き（記憶カード）でオークを撃破する（パターン2）', () => {
     // -- 状況設定 --
-    // パターン2で記憶：乱れ突きをオークへ使用した直後のスナップショットを取得する
+    // パターン2で乱れ突き（記憶カード）をオークへ使用した直後のスナップショットを取得する
     const { battle, snapshot, lastEntry } = runScenarioPattern2(StepsPattern2.playFlurryOnOrc)
-    // 状況確認：記憶：乱れ突きがオークを対象にプレイされたログであることを確認する
+    // 状況確認：乱れ突き（記憶カード）がオークを対象にプレイされたログであることを確認する
     expect(lastEntry?.type).toBe('play-card')
     if (lastEntry?.type === 'play-card') {
       // 対象敵がオークであることを確認する
@@ -647,19 +659,19 @@ describe('Battle sample scenario', () => {
     const orc = snapshot.enemies.find((enemy) => enemy.numericId === RefsPattern2.enemyIds.orc)
     // オークのHPが0になっていることを確認する
     expect(orc?.currentHp).toBe(0)
-    // 記憶：乱れ突きが捨て札に移動していることを確認する
-    expect(snapshot.discardPile.some((card) => card.title === '記憶：乱れ突き')).toBe(true)
-    // 手札から記憶：乱れ突きがなくなっていることを確認する
+    // 乱れ突きの記憶カードが捨て札に移動していることを確認する
+    expect(snapshot.discardPile.some((card) => isMemoryCardWithTitle(card, '乱れ突き'))).toBe(true)
+    // 手札から乱れ突きの記憶カードがなくなっていることを確認する
     expect(battle.hand.hasCardOf(FlurryAction)).toBe(false)
   })
 
-  it('記憶：粘液飛ばしでオークダンサーにねばねばを付与する（パターン2）', () => {
+  it('粘液飛ばし（記憶カード）でオークダンサーにねばねばを付与する（パターン2）', () => {
     // -- 状況設定 --
-    // パターン2で記憶：粘液飛ばしをオークダンサーへ使用した直後のスナップショットを取得する
+    // パターン2で粘液飛ばし（記憶カード）をオークダンサーへ使用した直後のスナップショットを取得する
     const { battle, snapshot, lastEntry } = runScenarioPattern2(
       StepsPattern2.playMucusShotOnOrcDancer,
     )
-    // 状況確認：記憶：粘液飛ばしがオークダンサーを対象にプレイされたログであることを確認する
+    // 状況確認：粘液飛ばし（記憶カード）がオークダンサーを対象にプレイされたログであることを確認する
     expect(lastEntry?.type).toBe('play-card')
     if (lastEntry?.type === 'play-card') {
       // 対象敵がオークダンサーであることを確認する
@@ -681,9 +693,9 @@ describe('Battle sample scenario', () => {
       .reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
     // ねばねばの付与量が1であることを確認する
     expect(stickyMagnitude).toBe(1)
-    // 記憶：粘液飛ばしが捨て札に移動していることを確認する
-    expect(snapshot.discardPile.some((card) => card.title === '記憶：粘液飛ばし')).toBe(true)
-    // 手札から記憶：粘液飛ばしがなくなっていることを確認する
+    // 粘液飛ばしの記憶カードが捨て札に移動していることを確認する
+    expect(snapshot.discardPile.some((card) => isMemoryCardWithTitle(card, '粘液飛ばし'))).toBe(true)
+    // 手札から粘液飛ばしの記憶カードがなくなっていることを確認する
     expect(battle.hand.hasCardOf(MucusShotAction)).toBe(false)
   })
 

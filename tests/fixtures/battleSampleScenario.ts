@@ -60,6 +60,9 @@ export function requireCardId(card: Card | undefined): number {
   return card.numericId
 }
 
+const isMemoryCardWithTitle = (card: Card, title: string): boolean =>
+  card.title === title && (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
+
 export function createBaseBattle(): Battle {
   const cardRepository = new CardRepository()
   const defaultDeck = buildDefaultDeck(cardRepository)
@@ -176,9 +179,11 @@ export function createBattleScenario(thirdTurnBuilder: ThirdTurnBuilder): Battle
     playAcidSpitOnSnail: actionLog.push({
       type: 'play-card',
       card: (battle) => {
-        const card = battle.cardRepository.find((candidate) => candidate.title === '記憶：酸を吐く')
+        const card = battle.cardRepository.find((candidate) =>
+          isMemoryCardWithTitle(candidate, '酸を吐く'),
+        )
         if (!card) {
-          throw new Error('手札に記憶：酸を吐くのカードが存在しません')
+          throw new Error('手札に酸を吐くの記憶カードが存在しません')
         }
 
         return requireCardId(card)
@@ -237,9 +242,11 @@ export function buildThirdTurnPattern1({
     playFlurryOnSnail: actionLog.push({
       type: 'play-card',
       card: (battle) => {
-        const card = battle.cardRepository.find((candidate) => candidate.title === '記憶：乱れ突き')
+        const card = battle.cardRepository.find((candidate) =>
+          isMemoryCardWithTitle(candidate, '乱れ突き'),
+        )
         if (!card) {
-          throw new Error('手札に記憶：乱れ突きが存在しません')
+          throw new Error('手札に乱れ突きの記憶カードが存在しません')
         }
         return requireCardId(card)
       },
@@ -264,9 +271,11 @@ export function buildThirdTurnPattern2({
     playFlurryOnOrc: actionLog.push({
       type: 'play-card',
       card: (battle) => {
-        const card = battle.cardRepository.find((candidate) => candidate.title === '記憶：乱れ突き')
+        const card = battle.cardRepository.find((candidate) =>
+          isMemoryCardWithTitle(candidate, '乱れ突き'),
+        )
         if (!card) {
-          throw new Error('手札に記憶：乱れ突きが存在しません')
+          throw new Error('手札に乱れ突きの記憶カードが存在しません')
         }
         return requireCardId(card)
       },
@@ -276,10 +285,10 @@ export function buildThirdTurnPattern2({
       type: 'play-card',
       card: (battle) => {
         const card = battle.cardRepository.find(
-          (candidate) => candidate.title === '記憶：粘液飛ばし',
+          (candidate) => isMemoryCardWithTitle(candidate, '粘液飛ばし'),
         )
         if (!card) {
-          throw new Error('手札に記憶：粘液飛ばしが存在しません')
+          throw new Error('手札に粘液飛ばしの記憶カードが存在しません')
         }
         return requireCardId(card)
       },
