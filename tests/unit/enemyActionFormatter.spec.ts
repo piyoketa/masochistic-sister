@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { formatEnemyActionLabel } from '@/components/enemyActionFormatter'
+import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import type { EnemyActionHint } from '@/types/battle'
 
 const baseHint = (overrides: Partial<EnemyActionHint>): EnemyActionHint => ({

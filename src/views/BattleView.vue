@@ -33,7 +33,7 @@ import type { Card } from '@/domain/entities/Card'
 import type { State } from '@/domain/entities/State'
 import { TargetEnemyOperation, type CardOperation } from '@/domain/entities/operations'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
-import { formatEnemyActionLabel } from '@/components/enemyActionFormatter'
+import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 
 const props = defineProps<{ viewManager?: ViewManager }>()
 const viewManager = props.viewManager ?? createDefaultViewManager()
@@ -158,6 +158,9 @@ const playerHpGauge = computed(() => ({
 }))
 const deckCount = computed(() => snapshot.value?.deck.length ?? 0)
 const discardCount = computed(() => snapshot.value?.discardPile.length ?? 0)
+const isGameOver = computed(() => (snapshot.value?.player.currentHp ?? 0) <= 0)
+const canRetry = computed(() => viewManager.canRetry())
+const canUndo = computed(() => viewManager.hasUndoableAction())
 
 const enemies = computed<EnemyInfo[]>(() => {
   const current = snapshot.value
@@ -661,6 +664,23 @@ function handleEndTurnClick(): void {
   viewManager.queuePlayerAction({ type: 'end-player-turn' })
 }
 
+function handleRetryClick(): void {
+  viewManager.resetToInitialState()
+  resetInteractionState()
+  hideDescriptionOverlay()
+  errorMessage.value = null
+}
+
+function handleUndoClick(): void {
+  const undone = viewManager.undoLastPlayerAction()
+  if (!undone) {
+    return
+  }
+  resetInteractionState()
+  hideDescriptionOverlay()
+  errorMessage.value = null
+}
+
 function handleContextMenu(): void {
   if (isSelectingEnemy.value) {
     resetInteractionState()
@@ -719,6 +739,24 @@ function createSampleBattle(): Battle {
         <header class="battle-header">
           <div class="header-left">
             <span class="phase-label">{{ phaseLabel }}</span>
+          </div>
+          <div class="header-actions">
+            <button
+              type="button"
+              class="header-button"
+              :disabled="!canRetry"
+              @click="handleRetryClick"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              class="header-button"
+              :disabled="!canUndo"
+              @click="handleUndoClick"
+            >
+              一手戻す
+            </button>
           </div>
           <div class="header-right">
             <span>{{ turnLabel }}</span>
@@ -812,6 +850,9 @@ function createSampleBattle(): Battle {
               </div>
             </div>
           </aside>
+          <div v-if="isGameOver" class="battle-gameover-overlay">
+            <div class="gameover-text">GAME OVER</div>
+          </div>
         </div>
         <div
           class="description-overlay"
@@ -866,6 +907,39 @@ function createSampleBattle(): Battle {
   align-items: center;
 }
 
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.header-button {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 227, 115, 0.92);
+  color: #402510;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+
+.header-button:hover:not(:disabled),
+.header-button:focus-visible:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.42);
+}
+
+.header-button:disabled {
+  background: rgba(120, 120, 128, 0.4);
+  color: rgba(235, 235, 235, 0.7);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .phase-label {
   font-size: 16px;
   letter-spacing: 0.12em;
@@ -885,6 +959,7 @@ function createSampleBattle(): Battle {
   grid-template-columns: 1fr 200px;
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
 .description-overlay {
@@ -1077,6 +1152,27 @@ function createSampleBattle(): Battle {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.08em;
+}
+
+.battle-gameover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 30;
+}
+
+.gameover-text {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: rgba(255, 80, 96, 0.92);
+  text-transform: uppercase;
 }
 
 .overlay-row {

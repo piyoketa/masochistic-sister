@@ -11,7 +11,7 @@
 import { computed } from 'vue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { EnemyInfo, EnemySkill, EnemyTrait } from '@/types/battle'
-import { formatEnemyActionLabel } from '@/components/enemyActionFormatter'
+import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const props = defineProps<{

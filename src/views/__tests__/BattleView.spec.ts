@@ -132,7 +132,7 @@ describe('BattleView', () => {
 
     await flushPromises()
 
-    const button = wrapper.get('button')
+    const button = wrapper.get('.end-turn-button')
     expect(button.attributes('disabled')).toBeUndefined()
 
     viewManager.enqueueAnimation({
@@ -141,12 +141,12 @@ describe('BattleView', () => {
     })
 
     await flushPromises()
-    expect(wrapper.get('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.end-turn-button').attributes('disabled')).toBeDefined()
 
     await vi.advanceTimersByTimeAsync(1000)
     await flushPromises()
 
-    expect(wrapper.get('button').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.end-turn-button').attributes('disabled')).toBeUndefined()
 
     vi.useRealTimers()
   })
@@ -168,7 +168,7 @@ describe('BattleView', () => {
 
     await flushPromises()
 
-    const button = wrapper.get('button')
+    const button = wrapper.get('.end-turn-button')
     const initialLogLength = viewManager.state.actionLogLength
     await button.trigger('click')
     await flushPromises()
@@ -201,6 +201,113 @@ describe('BattleView', () => {
 
     await card.trigger('mouseleave')
     expect(wrapper.html()).toContain('対象にカーソルを合わせて操作を確認')
+  })
+
+  it('Retryボタンで戦闘を初期状態に戻す', async () => {
+    const scenario = createBattleSampleScenario()
+    const viewManager = new ViewManager({
+      createBattle: scenario.createBattle,
+      actionLog: scenario.replayer.getActionLog(),
+      initialActionLogIndex: scenario.steps.playerTurn1Start,
+    })
+
+    const wrapper = mount(BattleView, {
+      props: { viewManager },
+      global: {
+        stubs: createGlobalStubs(),
+      },
+    })
+
+    await flushPromises()
+    const initialIndex = viewManager.state.executedIndex
+    const expectedLength = initialIndex >= 0 ? initialIndex + 1 : 0
+
+    viewManager.queuePlayerAction({ type: 'end-player-turn' })
+    await flushPromises()
+    expect(viewManager.state.executedIndex).toBeGreaterThan(initialIndex)
+
+    const retryButton = wrapper.findAll('.header-button')[0]!
+    expect(retryButton.attributes('disabled')).toBeUndefined()
+
+    await retryButton.trigger('click')
+    await flushPromises()
+
+    expect(viewManager.state.executedIndex).toBe(initialIndex)
+    expect(viewManager.state.actionLogLength).toBe(expectedLength)
+  })
+
+  it('一手戻すボタンで最後のプレイヤーアクションを巻き戻す', async () => {
+    const scenario = createBattleSampleScenario()
+    const viewManager = new ViewManager({
+      createBattle: scenario.createBattle,
+      actionLog: scenario.replayer.getActionLog(),
+      initialActionLogIndex: scenario.steps.playerTurn1Start,
+    })
+
+    const wrapper = mount(BattleView, {
+      props: { viewManager },
+      global: {
+        stubs: createGlobalStubs(),
+      },
+    })
+
+    await flushPromises()
+    const initialIndex = viewManager.state.executedIndex
+
+    viewManager.queuePlayerAction({ type: 'end-player-turn' })
+    await flushPromises()
+    expect(viewManager.state.executedIndex).toBeGreaterThan(initialIndex)
+
+    const undoButton = wrapper.findAll('.header-button')[1]!
+    expect(undoButton.attributes('disabled')).toBeUndefined()
+
+    await undoButton.trigger('click')
+    await flushPromises()
+
+    expect(viewManager.state.executedIndex).toBe(initialIndex)
+    expect(viewManager.state.actionLogLength).toBe(initialIndex >= 0 ? initialIndex + 1 : 0)
+  })
+
+  it('HPが0になるとゲームオーバーオーバーレイが表示される', async () => {
+    const scenario = createBattleSampleScenario()
+    const viewManager = new ViewManager({
+      createBattle: scenario.createBattle,
+      actionLog: scenario.replayer.getActionLog(),
+      initialActionLogIndex: scenario.steps.playerTurn1Start,
+    })
+
+    const wrapper = mount(BattleView, {
+      props: { viewManager },
+      global: {
+        stubs: createGlobalStubs(),
+      },
+    })
+
+    await flushPromises()
+
+    viewManager.queuePlayerAction({ type: 'end-player-turn' })
+    await flushPromises()
+
+    const snapshot = viewManager.state.snapshot
+    expect(snapshot).toBeTruthy()
+
+    const updatedSnapshot = {
+      ...snapshot!,
+      player: { ...snapshot!.player, currentHp: 0 },
+    }
+
+    viewManager.applyAnimationCommand({
+      type: 'update-snapshot',
+      snapshot: updatedSnapshot,
+      resolvedEntry: viewManager.state.lastResolvedEntry,
+    })
+
+    await flushPromises()
+
+    expect(wrapper.find('.battle-gameover-overlay').exists()).toBe(true)
+    const [retryButton, undoButton] = wrapper.findAll('.header-button')
+    expect(retryButton.attributes('disabled')).toBeUndefined()
+    expect(undoButton.attributes('disabled')).toBeUndefined()
   })
 
   it('カードを選択し敵をクリックすると操作がキューに積まれる', async () => {
