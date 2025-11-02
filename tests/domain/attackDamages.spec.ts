@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { TentacleFlurryAction } from '@/domain/entities/actions/TentacleFlurryAction'
+import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
 import { TackleAction } from '@/domain/entities/actions/TackleAction'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import {
@@ -15,6 +15,7 @@ import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import type { State } from '@/domain/entities/State'
 import { Hand } from '@/domain/battle/Hand'
 import { Card } from '@/domain/entities/Card'
+import { Damages } from '@/domain/entities/Damages'
 
 function createPlayerWithHand() {
   const player = new ProtagonistPlayer()
@@ -40,9 +41,15 @@ function createEnemyWithStates(states: State[] = []): Enemy {
   })
 }
 
+function createTentacleFlurryAction() {
+  return new FlurryAction().cloneWithDamages(
+    new Damages({ baseAmount: 10, baseCount: 3, type: 'multi' }),
+  )
+}
+
 describe('Attack#calcDamagesの挙動', () => {
   it('筋力や状態が無い場合は10ダメージ×3回になる', () => {
-    const action = new TentacleFlurryAction()
+    const action = createTentacleFlurryAction()
     const attacker = createPlayerWithHand().player
     const defender = createEnemyWithStates()
 
@@ -56,7 +63,7 @@ describe('Attack#calcDamagesの挙動', () => {
   })
 
   it('攻撃側に筋力上昇(10)があるとダメージが20に増える', () => {
-    const action = new TentacleFlurryAction()
+    const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defender = createEnemyWithStates()
     const strength = attackerHelper.addState(new StrengthState(10))
@@ -69,7 +76,7 @@ describe('Attack#calcDamagesの挙動', () => {
   })
 
   it('攻撃側の筋力上昇と防御側の腐食が重なるとダメージが30になる', () => {
-    const action = new TentacleFlurryAction()
+    const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defenderEnemy = createEnemyWithStates()
     const strength = attackerHelper.addState(new StrengthState(10))
@@ -85,7 +92,7 @@ describe('Attack#calcDamagesの挙動', () => {
   })
 
   it('筋力上昇と加速、腐食が揃うとダメージ30の4回攻撃になる', () => {
-    const action = new TentacleFlurryAction()
+    const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defenderEnemy = createEnemyWithStates()
     const strength = attackerHelper.addState(new StrengthState(10))
@@ -103,7 +110,7 @@ describe('Attack#calcDamagesの挙動', () => {
   })
 
   it('硬い殻(20)があるとダメージが10に減少する', () => {
-    const action = new TentacleFlurryAction()
+    const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defenderEnemy = createEnemyWithStates()
     attackerHelper.addState(new StrengthState(10))
@@ -122,7 +129,7 @@ describe('Attack#calcDamagesの挙動', () => {
   })
 
   it('防御側に加速があってもダメージ計算へは影響しない', () => {
-    const action = new TentacleFlurryAction()
+    const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defenderEnemy = createEnemyWithStates()
     const strength = attackerHelper.addState(new StrengthState(10))
