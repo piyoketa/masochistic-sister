@@ -247,6 +247,7 @@ function mapStatesToTraits(states?: State[]): EnemyTrait[] | undefined {
   return states.map((state) => ({
     name: state.name,
     detail: state.description(),
+    magnitude: state.magnitude,
   }))
 }
 
@@ -287,6 +288,7 @@ function summarizeEnemyAction(action: BattleAction): EnemyActionHint {
       title: action.name,
       type: 'skip',
       icon: SkipTurnAction.ICON,
+      description: action.describe(),
     }
   }
 
@@ -310,6 +312,7 @@ function summarizeEnemyAction(action: BattleAction): EnemyActionHint {
             magnitude: primaryState.magnitude ?? 1,
           }
         : undefined,
+      description: action.describe(),
     }
   }
 
@@ -317,6 +320,7 @@ function summarizeEnemyAction(action: BattleAction): EnemyActionHint {
     title: action.name,
     type: action.type === 'skill' ? 'skill' : 'attack',
     icon: action.type === 'skill' ? '✨' : '💥',
+    description: action.describe(),
   }
 }
 

@@ -306,6 +306,44 @@ export function createBattleSampleScenarioPattern2(): BattleScenario {
   return createBattleScenario(buildThirdTurnPattern2)
 }
 
+export function createBattleSampleScenarioPattern3(): BattleScenario {
+  const createBattle = () => createBaseBattle()
+  const sampleSnapshot = createBattle().getSnapshot()
+  const references = collectScenarioReferences(sampleSnapshot)
+  const actionLog = new ActionLog()
+
+  const steps: ScenarioSteps = {
+    battleStart: actionLog.push({ type: 'battle-start' }),
+    playerTurn1Start: actionLog.push({ type: 'start-player-turn', draw: 5 }),
+    playMasochisticAura: actionLog.push({
+      type: 'play-card',
+      card: references.masochisticAuraId,
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
+    }),
+    playCorrosionState: actionLog.push({
+      type: 'play-card',
+      card: (battle) => {
+        const card = battle.cardRepository.find((candidate) => candidate.title === '腐食')
+        if (!card) {
+          throw new Error('手札に腐食状態カードが存在しません')
+        }
+        return requireCardId(card)
+      },
+    }),
+  }
+
+  return {
+    createBattle,
+    replayer: new ActionLogReplayer({
+      createBattle,
+      actionLog,
+    }),
+    steps,
+    references,
+  }
+}
+
+
 export {
   AcidSpitAction,
   BattleDanceAction,

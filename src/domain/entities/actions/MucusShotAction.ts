@@ -22,9 +22,4 @@ export class MucusShotAction extends Attack {
   protected override description(): string {
     return '粘液を浴びせ、対象に粘着ダメージを与える'
   }
-
-  protected override canInflictState(context: ActionContext, defender: Player | Enemy): boolean {
-    // プレイヤーが敵に対して使用した場合のみ粘着を付与する
-    return isPlayerEntity(context.source) && !isPlayerEntity(defender)
-  }
 }

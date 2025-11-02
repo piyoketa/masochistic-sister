@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { EnemyInfo, EnemyActionHint, EnemySkill, EnemyTrait } from '@/types/battle'
 
@@ -21,49 +21,68 @@ const classes = computed(() => ({
   'enemy-card--hovered': props.hovered ?? false,
 }))
 
-const formattedSkills = computed(() => {
-  const nextHints = props.enemy.nextActions ?? []
-  if (nextHints.length > 0) {
-    return nextHints.map((action, index) => ({
+const displayName = computed(() => props.enemy.name.replace('（短剣）', '')) // TODO: 削除
+
+const formattedActions = computed(() => {
+  const next = props.enemy.nextActions ?? []
+  if (next.length > 0) {
+    return next.map((action, index) => ({
       key: `${action.title}-${index}`,
-      label: formatActionHint(action),
-      description: action.description ?? action.title,
       icon: selectIcon(action),
+      label: formatActionLabel(action),
+      description: action.description ?? action.title,
     }))
   }
 
-  return (props.enemy.skills ?? []).map((skill) => ({
-    key: `${skill.name}-${skill.detail}`,
-    label: formatLegacySkill(skill),
+  return (props.enemy.skills ?? []).map((skill, index) => ({
+    key: `${skill.name}-${index}`,
+    icon: selectLegacyIcon(skill.detail),
+    label: formatLegacyLabel(skill),
     description: skill.detail,
-    icon: '✨',
   }))
 })
-const traitItems = computed(() => (props.enemy.traits ?? []).map((trait) => formatTrait(trait)))
-const stateItems = computed(() => (props.enemy.states ?? []).map((state) => formatTrait(state)))
 
-function handleEnter() {
+const traitChips = computed(() => (props.enemy.traits ?? []).map(formatTraitChip))
+const stateChips = computed(() => (props.enemy.states ?? []).map(formatTraitChip))
+
+const tooltip = reactive({
+  visible: false,
+  text: '',
+})
+
+function handleEnter(): void {
   emit('hover-start')
 }
 
-function handleLeave() {
+function handleLeave(): void {
   emit('hover-end')
 }
 
-function formatActionHint(action: EnemyActionHint): string {
-  if (action.type === 'skip') {
-    return action.icon ?? '⛓'
+function showTooltip(text: string): void {
+  if (!text) {
+    return
   }
+  tooltip.visible = true
+  tooltip.text = text
+}
 
-  const icon = selectIcon(action)
+function hideTooltip(): void {
+  tooltip.visible = false
+  tooltip.text = ''
+}
+
+function formatActionLabel(action: EnemyActionHint): string {
   const damage = formatDamage(action)
   const status = action.status ? formatStatus(action.status.name, action.status.magnitude) : ''
-  return `${icon}${damage}${status}`.trim()
+  return [damage, status.trim()].filter((part) => part.length > 0).join(' ')
 }
 
 function selectIcon(action: EnemyActionHint): string {
   if (action.icon) {
     return action.icon
+  }
+  if (action.type === 'skip') {
+    return '⛓'
   }
   if (action.pattern?.type === 'multi' || (action.pattern?.count ?? 1) > 1) {
     return '⚔️'
@@ -90,21 +109,19 @@ function formatDamage(action: EnemyActionHint): string {
   return `${amount}`
 }
 
-function formatStatus(status: string, magnitude?: number): string {
+function formatStatus(name: string, magnitude?: number): string {
   if (magnitude === undefined) {
-    return ` + ${status}`
+    return `+ ${name}`
   }
-  return ` + ${status}(${magnitude})`
+  return `+ ${name}(${magnitude})`
 }
 
-function formatLegacySkill(skill: EnemySkill): string {
-  const detail = skill.detail
-  const icon = selectLegacyIcon(detail)
-  const damage = extractLegacyDamage(detail)
-  const status = extractLegacyStatus(detail)
-  const magnitude = extractLegacyMagnitude(detail)
+function formatLegacyLabel(skill: EnemySkill): string {
+  const damage = extractLegacyDamage(skill.detail)
+  const status = extractLegacyStatus(skill.detail)
+  const magnitude = extractLegacyMagnitude(skill.detail)
   const statusText = status ? formatStatus(status, magnitude) : ''
-  return `${icon}${damage}${statusText}`.trim()
+  return [damage, statusText.trim()].filter((part) => part.length > 0).join(' ')
 }
 
 function selectLegacyIcon(detail: string): string {
@@ -147,14 +164,9 @@ function extractLegacyMagnitude(detail: string): number | undefined {
   return Number.isFinite(value) ? value : undefined
 }
 
-function formatTrait(trait: EnemyTrait): {
-  key: string
-  label: string
-  description: string
-} {
+function formatTraitChip(trait: EnemyTrait): { key: string; label: string; description: string } {
   const magnitude = extractLegacyMagnitude(trait.detail)
   const label = magnitude !== undefined ? `${trait.name}(${magnitude})` : trait.name
-
   return {
     key: `${trait.name}-${trait.detail}`,
     label,
@@ -166,31 +178,31 @@ function formatTrait(trait: EnemyTrait): {
 <template>
   <article class="enemy-card" :class="classes" role="button" @mouseenter="handleEnter" @mouseleave="handleLeave">
     <header class="enemy-card__header">
-      <div class="enemy-card__title">{{ props.enemy.name }}</div>
+      <div class="enemy-card__title">{{ displayName }}</div>
       <HpGauge :current="props.enemy.hp.current" :max="props.enemy.hp.max" />
     </header>
 
-    <section v-if="formattedSkills.length" class="enemy-card__section">
+    <section v-if="formattedActions.length" class="enemy-card__section">
       <h5 class="enemy-card__label">Next Action</h5>
-      <ul class="enemy-card__list enemy-card__list--skills">
+      <ul class="enemy-card__list enemy-card__list--chips">
         <li
-          v-for="skill in formattedSkills"
-          :key="skill.key"
+          v-for="action in formattedActions"
+          :key="action.key"
           class="enemy-card__chip"
-          @mouseenter="showTooltip(skill.description)"
+          @mouseenter="showTooltip(action.description)"
           @mouseleave="hideTooltip"
         >
-          <span class="enemy-card__chip-icon">{{ skill.icon }}</span>
-          <span>{{ skill.label }}</span>
+          <span class="enemy-card__chip-icon">{{ action.icon }}</span>
+          <span>{{ action.label }}</span>
         </li>
       </ul>
     </section>
 
-    <section v-if="traitItems.length" class="enemy-card__section">
+    <section v-if="traitChips.length" class="enemy-card__section">
       <h5 class="enemy-card__label">Traits</h5>
       <ul class="enemy-card__list enemy-card__list--chips">
         <li
-          v-for="trait in traitItems"
+          v-for="trait in traitChips"
           :key="trait.key"
           class="enemy-card__chip enemy-card__chip--plain"
           @mouseenter="showTooltip(trait.description)"
@@ -201,11 +213,11 @@ function formatTrait(trait: EnemyTrait): {
       </ul>
     </section>
 
-    <section v-if="stateItems.length" class="enemy-card__section">
+    <section v-if="stateChips.length" class="enemy-card__section">
       <h5 class="enemy-card__label">States</h5>
       <ul class="enemy-card__list enemy-card__list--chips">
         <li
-          v-for="state in stateItems"
+          v-for="state in stateChips"
           :key="state.key"
           class="enemy-card__chip enemy-card__chip--plain"
           @mouseenter="showTooltip(state.description)"
@@ -226,9 +238,9 @@ function formatTrait(trait: EnemyTrait): {
 
 <style scoped>
 .enemy-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   height: 230px;
   padding: 12px;
   border-radius: 16px;
@@ -267,13 +279,14 @@ function formatTrait(trait: EnemyTrait): {
   font-weight: 600;
   letter-spacing: 0.05em;
   color: rgba(255, 255, 255, 0.92);
+  line-height: 1.2;
 }
 
 .enemy-card__section {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .enemy-card__label {
@@ -293,7 +306,7 @@ function formatTrait(trait: EnemyTrait): {
   list-style: none;
 }
 
-.enemy-card__list--skills {
+.enemy-card__list--chips {
   gap: 8px;
 }
 
@@ -319,7 +332,10 @@ function formatTrait(trait: EnemyTrait): {
 }
 
 .enemy-card__tooltip {
-  margin-top: 8px;
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
   padding: 8px 10px;
   border-radius: 12px;
   background: rgba(10, 12, 26, 0.92);
@@ -330,6 +346,7 @@ function formatTrait(trait: EnemyTrait): {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
   text-align: center;
   letter-spacing: 0.04em;
+  pointer-events: none;
 }
 
 .tooltip-enter-active,

@@ -6,11 +6,13 @@ export type EnemySkill = {
 export type EnemyTrait = {
   name: string
   detail: string
+  magnitude?: number
 }
 
 export type EnemyActionHint = {
   title: string
   type: 'attack' | 'skill' | 'skip'
+  description?: string
   pattern?: {
     amount: number
     count?: number

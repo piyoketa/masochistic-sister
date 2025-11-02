@@ -102,10 +102,18 @@ export class Card {
     return this.definition.image
   }
 
-  play(battle: Battle, operations: CardOperation[]): void {
+  play(battle: Battle, operations: CardOperation[] = []): void {
     const action = this.actionRef
     if (!action) {
-      throw new Error('Card cannot be played without an action')
+      const state = this.stateRef
+      if (!state) {
+        throw new Error('Card cannot be played without an action')
+      }
+
+      battle.player.spendMana(this.cost)
+      battle.player.removeState(state.id)
+      battle.exilePile.add(this)
+      return
     }
 
     const context: ActionContext = action.prepareContext({
