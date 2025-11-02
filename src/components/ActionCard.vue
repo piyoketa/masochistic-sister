@@ -10,6 +10,8 @@ const props = defineProps<{
   description: string
   notes?: string[]
   attackStyle?: AttackStyle
+  cardTags?: string[]
+  operations?: string[]
   selected?: boolean
   disabled?: boolean
 }>()
@@ -26,11 +28,23 @@ const stateClasses = computed(() => ({
 }))
 const tabIndex = computed(() => (props.disabled ? -1 : 0))
 
-const attackBadge = computed(() => {
-  if (props.type !== 'attack' || !props.attackStyle) return null
-  return props.attackStyle === 'single'
-    ? { icon: '⚔️', label: '単撃' }
-    : { icon: '💥', label: '連撃' }
+const tagList = computed(() => {
+  const tags: string[] = []
+  const operations = props.operations ?? []
+
+  if (props.type === 'status') {
+    tags.push('[状態異常]')
+  } else if (operations.includes('target-enemy')) {
+    tags.push('[敵１体]')
+  } else {
+    tags.push('[自身]')
+  }
+
+  for (const name of props.cardTags ?? []) {
+    tags.push(`[${name}]`)
+  }
+
+  return tags
 })
 
 const handleEnter = () => {
@@ -63,12 +77,12 @@ const handleLeave = () => {
       <h4>{{ props.title }}</h4>
     </header>
 
+    <div v-if="tagList.length" class="tag-list">
+      <span v-for="tag in tagList" :key="tag">{{ tag }}</span>
+    </div>
+
     <section class="card-body">
       <p class="card-description">{{ props.description }}</p>
-      <div v-if="attackBadge" class="attack-style">
-        <span class="attack-icon">{{ attackBadge.icon }}</span>
-        <span>{{ attackBadge.label }}</span>
-      </div>
     </section>
   </article>
 </template>
@@ -162,6 +176,21 @@ const handleLeave = () => {
   color: #f5f5f5;
 }
 
+.tag-list {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 0 6px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(245, 245, 245, 0.75);
+}
+
+.tag-list span {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .card-body {
   flex: 1;
   display: flex;
@@ -177,21 +206,4 @@ const handleLeave = () => {
   white-space: pre-line;
 }
 
-.attack-style {
-  align-self: center;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.attack-icon {
-  font-size: 12px;
-}
 </style>

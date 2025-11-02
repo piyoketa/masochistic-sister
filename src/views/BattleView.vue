@@ -27,11 +27,12 @@ import { OrcEnemy, OrcDancerEnemy, TentacleEnemy, SnailEnemy } from '@/domain/en
 import { Attack, Action as BattleAction } from '@/domain/entities/Action'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import type { Enemy } from '@/domain/entities/Enemy'
-import type { EnemyInfo, EnemyTrait, CardInfo, EnemyActionHint } from '@/types/battle'
+import type { EnemyInfo, EnemyTrait, CardInfo, EnemyActionHint, AttackStyle } from '@/types/battle'
 import type { Card } from '@/domain/entities/Card'
 import type { State } from '@/domain/entities/State'
 import { TargetEnemyOperation, type CardOperation } from '@/domain/entities/operations'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
+import { formatEnemyActionLabel } from '@/components/enemyActionFormatter'
 
 const props = defineProps<{ viewManager?: ViewManager }>()
 const viewManager = props.viewManager ?? createDefaultViewManager()
@@ -204,6 +205,22 @@ const handCardCount = computed(() => handCards.value.length)
 function convertCardToCardInfo(card: Card, index: number): CardInfo {
   const definition = card.definition
   const identifier = card.numericId !== undefined ? `card-${card.numericId}` : `card-${index}`
+  const action = card.action
+
+  let description = card.description
+  let attackStyle: AttackStyle | undefined
+
+  if (action instanceof Attack) {
+    const hint = buildAttackActionHint(action)
+    hint.title = card.title
+    description = formatEnemyActionLabel(hint)
+
+    const pattern = hint.pattern
+    if (pattern) {
+      const count = Math.max(1, Math.floor(pattern.count ?? 1))
+      attackStyle = count > 1 ? 'multi' : 'single'
+    }
+  }
 
   return {
     id: identifier,
@@ -211,8 +228,10 @@ function convertCardToCardInfo(card: Card, index: number): CardInfo {
     type: card.type,
     cost: card.cost,
     illustration: definition.image ?? '🂠',
-    description: card.description,
+    description,
     notes: definition.notes,
+    attackStyle,
+    cardTags: definition.cardTags?.map((tag) => tag.name),
   }
 }
 
@@ -317,35 +336,43 @@ function summarizeEnemyAction(action: BattleAction): EnemyActionHint {
     return {
       title: action.name,
       type: 'skip',
-      icon: SkipTurnAction.ICON,
+      icon: '',
       description: action.describe(),
     }
   }
 
   if (action instanceof Attack) {
-    const damages = action.baseDamages
-    const states = action.inflictStatePreviews
-    const primaryState = states[0]
-
-    return {
-      title: action.name,
-      type: 'attack',
-      icon: '',
-      pattern: {
-        amount: damages.baseAmount,
-        count: damages.baseCount,
-        type: damages.type,
-      },
-      status: primaryState
-        ? {
-            name: primaryState.name,
-            magnitude: primaryState.magnitude ?? 1,
-          }
-        : undefined,
-      description: action.describe(),
-    }
+    return buildAttackActionHint(action)
   }
 
+  return buildSkillActionHint(action)
+}
+
+function buildAttackActionHint(action: Attack): EnemyActionHint {
+  const damages = action.baseDamages
+  const states = action.inflictStatePreviews
+  const primaryState = states[0]
+
+  return {
+    title: action.name,
+    type: 'attack',
+    icon: '',
+    pattern: {
+      amount: damages.baseAmount,
+      count: damages.baseCount,
+      type: damages.type,
+    },
+    status: primaryState
+      ? {
+          name: primaryState.name,
+          magnitude: primaryState.magnitude ?? 1,
+        }
+      : undefined,
+    description: action.describe(),
+  }
+}
+
+function buildSkillActionHint(action: BattleAction): EnemyActionHint {
   const gainState = action.gainStatePreviews[0]
 
   return {
@@ -646,6 +673,7 @@ function createSampleBattle(): Battle {
                   v-for="entry in handCards"
                   :key="entry.key"
                   v-bind="entry.info"
+                  :operations="entry.operations"
                   :selected="interactionState.selectedCardId === entry.key"
                   :disabled="isCardDisabled(entry)"
                   @click="handleCardClick(entry)"

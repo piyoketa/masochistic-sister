@@ -18,6 +18,10 @@ export type EnemyActionHint = {
     count?: number
     type?: 'single' | 'multi'
   }
+  calculatedPattern?: {
+    amount: number
+    count?: number
+  }
   status?: {
     name: string
     magnitude?: number
@@ -57,4 +61,5 @@ export type CardInfo = {
   description: string
   notes?: string[]
   attackStyle?: AttackStyle
+  cardTags?: string[]
 }

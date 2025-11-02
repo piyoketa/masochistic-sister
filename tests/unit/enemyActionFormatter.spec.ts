@@ -62,7 +62,7 @@ describe('formatEnemyActionLabel', () => {
         selfState: { name: '筋肉強化', magnitude: 10 },
       }),
     )
-    expect(label).toBe('ビルドアップ🔱筋肉強化(10)')
+    expect(label).toBe('ビルドアップ：🔱筋肉強化(10)')
   })
 
   it('formats skip action', () => {
