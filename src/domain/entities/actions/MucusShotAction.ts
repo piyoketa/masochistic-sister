@@ -15,6 +15,7 @@ export class MucusShotAction extends Attack {
         title: '粘液飛ばし',
         type: 'attack',
         cost: 1,
+        description: '5ダメージ。対象にねばねば(1)を付与する。',
       },
     })
   }

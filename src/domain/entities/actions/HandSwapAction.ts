@@ -22,7 +22,7 @@ export class HandSwapAction extends Skill {
     return [new SelectHandCardOperation()]
   }
 
-  override execute(context: ActionContext): void {
+  protected override perform(context: ActionContext): void {
     const selectOperation = context.operations?.find(
       (operation) => operation.type === SelectHandCardOperation.TYPE,
     ) as SelectHandCardOperation | undefined

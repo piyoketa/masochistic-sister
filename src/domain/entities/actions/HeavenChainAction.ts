@@ -26,7 +26,7 @@ export class HeavenChainAction extends Skill {
     return [new TargetEnemyOperation()]
   }
 
-  override execute(context: ActionContext): void {
+  protected override perform(context: ActionContext): void {
     const target = context.target as Enemy | undefined
     if (!target) {
       throw new Error('天の鎖の対象となる敵が見つかりませんでした')

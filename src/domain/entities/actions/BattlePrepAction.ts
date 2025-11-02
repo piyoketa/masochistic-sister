@@ -16,7 +16,7 @@ export class BattlePrepAction extends Skill {
     return '次のターンに獲得するマナを+1する'
   }
 
-  override execute(context: ActionContext): void {
+  protected override perform(context: ActionContext): void {
     const battle = context.battle
     const scheduledTurn = battle.turn.current.turnCount + 1
 

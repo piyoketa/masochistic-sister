@@ -32,7 +32,7 @@ export class SkipTurnAction extends Action {
     return '何も行動しない'
   }
 
-  override execute(context: ActionContext): void {
+  protected override perform(context: ActionContext): void {
     const enemy = context.source as Enemy
     context.battle.addLogEntry({
       message: this.messageTemplate(enemy),

@@ -270,8 +270,8 @@ describe('Battle sample scenario', () => {
     // プレイヤーの現在HPが80で維持されていることを確認する
     expect(snapshot.player.currentHp).toBe(80)
     const hand = battle.hand.list()
-    // 手札枚数が5枚のままであることを確認する
-    expect(hand).toHaveLength(5)
+    // 手札枚数が6枚のままであることを確認する（ねばねばが手札に残っている）
+    expect(hand).toHaveLength(6)
     // 手札内の記憶：酸を吐くの枚数が1枚であることを確認する
     const acidMemoryCount = hand.filter((card) => card.title === '記憶：酸を吐く').length
     // 記憶：酸を吐くの枚数が1枚に保たれていることを確認する
@@ -292,8 +292,8 @@ describe('Battle sample scenario', () => {
     // -- 結果検証 --
     // プレイヤーの現在マナが4になっていることを確認する
     expect(snapshot.player.currentMana).toBe(4)
-    // ドロー後の手札枚数が7枚であることを確認する
-    expect(snapshot.hand).toHaveLength(7)
+    // ドロー後の手札枚数が8枚であることを確認する
+    expect(snapshot.hand).toHaveLength(8)
     const handIds = snapshot.hand.map(requireCardId)
     // 手札に指定したカードID群が含まれていることを確認する
     expect(handIds).toEqual(
@@ -308,6 +308,7 @@ describe('Battle sample scenario', () => {
     expect(snapshot.events).toHaveLength(0)
     // 山札の内容が想定どおり1枚だけ残っていることを確認する
     expect(snapshot.deck.map(requireCardId)).toEqual([fifthHeavenChainId])
+    // TODO: プレイヤーのStateが、ねばねば(1)と腐食(1)であることを確認する
   })
 
   it('２ターン目に天の鎖で触手を封じる', () => {
@@ -405,6 +406,35 @@ describe('Battle sample scenario', () => {
     expect(battle.hand.hasCardOf(AcidSpitAction)).toBe(false)
   })
 
+  it('２ターン目４枚目「ねばねば」を使用する', () => {
+    // -- 状況設定 --
+    // ２ターン目に状態異常：ねばねばをプレイした直後のスナップショットを取得する
+    const { battle, snapshot, lastEntry } = runScenario(Steps.playStickyState)
+    // 状況確認：状態異常：ねばねばが操作指定なしでプレイされたログであることを確認する
+    expect(lastEntry?.type).toBe('play-card')
+    let stickyCardId: number | undefined
+    if (lastEntry?.type === 'play-card') {
+      // 対象カードが状態異常：ねばねばであることを確認する
+      stickyCardId = lastEntry.cardId
+      const stickyCardInfo = battle.cardRepository.findWithLocation(stickyCardId)
+      expect(stickyCardInfo?.card.title).toBe('ねばねば')
+      // 操作キューが空であることを確認する
+      expect(lastEntry.operations).toHaveLength(0)
+    }
+
+    // -- 結果検証 --
+    // プレイヤーの現在マナが0に減少していることを確認する
+    expect(snapshot.player.currentMana).toBe(0)
+    // 手札枚数が4枚になっていることを確認する
+    expect(snapshot.hand).toHaveLength(4)
+    // 除外ゾーンに状態異常：ねばねばが移動していることを確認する
+    if (stickyCardId !== undefined) {
+      expect(snapshot.exilePile.map(requireCardId)).toContain(stickyCardId)
+    }
+    // プレイヤーの状態からStickyStateが消えていることを確認する
+    expect(battle.player.getStates().some((state) => state instanceof StickyState)).toBe(false)
+  })
+
   it('２ターン目の敵ターン開始で敵側フェーズへ移行する', () => {
     // -- 状況設定 --
     // ２ターン目プレイヤーフェイズ終了後、敵ターン開始イベント直後のスナップショットを取得する
@@ -415,8 +445,8 @@ describe('Battle sample scenario', () => {
     // -- 結果検証 --
     // ターンマネージャのアクティブサイドが敵になっていることを確認する
     expect(battle.turn.current.activeSide).toBe('enemy')
-    // プレイヤーの現在マナが1であることを確認する
-    expect(snapshot.player.currentMana).toBe(1)
+    // プレイヤーの現在マナが0であることを確認する（ねばねばを使用したため）
+    expect(snapshot.player.currentMana).toBe(0)
   })
 
   it('２ターン目の敵ターンでオークがビルドアップを行う', () => {
@@ -455,8 +485,8 @@ describe('Battle sample scenario', () => {
     // プレイヤーの現在HPが20まで減少していることを確認する
     expect(snapshot.player.currentHp).toBe(20)
     const currentHandSize = battle.hand.list().length
-    // 乱れ突きの記憶が追加され手札が増えていることを確認する
-    expect(currentHandSize).toBeGreaterThan(5)
+    // 乱れ突きの記憶が追加された結果、手札枚数が5枚に戻っていることを確認する
+    expect(currentHandSize).toBe(5)
     // 手札に記憶：乱れ突きが存在することを確認する
     expect(battle.hand.hasCardOf(FlurryAction)).toBe(true)
     // 手札に状態カード：腐食が残っていることを確認する
@@ -564,8 +594,8 @@ describe('Battle sample scenario', () => {
     // -- 結果検証 --
     // プレイヤーの現在マナが2に減少していることを確認する
     expect(snapshot.player.currentMana).toBe(2)
-    // プレイ後の手札枚数が4枚以下になっていることを確認する
-    expect(snapshot.hand.length).toBeLessThanOrEqual(4)
+    // プレイ後の手札枚数が6枚であることを確認する（リフレッシュ後の手札構成が維持される）
+    expect(snapshot.hand.length).toBe(6)
     const snail = snapshot.enemies.find((enemy) => enemy.numericId === Refs.enemyIds.snail)
     // かたつむりのHPが0になっていることを確認する
     expect(snail?.currentHp).toBe(0)
@@ -612,8 +642,8 @@ describe('Battle sample scenario', () => {
     // -- 結果検証 --
     // プレイヤーの現在マナが2に減少していることを確認する
     expect(snapshot.player.currentMana).toBe(2)
-    // プレイ後の手札枚数が減少していることを確認する
-    expect(snapshot.hand.length).toBeLessThanOrEqual(4)
+    // プレイ後の手札枚数が6枚に落ち着いていることを確認する
+    expect(snapshot.hand.length).toBe(6)
     const orc = snapshot.enemies.find((enemy) => enemy.numericId === RefsPattern2.enemyIds.orc)
     // オークのHPが0になっていることを確認する
     expect(orc?.currentHp).toBe(0)
@@ -639,8 +669,8 @@ describe('Battle sample scenario', () => {
     // -- 結果検証 --
     // プレイヤーの現在マナが1に減少していることを確認する
     expect(snapshot.player.currentMana).toBe(1)
-    // プレイ後の手札枚数が減少していることを確認する
-    expect(snapshot.hand.length).toBeLessThanOrEqual(4)
+    // プレイ後の手札枚数が5枚であることを確認する
+    expect(snapshot.hand.length).toBe(5)
     const orcDancer = snapshot.enemies.find(
       (enemy) => enemy.numericId === RefsPattern2.enemyIds.orcDancer,
     )
@@ -673,8 +703,8 @@ describe('Battle sample scenario', () => {
     // -- 結果検証 --
     // プレイヤーの現在マナが0になっていることを確認する
     expect(snapshot.player.currentMana).toBe(0)
-    // プレイ後の手札枚数が減少していることを確認する
-    expect(snapshot.hand.length).toBeLessThanOrEqual(3)
+    // プレイ後の手札枚数が4枚であることを確認する
+    expect(snapshot.hand.length).toBe(4)
     // 除外ゾーンに天の鎖が移動していることを確認する
     expect(snapshot.exilePile.map(requireCardId)).toContain(fifthHeavenChainIdPattern2)
     const tentacle = battle.enemyTeam.findEnemy(RefsPattern2.enemyIds.tentacle)

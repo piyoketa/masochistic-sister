@@ -25,13 +25,16 @@ export interface ActionContext {
 export interface BaseActionProps {
   name: string
   cardDefinition: CardDefinitionBase
+  gainStates?: Array<() => State>
 }
 
 export abstract class Action {
   protected readonly props: BaseActionProps
+  private readonly gainStateFactories: Array<() => State>
 
   protected constructor(props: BaseActionProps) {
     this.props = props
+    this.gainStateFactories = props.gainStates ? [...props.gainStates] : []
   }
 
   abstract get type(): ActionType
@@ -163,8 +166,33 @@ export abstract class Action {
     return targetOperation?.enemy
   }
 
+  execute(context: ActionContext): void {
+    this.perform(context)
+    this.applyGainStates(context)
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  execute(_context: ActionContext): void {}
+  protected perform(_context: ActionContext): void {}
+
+  get gainStatePreviews(): State[] {
+    return this.gainStateFactories.map((factory) => factory())
+  }
+
+  private applyGainStates(context: ActionContext): void {
+    if (this.gainStateFactories.length === 0) {
+      return
+    }
+
+    const source = context.source
+    for (const factory of this.gainStateFactories) {
+      const state = factory()
+      if (isPlayerEntity(source)) {
+        source.addState(state, { battle: context.battle })
+      } else {
+        source.addState(state)
+      }
+    }
+  }
 }
 
 export interface SkillProps extends BaseActionProps {}
@@ -226,7 +254,7 @@ export abstract class Attack extends Action {
     return clone
   }
 
-  execute(context: ActionContext): void {
+  protected override perform(context: ActionContext): void {
     // プレイヤー側からの攻撃なのか、敵側からの攻撃なのかでデフォルトの対象が異なるため、先に判別する
     const isPlayerSource = isPlayerEntity(context.source)
     const target = context.target ?? this.resolveTarget(context)

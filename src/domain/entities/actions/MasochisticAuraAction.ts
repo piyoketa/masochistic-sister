@@ -25,7 +25,7 @@ export class MasochisticAuraAction extends Skill {
     return [new TargetEnemyOperation()]
   }
 
-  override execute(context: ActionContext): void {
+  protected override perform(context: ActionContext): void {
     const target = context.target as Enemy | undefined
 
     if (!target) {

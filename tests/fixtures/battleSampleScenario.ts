@@ -185,6 +185,17 @@ export function createBattleScenario(thirdTurnBuilder: ThirdTurnBuilder): Battle
       },
       operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
     }),
+    playStickyState: actionLog.push({
+      type: 'play-card',
+      card: (battle) => {
+        const card = battle.cardRepository.find((candidate) => candidate.title === 'ねばねば')
+        if (!card) {
+          throw new Error('手札にねばねばの状態カードが存在しません')
+        }
+
+        return requireCardId(card)
+      },
+    }),
     endPlayerTurn2: actionLog.push({ type: 'end-player-turn' }),
     startEnemyTurn2: actionLog.push({ type: 'start-enemy-turn' }),
     orcActsSecond: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orc }),
