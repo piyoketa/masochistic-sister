@@ -25,6 +25,7 @@ import { ProtagonistPlayer } from '@/domain/entities/players'
 import { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { OrcEnemy, OrcDancerEnemy, TentacleEnemy, SnailEnemy } from '@/domain/entities/enemies'
 import { Attack, Action as BattleAction } from '@/domain/entities/Action'
+import { Damages } from '@/domain/entities/Damages'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import type { Enemy } from '@/domain/entities/Enemy'
 import type { EnemyInfo, EnemyTrait, CardInfo, EnemyActionHint, AttackStyle } from '@/types/battle'
@@ -49,6 +50,7 @@ interface HandCardViewModel {
   card: Card
   numericId?: number
   operations: string[]
+  affordable: boolean
 }
 
 type InteractionMode = 'idle' | 'selecting-target-enemy'
@@ -148,7 +150,7 @@ const phaseLabel = computed(() => {
 })
 const manaLabel = computed(() => {
   const player = snapshot.value?.player
-  return player ? `マナ ${player.currentMana} / ${player.maxMana}` : 'マナ -'
+  return player ? `${player.currentMana} / ${player.maxMana}` : '- / -'
 })
 const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
@@ -163,7 +165,9 @@ const enemies = computed<EnemyInfo[]>(() => {
     return []
   }
 
-  return current.enemies.map((enemy) => {
+  const aliveEnemies = current.enemies.filter((enemy) => enemy.currentHp > 0)
+
+  return aliveEnemies.map((enemy) => {
     const catalog = enemyCatalogByName[enemy.name]
     const traitList = mergeTraits(catalog?.traits, mapStatesToTraits(enemy.traits))
     const stateList = mapStatesToTraits(enemy.states) ?? []
@@ -187,15 +191,19 @@ const handCards = computed<HandCardViewModel[]>(() => {
     return []
   }
 
+  const currentMana = current.player.currentMana
+
   return current.hand.map((card, index) => {
     const info = convertCardToCardInfo(card, index)
     const operations = card.definition.operations ?? []
+    const affordable = card.cost <= currentMana
     return {
       key: info.id,
       info,
       card,
       numericId: card.numericId,
       operations,
+      affordable,
     }
   })
 })
@@ -208,14 +216,75 @@ function convertCardToCardInfo(card: Card, index: number): CardInfo {
   const action = card.action
 
   let description = card.description
+  let descriptionSegments: Array<{ text: string; highlighted?: boolean }> | undefined
   let attackStyle: AttackStyle | undefined
 
   if (action instanceof Attack) {
-    const hint = buildAttackActionHint(action)
-    hint.title = card.title
-    description = formatEnemyActionLabel(hint)
+    const damages = action.baseDamages
+    const primaryState = action.inflictStatePreviews[0]
+    const hint: EnemyActionHint = {
+      title: card.title,
+      type: 'attack',
+      icon: '',
+      pattern: {
+        amount: damages.baseAmount,
+        count: damages.baseCount,
+        type: damages.type,
+      },
+      calculatedPattern: undefined,
+      status: primaryState
+        ? {
+            name: primaryState.name,
+            magnitude: primaryState.magnitude ?? 1,
+          }
+        : undefined,
+      description: action.describe(),
+    }
 
-    const pattern = hint.pattern
+    const formatWithCalculated = (calculated?: { amount: number; count?: number }) => {
+      const formatted = formatEnemyActionLabel(
+        calculated
+          ? {
+              ...hint,
+              calculatedPattern: {
+                amount: calculated.amount,
+                count: calculated.count,
+              },
+            }
+          : hint,
+        { includeTitle: false },
+      )
+      description = formatted.label
+      descriptionSegments = formatted.segments
+    }
+
+    formatWithCalculated()
+
+    const battle = viewManager.battle
+    const isSelected = interactionState.selectedCardId === identifier
+    const targetEnemyId = hoveredEnemyId.value
+    if (battle && isSelected && targetEnemyId !== null) {
+      const enemy = battle.enemyTeam.findEnemyByNumericId(targetEnemyId) as Enemy | undefined
+      if (enemy) {
+        const calculatedDamages = new Damages({
+          baseAmount: damages.baseAmount,
+          baseCount: damages.baseCount,
+          type: damages.type,
+          attackerStates: battle.player.getStates(),
+          defenderStates: enemy.getStates(),
+        })
+        formatWithCalculated({
+          amount: calculatedDamages.amount,
+          count: calculatedDamages.count,
+        })
+      }
+    }
+
+    const pattern = hint.pattern ?? {
+      amount: damages.baseAmount,
+      count: damages.baseCount,
+      type: damages.type,
+    }
     if (pattern) {
       const count = Math.max(1, Math.floor(pattern.count ?? 1))
       attackStyle = count > 1 ? 'multi' : 'single'
@@ -229,6 +298,7 @@ function convertCardToCardInfo(card: Card, index: number): CardInfo {
     cost: card.cost,
     illustration: definition.image ?? '🂠',
     description,
+    descriptionSegments,
     notes: definition.notes,
     attackStyle,
     cardTags: definition.cardTags?.map((tag) => tag.name),
@@ -328,10 +398,10 @@ function summarizeEnemyActions(battle: Battle | undefined, enemyId: number): Ene
   }
 
   const [nextAction] = queued
-  return nextAction ? [summarizeEnemyAction(nextAction)] : []
+  return nextAction ? [summarizeEnemyAction(battle, enemy, nextAction)] : []
 }
 
-function summarizeEnemyAction(action: BattleAction): EnemyActionHint {
+function summarizeEnemyAction(battle: Battle, enemy: Enemy, action: BattleAction): EnemyActionHint {
   if (action instanceof SkipTurnAction) {
     return {
       title: action.name,
@@ -342,16 +412,24 @@ function summarizeEnemyAction(action: BattleAction): EnemyActionHint {
   }
 
   if (action instanceof Attack) {
-    return buildAttackActionHint(action)
+    return buildAttackActionHint(battle, enemy, action)
   }
 
   return buildSkillActionHint(action)
 }
 
-function buildAttackActionHint(action: Attack): EnemyActionHint {
+function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): EnemyActionHint {
   const damages = action.baseDamages
   const states = action.inflictStatePreviews
   const primaryState = states[0]
+
+  const calculatedDamages = new Damages({
+    baseAmount: damages.baseAmount,
+    baseCount: damages.baseCount,
+    type: damages.type,
+    attackerStates: enemy.getStates(),
+    defenderStates: battle.player.getStates(),
+  })
 
   return {
     title: action.name,
@@ -361,6 +439,10 @@ function buildAttackActionHint(action: Attack): EnemyActionHint {
       amount: damages.baseAmount,
       count: damages.baseCount,
       type: damages.type,
+    },
+    calculatedPattern: {
+      amount: calculatedDamages.amount,
+      count: calculatedDamages.count,
     },
     status: primaryState
       ? {
@@ -412,6 +494,9 @@ function isCardDisabled(entry: HandCardViewModel): boolean {
   if (!isPlayerTurn.value) {
     return true
   }
+  if (!entry.affordable) {
+    return true
+  }
   if (isSelectingEnemy.value) {
     return interactionState.selectedCardId !== entry.key
   }
@@ -419,7 +504,7 @@ function isCardDisabled(entry: HandCardViewModel): boolean {
 }
 
 function handleCardClick(entry: HandCardViewModel): void {
-  if (isInputLocked.value || isSelectingEnemy.value || !isPlayerTurn.value) {
+  if (isInputLocked.value || isSelectingEnemy.value || !isPlayerTurn.value || !entry.affordable) {
     return
   }
 
@@ -649,7 +734,7 @@ function createSampleBattle(): Battle {
               <div v-else-if="!hasSnapshot || enemies.length === 0" class="zone-message">
                 表示できる敵がありません
               </div>
-              <div v-else class="enemy-grid">
+              <TransitionGroup v-else name="enemy-card" tag="div" class="enemy-grid">
                 <EnemyCard
                   v-for="enemy in enemies"
                   :key="enemy.numericId"
@@ -661,26 +746,27 @@ function createSampleBattle(): Battle {
                   @hover-end="() => handleEnemyHoverEnd(enemy.numericId)"
                   @click="handleEnemyClick(enemy)"
                 />
-              </div>
+              </TransitionGroup>
             </section>
 
             <section class="hand-zone">
               <div v-if="errorMessage" class="zone-message zone-message--error">{{ errorMessage }}</div>
               <div v-else-if="isInitializing" class="zone-message">カード情報を読み込み中...</div>
               <div v-else-if="handCards.length === 0" class="zone-message">手札は空です</div>
-              <div v-else class="hand-grid">
+              <TransitionGroup v-else name="hand-card" tag="div" class="hand-grid">
                 <ActionCard
                   v-for="entry in handCards"
                   :key="entry.key"
                   v-bind="entry.info"
                   :operations="entry.operations"
+                  :affordable="entry.affordable"
                   :selected="interactionState.selectedCardId === entry.key"
                   :disabled="isCardDisabled(entry)"
                   @click="handleCardClick(entry)"
                   @hover-start="handleCardHoverStart"
                   @hover-end="handleCardHoverEnd"
                 />
-              </div>
+              </TransitionGroup>
             </section>
           </main>
 
@@ -695,10 +781,10 @@ function createSampleBattle(): Battle {
               <div class="sidebar-overlay-container">
                 <div class="sidebar-overlay">
                   <div class="mana-pop">
-                    <span class="overlay-value">{{ manaLabel }}</span>
+                    <span class="mana-pop__value">{{ manaLabel }}</span>
                   </div>
                   <HpGauge :current="playerHpGauge.current" :max="playerHpGauge.max" />
-                  <div class="overlay-row">
+                  <div class="overlay-row" style="display: none;">
                     <span class="overlay-label">プレイヤー</span>
                     <span class="overlay-value">{{ playerName }}</span>
                   </div>
@@ -861,6 +947,7 @@ function createSampleBattle(): Battle {
   min-height: 0;
   align-items: stretch;
   align-content: center;
+  position: relative;
 }
 
 .hand-grid {
@@ -875,6 +962,56 @@ function createSampleBattle(): Battle {
   padding: 30px;
   background: rgba(255, 255, 255, 0.18);
   border-radius: 16px;
+}
+
+:deep(.hand-card-enter-active),
+:deep(.hand-card-leave-active) {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+:deep(.hand-card-enter-from),
+:deep(.hand-card-leave-to) {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+
+:deep(.hand-card-enter-to),
+:deep(.hand-card-leave-from) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+:deep(.hand-card-leave-active) {
+  position: absolute;
+}
+
+:deep(.hand-card-move) {
+  transition: transform 0.5s ease;
+}
+
+:deep(.enemy-card-enter-active),
+:deep(.enemy-card-leave-active) {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+:deep(.enemy-card-enter-from),
+:deep(.enemy-card-leave-to) {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+
+:deep(.enemy-card-enter-to),
+:deep(.enemy-card-leave-from) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+:deep(.enemy-card-leave-active) {
+  position: absolute;
+}
+
+:deep(.enemy-card-move) {
+  transition: transform 0.5s ease;
 }
 
 .battle-sidebar {
@@ -929,11 +1066,16 @@ function createSampleBattle(): Battle {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(114, 173, 255, 0.28), rgba(66, 103, 229, 0.35));
-  color: rgba(245, 250, 255, 0.95);
-  font-size: 14px;
+  background: rgba(255, 227, 115, 0.92);
+  color: #402510;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.mana-pop__value {
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: 0.08em;
 }
 

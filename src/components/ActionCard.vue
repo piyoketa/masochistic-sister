@@ -8,12 +8,14 @@ const props = defineProps<{
   cost: number
   illustration?: string
   description: string
+  descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
   notes?: string[]
   attackStyle?: AttackStyle
   cardTags?: string[]
   operations?: string[]
   selected?: boolean
   disabled?: boolean
+  affordable?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +29,10 @@ const stateClasses = computed(() => ({
   'action-card--disabled': props.disabled ?? false,
 }))
 const tabIndex = computed(() => (props.disabled ? -1 : 0))
+const costClasses = computed(() => [
+  'card-cost',
+  { 'card-cost--unavailable': props.affordable === false },
+])
 
 const tagList = computed(() => {
   const tags: string[] = []
@@ -71,7 +77,7 @@ const handleLeave = () => {
     @focusin="handleEnter"
     @focusout="handleLeave"
   >
-    <span class="card-cost">{{ props.cost }}</span>
+    <span :class="costClasses">{{ props.cost }}</span>
 
     <header class="card-header">
       <h4>{{ props.title }}</h4>
@@ -82,7 +88,20 @@ const handleLeave = () => {
     </div>
 
     <section class="card-body">
-      <p class="card-description">{{ props.description }}</p>
+      <p class="card-description">
+        <template v-if="props.descriptionSegments && props.descriptionSegments.length">
+          <span
+            v-for="(segment, index) in props.descriptionSegments"
+            :key="index"
+            :class="{ 'value--boosted': segment.highlighted }"
+          >
+            {{ segment.text }}
+          </span>
+        </template>
+        <template v-else>
+          {{ props.description }}
+        </template>
+      </p>
     </section>
   </article>
 </template>
@@ -161,6 +180,12 @@ const handleLeave = () => {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
+.card-cost--unavailable {
+  background: rgba(112, 112, 118, 0.65);
+  color: rgba(235, 235, 235, 0.85);
+  box-shadow: none;
+}
+
 .card-header {
   display: flex;
   justify-content: center;
@@ -197,6 +222,10 @@ const handleLeave = () => {
   flex-direction: column;
   gap: 4px;
   color: rgba(245, 245, 245, 0.92);
+}
+
+.card-description .value--boosted {
+  color: #4cff9f;
 }
 
 .card-description {

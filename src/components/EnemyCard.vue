@@ -43,7 +43,7 @@ const formattedActions = computed(() => {
     return next.map((action, index) => ({
       key: `${action.title}-${index}`,
       icon: action.icon ?? '',
-      label: formatEnemyActionLabel(action),
+      ...formatEnemyActionLabel(action),
       description: action.description ?? action.title,
     }))
   }
@@ -52,6 +52,7 @@ const formattedActions = computed(() => {
     key: `${skill.name}-${index}`,
     icon: selectLegacyIcon(skill.detail),
     label: formatLegacyLabel(skill),
+    segments: [{ text: formatLegacyLabel(skill) }],
     description: skill.detail,
   }))
 })
@@ -171,7 +172,15 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
           @mouseleave="hideTooltip"
         >
           <span v-if="action.icon" class="enemy-card__chip-icon">{{ action.icon }}</span>
-          <span>{{ action.label }}</span>
+          <span class="enemy-card__chip-text">
+            <span
+              v-for="(segment, segmentIndex) in action.segments"
+              :key="segmentIndex"
+              :class="{ 'value--boosted': segment.highlighted }"
+            >
+              {{ segment.text }}
+            </span>
+          </span>
         </li>
       </ul>
     </section>
@@ -215,7 +224,7 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 230px;
+  height: 180px;
   padding: 12px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(18, 22, 40, 0.9), rgba(10, 12, 24, 0.95));
@@ -303,5 +312,14 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
 
 .enemy-card__chip-icon {
   font-size: 13px;
+}
+
+.enemy-card__chip-text {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.value--boosted {
+  color: #4cff9f;
 }
 </style>

@@ -59,6 +59,7 @@ export type CardInfo = {
   cost: number
   illustration: string
   description: string
+  descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
   notes?: string[]
   attackStyle?: AttackStyle
   cardTags?: string[]

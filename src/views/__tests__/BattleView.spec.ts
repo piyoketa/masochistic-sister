@@ -26,7 +26,7 @@ function createGlobalStubs() {
       `,
     },
     ActionCard: {
-      props: ['title', 'selected', 'disabled'],
+      props: ['title', 'selected', 'disabled', 'affordable'],
       emits: ['hover-start', 'hover-end'],
       template: `
         <div
@@ -109,7 +109,7 @@ describe('BattleView', () => {
     await flushPromises()
     await flushPromises()
 
-    expect(wrapper.html()).toContain('マナ 2 / 3')
+    expect(wrapper.get('.mana-pop').text()).toBe('2 / 3')
     expect(wrapper.html()).toContain('ターン')
   })
 

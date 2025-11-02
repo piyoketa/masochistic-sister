@@ -8,6 +8,7 @@ const baseHint = (overrides: Partial<EnemyActionHint>): EnemyActionHint => ({
   type: overrides.type ?? 'skill',
   description: overrides.description,
   pattern: overrides.pattern,
+  calculatedPattern: overrides.calculatedPattern,
   status: overrides.status,
   selfState: overrides.selfState,
   acted: overrides.acted,
@@ -16,12 +17,15 @@ const baseHint = (overrides: Partial<EnemyActionHint>): EnemyActionHint => ({
 
 describe('formatEnemyActionLabel', () => {
   it('returns acted label when enemy already acted', () => {
-    const label = formatEnemyActionLabel(baseHint({ title: '行動済み', type: 'skill', acted: true }))
+    const { label, segments } = formatEnemyActionLabel(
+      baseHint({ title: '行動済み', type: 'skill', acted: true }),
+    )
     expect(label).toBe('💤行動済み')
+    expect(segments).toEqual([{ text: '💤行動済み' }])
   })
 
   it('formats single damage attack', () => {
-    const label = formatEnemyActionLabel(
+    const { label, segments } = formatEnemyActionLabel(
       baseHint({
         title: 'たいあたり',
         type: 'attack',
@@ -29,10 +33,15 @@ describe('formatEnemyActionLabel', () => {
       }),
     )
     expect(label).toBe('たいあたり💥20')
+    expect(segments).toEqual([
+      { text: 'たいあたり' },
+      { text: '💥' },
+      { text: '20', highlighted: false },
+    ])
   })
 
   it('formats status inflicting single attack', () => {
-    const label = formatEnemyActionLabel(
+    const { label, segments } = formatEnemyActionLabel(
       baseHint({
         title: '酸を吐く',
         type: 'attack',
@@ -41,10 +50,17 @@ describe('formatEnemyActionLabel', () => {
       }),
     )
     expect(label).toBe('酸を吐く💥5+🌀腐食(1)')
+    expect(segments).toEqual([
+      { text: '酸を吐く' },
+      { text: '💥' },
+      { text: '5', highlighted: false },
+      { text: '+' },
+      { text: '🌀腐食(1)' },
+    ])
   })
 
   it('formats multi hit attack', () => {
-    const label = formatEnemyActionLabel(
+    const { label, segments } = formatEnemyActionLabel(
       baseHint({
         title: '乱れ突き',
         type: 'attack',
@@ -52,10 +68,16 @@ describe('formatEnemyActionLabel', () => {
       }),
     )
     expect(label).toBe('乱れ突き⚔️10×3')
+    expect(segments).toEqual([
+      { text: '乱れ突き' },
+      { text: '⚔️' },
+      { text: '10', highlighted: false },
+      { text: '×3', highlighted: false },
+    ])
   })
 
   it('formats skill that grants self state', () => {
-    const label = formatEnemyActionLabel(
+    const { label, segments } = formatEnemyActionLabel(
       baseHint({
         title: 'ビルドアップ',
         type: 'skill',
@@ -63,15 +85,58 @@ describe('formatEnemyActionLabel', () => {
       }),
     )
     expect(label).toBe('ビルドアップ：🔱筋肉強化(10)')
+    expect(segments).toEqual([
+      { text: 'ビルドアップ：' },
+      { text: '🔱筋肉強化(10)' },
+    ])
   })
 
   it('formats skip action', () => {
-    const label = formatEnemyActionLabel(baseHint({ title: '足止め', type: 'skip' }))
+    const { label, segments } = formatEnemyActionLabel(baseHint({ title: '足止め', type: 'skip' }))
     expect(label).toBe('⛓行動不可')
+    expect(segments).toEqual([{ text: '⛓行動不可' }])
   })
 
   it('formats other skills with sparkle', () => {
-    const label = formatEnemyActionLabel(baseHint({ title: '手札入れ替え', type: 'skill' }))
+    const { label, segments } = formatEnemyActionLabel(
+      baseHint({ title: '手札入れ替え', type: 'skill' }),
+    )
     expect(label).toBe('手札入れ替え✨')
+    expect(segments).toEqual([{ text: '手札入れ替え' }, { text: '✨' }])
+  })
+
+  it('omits title when requested', () => {
+    const { label, segments } = formatEnemyActionLabel(
+      baseHint({
+        title: '乱れ突き',
+        type: 'attack',
+        pattern: { amount: 10, count: 2, type: 'multi' },
+      }),
+      { includeTitle: false },
+    )
+    expect(label).toBe('⚔️10×2')
+    expect(segments).toEqual([
+      { text: '⚔️' },
+      { text: '10', highlighted: false },
+      { text: '×2', highlighted: false },
+    ])
+  })
+
+  it('highlights changed damage values', () => {
+    const { label, segments } = formatEnemyActionLabel(
+      baseHint({
+        title: '乱れ突き',
+        type: 'attack',
+        pattern: { amount: 10, count: 3, type: 'multi' },
+        calculatedPattern: { amount: 15, count: 4 },
+      }),
+    )
+    expect(label).toBe('乱れ突き⚔️15×4')
+    expect(segments).toEqual([
+      { text: '乱れ突き' },
+      { text: '⚔️' },
+      { text: '15', highlighted: true },
+      { text: '×4', highlighted: true },
+    ])
   })
 })
