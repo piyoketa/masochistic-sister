@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
 import HpGauge from '@/components/HpGauge.vue'
-import type { EnemyInfo, EnemyActionHint, EnemySkill, EnemyTrait } from '@/types/battle'
+import type { EnemyInfo, EnemySkill, EnemyTrait } from '@/types/battle'
+import { formatEnemyActionLabel } from '@/components/enemyActionFormatter'
 
 const props = defineProps<{
   enemy: EnemyInfo
@@ -28,8 +29,8 @@ const formattedActions = computed(() => {
   if (next.length > 0) {
     return next.map((action, index) => ({
       key: `${action.title}-${index}`,
-      icon: selectIcon(action),
-      label: formatActionLabel(action),
+      icon: action.icon ?? '',
+      label: formatEnemyActionLabel(action),
       description: action.description ?? action.title,
     }))
   }
@@ -69,44 +70,6 @@ function showTooltip(text: string): void {
 function hideTooltip(): void {
   tooltip.visible = false
   tooltip.text = ''
-}
-
-function formatActionLabel(action: EnemyActionHint): string {
-  const damage = formatDamage(action)
-  const status = action.status ? formatStatus(action.status.name, action.status.magnitude) : ''
-  return [damage, status.trim()].filter((part) => part.length > 0).join(' ')
-}
-
-function selectIcon(action: EnemyActionHint): string {
-  if (action.icon) {
-    return action.icon
-  }
-  if (action.type === 'skip') {
-    return '⛓'
-  }
-  if (action.pattern?.type === 'multi' || (action.pattern?.count ?? 1) > 1) {
-    return '⚔️'
-  }
-  if (action.pattern && action.pattern.amount > 0) {
-    return '💥'
-  }
-  return '✨'
-}
-
-function formatDamage(action: EnemyActionHint): string {
-  const pattern = action.pattern
-  if (!pattern) {
-    return ''
-  }
-
-  const amount = Math.max(0, Math.floor(pattern.amount))
-  const count = Math.max(0, Math.floor(pattern.count ?? 1))
-
-  if (pattern.type === 'multi' || count > 1) {
-    return `${amount}×${count}`
-  }
-
-  return `${amount}`
 }
 
 function formatStatus(name: string, magnitude?: number): string {
@@ -192,7 +155,7 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
           @mouseenter="showTooltip(action.description)"
           @mouseleave="hideTooltip"
         >
-          <span class="enemy-card__chip-icon">{{ action.icon }}</span>
+          <span v-if="action.icon" class="enemy-card__chip-icon">{{ action.icon }}</span>
           <span>{{ action.label }}</span>
         </li>
       </ul>

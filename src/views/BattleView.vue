@@ -273,6 +273,18 @@ function summarizeEnemyActions(battle: Battle | undefined, enemyId: number): Ene
     return []
   }
 
+  if (enemy.hasActedThisTurn) {
+    return [
+      {
+        title: '行動済み',
+        type: 'skill',
+        icon: '',
+        acted: true,
+        description: `${enemy.name}はこのターン既に行動済み。`,
+      },
+    ]
+  }
+
   const queued = enemy.queuedActions
   if (!queued || queued.length === 0) {
     return []
@@ -300,7 +312,7 @@ function summarizeEnemyAction(action: BattleAction): EnemyActionHint {
     return {
       title: action.name,
       type: 'attack',
-      icon: damages.baseCount > 1 || damages.type === 'multi' ? '⚔️' : '💥',
+      icon: '',
       pattern: {
         amount: damages.baseAmount,
         count: damages.baseCount,
@@ -316,10 +328,18 @@ function summarizeEnemyAction(action: BattleAction): EnemyActionHint {
     }
   }
 
+  const gainState = action.gainStatePreviews[0]
+
   return {
     title: action.name,
     type: action.type === 'skill' ? 'skill' : 'attack',
-    icon: action.type === 'skill' ? '✨' : '💥',
+    icon: '',
+    selfState: gainState
+      ? {
+          name: gainState.name,
+          magnitude: gainState.magnitude,
+        }
+      : undefined,
     description: action.describe(),
   }
 }
