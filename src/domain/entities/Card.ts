@@ -95,7 +95,16 @@ export class Card {
   }
 
   get description(): string {
-    return this.definition.description
+    // 描画時には定義ではなく参照しているAction/Stateから説明文を動的に生成する
+    if (this.actionRef) {
+      return this.actionRef.describe()
+    }
+
+    if (this.stateRef) {
+      return this.stateRef.description()
+    }
+
+    return ''
   }
 
   get image(): string | undefined {
@@ -160,7 +169,6 @@ export class Card {
     return {
       ...baseDefinition,
       ...this.definitionOverridesValue,
-      notes: this.definitionOverridesValue?.notes ?? baseDefinition.notes,
     }
   }
 }

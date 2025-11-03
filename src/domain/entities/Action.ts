@@ -1,5 +1,5 @@
 import type { Battle } from '../battle/Battle'
-import type { CardDefinition, CardDefinitionBase } from './CardDefinition'
+import type { CardDefinition } from './CardDefinition'
 import type { Enemy } from './Enemy'
 import type { Player } from './Player'
 import type { State } from './State'
@@ -24,7 +24,7 @@ export interface ActionContext {
 
 export interface BaseActionProps {
   name: string
-  cardDefinition: CardDefinitionBase
+  cardDefinition: CardDefinition
   gainStates?: Array<() => State>
 }
 
@@ -43,7 +43,7 @@ export abstract class Action {
     return this.props.name
   }
 
-  protected get cardDefinitionBase(): CardDefinitionBase {
+  protected get cardDefinitionBase(): CardDefinition {
     return this.props.cardDefinition
   }
 
@@ -58,11 +58,16 @@ export abstract class Action {
   createCardDefinition(context?: ActionContext): CardDefinition {
     const base = this.cardDefinitionBase
     const operations = this.buildOperations().map((operation) => operation.type)
-    return {
-      ...base,
-      description: this.describe(context),
-      operations,
+    const finalOperations = operations.length > 0 ? operations : base.operations
+
+    if (finalOperations) {
+      return {
+        ...base,
+        operations: finalOperations,
+      }
     }
+
+    return { ...base }
   }
 
   prepareContext(params: {

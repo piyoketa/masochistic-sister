@@ -112,25 +112,15 @@ export class CardRepository {
 
   private buildMemoryOverrides(baseAttack: Attack, damages: Damages) {
     const baseDefinition = baseAttack.createCardDefinition()
-    const description = damages.count <= 1
-      ? `${damages.amount}ダメージ`
-      : `${damages.amount}ダメージ × ${damages.count}`
-    const fullDescription = baseDefinition.description
-      ? `${description}
-${baseDefinition.description}`
-      : description
-
     const memoryTag = new MemoryCardTag()
     const baseTags = baseDefinition.cardTags ?? []
     const cardTags = [...baseTags, memoryTag]
 
     return {
       name: baseAttack.name,
-      description: fullDescription,
       cardDefinition: {
         ...baseDefinition,
         title: baseDefinition.title ?? baseAttack.name,
-        description: fullDescription,
         cardTags,
       },
     }

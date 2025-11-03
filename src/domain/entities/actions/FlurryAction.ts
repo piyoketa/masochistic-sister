@@ -17,6 +17,6 @@ export class FlurryAction extends Attack {
   }
 
   protected override description(): string {
-    return '敵単体に10ダメージを2回与える'
+    return '特殊効果なしの連続攻撃'
   }
 }

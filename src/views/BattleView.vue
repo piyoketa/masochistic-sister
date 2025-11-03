@@ -358,7 +358,6 @@ function convertCardToCardInfo(card: Card, index: number): CardInfo {
     illustration: definition.image ?? '🂠',
     description,
     descriptionSegments,
-    notes: definition.notes,
     attackStyle,
     cardTags: tagEntries,
   }
@@ -380,7 +379,7 @@ const enemyCatalogByName: Record<
       { name: 'ビルドアップ', detail: '攻撃力を+10する' },
     ],
   },
-  'オークダンサー（短剣）': {
+  オークダンサー: {
     image: '/assets/enemies/orc-dancer.jpg',
     skills: [
       { name: '乱れ突き', detail: '10 × 2' },

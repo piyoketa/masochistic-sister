@@ -1,4 +1,4 @@
-import type { CardDefinition, CardDefinitionBase } from './CardDefinition'
+import type { CardDefinition } from './CardDefinition'
 import type { DamageCalculationParams } from './Damages'
 
 export interface StateProps {
@@ -6,7 +6,7 @@ export interface StateProps {
   name: string
   magnitude?: number
   description?: string
-  cardDefinition?: CardDefinitionBase
+  cardDefinition?: CardDefinition
   descriptionBuilder?: (state: State) => string
 }
 
@@ -33,7 +33,7 @@ export class State {
     return this.createDescription()
   }
 
-  get cardDefinitionBase(): CardDefinitionBase | undefined {
+  get cardDefinitionBase(): CardDefinition | undefined {
     return this.props.cardDefinition
   }
 
@@ -55,10 +55,7 @@ export class State {
       throw new Error('State does not provide a card definition')
     }
 
-    return {
-      ...base,
-      description: this.description(),
-    }
+    return { ...base }
   }
 
   apply(): void {}

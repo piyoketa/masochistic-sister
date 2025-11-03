@@ -5,7 +5,7 @@ import { BattleDanceAction } from '../actions/BattleDanceAction'
 export class OrcDancerEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     super({
-      name: 'オークダンサー（短剣）',
+      name: 'オークダンサー',
       maxHp: 50,
       currentHp: 50,
       actions: [new FlurryAction(), new BattleDanceAction()],

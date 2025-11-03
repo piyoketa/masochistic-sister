@@ -12,7 +12,6 @@ export class HeavenChainAction extends Skill {
         title: '天の鎖',
         type: 'skill',
         cost: 1,
-        notes: ['［消費］使用すると、この戦闘中は除去される'],
         cardTags: [new ExhaustCardTag(), new SacredCardTag()],
       },
     })

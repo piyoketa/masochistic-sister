@@ -68,7 +68,6 @@ export type CardInfo = {
   illustration: string
   description: string
   descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
-  notes?: string[]
   attackStyle?: AttackStyle
   cardTags?: CardTagInfo[]
 }

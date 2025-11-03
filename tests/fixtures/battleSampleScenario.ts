@@ -128,7 +128,7 @@ export function collectScenarioReferences(snapshot: BattleSnapshot): ScenarioRef
     battlePrepIds: battlePrepTuple,
     enemyIds: {
       orc: findEnemyId('オーク'),
-      orcDancer: findEnemyId('オークダンサー（短剣）'),
+      orcDancer: findEnemyId('オークダンサー'),
       tentacle: findEnemyId('触手'),
       snail: findEnemyId('かたつむり'),
     },
