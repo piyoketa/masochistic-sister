@@ -1,0 +1,214 @@
+/*
+ActionBase.ts の責務:
+- 戦闘アクション共通のインターフェースを定義し、操作要求やターゲット解決、付与ステート処理など基礎的な振る舞いを提供する。
+- カード定義の組み立てやコンテキスト準備を担い、派生クラスがドメイン固有の処理に集中できる土台を整える。
+
+責務ではないこと:
+- 実際のダメージ計算や攻撃特有の演出など、派生クラスに依存する振る舞いの詳細実装。
+- 戦闘ログ記録やバトル進行管理など、バトル全体のオーケストレーション。
+
+主要な通信相手とインターフェース:
+- operations.ts の `Operation` / `CardOperation`: `prepareContext` 内で要求入力を検証し、`Operation.complete`・`toMetadata` を通じて追加情報を収集する。
+- `typeGuards.ts` の `isPlayerEntity`: 付与ステートの適用先がプレイヤーか敵かを判定し、`Player` 特有の挙動（カード化）を有効化する。
+- `CardDefinition`: `createCardDefinition` がベース定義と操作一覧を統合し、ビュー層が表示するデータ構造を生成する。似た概念である `Card` とは異なり、実インスタンスではなく表示用メタ情報のみを扱う。
+*/
+import type { Battle } from '../../battle/Battle'
+import type { CardDefinition } from '../CardDefinition'
+import type { Enemy } from '../Enemy'
+import type { Player } from '../Player'
+import type { State } from '../State'
+import {
+  TargetEnemyOperation,
+  type CardOperation,
+  type Operation,
+  type OperationContext,
+} from '../operations'
+import { isPlayerEntity } from '../typeGuards'
+
+export type ActionType = 'attack' | 'skill'
+
+export interface ActionContext {
+  battle: Battle
+  source: Player | Enemy
+  target?: Player | Enemy
+  metadata?: Record<string, unknown>
+  operations?: Operation[]
+}
+
+export interface BaseActionProps {
+  name: string
+  cardDefinition: CardDefinition
+  gainStates?: Array<() => State>
+}
+
+export abstract class Action {
+  protected readonly props: BaseActionProps
+  private readonly gainStateFactories: Array<() => State>
+
+  protected constructor(props: BaseActionProps) {
+    this.props = props
+    this.gainStateFactories = props.gainStates ? [...props.gainStates] : []
+  }
+
+  abstract get type(): ActionType
+
+  get name(): string {
+    return this.props.name
+  }
+
+  protected get cardDefinitionBase(): CardDefinition {
+    return this.props.cardDefinition
+  }
+
+  describe(context?: ActionContext): string {
+    return this.description(context)
+  }
+
+  protected description(_context?: ActionContext): string {
+    return ''
+  }
+
+  createCardDefinition(context?: ActionContext): CardDefinition {
+    const base = this.cardDefinitionBase
+    const operations = this.buildOperations().map((operation) => operation.type)
+    const finalOperations = operations.length > 0 ? operations : base.operations
+
+    if (finalOperations) {
+      return {
+        ...base,
+        operations: finalOperations,
+      }
+    }
+
+    return { ...base }
+  }
+
+  prepareContext(params: {
+    battle: Battle
+    source: Player | Enemy
+    operations: CardOperation[]
+  }): ActionContext {
+    const operationContext: OperationContext = {
+      battle: params.battle,
+      player: params.battle.player,
+    }
+
+    const requiredOperations = this.buildOperations().filter((operation) =>
+      this.shouldRequireOperation(operation, params),
+    )
+    const { completedOperations, metadata } = this.resolveRequiredOperations(
+      requiredOperations,
+      params,
+      operationContext,
+    )
+
+    const context: ActionContext = {
+      battle: params.battle,
+      source: params.source,
+      metadata,
+      operations: completedOperations,
+    }
+
+    context.target = this.resolveTarget(context)
+
+    return context
+  }
+
+  execute(context: ActionContext): void {
+    this.perform(context)
+    this.applyGainStates(context)
+  }
+
+  get gainStatePreviews(): State[] {
+    return this.gainStateFactories.map((factory) => factory())
+  }
+
+  protected buildOperations(): Operation[] {
+    return []
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected shouldRequireOperation(
+    _operation: Operation,
+    _context: { battle: Battle; source: Player | Enemy; operations: CardOperation[] },
+  ): boolean {
+    return true
+  }
+
+  protected resolveTarget(context: ActionContext): Player | Enemy | undefined {
+    const targetOperation = context.operations?.find(
+      (operation) => operation.type === TargetEnemyOperation.TYPE,
+    ) as TargetEnemyOperation | undefined
+
+    return targetOperation?.enemy
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected perform(_context: ActionContext): void {}
+
+  private resolveRequiredOperations(
+    requiredOperations: Operation[],
+    params: { battle: Battle; source: Player | Enemy; operations: CardOperation[] },
+    operationContext: OperationContext,
+  ): { completedOperations: Operation[]; metadata: Record<string, unknown> } {
+    if (requiredOperations.length === 0) {
+      if (params.operations.length > 0) {
+        throw new Error('Unexpected operations were supplied')
+      }
+      return { completedOperations: [], metadata: {} }
+    }
+
+    const usedOperationIndex = new Set<number>()
+    const completedOperations: Operation[] = []
+    const metadata: Record<string, unknown> = {}
+
+    for (const operation of requiredOperations) {
+      const inputIndex = params.operations.findIndex((candidate, index) => {
+        if (usedOperationIndex.has(index)) {
+          return false
+        }
+        return candidate.type === operation.type
+      })
+
+      if (inputIndex === -1) {
+        throw new Error(`Operation "${operation.type}" is required but missing`)
+      }
+
+      const input = params.operations[inputIndex]!
+      operation.complete(input.payload, operationContext)
+
+      if (!operation.isCompleted()) {
+        throw new Error(`Operation "${operation.type}" is not completed`)
+      }
+
+      usedOperationIndex.add(inputIndex)
+      completedOperations.push(operation)
+      Object.assign(metadata, operation.toMetadata())
+    }
+
+    if (usedOperationIndex.size !== params.operations.length) {
+      const unexpected = params.operations
+        .filter((_, index) => !usedOperationIndex.has(index))
+        .map((operation) => operation.type)
+      throw new Error(`Unexpected operations were supplied: ${unexpected.join(', ')}`)
+    }
+
+    return { completedOperations, metadata }
+  }
+
+  private applyGainStates(context: ActionContext): void {
+    if (this.gainStateFactories.length === 0) {
+      return
+    }
+
+    const source = context.source
+    for (const factory of this.gainStateFactories) {
+      const state = factory()
+      if (isPlayerEntity(source)) {
+        source.addState(state, { battle: context.battle })
+      } else {
+        source.addState(state)
+      }
+    }
+  }
+}
