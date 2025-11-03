@@ -49,9 +49,6 @@ class TestAttack extends Attack {
     return 'テスト用攻撃'
   }
 
-  exposeSetOverride(damages: Damages): void {
-    this.setOverrideDamages(damages)
-  }
 
   exposeShouldRequireOperation(operation: Operation, params: { battle: Battle; source: Player | Enemy; operations: CardOperation[] }): boolean {
     return this.shouldRequireOperation(operation, params)
@@ -81,21 +78,6 @@ describe('Attack クラス', () => {
     expect(clone.baseDamages.baseCount).toBe(3)
     expect(clone.baseDamages.type).toBe('multi')
     expect(attack.baseDamages.baseAmount).toBe(10)
-  })
-
-  it('上書きダメージは一度だけ適用される', () => {
-    const attack = new TestAttack()
-    const override = new Damages({ baseAmount: 30, baseCount: 2, type: 'multi' })
-    const attacker = new TestPlayer()
-    const defender = new TestPlayer()
-
-    attack.exposeSetOverride(override)
-    const first = attack.calcDamages(attacker, defender)
-    const second = attack.calcDamages(attacker, defender)
-
-    expect(first.amount).toBe(override.amount)
-    expect(first.count).toBe(override.count)
-    expect(second.amount).toBe(attack.baseDamages.amount)
   })
 
   it('敵行動時はターゲット選択操作を要求しない', () => {

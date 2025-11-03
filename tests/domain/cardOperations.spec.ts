@@ -13,11 +13,7 @@ import { CardRepository } from '@/domain/repository/CardRepository'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { SnailTeam } from '@/domain/entities/enemyTeams'
 import { MasochisticAuraAction, HandSwapAction, BattlePrepAction } from '@/domain/entities/actions'
-import { Attack, type ActionContext } from '@/domain/entities/Action'
-import { Damages } from '@/domain/entities/Damages'
-import type { Enemy } from '@/domain/entities/Enemy'
-import type { Player } from '@/domain/entities/Player'
-import { SelectHandCardOperation, type CardOperation } from '@/domain/entities/operations'
+import type { CardOperation } from '@/domain/entities/operations'
 
 function createBattleWithHand(
   handCards: Card[],
@@ -52,50 +48,6 @@ function requireCardId(card: Card): number {
   }
 
   return id
-}
-
-class TestChaosStrikeAction extends Attack {
-  constructor() {
-    super({
-      name: '混迷（テスト）',
-      baseDamage: new Damages({ baseAmount: 0, baseCount: 1, type: 'single' }),
-      cardDefinition: {
-        title: '混迷（テスト）',
-        type: 'attack',
-        cost: 1,
-      },
-    })
-  }
-
-  protected override description(): string {
-    return '手札を1枚捨て、そのカードのコスト×10のダメージを与える'
-  }
-
-  protected override buildOperations() {
-    return [...super.buildOperations(), new SelectHandCardOperation()]
-  }
-
-  protected override beforeAttack(context: ActionContext, _defender: Player | Enemy): void {
-    const selectOperation = context.operations?.find(
-      (operation) => operation.type === SelectHandCardOperation.TYPE,
-    ) as SelectHandCardOperation | undefined
-
-    if (!selectOperation) {
-      throw new Error('SelectHandCardOperation is required for Test Chaos Strike')
-    }
-
-    const selectedCard = selectOperation.card
-    context.battle.hand.remove(selectedCard)
-    context.battle.discardPile.add(selectedCard)
-
-    this.setOverrideDamages(
-      new Damages({
-        baseAmount: Math.max(0, selectedCard.cost) * 10,
-        baseCount: 1,
-        type: 'single',
-      }),
-    )
-  }
 }
 
 describe('Card operation validation', () => {
@@ -156,35 +108,5 @@ describe('Card operation validation', () => {
     expect(battle.discardPile.list().some((card) => card.numericId === extraCardId)).toBe(true)
     expect(battle.discardPile.list().some((card) => card.numericId === swapCardId)).toBe(true)
     expect(battle.hand.list().some((card) => card.numericId === drawCardId)).toBe(true)
-  })
-
-  it('requires both operations for Test Chaos Strike and applies damage', () => {
-    const repo = new CardRepository()
-    const chaosCard = repo.create(() => new Card({ action: new TestChaosStrikeAction() }))
-    const sacrifice = repo.create(() => new Card({ action: new BattlePrepAction() }))
-    const battle = createBattleWithHand([chaosCard, sacrifice], [], repo)
-    const target = battle.enemyTeam.members.find((enemy) => enemy.name === 'かたつむり')
-    expect(target?.numericId).toBeDefined()
-
-    const chaosCardId = requireCardId(chaosCard)
-    const sacrificeId = requireCardId(sacrifice)
-
-    expect(() => battle.playCard(chaosCardId, [{ type: 'target-enemy', payload: target!.numericId }])).toThrow(
-      'Operation "select-hand-card" is required but missing',
-    )
-
-    expect(() => battle.playCard(chaosCardId, [{ type: 'select-hand-card', payload: sacrificeId }])).toThrow(
-      'Operation "target-enemy" is required but missing',
-    )
-
-    battle.playCard(chaosCardId, [
-      { type: 'target-enemy', payload: target!.numericId },
-      { type: 'select-hand-card', payload: sacrificeId },
-    ])
-
-    expect(battle.hand.list().some((card) => card.numericId === sacrificeId)).toBe(false)
-    expect(battle.discardPile.list().some((card) => card.numericId === sacrificeId)).toBe(true)
-    expect(battle.discardPile.list().some((card) => card.numericId === chaosCardId)).toBe(true)
-    expect(target!.currentHp).toBe(target!.maxHp - sacrifice.cost * 10)
   })
 })

@@ -34,7 +34,6 @@ export interface AttackProps extends BaseActionProps {
 
 export abstract class Attack extends Action {
   protected readonly baseProfile: Damages
-  private overrideDamagesInstance?: Damages
   private readonly inflictStateFactories: Array<() => State>
 
   protected constructor(props: AttackProps) {
@@ -107,17 +106,7 @@ export abstract class Attack extends Action {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected onAfterDamage(_context: ActionContext, _damages: Damages, _defender: Player | Enemy): void {}
 
-  protected setOverrideDamages(damages: Damages): void {
-    this.overrideDamagesInstance = damages
-  }
-
   calcDamages(attacker: Player | Enemy, defender: Player | Enemy): Damages {
-    if (this.overrideDamagesInstance) {
-      const damages = this.overrideDamagesInstance
-      this.overrideDamagesInstance = undefined
-      return damages
-    }
-
     return new Damages({
       baseAmount: this.baseProfile.baseAmount,
       baseCount: this.baseProfile.baseCount,
