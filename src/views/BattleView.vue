@@ -23,8 +23,7 @@ import { TurnManager } from '@/domain/battle/TurnManager'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildDefaultDeck } from '@/domain/entities/decks'
 import { ProtagonistPlayer } from '@/domain/entities/players'
-import { EnemyTeam } from '@/domain/entities/EnemyTeam'
-import { OrcEnemy, OrcDancerEnemy, TentacleEnemy, SnailEnemy } from '@/domain/entities/enemies'
+import { SnailTeam } from '@/domain/entities/enemyTeams'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const props = defineProps<{ viewManager?: ViewManager }>()
@@ -344,15 +343,7 @@ function createSampleBattle(): Battle {
   const cardRepository = new CardRepository()
   const defaultDeck = buildDefaultDeck(cardRepository)
   const player = new ProtagonistPlayer()
-  const enemyTeam = new EnemyTeam({
-    id: 'enemy-team-demo',
-    members: [
-      new OrcEnemy({ rng: () => 0.05 }),
-      new OrcDancerEnemy({ rng: () => 0.85 }),
-      new TentacleEnemy({ rng: () => 0.85 }),
-      new SnailEnemy({ rng: () => 0.95 }),
-    ],
-  })
+  const enemyTeam = new SnailTeam()
 
   return new Battle({
     id: 'battle-view-demo',

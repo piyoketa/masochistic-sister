@@ -1,6 +1,8 @@
 import type { Action } from './Action'
 import type { State } from './State'
 import type { Battle } from '../battle/Battle'
+import type { EnemyActionQueue } from './enemy/actionQueues'
+import { DefaultEnemyActionQueue } from './enemy/actionQueues'
 
 export interface EnemyProps {
   name: string
@@ -12,6 +14,7 @@ export interface EnemyProps {
   image: string
   futureActions?: Action[]
   rng?: () => number
+  actionQueueFactory?: () => EnemyActionQueue
 }
 
 export class Enemy {
@@ -24,7 +27,7 @@ export class Enemy {
   private readonly imageValue: string
   private readonly rng: () => number
   private readonly actionHistory: Action[] = []
-  private futureActions: Action[]
+  private readonly actionQueue: EnemyActionQueue
   private actedThisTurn = false
   private idValue?: number
 
@@ -36,9 +39,14 @@ export class Enemy {
     this.traitList = [...(props.traits ?? [])]
     this.stateList = [...(props.states ?? [])]
     this.imageValue = props.image
-    this.futureActions = props.futureActions ? [...props.futureActions] : []
     this.rng = props.rng ?? Math.random
-    this.ensureFutureActions()
+    this.actionQueue = props.actionQueueFactory ? props.actionQueueFactory() : new DefaultEnemyActionQueue()
+    this.actionQueue.initialize(this.actionCandidates, this.rng)
+    if (props.futureActions) {
+      for (const action of props.futureActions) {
+        this.actionQueue.append(action)
+      }
+    }
   }
 
   get name(): string {
@@ -58,7 +66,7 @@ export class Enemy {
   }
 
   get queuedActions(): Action[] {
-    return [...this.futureActions]
+    return this.actionQueue.peek()
   }
 
   get actionLog(): Action[] {
@@ -106,8 +114,7 @@ export class Enemy {
       return
     }
 
-    this.ensureFutureActions()
-    const action = this.futureActions.shift()
+    const action = this.actionQueue.next()
     if (!action) {
       battle.addLogEntry({
         message: `${this.name}は行動候補を持っていない。`,
@@ -125,7 +132,6 @@ export class Enemy {
     action.execute(preparedContext)
     this.actionHistory.push(action)
     this.actedThisTurn = true
-    this.ensureFutureActions()
   }
 
   takeDamage(amount: number): void {
@@ -145,57 +151,26 @@ export class Enemy {
 
   resetTurn(): void {
     this.actedThisTurn = false
-    this.ensureFutureActions()
+    this.actionQueue.resetTurn()
   }
 
   getStates(): State[] {
     return [...this.traitList, ...this.stateList]
   }
 
-  discardNextScheduledAction(): void {
-    if (this.futureActions.length > 0) {
-      this.futureActions.shift()
-    }
-    this.ensureFutureActions()
+  discardNextScheduledAction(): Action | undefined {
+    return this.actionQueue.discardNext()
   }
 
   queueImmediateAction(action: Action): void {
-    this.futureActions.unshift(action)
-    this.ensureFutureActions()
+    this.actionQueue.prepend(action)
   }
 
   enqueueAction(action: Action): void {
-    this.futureActions.push(action)
-    this.ensureFutureActions()
+    this.actionQueue.append(action)
   }
 
-  private ensureFutureActions(): void {
-    while (this.futureActions.length < 2) {
-      const next = this.pickNextAction()
-      if (!next) {
-        break
-      }
-      this.futureActions.push(next)
-    }
-  }
-
-  private pickNextAction(): Action | undefined {
-    if (this.actionCandidates.length === 0) {
-      return undefined
-    }
-
-    const lastScheduled =
-      this.futureActions.length > 0
-        ? this.futureActions[this.futureActions.length - 1]
-        : this.actionHistory[this.actionHistory.length - 1]
-
-    const pool =
-      this.actionCandidates.length > 1 && lastScheduled
-        ? this.actionCandidates.filter((candidate) => candidate !== lastScheduled)
-        : [...this.actionCandidates]
-
-    const index = pool.length === 0 ? 0 : Math.floor(this.rng() * pool.length) % pool.length
-    const selection = pool[index] ?? this.actionCandidates[0]
-    return selection
+  prependAction(action: Action): void {
+    this.actionQueue.prepend(action)
   }
 }

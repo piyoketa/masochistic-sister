@@ -10,9 +10,8 @@ import { Hand } from '@/domain/battle/Hand'
 import { ActionLogReplayer } from '@/domain/battle/ActionLogReplayer'
 import { TurnManager } from '@/domain/battle/TurnManager'
 import { Card } from '@/domain/entities/Card'
-import { buildDefaultDeck } from '@/domain/entities/decks'
-import { EnemyTeam } from '@/domain/entities/EnemyTeam'
-import { OrcEnemy, OrcDancerEnemy, TentacleEnemy, SnailEnemy } from '@/domain/entities/enemies'
+import { buildTestDeck } from '@/domain/entities/decks'
+import { TestEnemyTeam } from '@/domain/entities/enemyTeams'
 import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
 import { BattleDanceAction } from '@/domain/entities/actions/BattleDanceAction'
 import { MucusShotAction } from '@/domain/entities/actions/MucusShotAction'
@@ -65,17 +64,9 @@ const isMemoryCardWithTitle = (card: Card, title: string): boolean =>
 
 export function createBaseBattle(): Battle {
   const cardRepository = new CardRepository()
-  const defaultDeck = buildDefaultDeck(cardRepository)
+  const defaultDeck = buildTestDeck(cardRepository)
   const player = new ProtagonistPlayer()
-  const enemyTeam = new EnemyTeam({
-    id: 'enemy-team-snail-encounter',
-    members: [
-      new OrcEnemy({ rng: () => 0.05 }),
-      new OrcDancerEnemy({ rng: () => 0.85 }),
-      new TentacleEnemy({ rng: () => 0.85 }),
-      new SnailEnemy({ rng: () => 0.95 }),
-    ],
-  })
+  const enemyTeam = new TestEnemyTeam()
 
   return new Battle({
     id: 'battle-1',

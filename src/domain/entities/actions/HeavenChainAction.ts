@@ -32,7 +32,10 @@ export class HeavenChainAction extends Skill {
     }
 
     const message = `${target.name}は天の鎖で縛られていて何もできない！`
-    target.discardNextScheduledAction()
+    const postponed = target.discardNextScheduledAction()
+    if (postponed) {
+      target.prependAction(postponed)
+    }
     target.queueImmediateAction(new SkipTurnAction(message))
 
     context.battle.addLogEntry({

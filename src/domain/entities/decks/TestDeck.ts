@@ -4,14 +4,14 @@ import { BattlePrepAction } from '../actions/BattlePrepAction'
 import { MasochisticAuraAction } from '../actions/MasochisticAuraAction'
 import type { CardRepository } from '../../repository/CardRepository'
 
-export interface DefaultDeckResult {
+export interface TestDeckResult {
   deck: Card[]
   heavenChains: readonly [Card, Card, Card, Card, Card]
   battlePreps: readonly [Card, Card]
   masochisticAura: Card
 }
 
-export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckResult {
+export function buildTestDeck(cardRepository: CardRepository): TestDeckResult {
   const heavenChains = Array.from({ length: 5 }, () =>
     cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
   ) as [Card, Card, Card, Card, Card]
@@ -22,8 +22,16 @@ export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckRes
 
   const masochisticAura = cardRepository.create(() => new Card({ action: new MasochisticAuraAction() }))
 
-  const pool: Card[] = [...heavenChains, ...battlePreps, masochisticAura]
-  const deck = shuffle([...pool])
+  const deck: Card[] = [
+    heavenChains[0],
+    heavenChains[1],
+    heavenChains[2],
+    battlePreps[0],
+    masochisticAura,
+    heavenChains[3],
+    battlePreps[1],
+    heavenChains[4],
+  ]
 
   return {
     deck,
@@ -31,12 +39,4 @@ export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckRes
     battlePreps,
     masochisticAura,
   }
-}
-
-function shuffle(cards: Card[]): Card[] {
-  for (let i = cards.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[cards[i], cards[j]] = [cards[j]!, cards[i]!]
-  }
-  return cards
 }
