@@ -12,22 +12,15 @@ import {
 } from '@/view/ViewManager'
 import type { CardOperation } from '@/domain/entities/operations'
 import { ActionLog } from '@/domain/battle/ActionLog'
-import { Battle } from '@/domain/battle/Battle'
-import { Deck } from '@/domain/battle/Deck'
-import { Hand } from '@/domain/battle/Hand'
-import { DiscardPile } from '@/domain/battle/DiscardPile'
-import { ExilePile } from '@/domain/battle/ExilePile'
-import { BattleEventQueue } from '@/domain/battle/BattleEvent'
-import { BattleLog } from '@/domain/battle/BattleLog'
-import { TurnManager } from '@/domain/battle/TurnManager'
-import { CardRepository } from '@/domain/repository/CardRepository'
-import { buildDefaultDeck } from '@/domain/entities/decks'
-import { ProtagonistPlayer } from '@/domain/entities/players'
-import { SnailTeam } from '@/domain/entities/enemyTeams'
+import type { Battle } from '@/domain/battle/Battle'
+import { createDefaultSnailBattle, createTestCaseBattle } from '@/domain/battle/battlePresets'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
-const props = defineProps<{ viewManager?: ViewManager }>()
-const viewManager = props.viewManager ?? createDefaultViewManager()
+type BattlePresetKey = 'default' | 'stage1' | 'testcase1'
+
+const props = defineProps<{ viewManager?: ViewManager; preset?: BattlePresetKey }>()
+const battleFactory = resolveBattleFactory(props.preset)
+const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
 
 const managerState = viewManager.state
 const errorMessage = ref<string | null>(null)
@@ -325,39 +318,29 @@ function handleContextMenu(): void {
   hideDescriptionOverlay()
 }
 
-function createDefaultViewManager(): ViewManager {
+function createDefaultViewManager(createBattle: () => Battle): ViewManager {
   const actionLog = new ActionLog([
     { type: 'battle-start' },
     { type: 'start-player-turn', draw: 5 },
   ])
 
   return new ViewManager({
-    createBattle: () => createSampleBattle(),
+    createBattle,
     actionLog,
     playbackOptions: { defaultSpeed: 1, autoPlay: false },
     initialActionLogIndex: 1,
   })
 }
 
-function createSampleBattle(): Battle {
-  const cardRepository = new CardRepository()
-  const defaultDeck = buildDefaultDeck(cardRepository)
-  const player = new ProtagonistPlayer()
-  const enemyTeam = new SnailTeam()
-
-  return new Battle({
-    id: 'battle-view-demo',
-    cardRepository,
-    player,
-    enemyTeam,
-    deck: new Deck(defaultDeck.deck),
-    hand: new Hand(),
-    discardPile: new DiscardPile(),
-    exilePile: new ExilePile(),
-    events: new BattleEventQueue(),
-    log: new BattleLog(),
-    turn: new TurnManager(),
-  })
+function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle {
+  switch (preset) {
+    case 'testcase1':
+      return createTestCaseBattle
+    case 'stage1':
+    case 'default':
+    default:
+      return createDefaultSnailBattle
+  }
 }
 </script>
 

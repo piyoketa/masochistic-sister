@@ -31,41 +31,24 @@ export class BeamEnemyActionQueue extends EnemyActionQueue {
     }
   }
 
-  override next(): Action | undefined {
-    const action = super.next()
-    if (!action) {
-      return undefined
-    }
-
+  protected override onActionDequeued(action: Action): void {
     const index = this.actions.indexOf(action)
     if (index === -1) {
-      // 即時挿入されたアクション。チャージ状態は保持。
-      return action
+      return
     }
 
     if (index < 2) {
       this.stage = index + 1
     } else {
-      // ビーム発射後にチャージをリセット
       this.stage = 0
     }
-
-    return action
   }
 
-  override discardNext(): Action | undefined {
-    const action = super.discardNext()
-    if (!action) {
-      return undefined
-    }
-
+  protected override onActionDiscarded(action: Action): void {
     const index = this.actions.indexOf(action)
     if (index !== -1 && index < 2) {
-      // チャージ中に遮られた場合はチャージやり直し
       this.stage = 0
     }
-
-    return action
   }
 
   override resetTurn(): void {

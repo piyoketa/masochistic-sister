@@ -14,6 +14,18 @@ const router = createRouter({
       alias: ['/encounter'],
       component: () => import('@/views/BattleView.vue'),
     },
+    {
+      path: '/battle/stage1',
+      name: 'battle-stage1',
+      component: () => import('@/views/BattleView.vue'),
+      props: { preset: 'stage1' },
+    },
+    {
+      path: '/battle/testcase1',
+      name: 'battle-testcase1',
+      component: () => import('@/views/BattleView.vue'),
+      props: { preset: 'testcase1' },
+    },
   ],
 })
 

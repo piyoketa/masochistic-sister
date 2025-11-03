@@ -119,6 +119,9 @@ describe('DefaultEnemyActionQueue', () => {
       actionQueueFactory: () =>
         new DefaultEnemyActionQueue({ initialActionPredicate: (action) => action === actionA }),
     })
+
+    // TODO: 天の鎖実行前の敵の行動Queueをテストすること
+
     const battle = createBattle(enemy)
     const player = battle.player
     const action = new HeavenChainAction()
@@ -137,6 +140,7 @@ describe('DefaultEnemyActionQueue', () => {
     enemy.resetTurn()
     enemy.act(battle)
 
+    // TODO: 天の鎖実行後の敵の行動Queueをテストすること
     const messages = battle.log.list().map((entry) => entry.message)
     expect(messages).toEqual([
       'オークは天の鎖で動きを封じられた。',
