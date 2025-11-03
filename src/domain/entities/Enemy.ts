@@ -9,7 +9,7 @@ export interface EnemyProps {
   actions: Action[]
   traits?: State[]
   states?: State[]
-  image?: string
+  image: string
   futureActions?: Action[]
   rng?: () => number
 }
@@ -21,7 +21,7 @@ export class Enemy {
   private readonly actionCandidates: Action[]
   private readonly traitList: State[]
   private readonly stateList: State[]
-  private readonly imageValue?: string
+  private readonly imageValue: string
   private readonly rng: () => number
   private readonly actionHistory: Action[] = []
   private futureActions: Action[]
@@ -77,7 +77,7 @@ export class Enemy {
     return [...this.stateList]
   }
 
-  get image(): string | undefined {
+  get image(): string {
     return this.imageValue
   }
 

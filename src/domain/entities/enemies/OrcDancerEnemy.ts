@@ -9,6 +9,7 @@ export class OrcDancerEnemy extends Enemy {
       maxHp: 50,
       currentHp: 50,
       actions: [new FlurryAction(), new BattleDanceAction()],
+      image: '/assets/enemies/orc-dancer.jpg',
       ...overrides,
     })
   }

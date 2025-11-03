@@ -9,6 +9,7 @@ export class OrcEnemy extends Enemy {
       maxHp: 50,
       currentHp: 50,
       actions: [new TackleAction(), new BuildUpAction()],
+      image: '/assets/enemies/orc.jpg',
       ...overrides,
     })
   }

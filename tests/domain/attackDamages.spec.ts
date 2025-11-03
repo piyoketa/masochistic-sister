@@ -37,6 +37,7 @@ function createEnemyWithStates(states: State[] = []): Enemy {
     maxHp: 10,
     currentHp: 10,
     actions: [new SkipTurnAction('dummyは様子を見ている')],
+    image: '',
     states,
   })
 }

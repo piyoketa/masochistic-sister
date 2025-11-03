@@ -194,17 +194,20 @@ const enemies = computed<EnemyInfo[]>(() => {
   const aliveEnemies = current.enemies.filter((enemy) => enemy.currentHp > 0)
 
   return aliveEnemies.map((enemy) => {
-    const catalog = enemyCatalogByName[enemy.name]
-    const traitList = mergeTraits(catalog?.traits, mapStatesToTraits(enemy.traits))
+    const traitList = mapStatesToTraits(enemy.traits) ?? []
     const stateList = mapStatesToTraits(enemy.states) ?? []
+    const skills = enemy.actions.map((action) => ({
+      name: action.name,
+      detail: action.describe(),
+    }))
 
     return {
       numericId: enemy.numericId,
       name: enemy.name,
-      image: catalog?.image ?? '',
+      image: enemy.image,
       hp: { current: enemy.currentHp, max: enemy.maxHp },
       nextActions: summarizeEnemyActions(viewManager.battle, enemy.numericId),
-      skills: catalog?.skills ?? [],
+      skills,
       traits: traitList,
       states: stateList,
     }
@@ -363,47 +366,6 @@ function convertCardToCardInfo(card: Card, index: number): CardInfo {
   }
 }
 
-// TODO: これらの情報はEnemyに移す
-const enemyCatalogByName: Record<
-  string,
-  {
-    image: string
-    skills?: EnemyInfo['skills']
-    traits?: EnemyTrait[]
-  }
-> = {
-  オーク: {
-    image: '/assets/enemies/orc.jpg',
-    skills: [
-      { name: 'たいあたり', detail: '20ダメージ' },
-      { name: 'ビルドアップ', detail: '攻撃力を+10する' },
-    ],
-  },
-  オークダンサー: {
-    image: '/assets/enemies/orc-dancer.jpg',
-    skills: [
-      { name: '乱れ突き', detail: '10 × 2' },
-      { name: '加速', detail: '攻撃回数を+1する' },
-    ],
-  },
-  かたつむり: {
-    image: '/assets/enemies/snail.jpg',
-    skills: [
-      { name: '酸を吐く', detail: '5ダメージ + 溶解付与' },
-      { name: 'たいあたり', detail: '10ダメージ' },
-    ],
-    traits: [{ name: '硬い殻', detail: 'ダメージを-20する' }],
-  },
-  かまいたち: {
-    image: '/assets/enemies/kamaitachi.jpg',
-    skills: [
-      { name: '追い風', detail: '味方の攻撃回数を＋1する' },
-      { name: '乱れ突き', detail: '5 × 4回攻撃' },
-    ],
-    traits: [{ name: '臆病', detail: '「臆病」以外の敵がいない時、逃げる' }],
-  },
-}
-
 function mapStatesToTraits(states?: State[]): EnemyTrait[] | undefined {
   if (!states || states.length === 0) {
     return undefined
@@ -414,18 +376,6 @@ function mapStatesToTraits(states?: State[]): EnemyTrait[] | undefined {
     detail: state.description(),
     magnitude: state.magnitude,
   }))
-}
-
-function mergeTraits(...groups: Array<EnemyTrait[] | undefined>): EnemyTrait[] {
-  const registry = new Map<string, EnemyTrait>()
-  for (const group of groups) {
-    if (!group) continue
-    for (const trait of group) {
-      registry.set(trait.name, trait)
-    }
-  }
-
-  return Array.from(registry.values())
 }
 
 function summarizeEnemyActions(battle: Battle | undefined, enemyId: number): EnemyActionHint[] {

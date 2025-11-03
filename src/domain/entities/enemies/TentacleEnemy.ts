@@ -7,11 +7,6 @@ export class TentacleEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const tentacleFlurry = new FlurryAction().cloneWithDamages(
       new Damages({ baseAmount: 10, baseCount: 3, type: 'multi' }),
-      {
-        cardDefinition: {
-          description: '敵単体に10ダメージを3回与える',
-        },
-      },
     )
 
     super({
@@ -19,6 +14,7 @@ export class TentacleEnemy extends Enemy {
       maxHp: 30,
       currentHp: 30,
       actions: [tentacleFlurry, new MucusShotAction()],
+      image: '',
       ...overrides,
     })
   }

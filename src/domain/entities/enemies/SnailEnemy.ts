@@ -11,6 +11,7 @@ export class SnailEnemy extends Enemy {
       currentHp: 10,
       actions: [new TackleAction(), new AcidSpitAction()],
       traits: [new HardShellState()],
+      image: '/assets/enemies/snail.jpg',
       ...overrides,
     })
   }

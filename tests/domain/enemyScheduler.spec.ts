@@ -80,6 +80,7 @@ describe('Enemy action scheduling', () => {
       maxHp: 10,
       currentHp: 10,
       actions: [actionA, actionB],
+      image: '',
       rng: () => {
         const value = rngValues[rngIndex % rngValues.length]!
         rngIndex += 1
@@ -107,6 +108,7 @@ describe('Enemy action scheduling', () => {
       maxHp: 10,
       currentHp: 10,
       actions: [actionA, actionB],
+      image: '',
     })
     const battle = createBattle(enemy)
     const player = battle.player
@@ -140,6 +142,7 @@ describe('Enemy action scheduling', () => {
       maxHp: 10,
       currentHp: 10,
       actions: [actionA, actionB],
+      image: '',
     })
     const battle = createBattle(enemy)
 
@@ -159,6 +162,7 @@ describe('Enemy action scheduling', () => {
       maxHp: 10,
       currentHp: 10,
       actions: [actionA, actionB],
+      image: '',
     })
     const battle = createBattle(enemy)
 
