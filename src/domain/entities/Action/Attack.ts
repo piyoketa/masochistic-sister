@@ -11,7 +11,7 @@ Attack.ts の責務:
 - `ActionBase.ts` の `Action`: 基底クラスとしてカード定義やコンテキスト準備を提供し、攻撃固有処理をオーバーライドする。
 - `Damages`: 攻撃プロファイルを表現する値オブジェクト。`calcDamages` で攻撃側・防御側の `State` を参照して最終値を算出する。
 - `TargetEnemyOperation`: 攻撃対象の選択を要求する `Operation`。敵行動（プレイヤーが対象）時には省略できるよう `shouldRequireOperation` を調整する。
-- `Battle.cardRepository.memoryEnemyAttack`: プレイヤーが被弾した攻撃を「記憶カード」として生成するために呼び出す。似た概念の `memoryState` とは、付与ステートの記録を目的にする点で役割が異なる。
+- `Player.rememberEnemyAttack`: プレイヤーが被弾した攻撃を「記憶カード」として生成する。状態付与の記録は `Player.addState` 経由で行う。
 */
 import type { Battle } from '../../battle/Battle'
 import type { Enemy } from '../Enemy'
@@ -96,7 +96,7 @@ export abstract class Attack extends Action {
     this.onAfterDamage(context, damages, defender)
 
     if (this.isPlayer(defender)) {
-      context.battle.cardRepository.memoryEnemyAttack(damages, this, context.battle)
+      defender.rememberEnemyAttack(damages, this, context.battle)
     }
   }
 

@@ -1,13 +1,8 @@
 import { Card } from '../entities/Card'
-import { Attack } from '../entities/Action'
-import { Damages } from '../entities/Damages'
-import type { Battle } from '../battle/Battle'
 import type { Deck } from '../battle/Deck'
 import type { Hand } from '../battle/Hand'
 import type { DiscardPile } from '../battle/DiscardPile'
 import type { ExilePile } from '../battle/ExilePile'
-import type { State } from '../entities/State'
-import { MemoryCardTag } from '../entities/cardTags'
 
 export type CardFactory<T extends Card = Card> = () => T
 
@@ -108,49 +103,6 @@ export class CardRepository {
   clear(): void {
     this.cards.clear()
     this.counter = 0
-  }
-
-  private buildMemoryOverrides(baseAttack: Attack, damages: Damages) {
-    const baseDefinition = baseAttack.createCardDefinition()
-    const memoryTag = new MemoryCardTag()
-    const baseTags = baseDefinition.cardTags ?? []
-    const cardTags = [...baseTags, memoryTag]
-
-    return {
-      name: baseAttack.name,
-      cardDefinition: {
-        ...baseDefinition,
-        title: baseDefinition.title ?? baseAttack.name,
-        cardTags,
-      },
-    }
-  }
-
-  createNewAttack(damages: Damages, baseAttack: Attack): Card {
-    const overrides = this.buildMemoryOverrides(baseAttack, damages)
-    const action = baseAttack.cloneWithDamages(damages, overrides)
-    return this.create(() => new Card({ action }))
-  }
-
-  memoryEnemyAttack(damages: Damages, baseAttack: Attack): Card
-  memoryEnemyAttack(damages: Damages, baseAttack: Attack, battle: Battle): Card
-  memoryEnemyAttack(damages: Damages, baseAttack: Attack, battle?: Battle): Card {
-    const card = this.createNewAttack(damages, baseAttack)
-    if (battle) {
-      // プレイヤーが被弾した時のみ発火する想定。バトル側に渡して手札へ追加する。
-      battle.addCardToPlayerHand(card)
-    }
-    return card
-  }
-
-  createStateCard(state: State): Card {
-    return this.create(() => new Card({ state }))
-  }
-
-  memoryState(state: State, battle: Battle): Card {
-    const card = this.createStateCard(state)
-    battle.addCardToPlayerHand(card)
-    return card
   }
 
   private generateId(): number {

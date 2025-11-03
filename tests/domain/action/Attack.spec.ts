@@ -61,9 +61,7 @@ function createBattleStub(player: Player, enemy: EnemyEntity) {
     enemyTeam: {
       findEnemy: vi.fn((id: number) => (enemy.id === id ? enemy : undefined)),
     },
-    cardRepository: {
-      memoryEnemyAttack: vi.fn(),
-    },
+    cardRepository: {},
     damagePlayer: vi.fn(),
   } as unknown as Battle
 }

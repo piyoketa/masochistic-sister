@@ -1,6 +1,9 @@
 import type { State } from './State'
 import type { Battle } from '../battle/Battle'
 import type { Hand } from '../battle/Hand'
+import { MemoryManager } from './players/MemoryManager'
+import type { Attack } from './Action'
+import type { Damages } from './Damages'
 
 export interface PlayerProps {
   id: string
@@ -19,6 +22,7 @@ export class Player {
   private currentHpValue: number
   private currentManaValue: number
   private handRef?: Hand
+  private readonly memoryManager: MemoryManager
 
   constructor(props: PlayerProps) {
     this.idValue = props.id
@@ -27,6 +31,7 @@ export class Player {
     this.maxManaValue = props.maxMana
     this.currentHpValue = props.currentHp
     this.currentManaValue = props.currentMana
+    this.memoryManager = new MemoryManager()
   }
 
   get id(): string {
@@ -84,10 +89,13 @@ export class Player {
   }
 
   addState(state: State, options?: { battle?: Battle }): void {
-    // プレイヤーの状態異常は手札に対応カードとしてのみ管理する。
     const battle = options?.battle
     if (battle && state.cardDefinitionBase) {
-      battle.cardRepository.memoryState(state, battle)
+      this.memoryManager.rememberState({
+        state,
+        repository: battle.cardRepository,
+        battle,
+      })
     }
   }
 
@@ -120,5 +128,14 @@ export class Player {
 
   bindHand(hand: Hand): void {
     this.handRef = hand
+  }
+
+  rememberEnemyAttack(damages: Damages, baseAttack: Attack, battle: Battle): void {
+    this.memoryManager.rememberEnemyAttack({
+      damages,
+      baseAttack,
+      repository: battle.cardRepository,
+      battle,
+    })
   }
 }
