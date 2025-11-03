@@ -15,6 +15,6 @@ export class TackleAction extends Attack {
   }
 
   protected override description(): string {
-    return '敵単体に20ダメージを与える'
+    return '特殊効果なしの単回攻撃'
   }
 }

@@ -15,6 +15,6 @@ export class BattleDanceAction extends Skill {
   }
 
   protected override description(): string {
-    return '自身に加速(1)を付与する'
+    return '加速し、次のターンから攻撃回数を増やす'
   }
 }

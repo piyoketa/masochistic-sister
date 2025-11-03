@@ -15,12 +15,11 @@ export class MucusShotAction extends Attack {
         title: '粘液飛ばし',
         type: 'attack',
         cost: 1,
-        description: '5ダメージ。対象にねばねば(1)を付与する。',
       },
     })
   }
 
   protected override description(): string {
-    return '粘液を浴びせ、対象に粘着ダメージを与える'
+    return '粘液を浴びせる攻撃'
   }
 }

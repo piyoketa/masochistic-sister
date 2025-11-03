@@ -15,6 +15,6 @@ export class BuildUpAction extends Skill {
   }
 
   protected override description(): string {
-    return '自身に筋力上昇を付与する'
+    return '筋力上昇し、次のターンからの攻撃力を高める'
   }
 }
