@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import GameLayout from '@/components/GameLayout.vue'
 import HpGauge from '@/components/HpGauge.vue'
-import ActionCard from '@/components/ActionCard.vue'
-import EnemyCard from '@/components/EnemyCard.vue'
+import BattleEnemyArea from '@/components/battle/BattleEnemyArea.vue'
+import BattleHandArea from '@/components/battle/BattleHandArea.vue'
 import {
   ViewManager,
   type AnimationCommand,
   type AnimationScript,
   type ViewManagerEvent,
 } from '@/view/ViewManager'
+import type { CardOperation } from '@/domain/entities/operations'
 import { ActionLog } from '@/domain/battle/ActionLog'
 import { Battle } from '@/domain/battle/Battle'
 import { Deck } from '@/domain/battle/Deck'
@@ -24,23 +25,7 @@ import { buildDefaultDeck } from '@/domain/entities/decks'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { OrcEnemy, OrcDancerEnemy, TentacleEnemy, SnailEnemy } from '@/domain/entities/enemies'
-import { Attack, Action as BattleAction } from '@/domain/entities/Action'
-import { Damages } from '@/domain/entities/Damages'
-import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
-import type { Enemy } from '@/domain/entities/Enemy'
-import type {
-  EnemyInfo,
-  EnemyTrait,
-  CardInfo,
-  EnemyActionHint,
-  AttackStyle,
-  CardTagInfo,
-} from '@/types/battle'
-import type { Card } from '@/domain/entities/Card'
-import type { State } from '@/domain/entities/State'
-import { TargetEnemyOperation, type CardOperation } from '@/domain/entities/operations'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
-import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 
 const props = defineProps<{ viewManager?: ViewManager }>()
 const viewManager = props.viewManager ?? createDefaultViewManager()
@@ -51,43 +36,24 @@ const currentAnimationId = ref<string | null>(null)
 
 const subscriptions: Array<() => void> = []
 
-interface HandCardViewModel {
-  key: string
-  info: CardInfo
-  card: Card
-  numericId?: number
-  operations: string[]
-  affordable: boolean
+interface EnemySelectionRequest {
+  resolve: (enemyId: number) => void
+  reject: (error: Error) => void
 }
-
-type InteractionMode = 'idle' | 'selecting-target-enemy'
-
-const interactionState = reactive<{
-  mode: InteractionMode
-  selectedCardId: string | null
-  selectedCardNumericId: number | null
-  pendingOperations: string[]
-  collectedOperations: CardOperation[]
-}>({
-  mode: 'idle',
-  selectedCardId: null,
-  selectedCardNumericId: null,
-  pendingOperations: [],
-  collectedOperations: [],
-})
 
 const layoutRef = ref<HTMLDivElement | null>(null)
 const { state: descriptionOverlay, hide: hideDescriptionOverlay } = useDescriptionOverlay()
 
 const snapshot = computed(() => managerState.snapshot)
 const isInitializing = computed(() => managerState.playback.status === 'initializing')
-const hasSnapshot = computed(() => !!snapshot.value)
 const playbackSpeed = computed(() => managerState.playback.speed)
 const isInputLocked = computed(() => managerState.input.locked)
 const pendingInputCount = computed(() => managerState.input.queued.length)
 const isPlayerTurn = computed(() => snapshot.value?.turn.activeSide === 'player')
-const isSelectingEnemy = computed(() => interactionState.mode === 'selecting-target-enemy')
+const enemySelectionRequest = ref<EnemySelectionRequest | null>(null)
+const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
+const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 
 const descriptionOverlayStyle = computed(() => {
   const layout = layoutRef.value
@@ -165,6 +131,7 @@ const playerHpGauge = computed(() => ({
 }))
 const deckCount = computed(() => snapshot.value?.deck.length ?? 0)
 const discardCount = computed(() => snapshot.value?.discardPile.length ?? 0)
+// TODO: ドメイン層へ移し、ビュー側に条件判定を残さない
 const isGameOver = computed(() => (snapshot.value?.player.currentHp ?? 0) <= 0)
 const isVictory = computed(() => {
   const current = snapshot.value
@@ -185,368 +152,44 @@ const isVictory = computed(() => {
 const canRetry = computed(() => viewManager.canRetry())
 const canUndo = computed(() => viewManager.hasUndoableAction())
 
-const enemies = computed<EnemyInfo[]>(() => {
-  const current = snapshot.value
-  if (!current) {
-    return []
+const handCardCount = computed(() => snapshot.value?.hand.length ?? 0)
+
+function requestEnemyTarget(): Promise<number> {
+  if (enemySelectionRequest.value) {
+    return Promise.reject(new Error('敵選択が既に進行中です'))
   }
 
-  const aliveEnemies = current.enemies.filter((enemy) => enemy.currentHp > 0)
+  hoveredEnemyId.value = null
 
-  return aliveEnemies.map((enemy) => {
-    const traitList = mapStatesToTraits(enemy.traits) ?? []
-    const stateList = mapStatesToTraits(enemy.states) ?? []
-    const skills = enemy.actions.map((action) => ({
-      name: action.name,
-      detail: action.describe(),
-    }))
-
-    return {
-      numericId: enemy.numericId,
-      name: enemy.name,
-      image: enemy.image,
-      hp: { current: enemy.currentHp, max: enemy.maxHp },
-      nextActions: summarizeEnemyActions(viewManager.battle, enemy.numericId),
-      skills,
-      traits: traitList,
-      states: stateList,
-    }
-  })
-})
-
-const handCards = computed<HandCardViewModel[]>(() => {
-  const current = snapshot.value
-  if (!current) {
-    return []
-  }
-
-  const currentMana = current.player.currentMana
-
-  return current.hand.map((card, index) => {
-    const info = convertCardToCardInfo(card, index)
-    const operations = card.definition.operations ?? []
-    const affordable = card.cost <= currentMana
-    return {
-      key: info.id,
-      info,
-      card,
-      numericId: card.numericId,
-      operations,
-      affordable,
-    }
-  })
-})
-
-const handCardCount = computed(() => handCards.value.length)
-
-function convertCardToCardInfo(card: Card, index: number): CardInfo {
-  const definition = card.definition
-  const identifier = card.numericId !== undefined ? `card-${card.numericId}` : `card-${index}`
-  const action = card.action
-  const operations = definition.operations ?? []
-
-  let description = card.description
-  let descriptionSegments: Array<{ text: string; highlighted?: boolean }> | undefined
-  let attackStyle: AttackStyle | undefined
-  const tagEntries: CardTagInfo[] = []
-
-  if (card.type === 'status') {
-    tagEntries.push({
-      id: 'synthetic-card-type-status',
-      label: '[状態異常]',
-      description: '敵や自身に状態異常を付与するカード。',
-    })
-  }
-
-  if (operations.includes(TargetEnemyOperation.TYPE)) {
-    tagEntries.push({
-      id: 'synthetic-target-enemy',
-      label: '[敵１体]',
-      description: '対象：敵１体',
-    })
-  } else {
-    tagEntries.push({
-      id: 'synthetic-target-self',
-      label: '[自身]',
-      description: '対象：自身',
-    })
-  }
-
-  if (action instanceof Attack) {
-    const damages = action.baseDamages
-    const primaryState = action.inflictStatePreviews[0]
-    const hint: EnemyActionHint = {
-      title: card.title,
-      type: 'attack',
-      icon: '',
-      pattern: {
-        amount: damages.baseAmount,
-        count: damages.baseCount,
-        type: damages.type,
+  return new Promise((resolve, reject) => {
+    enemySelectionRequest.value = {
+      resolve: (enemyId: number) => {
+        enemySelectionRequest.value = null
+        resolve(enemyId)
       },
-      calculatedPattern: undefined,
-      status: primaryState
-        ? {
-            name: primaryState.name,
-            magnitude: primaryState.magnitude ?? 1,
-          }
-        : undefined,
-      description: action.describe(),
-    }
-
-    const formatWithCalculated = (calculated?: { amount: number; count?: number }) => {
-      const formatted = formatEnemyActionLabel(
-        calculated
-          ? {
-              ...hint,
-              calculatedPattern: {
-                amount: calculated.amount,
-                count: calculated.count,
-              },
-            }
-          : hint,
-        { includeTitle: false },
-      )
-      description = formatted.label
-      descriptionSegments = formatted.segments
-    }
-
-    formatWithCalculated()
-
-    const battle = viewManager.battle
-    const isSelected = interactionState.selectedCardId === identifier
-    const targetEnemyId = hoveredEnemyId.value
-    if (battle && isSelected && targetEnemyId !== null) {
-      const enemy = battle.enemyTeam.findEnemyByNumericId(targetEnemyId) as Enemy | undefined
-      if (enemy) {
-        const calculatedDamages = new Damages({
-          baseAmount: damages.baseAmount,
-          baseCount: damages.baseCount,
-          type: damages.type,
-          attackerStates: battle.player.getStates(),
-          defenderStates: enemy.getStates(),
-        })
-        formatWithCalculated({
-          amount: calculatedDamages.amount,
-          count: calculatedDamages.count,
-        })
-      }
-    }
-
-    const pattern = hint.pattern ?? {
-      amount: damages.baseAmount,
-      count: damages.baseCount,
-      type: damages.type,
-    }
-    if (pattern) {
-      const count = Math.max(1, Math.floor(pattern.count ?? 1))
-      attackStyle = count > 1 ? 'multi' : 'single'
-    }
-  }
-
-  const runtimeTags = card.cardTags ?? []
-  for (const tag of runtimeTags) {
-    tagEntries.push({
-      id: tag.id,
-      label: `[${tag.name}]`,
-      description: tag.description,
-    })
-  }
-
-  return {
-    id: identifier,
-    title: card.title,
-    type: card.type,
-    cost: card.cost,
-    illustration: definition.image ?? '🂠',
-    description,
-    descriptionSegments,
-    attackStyle,
-    cardTags: tagEntries,
-  }
-}
-
-function mapStatesToTraits(states?: State[]): EnemyTrait[] | undefined {
-  if (!states || states.length === 0) {
-    return undefined
-  }
-
-  return states.map((state) => ({
-    name: state.name,
-    detail: state.description(),
-    magnitude: state.magnitude,
-  }))
-}
-
-function summarizeEnemyActions(battle: Battle | undefined, enemyId: number): EnemyActionHint[] {
-  if (!battle) {
-    return []
-  }
-
-  const enemy = battle.enemyTeam.findEnemyByNumericId(enemyId) as Enemy | undefined
-  if (!enemy) {
-    return []
-  }
-
-  if (enemy.hasActedThisTurn) {
-    return [
-      {
-        title: '行動済み',
-        type: 'skill',
-        icon: '',
-        acted: true,
-        description: `${enemy.name}はこのターン既に行動済み。`,
+      reject: (error: Error) => {
+        enemySelectionRequest.value = null
+        reject(error)
       },
-    ]
-  }
-
-  const queued = enemy.queuedActions
-  if (!queued || queued.length === 0) {
-    return []
-  }
-
-  const [nextAction] = queued
-  return nextAction ? [summarizeEnemyAction(battle, enemy, nextAction)] : []
-}
-
-function summarizeEnemyAction(battle: Battle, enemy: Enemy, action: BattleAction): EnemyActionHint {
-  if (action instanceof SkipTurnAction) {
-    return {
-      title: action.name,
-      type: 'skip',
-      icon: '',
-      description: action.describe(),
     }
-  }
-
-  if (action instanceof Attack) {
-    return buildAttackActionHint(battle, enemy, action)
-  }
-
-  return buildSkillActionHint(action)
-}
-
-function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): EnemyActionHint {
-  const damages = action.baseDamages
-  const states = action.inflictStatePreviews
-  const primaryState = states[0]
-
-  const calculatedDamages = new Damages({
-    baseAmount: damages.baseAmount,
-    baseCount: damages.baseCount,
-    type: damages.type,
-    attackerStates: enemy.getStates(),
-    defenderStates: battle.player.getStates(),
   })
-
-  return {
-    title: action.name,
-    type: 'attack',
-    icon: '',
-    pattern: {
-      amount: damages.baseAmount,
-      count: damages.baseCount,
-      type: damages.type,
-    },
-    calculatedPattern: {
-      amount: calculatedDamages.amount,
-      count: calculatedDamages.count,
-    },
-    status: primaryState
-      ? {
-          name: primaryState.name,
-          magnitude: primaryState.magnitude ?? 1,
-          description: primaryState.description(),
-        }
-      : undefined,
-    description: action.describe(),
-  }
 }
 
-function buildSkillActionHint(action: BattleAction): EnemyActionHint {
-  const gainState = action.gainStatePreviews[0]
-
-  return {
-    title: action.name,
-    type: action.type === 'skill' ? 'skill' : 'attack',
-    icon: '',
-    selfState: gainState
-      ? {
-          name: gainState.name,
-          magnitude: gainState.magnitude,
-          description: gainState.description(),
-        }
-      : undefined,
-    description: action.describe(),
+function resolveEnemySelection(enemyId: number): void {
+  const pending = enemySelectionRequest.value
+  if (!pending) {
+    return
   }
+  pending.resolve(enemyId)
 }
 
-const supportedOperations = new Set<string>([TargetEnemyOperation.TYPE])
-
-function isCardDisabled(entry: HandCardViewModel): boolean {
-  if (isInputLocked.value) {
-    return true
-  }
-  if (!isPlayerTurn.value) {
-    return true
-  }
-  if (!entry.affordable) {
-    return true
-  }
-  if (isSelectingEnemy.value) {
-    return interactionState.selectedCardId !== entry.key
-  }
-  return false
-}
-
-function handleCardClick(entry: HandCardViewModel): void {
-  if (isInputLocked.value || isSelectingEnemy.value || !isPlayerTurn.value || !entry.affordable) {
+function cancelEnemySelection(reason?: string): void {
+  const pending = enemySelectionRequest.value
+  if (!pending) {
     return
   }
-
-  if (entry.numericId === undefined) {
-    errorMessage.value = 'カードにIDが割り当てられていません'
-    return
-  }
-
-  interactionState.mode = 'idle'
-  interactionState.selectedCardId = entry.key
-  interactionState.selectedCardNumericId = entry.numericId
-  interactionState.pendingOperations = [...entry.operations]
-  interactionState.collectedOperations = []
-
-  if (entry.operations.length === 0) {
-    submitCardUsage()
-    return
-  }
-
-  const unsupported = entry.operations.filter((operation) => !supportedOperations.has(operation))
-  if (unsupported.length > 0) {
-    errorMessage.value = `未対応の操作が含まれているため、このカードは使用できません (${unsupported.join(', ')})`
-    resetInteractionState()
-    return
-  }
-
-  proceedToNextOperation()
-}
-
-function proceedToNextOperation(): void {
-  const nextOperationType = interactionState.pendingOperations[interactionState.collectedOperations.length]
-
-  if (!nextOperationType) {
-    submitCardUsage()
-    return
-  }
-
-  if (nextOperationType === TargetEnemyOperation.TYPE) {
-    interactionState.mode = 'selecting-target-enemy'
-    footerMessage.value = '対象の敵を選択：左クリックで決定　右クリックでキャンセル'
-    hoveredEnemyId.value = null
-    return
-  }
-
-  errorMessage.value = `未対応の操作 ${nextOperationType} です`
-  resetInteractionState()
+  pending.reject(new Error(reason ?? '敵選択がキャンセルされました'))
+  enemySelectionRequest.value = null
 }
 
 function handleEnemyHoverStart(enemyId: number): void {
@@ -562,46 +205,44 @@ function handleEnemyHoverEnd(enemyId: number): void {
   }
 }
 
-function handleEnemyClick(enemy: EnemyInfo): void {
-  if (!isSelectingEnemy.value) {
-    return
-  }
-
-  interactionState.collectedOperations.push({
-    type: TargetEnemyOperation.TYPE,
-    payload: enemy.numericId,
-  })
-
-  interactionState.mode = 'idle'
-  proceedToNextOperation()
-}
-
-function submitCardUsage(): void {
-  const cardId = interactionState.selectedCardNumericId
-  if (cardId === null) {
-    resetInteractionState()
-    return
-  }
-
-  viewManager.queuePlayerAction({
-    type: 'play-card',
-    cardId,
-    operations: [...interactionState.collectedOperations],
-  })
-
-  resetInteractionState()
-}
-
-function resetInteractionState(options?: { keepFooter?: boolean }): void {
-  interactionState.mode = 'idle'
-  interactionState.selectedCardId = null
-  interactionState.selectedCardNumericId = null
-  interactionState.pendingOperations = []
-  interactionState.collectedOperations = []
+function handleEnemySelected(enemyNumericId: number): void {
+  resolveEnemySelection(enemyNumericId)
   hoveredEnemyId.value = null
-  if (!options?.keepFooter) {
+}
+
+function cancelEnemySelectionInternal(reason?: string): void {
+  cancelEnemySelection(reason)
+  hoveredEnemyId.value = null
+}
+
+function handleEnemySelectionCanceled(): void {
+  cancelEnemySelectionInternal('敵選択がキャンセルされました')
+  handAreaRef.value?.cancelSelection()
+}
+
+function handleHandPlayCard(payload: { cardId: number; operations: CardOperation[] }): void {
+  viewManager.queuePlayerAction({ type: 'play-card', cardId: payload.cardId, operations: payload.operations })
+  errorMessage.value = null
+}
+
+function handleHandFooterUpdate(message: string): void {
+  footerMessage.value = message
+}
+
+function handleHandFooterReset(): void {
+  footerMessage.value = defaultFooterMessage
+}
+
+function handleHandError(message: string): void {
+  if (message === '敵選択がキャンセルされました') {
     footerMessage.value = defaultFooterMessage
+    return
   }
+  errorMessage.value = message
+}
+
+function handleHandHideOverlay(): void {
+  hideDescriptionOverlay()
 }
 
 async function runAnimation(script: AnimationScript): Promise<void> {
@@ -659,9 +300,11 @@ function handleEndTurnClick(): void {
 
 function handleRetryClick(): void {
   viewManager.resetToInitialState()
-  resetInteractionState()
+  cancelEnemySelectionInternal('敵選択がキャンセルされました')
+  handAreaRef.value?.resetSelection()
   hideDescriptionOverlay()
   errorMessage.value = null
+  footerMessage.value = defaultFooterMessage
 }
 
 function handleUndoClick(): void {
@@ -669,14 +312,16 @@ function handleUndoClick(): void {
   if (!undone) {
     return
   }
-  resetInteractionState()
+  cancelEnemySelectionInternal('敵選択がキャンセルされました')
+  handAreaRef.value?.resetSelection()
   hideDescriptionOverlay()
   errorMessage.value = null
+  footerMessage.value = defaultFooterMessage
 }
 
 function handleContextMenu(): void {
   if (isSelectingEnemy.value) {
-    resetInteractionState()
+    handleEnemySelectionCanceled()
   }
   hideDescriptionOverlay()
 }
@@ -759,44 +404,36 @@ function createSampleBattle(): Battle {
 
         <div class="battle-body">
           <main class="battle-main">
-            <section class="enemy-zone">
-              <div v-if="errorMessage" class="zone-message zone-message--error">{{ errorMessage }}</div>
-              <div v-else-if="isInitializing" class="zone-message">読み込み中...</div>
-              <div v-else-if="!hasSnapshot || enemies.length === 0" class="zone-message">
-                表示できる敵がありません
-              </div>
-              <TransitionGroup v-else name="enemy-card" tag="div" class="enemy-grid">
-                <EnemyCard
-                  v-for="enemy in enemies"
-                  :key="enemy.numericId"
-                  :enemy="enemy"
-                  :selectable="isSelectingEnemy"
-                  :hovered="isSelectingEnemy && hoveredEnemyId === enemy.numericId"
-                  :selected="isSelectingEnemy && hoveredEnemyId === enemy.numericId"
-                  @hover-start="() => handleEnemyHoverStart(enemy.numericId)"
-                  @hover-end="() => handleEnemyHoverEnd(enemy.numericId)"
-                  @click="handleEnemyClick(enemy)"
-                />
-              </TransitionGroup>
-            </section>
+            <BattleEnemyArea
+              :snapshot="snapshot"
+              :battle="viewManager.battle"
+              :is-initializing="isInitializing"
+              :error-message="errorMessage"
+              :is-selecting-enemy="isSelectingEnemy"
+              :hovered-enemy-id="hoveredEnemyId"
+              @hover-start="handleEnemyHoverStart"
+              @hover-end="handleEnemyHoverEnd"
+              @enemy-click="(enemy) => handleEnemySelected(enemy.numericId)"
+              @cancel-selection="handleEnemySelectionCanceled"
+            />
 
-            <section class="hand-zone">
-              <div v-if="errorMessage" class="zone-message zone-message--error">{{ errorMessage }}</div>
-              <div v-else-if="isInitializing" class="zone-message">カード情報を読み込み中...</div>
-              <div v-else-if="handCards.length === 0" class="zone-message">手札は空です</div>
-              <TransitionGroup v-else name="hand-card" tag="div" class="hand-grid">
-                <ActionCard
-                  v-for="entry in handCards"
-                  :key="entry.key"
-                  v-bind="entry.info"
-                  :operations="entry.operations"
-                  :affordable="entry.affordable"
-                  :selected="interactionState.selectedCardId === entry.key"
-                  :disabled="isCardDisabled(entry)"
-                  @click="handleCardClick(entry)"
-                />
-              </TransitionGroup>
-            </section>
+            <BattleHandArea
+              ref="handAreaRef"
+              :snapshot="snapshot"
+              :hovered-enemy-id="hoveredEnemyId"
+              :is-initializing="isInitializing"
+              :error-message="errorMessage"
+              :is-player-turn="isPlayerTurn"
+              :is-input-locked="isInputLocked"
+              :view-manager="viewManager"
+              :request-enemy-target="requestEnemyTarget"
+              :cancel-enemy-selection="cancelEnemySelectionInternal"
+              @play-card="handleHandPlayCard"
+              @update-footer="handleHandFooterUpdate"
+              @reset-footer="handleHandFooterReset"
+              @error="handleHandError"
+              @hide-overlay="handleHandHideOverlay"
+            />
           </main>
 
           <aside class="battle-sidebar">
@@ -984,8 +621,8 @@ function createSampleBattle(): Battle {
   min-height: 0;
 }
 
-.enemy-zone,
-.hand-zone {
+:deep(.enemy-zone),
+:deep(.hand-zone) {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -996,13 +633,13 @@ function createSampleBattle(): Battle {
   min-height: 0;
 }
 
-.enemy-zone {
+:deep(.enemy-zone) {
   flex: 0 0 230px;
   max-height: 230px;
   padding: 0 16px;
 }
 
-.hand-zone {
+:deep(.hand-zone) {
   flex: 1 1 auto;
   background: rgba(245, 245, 250, 0.18);
   padding: 0;
