@@ -25,10 +25,12 @@ export type EnemyActionHint = {
   status?: {
     name: string
     magnitude?: number
+    description?: string
   }
   selfState?: {
     name: string
     magnitude?: number
+    description?: string
   }
   acted?: boolean
   icon?: string
@@ -52,6 +54,12 @@ export type CardType = 'attack' | 'skill' | 'status'
 
 export type AttackStyle = 'single' | 'multi'
 
+export type CardTagInfo = {
+  id: string
+  label: string
+  description?: string
+}
+
 export type CardInfo = {
   id: string
   title: string
@@ -62,5 +70,5 @@ export type CardInfo = {
   descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
   notes?: string[]
   attackStyle?: AttackStyle
-  cardTags?: string[]
+  cardTags?: CardTagInfo[]
 }

@@ -28,7 +28,14 @@ import { Attack, Action as BattleAction } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import type { Enemy } from '@/domain/entities/Enemy'
-import type { EnemyInfo, EnemyTrait, CardInfo, EnemyActionHint, AttackStyle } from '@/types/battle'
+import type {
+  EnemyInfo,
+  EnemyTrait,
+  CardInfo,
+  EnemyActionHint,
+  AttackStyle,
+  CardTagInfo,
+} from '@/types/battle'
 import type { Card } from '@/domain/entities/Card'
 import type { State } from '@/domain/entities/State'
 import { TargetEnemyOperation, type CardOperation } from '@/domain/entities/operations'
@@ -159,6 +166,22 @@ const playerHpGauge = computed(() => ({
 const deckCount = computed(() => snapshot.value?.deck.length ?? 0)
 const discardCount = computed(() => snapshot.value?.discardPile.length ?? 0)
 const isGameOver = computed(() => (snapshot.value?.player.currentHp ?? 0) <= 0)
+const isVictory = computed(() => {
+  const current = snapshot.value
+  if (!current) {
+    return false
+  }
+  const playerHp = current.player?.currentHp ?? 0
+  if (playerHp <= 0) {
+    return false
+  }
+  const enemyList = current.enemies ?? []
+  if (enemyList.length === 0) {
+    return false
+  }
+  const survivingEnemies = enemyList.filter((enemy) => enemy.currentHp > 0)
+  return survivingEnemies.length === 0
+})
 const canRetry = computed(() => viewManager.canRetry())
 const canUndo = computed(() => viewManager.hasUndoableAction())
 
@@ -217,10 +240,34 @@ function convertCardToCardInfo(card: Card, index: number): CardInfo {
   const definition = card.definition
   const identifier = card.numericId !== undefined ? `card-${card.numericId}` : `card-${index}`
   const action = card.action
+  const operations = definition.operations ?? []
 
   let description = card.description
   let descriptionSegments: Array<{ text: string; highlighted?: boolean }> | undefined
   let attackStyle: AttackStyle | undefined
+  const tagEntries: CardTagInfo[] = []
+
+  if (card.type === 'status') {
+    tagEntries.push({
+      id: 'synthetic-card-type-status',
+      label: '[状態異常]',
+      description: '敵や自身に状態異常を付与するカード。',
+    })
+  }
+
+  if (operations.includes(TargetEnemyOperation.TYPE)) {
+    tagEntries.push({
+      id: 'synthetic-target-enemy',
+      label: '[敵１体]',
+      description: '対象：敵１体',
+    })
+  } else {
+    tagEntries.push({
+      id: 'synthetic-target-self',
+      label: '[自身]',
+      description: '対象：自身',
+    })
+  }
 
   if (action instanceof Attack) {
     const damages = action.baseDamages
@@ -294,6 +341,15 @@ function convertCardToCardInfo(card: Card, index: number): CardInfo {
     }
   }
 
+  const runtimeTags = card.cardTags ?? []
+  for (const tag of runtimeTags) {
+    tagEntries.push({
+      id: tag.id,
+      label: `[${tag.name}]`,
+      description: tag.description,
+    })
+  }
+
   return {
     id: identifier,
     title: card.title,
@@ -304,7 +360,7 @@ function convertCardToCardInfo(card: Card, index: number): CardInfo {
     descriptionSegments,
     notes: definition.notes,
     attackStyle,
-    cardTags: definition.cardTags?.map((tag) => tag.name),
+    cardTags: tagEntries,
   }
 }
 
@@ -451,6 +507,7 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
       ? {
           name: primaryState.name,
           magnitude: primaryState.magnitude ?? 1,
+          description: primaryState.description(),
         }
       : undefined,
     description: action.describe(),
@@ -468,6 +525,7 @@ function buildSkillActionHint(action: BattleAction): EnemyActionHint {
       ? {
           name: gainState.name,
           magnitude: gainState.magnitude,
+          description: gainState.description(),
         }
       : undefined,
     description: action.describe(),
@@ -475,20 +533,6 @@ function buildSkillActionHint(action: BattleAction): EnemyActionHint {
 }
 
 const supportedOperations = new Set<string>([TargetEnemyOperation.TYPE])
-
-const handleCardHoverStart = () => {
-  if (interactionState.mode !== 'idle') {
-    return
-  }
-  footerMessage.value = '左クリック：使用　右クリック：詳細'
-}
-
-const handleCardHoverEnd = () => {
-  if (interactionState.mode !== 'idle') {
-    return
-  }
-  footerMessage.value = defaultFooterMessage
-}
 
 function isCardDisabled(entry: HandCardViewModel): boolean {
   if (isInputLocked.value) {
@@ -801,8 +845,6 @@ function createSampleBattle(): Battle {
                   :selected="interactionState.selectedCardId === entry.key"
                   :disabled="isCardDisabled(entry)"
                   @click="handleCardClick(entry)"
-                  @hover-start="handleCardHoverStart"
-                  @hover-end="handleCardHoverEnd"
                 />
               </TransitionGroup>
             </section>
@@ -852,6 +894,9 @@ function createSampleBattle(): Battle {
           </aside>
           <div v-if="isGameOver" class="battle-gameover-overlay">
             <div class="gameover-text">GAME OVER</div>
+          </div>
+          <div v-else-if="isVictory" class="battle-victory-overlay">
+            <div class="victory-text">VICTORY!</div>
           </div>
         </div>
         <div
@@ -1154,7 +1199,8 @@ function createSampleBattle(): Battle {
   letter-spacing: 0.08em;
 }
 
-.battle-gameover-overlay {
+.battle-gameover-overlay,
+.battle-victory-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -1172,6 +1218,14 @@ function createSampleBattle(): Battle {
   font-weight: 800;
   letter-spacing: 0.24em;
   color: rgba(255, 80, 96, 0.92);
+  text-transform: uppercase;
+}
+
+.victory-text {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: rgba(255, 227, 115, 0.92);
   text-transform: uppercase;
 }
 

@@ -29,6 +29,18 @@ const emit = defineEmits<{
 const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
   useDescriptionOverlay()
 
+let activeTooltip: { key: string; text: string } | null = null
+
+interface ActionChipEntry {
+  key: string
+  icon: string
+  segments: Array<{ text: string; highlighted?: boolean }>
+  label: string
+  description: string
+  tooltips: Partial<Record<number, string>>
+  tooltipKey: string
+}
+
 const classes = computed(() => ({
   'enemy-card--selectable': props.selectable ?? false,
   'enemy-card--selected': props.selected ?? false,
@@ -37,15 +49,32 @@ const classes = computed(() => ({
 
 const displayName = computed(() => props.enemy.name.replace('（短剣）', '')) // TODO: 削除
 
-const formattedActions = computed(() => {
+const formattedActions = computed<ActionChipEntry[]>(() => {
   const next = props.enemy.nextActions ?? []
   if (next.length > 0) {
-    return next.map((action, index) => ({
-      key: `${action.title}-${index}`,
-      icon: action.icon ?? '',
-      ...formatEnemyActionLabel(action),
-      description: action.description ?? action.title,
-    }))
+    return next.map((action, index) => {
+      const formatted = formatEnemyActionLabel(action)
+      const tooltips: Partial<Record<number, string>> = {}
+      const descriptionText = action.description ?? action.title ?? formatted.label
+      if (formatted.segments.length > 0 && descriptionText) {
+        tooltips[0] = descriptionText
+      }
+
+      const stateDescription = action.status?.description ?? action.selfState?.description
+      if (stateDescription && formatted.segments.length > 0) {
+        tooltips[formatted.segments.length - 1] = stateDescription
+      }
+
+      return {
+        key: `${action.title}-${index}`,
+        icon: action.icon ?? '',
+        label: formatted.label,
+        segments: formatted.segments,
+        description: descriptionText,
+        tooltips,
+        tooltipKey: `enemy-action-${props.enemy.numericId}-${index}`,
+      }
+    })
   }
 
   return (props.enemy.skills ?? []).map((skill, index) => ({
@@ -53,7 +82,9 @@ const formattedActions = computed(() => {
     icon: selectLegacyIcon(skill.detail),
     label: formatLegacyLabel(skill),
     segments: [{ text: formatLegacyLabel(skill) }],
+    tooltips: { 0: skill.detail },
     description: skill.detail,
+    tooltipKey: `enemy-skill-${props.enemy.numericId}-${index}`,
   }))
 })
 
@@ -66,25 +97,45 @@ function handleEnter(): void {
 
 function handleLeave(): void {
   emit('hover-end')
-  hideOverlay()
+  if (activeTooltip && descriptionOverlay.text === activeTooltip.text) {
+    hideOverlay()
+  }
+  activeTooltip = null
 }
 
-function showTooltip(event: MouseEvent, text?: string): void {
+function showTooltip(event: MouseEvent, text: string | undefined, key: string): void {
   if (!text) {
     return
   }
+  activeTooltip = { key, text }
   showOverlay(text, { x: event.clientX, y: event.clientY })
 }
 
-function updateTooltipPosition(event: MouseEvent): void {
-  if (!descriptionOverlay.visible) {
+function updateTooltipPosition(event: MouseEvent, key: string, text?: string): void {
+  if (!text) {
+    return
+  }
+  if (
+    !descriptionOverlay.visible ||
+    !activeTooltip ||
+    activeTooltip.key !== key ||
+    activeTooltip.text !== text
+  ) {
     return
   }
   updatePosition({ x: event.clientX, y: event.clientY })
 }
 
-function hideTooltip(): void {
+function hideTooltip(key: string): void {
+  if (
+    !activeTooltip ||
+    activeTooltip.key !== key ||
+    descriptionOverlay.text !== activeTooltip.text
+  ) {
+    return
+  }
   hideOverlay()
+  activeTooltip = null
 }
 
 function formatStatus(name: string, magnitude?: number): string {
@@ -167,9 +218,7 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
           v-for="action in formattedActions"
           :key="action.key"
           class="enemy-card__chip"
-          @mouseenter="(event) => showTooltip(event, action.description ?? action.label)"
-          @mousemove="updateTooltipPosition"
-          @mouseleave="hideTooltip"
+          @mouseleave="() => hideTooltip(action.tooltipKey)"
         >
           <span v-if="action.icon" class="enemy-card__chip-icon">{{ action.icon }}</span>
           <span class="enemy-card__chip-text">
@@ -177,6 +226,9 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
               v-for="(segment, segmentIndex) in action.segments"
               :key="segmentIndex"
               :class="{ 'value--boosted': segment.highlighted }"
+              @mouseenter="(event) => showTooltip(event, action.tooltips[segmentIndex], action.tooltipKey)"
+              @mousemove="(event) => updateTooltipPosition(event, action.tooltipKey, action.tooltips[segmentIndex])"
+              @mouseleave="() => hideTooltip(action.tooltipKey)"
             >
               {{ segment.text }}
             </span>
@@ -192,9 +244,9 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
           v-for="trait in traitChips"
           :key="trait.key"
           class="enemy-card__chip enemy-card__chip--plain"
-          @mouseenter="(event) => showTooltip(event, trait.description)"
-          @mousemove="updateTooltipPosition"
-          @mouseleave="hideTooltip"
+          @mouseenter="(event) => showTooltip(event, trait.description, `enemy-trait-${trait.key}`)"
+          @mousemove="(event) => updateTooltipPosition(event, `enemy-trait-${trait.key}`, trait.description)"
+          @mouseleave="() => hideTooltip(`enemy-trait-${trait.key}`)"
         >
           {{ trait.label }}
         </li>
@@ -208,9 +260,9 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
           v-for="state in stateChips"
           :key="state.key"
           class="enemy-card__chip enemy-card__chip--plain"
-          @mouseenter="(event) => showTooltip(event, state.description)"
-          @mousemove="updateTooltipPosition"
-          @mouseleave="hideTooltip"
+          @mouseenter="(event) => showTooltip(event, state.description, `enemy-state-${state.key}`)"
+          @mousemove="(event) => updateTooltipPosition(event, `enemy-state-${state.key}`, state.description)"
+          @mouseleave="() => hideTooltip(`enemy-state-${state.key}`)"
         >
           {{ state.label }}
         </li>

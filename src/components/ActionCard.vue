@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { CardType, AttackStyle } from '@/types/battle'
+import type { CardType, AttackStyle, CardTagInfo } from '@/types/battle'
+import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const props = defineProps<{
   title: string
@@ -11,7 +12,7 @@ const props = defineProps<{
   descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
   notes?: string[]
   attackStyle?: AttackStyle
-  cardTags?: string[]
+  cardTags?: CardTagInfo[]
   operations?: string[]
   selected?: boolean
   disabled?: boolean
@@ -34,24 +35,12 @@ const costClasses = computed(() => [
   { 'card-cost--unavailable': props.affordable === false },
 ])
 
-const tagList = computed(() => {
-  const tags: string[] = []
-  const operations = props.operations ?? []
+const tagList = computed(() => props.cardTags ?? [])
 
-  if (props.type === 'status') {
-    tags.push('[状態異常]')
-  } else if (operations.includes('target-enemy')) {
-    tags.push('[敵１体]')
-  } else {
-    tags.push('[自身]')
-  }
+const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
+  useDescriptionOverlay()
 
-  for (const name of props.cardTags ?? []) {
-    tags.push(`[${name}]`)
-  }
-
-  return tags
-})
+let activeTag: { id: string; description: string } | null = null
 
 const handleEnter = () => {
   if (props.disabled) {
@@ -62,6 +51,45 @@ const handleEnter = () => {
 
 const handleLeave = () => {
   emit('hover-end')
+  if (activeTag && descriptionOverlay.text === activeTag.description) {
+    hideOverlay()
+  }
+  activeTag = null
+}
+
+function handleTagEnter(event: MouseEvent, tag: CardTagInfo): void {
+  if (!tag.description) {
+    activeTag = null
+    return
+  }
+  activeTag = { id: tag.id, description: tag.description }
+  showOverlay(tag.description, { x: event.clientX, y: event.clientY })
+}
+
+function handleTagMove(event: MouseEvent, tag: CardTagInfo): void {
+  if (!tag.description) {
+    return
+  }
+  if (
+    !descriptionOverlay.visible ||
+    !activeTag ||
+    activeTag.id !== tag.id ||
+    descriptionOverlay.text !== tag.description
+  ) {
+    return
+  }
+  updatePosition({ x: event.clientX, y: event.clientY })
+}
+
+function handleTagLeave(tag: CardTagInfo): void {
+  if (!tag.description) {
+    return
+  }
+  if (!activeTag || activeTag.id !== tag.id || descriptionOverlay.text !== tag.description) {
+    return
+  }
+  hideOverlay()
+  activeTag = null
 }
 </script>
 
@@ -84,7 +112,15 @@ const handleLeave = () => {
     </header>
 
     <div v-if="tagList.length" class="tag-list">
-      <span v-for="tag in tagList" :key="tag">{{ tag }}</span>
+      <span
+        v-for="tag in tagList"
+        :key="tag.id"
+        @mouseenter="(event) => handleTagEnter(event, tag)"
+        @mousemove="(event) => handleTagMove(event, tag)"
+        @mouseleave="() => handleTagLeave(tag)"
+      >
+        {{ tag.label }}
+      </span>
     </div>
 
     <section class="card-body">
