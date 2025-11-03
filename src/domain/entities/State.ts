@@ -44,6 +44,20 @@ export class State {
     return { ...base }
   }
 
+  stackWith(state: State): void {
+    if (state.id !== this.id) {
+      throw new Error(`State "${this.id}" cannot be stacked with different id "${state.id}"`)
+    }
+
+    const incoming = state.magnitude ?? 0
+    if (incoming === 0) {
+      return
+    }
+
+    const current = this.magnitude ?? 0
+    this.setMagnitude(current + incoming)
+  }
+
   apply(): void {}
 
   remove(): void {}
@@ -58,5 +72,9 @@ export class State {
 
   modifyDamage(params: DamageCalculationParams): DamageCalculationParams {
     return params
+  }
+
+  protected setMagnitude(value: number | undefined): void {
+    this.props.magnitude = value
   }
 }

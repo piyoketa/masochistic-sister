@@ -15,17 +15,25 @@ import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import type { State } from '@/domain/entities/State'
 import { Hand } from '@/domain/battle/Hand'
 import { Card } from '@/domain/entities/Card'
+import type { Battle } from '@/domain/battle/Battle'
+import { CardRepository } from '@/domain/repository/CardRepository'
 import { Damages } from '@/domain/entities/Damages'
 
 function createPlayerWithHand() {
   const player = new ProtagonistPlayer()
   const hand = new Hand()
   player.bindHand(hand)
+  const repository = new CardRepository()
+  const battle = {
+    hand,
+    cardRepository: repository,
+    addCardToPlayerHand: (card: Card) => hand.add(card),
+  } as unknown as Battle
 
   return {
     player,
     addState: (state: State) => {
-      hand.add(new Card({ state }))
+      player.addState(state, { battle })
       return state
     },
   }
@@ -73,7 +81,11 @@ describe('Attack#calcDamagesの挙動', () => {
 
     expect(damages.amount).toBe(20)
     expect(damages.count).toBe(3)
-    expect(damages.attackerStates).toContain(strength)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof StrengthState && (state.magnitude ?? 0) === 10,
+      ),
+    ).toBe(true)
   })
 
   it('攻撃側の筋力上昇と防御側の腐食が重なるとダメージが30になる', () => {
@@ -88,7 +100,11 @@ describe('Attack#calcDamagesの挙動', () => {
 
     expect(damages.amount).toBe(30)
     expect(damages.count).toBe(3)
-    expect(damages.attackerStates).toContain(strength)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof StrengthState && (state.magnitude ?? 0) === 10,
+      ),
+    ).toBe(true)
     expect(damages.defenderStates).toContain(corrosion)
   })
 
@@ -105,8 +121,16 @@ describe('Attack#calcDamagesの挙動', () => {
 
     expect(damages.amount).toBe(30)
     expect(damages.count).toBe(4)
-    expect(damages.attackerStates).toContain(strength)
-    expect(damages.attackerStates).toContain(acceleration)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof StrengthState && (state.magnitude ?? 0) === 10,
+      ),
+    ).toBe(true)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof AccelerationState && (state.magnitude ?? 0) === 1,
+      ),
+    ).toBe(true)
     expect(damages.defenderStates).toContain(corrosion)
   })
 

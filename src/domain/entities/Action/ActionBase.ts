@@ -23,7 +23,6 @@ import {
   type Operation,
   type OperationContext,
 } from '../operations'
-import { isPlayerEntity } from '../typeGuards'
 
 export type ActionType = 'attack' | 'skill'
 
@@ -203,12 +202,7 @@ export abstract class Action {
 
     const source = context.source
     for (const factory of this.gainStateFactories) {
-      const state = factory()
-      if (isPlayerEntity(source)) {
-        source.addState(state, { battle: context.battle })
-      } else {
-        source.addState(state)
-      }
+      source.addState(factory(), { battle: context.battle })
     }
   }
 }

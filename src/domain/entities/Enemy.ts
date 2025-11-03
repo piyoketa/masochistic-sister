@@ -132,7 +132,7 @@ export class Enemy {
     this.currentHpValue = Math.max(0, this.currentHpValue - Math.max(0, Math.floor(amount)))
   }
 
-  addState(state: State): void {
+  addState(state: State, _options?: { battle?: Battle }): void {
     this.stateList.push(state)
   }
 

@@ -159,11 +159,7 @@ export abstract class Attack extends Action {
         continue
       }
 
-      if (this.isPlayer(defender)) {
-        defender.addState(state, { battle: context.battle })
-      } else {
-        defender.addState(state)
-      }
+      defender.addState(state, { battle: context.battle })
     }
   }
 

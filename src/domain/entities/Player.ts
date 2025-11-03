@@ -120,10 +120,28 @@ export class Player {
       return []
     }
 
-    return hand
-      .list()
-      .map((card) => card.state)
-      .filter((state): state is State => state !== undefined)
+    const aggregates = new Map<string, { state: State; total: number }>()
+
+    for (const card of hand.list()) {
+      const state = card.state
+      if (!state) {
+        continue
+      }
+
+      const entry = aggregates.get(state.id)
+      const magnitude = state.magnitude ?? 0
+
+      if (entry) {
+        entry.total += magnitude
+        setStateMagnitude(entry.state, entry.total)
+      } else {
+        const clone = cloneState(state)
+        setStateMagnitude(clone, magnitude)
+        aggregates.set(state.id, { state: clone, total: magnitude })
+      }
+    }
+
+    return Array.from(aggregates.values()).map(({ state }) => state)
   }
 
   bindHand(hand: Hand): void {
@@ -138,4 +156,16 @@ export class Player {
       battle,
     })
   }
+}
+
+function cloneState(state: State): State {
+  const clone = Object.create(Object.getPrototypeOf(state)) as State
+  Object.assign(clone, state)
+  const props = { ...((state as unknown as { props: Record<string, unknown> }).props) }
+  ;(clone as unknown as { props: Record<string, unknown> }).props = props
+  return clone
+}
+
+function setStateMagnitude(state: State, magnitude: number): void {
+  ;((state as unknown as { props: { magnitude?: number } }).props).magnitude = magnitude
 }
