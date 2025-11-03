@@ -15,7 +15,7 @@ export interface CardProps {
 }
 
 export class Card {
-  private repositoryId?: number
+  private idValue?: number
   private readonly actionRef?: Action
   private readonly stateRef?: State
   private readonly cardTagsValue?: CardTag[]
@@ -38,20 +38,20 @@ export class Card {
     this.definitionValue = this.composeDefinition()
   }
 
-  get numericId(): number | undefined {
-    return this.repositoryId
+  get id(): number | undefined {
+    return this.idValue
   }
 
-  assignRepositoryId(id: number): void {
-    if (this.repositoryId !== undefined && this.repositoryId !== id) {
-      throw new Error(`Card already assigned to repository id ${this.repositoryId}`)
+  assignId(id: number): void {
+    if (this.idValue !== undefined && this.idValue !== id) {
+      throw new Error(`Card already assigned to repository id ${this.idValue}`)
     }
 
-    this.repositoryId = id
+    this.idValue = id
   }
 
-  hasRepositoryId(): boolean {
-    return this.repositoryId !== undefined
+  hasId(): boolean {
+    return this.idValue !== undefined
   }
 
   get action(): Action | undefined {

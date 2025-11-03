@@ -96,7 +96,7 @@ export class ActionLogReplayer {
       switch (operation.type) {
         case 'target-enemy': {
           const enemyId = this.extractEnemyId(payload)
-          const enemy = battle.enemyTeam.findEnemyByNumericId(enemyId)
+          const enemy = battle.enemyTeam.findEnemy(enemyId)
           const summary = enemy ? summarizeEnemy(enemy) : undefined
           resolved.targetEnemyId = enemyId
           resolved.targetEnemy = summary
@@ -222,7 +222,7 @@ export interface CardSummary {
 }
 
 function summarizeEnemy(enemy: Enemy): EnemySummary | undefined {
-  const id = enemy.numericId
+  const id = enemy.id
   if (id === undefined) {
     return undefined
   }
@@ -236,7 +236,7 @@ function summarizeEnemy(enemy: Enemy): EnemySummary | undefined {
 }
 
 function summarizeCard(card: Card): CardSummary | undefined {
-  const id = card.numericId
+  const id = card.id
   if (id === undefined) {
     return undefined
   }

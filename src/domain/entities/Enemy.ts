@@ -26,7 +26,7 @@ export class Enemy {
   private readonly actionHistory: Action[] = []
   private futureActions: Action[]
   private actedThisTurn = false
-  private repositoryId?: number
+  private idValue?: number
 
   constructor(props: EnemyProps) {
     this.nameValue = props.name
@@ -81,27 +81,27 @@ export class Enemy {
     return this.imageValue
   }
 
-  get numericId(): number | undefined {
-    return this.repositoryId
+  get id(): number | undefined {
+    return this.idValue
   }
 
-  assignRepositoryId(id: number): void {
-    if (this.repositoryId !== undefined && this.repositoryId !== id) {
-      throw new Error(`Enemy already assigned to repository id ${this.repositoryId}`)
+  assignId(id: number): void {
+    if (this.idValue !== undefined && this.idValue !== id) {
+      throw new Error(`Enemy already assigned to repository id ${this.idValue}`)
     }
 
-    this.repositoryId = id
+    this.idValue = id
   }
 
-  hasRepositoryId(): boolean {
-    return this.repositoryId !== undefined
+  hasId(): boolean {
+    return this.idValue !== undefined
   }
 
   act(battle: Battle): void {
     if (this.actedThisTurn) {
       battle.addLogEntry({
         message: `${this.name}は既に行動したため、何もしなかった。`,
-        metadata: { enemyId: this.numericId, reason: 'already-acted' },
+        metadata: { enemyId: this.id, reason: 'already-acted' },
       })
       return
     }
@@ -111,7 +111,7 @@ export class Enemy {
     if (!action) {
       battle.addLogEntry({
         message: `${this.name}は行動候補を持っていない。`,
-        metadata: { enemyId: this.numericId, reason: 'no-actions' },
+        metadata: { enemyId: this.id, reason: 'no-actions' },
       })
       return
     }

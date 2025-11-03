@@ -5,12 +5,12 @@ export class EnemyRepository {
   private counter = 0
 
   register(enemy: Enemy): Enemy {
-    const id = enemy.numericId ?? this.generateId()
+    const id = enemy.id ?? this.generateId()
     if (this.enemies.has(id) && this.enemies.get(id) !== enemy) {
       throw new Error(`Enemy with id ${id} already registered`)
     }
 
-    enemy.assignRepositoryId(id)
+    enemy.assignId(id)
     this.enemies.set(id, enemy)
     return enemy
   }

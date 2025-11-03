@@ -344,14 +344,14 @@ describe('BattleView', () => {
     expect(cardEl.attributes()['data-selected']).toBe('true')
 
     const enemyEl = wrapper.findAll('.enemy-card-stub')[0]!
-    const enemyId = snapshot!.enemies[0]!.numericId
+    const enemyId = snapshot!.enemies[0]!.id
     await enemyEl.trigger('click')
     await flushPromises()
 
     expect(queueSpy).toHaveBeenCalledTimes(1)
     expect(queueSpy).toHaveBeenCalledWith({
       type: 'play-card',
-      cardId: snapshot!.hand[targetIndex]!.numericId,
+      cardId: snapshot!.hand[targetIndex]!.id,
       operations: [{ type: TargetEnemyOperation.TYPE, payload: enemyId }],
     })
     expect(wrapper.html()).toContain('対象にカーソルを合わせて操作を確認')

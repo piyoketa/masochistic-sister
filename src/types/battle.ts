@@ -37,7 +37,7 @@ export type EnemyActionHint = {
 }
 
 export type EnemyInfo = {
-  numericId: number
+  id: number
   name: string
   image: string
   hp: {

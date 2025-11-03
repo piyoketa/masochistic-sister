@@ -205,8 +205,8 @@ function handleEnemyHoverEnd(enemyId: number): void {
   }
 }
 
-function handleEnemySelected(enemyNumericId: number): void {
-  resolveEnemySelection(enemyNumericId)
+function handleEnemySelected(enemyId: number): void {
+  resolveEnemySelection(enemyId)
   hoveredEnemyId.value = null
 }
 
@@ -413,7 +413,7 @@ function createSampleBattle(): Battle {
               :hovered-enemy-id="hoveredEnemyId"
               @hover-start="handleEnemyHoverStart"
               @hover-end="handleEnemyHoverEnd"
-              @enemy-click="(enemy) => handleEnemySelected(enemy.numericId)"
+              @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
               @cancel-selection="handleEnemySelectionCanceled"
             />
 

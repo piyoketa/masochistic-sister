@@ -11,8 +11,8 @@ const enemyCardStub = defineComponent({
   template: `
     <div
       class="enemy-card-stub"
-      @mouseenter="$emit('hover-start', enemy.numericId)"
-      @mouseleave="$emit('hover-end', enemy.numericId)"
+      @mouseenter="$emit('hover-start', enemy.id)"
+      @mouseleave="$emit('hover-end', enemy.id)"
       @click="$emit('click', enemy)"
       @contextmenu.prevent="$emit('contextmenu', $event)"
     >
@@ -38,7 +38,7 @@ function createSnapshot(withEnemy = false): BattleSnapshot | undefined {
     },
     enemies: [
       {
-        numericId: 1,
+        id: 1,
         name: 'オーク',
         currentHp: 10,
         maxHp: 10,
@@ -62,7 +62,7 @@ function createSnapshot(withEnemy = false): BattleSnapshot | undefined {
 
 function createBattleStub(): Battle {
   const enemyEntity = {
-    numericId: 1,
+    id: 1,
     name: 'オーク',
     image: '/assets/enemies/orc.jpg',
     actions: [],
@@ -73,7 +73,7 @@ function createBattleStub(): Battle {
 
   return {
     enemyTeam: {
-      findEnemyByNumericId: vi.fn(() => enemyEntity),
+      findEnemy: vi.fn(() => enemyEntity),
     },
     player: {
       getStates: vi.fn(() => []),
@@ -134,7 +134,7 @@ describe('BattleEnemyArea コンポーネント', () => {
 
     expect(hoverStart?.[0]).toEqual([1])
     expect(hoverEnd?.[0]).toEqual([1])
-    expect(enemyClick?.[0]?.[0]).toMatchObject({ numericId: 1, name: 'オーク' })
+    expect(enemyClick?.[0]?.[0]).toMatchObject({ id: 1, name: 'オーク' })
     expect(cancelSelection).toHaveLength(1)
   })
 })

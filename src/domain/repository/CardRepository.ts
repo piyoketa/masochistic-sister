@@ -28,14 +28,14 @@ export class CardRepository {
   create<T extends Card>(factory: CardFactory<T>): T {
     const id = this.generateId()
     const card = factory()
-    card.assignRepositoryId(id)
+    card.assignId(id)
 
     this.cards.set(id, card)
     return card
   }
 
   register(card: Card): void {
-    const id = card.numericId ?? this.generateId()
+    const id = card.id ?? this.generateId()
 
     if (!Number.isInteger(id) || id < 0) {
       throw new Error(`Card id must be a non-negative integer, received: ${id}`)
@@ -45,7 +45,7 @@ export class CardRepository {
       throw new Error(`Card with id ${id} already registered`)
     }
 
-    card.assignRepositoryId(id)
+    card.assignId(id)
     this.cards.set(id, card)
   }
 
@@ -86,15 +86,15 @@ export class CardRepository {
       return { card, location: 'hand' }
     }
 
-    if (zones.deck.list().some((candidate) => candidate.numericId === id)) {
+    if (zones.deck.list().some((candidate) => candidate.id === id)) {
       return { card, location: 'deck' }
     }
 
-    if (zones.discardPile.list().some((candidate) => candidate.numericId === id)) {
+    if (zones.discardPile.list().some((candidate) => candidate.id === id)) {
       return { card, location: 'discardPile' }
     }
 
-    if (zones.exilePile.list().some((candidate) => candidate.numericId === id)) {
+    if (zones.exilePile.list().some((candidate) => candidate.id === id)) {
       return { card, location: 'exilePile' }
     }
 

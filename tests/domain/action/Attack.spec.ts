@@ -59,7 +59,7 @@ function createBattleStub(player: Player, enemy: EnemyEntity) {
   return {
     player,
     enemyTeam: {
-      findEnemyByNumericId: vi.fn((id: number) => (enemy.numericId === id ? enemy : undefined)),
+      findEnemy: vi.fn((id: number) => (enemy.id === id ? enemy : undefined)),
     },
     cardRepository: {
       memoryEnemyAttack: vi.fn(),
@@ -90,7 +90,7 @@ describe('Attack クラス', () => {
       actions: [attack],
       image: '/enemy.png',
     })
-    enemy.assignRepositoryId(99)
+    enemy.assignId(99)
 
     const battle = createBattleStub(player, enemy)
     const result = attack.exposeShouldRequireOperation(new TargetEnemyOperation(), {
@@ -112,7 +112,7 @@ describe('Attack クラス', () => {
       actions: [attack],
       image: '/enemy.png',
     })
-    enemy.assignRepositoryId(1)
+    enemy.assignId(1)
     const battle = createBattleStub(player, enemy)
 
     const result = attack.exposeShouldRequireOperation(new TargetEnemyOperation(), {
@@ -134,7 +134,7 @@ describe('Attack クラス', () => {
       actions: [attack],
       image: '/enemy.png',
     })
-    enemy.assignRepositoryId(7)
+    enemy.assignId(7)
     const battle = createBattleStub(player, enemy)
 
     const context = attack.prepareContext({

@@ -34,7 +34,7 @@ export class SelectHandCardOperation extends Operation<Card> {
   }
 
   override toMetadata(): Record<string, unknown> {
-    const id = this.card.numericId
+    const id = this.card.id
     if (id === undefined) {
       throw new Error('Selected hand card missing repository id')
     }

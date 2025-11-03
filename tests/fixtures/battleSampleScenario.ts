@@ -53,11 +53,11 @@ export type ThirdTurnBuilder = (args: {
 }) => Record<string, number>
 
 export function requireCardId(card: Card | undefined): number {
-  if (!card || card.numericId === undefined) {
+  if (!card || card.id === undefined) {
     throw new Error('Card missing repository id')
   }
 
-  return card.numericId
+  return card.id
 }
 
 const isMemoryCardWithTitle = (card: Card, title: string): boolean =>
@@ -119,7 +119,7 @@ export function collectScenarioReferences(snapshot: BattleSnapshot): ScenarioRef
       throw new Error(`Enemy ${name} not found in sample snapshot`)
     }
 
-    return enemy.numericId
+    return enemy.id
   }
 
   return {

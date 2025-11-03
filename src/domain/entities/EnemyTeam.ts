@@ -21,12 +21,12 @@ export class EnemyTeam {
     this.turnOrderValue =
       props.turnOrder ??
       this.membersValue.map((enemy) => {
-        const numericId = enemy.numericId
-        if (numericId === undefined) {
+        const id = enemy.id
+        if (id === undefined) {
           throw new Error('Enemy missing repository id')
         }
 
-        return numericId
+        return id
       })
   }
 
@@ -46,11 +46,7 @@ export class EnemyTeam {
     return this.repositoryValue
   }
 
-  findEnemy(enemyId: number): Enemy | undefined {
-    return this.repositoryValue.findById(enemyId)
-  }
-
-  findEnemyByNumericId(id: number): Enemy | undefined {
+  findEnemy(id: number): Enemy | undefined {
     return this.repositoryValue.findById(id)
   }
 

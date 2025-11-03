@@ -40,7 +40,7 @@ function createContext(card?: Card): OperationContext {
           if (!card) {
             return undefined
           }
-          return card.numericId === cardId ? card : undefined
+          return card.id === cardId ? card : undefined
         },
       },
     } as unknown as OperationContext['battle'],
@@ -50,7 +50,7 @@ function createContext(card?: Card): OperationContext {
 describe('SelectHandCardOperation', () => {
   it('手札内のカードを解決しメタデータを返す', () => {
     const card = new Card({ action: new DummySkill() })
-    card.assignRepositoryId(12)
+    card.assignId(12)
     const operation = new SelectHandCardOperation()
     const context = createContext(card)
 
@@ -62,7 +62,7 @@ describe('SelectHandCardOperation', () => {
 
   it('手札に存在しないカード ID は例外になる', () => {
     const card = new Card({ action: new DummySkill() })
-    card.assignRepositoryId(1)
+    card.assignId(1)
     const operation = new SelectHandCardOperation()
     const context = createContext(card)
 
@@ -71,7 +71,7 @@ describe('SelectHandCardOperation', () => {
 
   it('不正な入力フォーマットを検出する', () => {
     const card = new Card({ action: new DummySkill() })
-    card.assignRepositoryId(7)
+    card.assignId(7)
     const operation = new SelectHandCardOperation()
     const context = createContext(card)
 

@@ -32,8 +32,8 @@ export class Hand {
   }
 
   find(cardId: number): Card | undefined {
-    return this.cards.find((card) => card.numericId === cardId)
-  }
+    return this.cards.find((card) => card.id === cardId)
+}
 
   hasCardOf(actionOrState: ActionConstructor | StateConstructor): boolean {
     return this.cards.some((card) => {

@@ -32,7 +32,7 @@ export class MasochisticAuraAction extends Skill {
       throw new Error('Target enemy is required for Masochistic Aura')
     }
 
-    const targetId = target.numericId
+    const targetId = target.id
     if (targetId === undefined) {
       throw new Error('Target enemy has no repository id')
     }

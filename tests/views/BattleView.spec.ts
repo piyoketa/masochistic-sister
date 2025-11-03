@@ -79,7 +79,7 @@ function createSnapshot(): BattleSnapshot {
 function createBattleStub(): Battle {
   return {
     enemyTeam: {
-      findEnemyByNumericId: vi.fn(),
+      findEnemy: vi.fn(),
     },
     player: {
       getStates: vi.fn(() => []),

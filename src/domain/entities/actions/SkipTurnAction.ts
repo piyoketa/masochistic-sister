@@ -36,7 +36,7 @@ export class SkipTurnAction extends Action {
     const enemy = context.source as Enemy
     context.battle.addLogEntry({
       message: this.messageTemplate(enemy),
-      metadata: { enemyId: enemy.numericId, action: 'skip' },
+      metadata: { enemyId: enemy.id, action: 'skip' },
     })
   }
 }

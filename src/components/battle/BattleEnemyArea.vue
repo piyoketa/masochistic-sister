@@ -58,21 +58,21 @@ const enemies = computed<EnemyInfo[]>(() => {
   }
 
   return aliveEnemies.value.map((enemySnapshot) => {
-    const enemy = battle.enemyTeam.findEnemyByNumericId(enemySnapshot.numericId) as Enemy | undefined
+    const enemy = battle.enemyTeam.findEnemy(enemySnapshot.id) as Enemy | undefined
     const traits = mergeTraits(
       mapStatesToTraits(enemySnapshot.traits),
       mapStatesToTraits(enemySnapshot.states),
     )
 
     return {
-      numericId: enemySnapshot.numericId,
+      id: enemySnapshot.id,
       name: enemySnapshot.name,
       image: enemy?.image ?? '',
       hp: {
         current: enemySnapshot.currentHp,
         max: enemySnapshot.maxHp,
       },
-      nextActions: summarizeEnemyActions(battle, enemySnapshot.numericId),
+      nextActions: summarizeEnemyActions(battle, enemySnapshot.id),
       skills: enemy?.actions.map((action) => ({
         name: action.name,
         detail: action.describe(),
@@ -119,7 +119,7 @@ function mergeTraits(...groups: Array<EnemyTrait[] | undefined>): EnemyTrait[] {
 }
 
 function summarizeEnemyActions(battle: Battle, enemyId: number): EnemyActionHint[] {
-  const enemy = battle.enemyTeam.findEnemyByNumericId(enemyId) as Enemy | undefined
+  const enemy = battle.enemyTeam.findEnemy(enemyId) as Enemy | undefined
   if (!enemy) {
     return []
   }
@@ -228,13 +228,13 @@ function buildSkillActionHint(action: BattleAction): EnemyActionHint {
     <TransitionGroup v-else name="enemy-card" tag="div" class="enemy-grid">
       <EnemyCard
         v-for="enemy in enemies"
-        :key="enemy.numericId"
+        :key="enemy.id"
         :enemy="enemy"
         :selectable="isSelectingEnemy"
-        :hovered="isSelectingEnemy && hoveredEnemyId === enemy.numericId"
-        :selected="isSelectingEnemy && hoveredEnemyId === enemy.numericId"
-        @mouseenter="() => emit('hover-start', enemy.numericId)"
-        @mouseleave="() => emit('hover-end', enemy.numericId)"
+        :hovered="isSelectingEnemy && hoveredEnemyId === enemy.id"
+        :selected="isSelectingEnemy && hoveredEnemyId === enemy.id"
+        @mouseenter="() => emit('hover-start', enemy.id)"
+        @mouseleave="() => emit('hover-end', enemy.id)"
         @click="() => emit('enemy-click', enemy)"
         @contextmenu.prevent="handleContextMenu(enemy, $event)"
       />

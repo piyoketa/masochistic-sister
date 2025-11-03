@@ -23,7 +23,7 @@ function createEnemy(id?: number): Enemy {
     image: '/enemy.png',
   })
   if (id !== undefined) {
-    enemy.assignRepositoryId(id)
+    enemy.assignId(id)
   }
   return enemy
 }
@@ -34,7 +34,7 @@ function createContext(enemy: Enemy, player = createPlayer()): OperationContext 
     battle: {
       player,
       enemyTeam: {
-        findEnemyByNumericId: (enemyId: number) => (enemy.numericId === enemyId ? enemy : undefined),
+        findEnemy: (enemyId: number) => (enemy.id === enemyId ? enemy : undefined),
       },
     } as unknown as OperationContext['battle'],
   }
@@ -68,7 +68,7 @@ describe('TargetEnemyOperation', () => {
       battle: {
         player,
         enemyTeam: {
-          findEnemyByNumericId: () => enemy,
+          findEnemy: () => enemy,
         },
       } as unknown as OperationContext['battle'],
     }

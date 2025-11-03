@@ -92,7 +92,7 @@ describe('BattleHandArea コンポーネント', () => {
 
   it('操作不要のカードをクリックすると即座にplay-cardをemitする', async () => {
     const simpleCard = new Card({ action: new BattlePrepAction() })
-    simpleCard.assignRepositoryId(1)
+    simpleCard.assignId(1)
 
     const requestEnemyTarget = vi.fn<[], Promise<number>>()
 
@@ -127,7 +127,7 @@ describe('BattleHandArea コンポーネント', () => {
 
   it('敵ターゲットが必要なカードではrequestEnemyTargetを経由する', async () => {
     const targetCard = new Card({ action: new HeavenChainAction() })
-    targetCard.assignRepositoryId(42)
+    targetCard.assignId(42)
 
     const requestEnemyTarget = vi.fn<[], Promise<number>>(() => Promise.resolve(999))
     const cancelEnemySelection = vi.fn()

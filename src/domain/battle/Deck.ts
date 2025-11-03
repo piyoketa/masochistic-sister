@@ -43,7 +43,7 @@ export class Deck {
   }
 
   remove(cardId: number): void {
-    const index = this.cards.findIndex((card) => card.numericId === cardId)
+    const index = this.cards.findIndex((card) => card.id === cardId)
     if (index >= 0) {
       this.cards.splice(index, 1)
     }

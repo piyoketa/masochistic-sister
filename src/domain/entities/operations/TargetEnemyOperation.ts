@@ -9,7 +9,7 @@ TargetEnemyOperation.ts の責務:
 - 敵IDの採番やリポジトリ管理、敵行動のスケジューリング。これらは `EnemyRepository` や `Enemy` クラスが担当する。
 
 主要な通信相手とインターフェース:
-- `OperationContext`（`battle.enemyTeam.findEnemyByNumericId`）: 数値IDから敵インスタンスを取得し、存在しなければ例外を発生させる。
+- `OperationContext`（`battle.enemyTeam.findEnemy`）: 数値IDから敵インスタンスを取得し、存在しなければ例外を発生させる。
 - `ActionBase` / `Attack` など: resolve 済みの `TargetEnemyOperation` を利用してターゲット決定および `metadata.targetEnemyId` を参照する。
 - 類似する `SelectHandCardOperation`: いずれも入力バリデーションを担うが、こちらは敵、向こうはプレイヤー手札に対する操作という点で役割が異なる。
 */
@@ -25,7 +25,7 @@ export class TargetEnemyOperation extends Operation<Enemy> {
 
   protected resolve(payload: unknown, context: OperationContext): Enemy {
     const enemyId = this.extractEnemyId(payload)
-    const enemy = context.battle.enemyTeam.findEnemyByNumericId(enemyId)
+    const enemy = context.battle.enemyTeam.findEnemy(enemyId)
     if (!enemy) {
       throw new Error(`Enemy ${enemyId} not found`)
     }
@@ -35,7 +35,7 @@ export class TargetEnemyOperation extends Operation<Enemy> {
 
   override toMetadata(): Record<string, unknown> {
     const enemy = this.enemy
-    const id = enemy.numericId
+    const id = enemy.id
     if (id === undefined) {
       throw new Error('Enemy missing repository id')
     }

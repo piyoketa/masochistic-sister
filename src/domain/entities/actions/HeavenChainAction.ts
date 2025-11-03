@@ -37,7 +37,7 @@ export class HeavenChainAction extends Skill {
 
     context.battle.addLogEntry({
       message: `${target.name}は天の鎖で動きを封じられた。`,
-      metadata: { enemyId: target.numericId, action: 'heaven-chain' },
+      metadata: { enemyId: target.id, action: 'heaven-chain' },
     })
   }
 }

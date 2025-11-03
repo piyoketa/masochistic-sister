@@ -492,7 +492,7 @@ export class ViewManager {
 
     const order = battle.enemyTeam.turnOrder
     for (const enemyId of order) {
-      const enemy = battle.enemyTeam.findEnemyByNumericId(enemyId)
+      const enemy = battle.enemyTeam.findEnemy(enemyId)
       if (!enemy) {
         continue
       }
@@ -611,7 +611,7 @@ export class ViewManager {
       switch (operation.type) {
         case 'target-enemy': {
           const enemyId = this.extractEnemyId(payload)
-          const enemy = battle.enemyTeam.findEnemyByNumericId(enemyId)
+          const enemy = battle.enemyTeam.findEnemy(enemyId)
           const summary = enemy ? this.summarizeEnemy(enemy) : undefined
           resolved.targetEnemyId = enemyId
           resolved.targetEnemy = summary
@@ -690,7 +690,7 @@ export class ViewManager {
   }
 
   private summarizeEnemy(enemy: Enemy): EnemySummary | undefined {
-    const id = enemy.numericId
+    const id = enemy.id
     if (id === undefined) {
       return undefined
     }
@@ -704,7 +704,7 @@ export class ViewManager {
   }
 
   private summarizeCard(card: Card): CardSummary | undefined {
-    const id = card.numericId
+    const id = card.id
     if (id === undefined) {
       return undefined
     }

@@ -30,7 +30,7 @@ interface HandEntry {
   key: string
   info: CardInfo
   card: Card
-  numericId?: number
+  id?: number
   operations: string[]
   affordable: boolean
 }
@@ -57,11 +57,11 @@ const emit = defineEmits<{
 
 const interactionState = reactive<{
   selectedCardKey: string | null
-  selectedCardNumericId: number | null
+  selectedCardId: number | null
   isAwaitingEnemy: boolean
 }>({
   selectedCardKey: null,
-  selectedCardNumericId: null,
+  selectedCardId: null,
   isAwaitingEnemy: false,
 })
 
@@ -81,7 +81,7 @@ const hasCards = computed(() => handEntries.value.length > 0)
 
 function buildHandEntry(card: Card, index: number, currentMana: number): HandEntry {
   const definition = card.definition
-  const identifier = card.numericId !== undefined ? `card-${card.numericId}` : `card-${index}`
+  const identifier = card.id !== undefined ? `card-${card.id}` : `card-${index}`
   const operations = definition.operations ?? []
   const affordable = card.cost <= currentMana
 
@@ -101,7 +101,7 @@ function buildHandEntry(card: Card, index: number, currentMana: number): HandEnt
       cardTags: tagEntries,
     },
     card,
-    numericId: card.numericId,
+    id: card.id,
     operations,
     affordable,
   }
@@ -188,8 +188,8 @@ function buildCardPresentation(card: Card, index: number): {
     formatWithCalculated()
 
     const targetEnemyId = props.hoveredEnemyId
-    if (battle && interactionState.selectedCardKey === `card-${card.numericId ?? index}` && targetEnemyId !== null) {
-      const enemy = battle.enemyTeam.findEnemyByNumericId(targetEnemyId) as Enemy | undefined
+    if (battle && interactionState.selectedCardKey === `card-${card.id ?? index}` && targetEnemyId !== null) {
+      const enemy = battle.enemyTeam.findEnemy(targetEnemyId) as Enemy | undefined
       if (enemy) {
         const calculatedDamages = new Damages({
           baseAmount: damages.baseAmount,
@@ -268,16 +268,16 @@ async function handleCardClick(entry: HandEntry): Promise<void> {
     return
   }
 
-  if (entry.numericId === undefined) {
+  if (entry.id === undefined) {
     emit('error', 'カードにIDが割り当てられていません')
     return
   }
 
   interactionState.selectedCardKey = entry.key
-  interactionState.selectedCardNumericId = entry.numericId
+  interactionState.selectedCardId = entry.id
 
   if (entry.operations.length === 0) {
-    emit('play-card', { cardId: entry.numericId, operations: [] })
+    emit('play-card', { cardId: entry.id, operations: [] })
     resetSelection()
     return
   }
@@ -313,10 +313,10 @@ async function executeOperations(entry: HandEntry): Promise<void> {
       interactionState.isAwaitingEnemy = true
       emit('update-footer', '対象の敵を選択：左クリックで決定　右クリックでキャンセル')
       try {
-        const enemyNumericId = await props.requestEnemyTarget()
+        const enemyId = await props.requestEnemyTarget()
         collectedOperations.push({
           type: TargetEnemyOperation.TYPE,
-          payload: enemyNumericId,
+          payload: enemyId,
         })
       } finally {
         interactionState.isAwaitingEnemy = false
@@ -328,7 +328,7 @@ async function executeOperations(entry: HandEntry): Promise<void> {
     throw new Error(`未対応の操作 ${operationType} です`)
   }
 
-  const cardId = interactionState.selectedCardNumericId
+  const cardId = interactionState.selectedCardId
   if (cardId === null) {
     throw new Error('カード使用に必要な情報が不足しています')
   }
@@ -341,7 +341,7 @@ function resetSelection(options?: { keepSelection?: boolean }): void {
   interactionState.isAwaitingEnemy = false
   if (!options?.keepSelection) {
     interactionState.selectedCardKey = null
-    interactionState.selectedCardNumericId = null
+    interactionState.selectedCardId = null
   }
   emit('reset-footer')
   emit('hide-overlay')

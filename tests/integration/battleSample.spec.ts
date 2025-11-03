@@ -238,7 +238,7 @@ describe('Battle sample scenario', () => {
     // 最後の行動がBattleDanceActionであることを確認する
     expect(finalAction).toBeInstanceOf(BattleDanceAction)
     const orcDancerSnapshot = snapshot.enemies.find(
-      (enemy) => enemy.numericId === Refs.enemyIds.orcDancer,
+      (enemy) => enemy.id === Refs.enemyIds.orcDancer,
     )
     // オークダンサーにAccelerationStateが付与されていることを確認する
     expect(orcDancerSnapshot?.states.some((state) => state instanceof AccelerationState)).toBe(true)
@@ -405,7 +405,7 @@ describe('Battle sample scenario', () => {
     expect(snapshot.player.currentMana).toBe(1)
     // プレイ後の手札枚数が5枚であることを確認する
     expect(snapshot.hand).toHaveLength(5)
-    const snail = snapshot.enemies.find((enemy) => enemy.numericId === Refs.enemyIds.snail)
+    const snail = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.snail)
     // かたつむりの現在HPが10になっていることを確認する
     expect(snail?.currentHp).toBe(10)
     // かたつむりに腐食(1)が付与されていることを確認する
@@ -608,7 +608,7 @@ describe('Battle sample scenario', () => {
     expect(snapshot.player.currentMana).toBe(2)
     // プレイ後の手札枚数が6枚であることを確認する（リフレッシュ後の手札構成が維持される）
     expect(snapshot.hand.length).toBe(6)
-    const snail = snapshot.enemies.find((enemy) => enemy.numericId === Refs.enemyIds.snail)
+    const snail = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.snail)
     // かたつむりのHPが0になっていることを確認する
     expect(snail?.currentHp).toBe(0)
     // 腐食状態が維持されていることを確認する
@@ -656,7 +656,7 @@ describe('Battle sample scenario', () => {
     expect(snapshot.player.currentMana).toBe(2)
     // プレイ後の手札枚数が6枚に落ち着いていることを確認する
     expect(snapshot.hand.length).toBe(6)
-    const orc = snapshot.enemies.find((enemy) => enemy.numericId === RefsPattern2.enemyIds.orc)
+    const orc = snapshot.enemies.find((enemy) => enemy.id === RefsPattern2.enemyIds.orc)
     // オークのHPが0になっていることを確認する
     expect(orc?.currentHp).toBe(0)
     // 乱れ突きの記憶カードが捨て札に移動していることを確認する
@@ -684,7 +684,7 @@ describe('Battle sample scenario', () => {
     // プレイ後の手札枚数が5枚であることを確認する
     expect(snapshot.hand.length).toBe(5)
     const orcDancer = snapshot.enemies.find(
-      (enemy) => enemy.numericId === RefsPattern2.enemyIds.orcDancer,
+      (enemy) => enemy.id === RefsPattern2.enemyIds.orcDancer,
     )
     // オークダンサーのHPが35になっていることを確認する
     expect(orcDancer?.currentHp).toBe(35)

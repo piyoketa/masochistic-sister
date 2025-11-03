@@ -72,7 +72,7 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
         segments: formatted.segments,
         description: descriptionText,
         tooltips,
-        tooltipKey: `enemy-action-${props.enemy.numericId}-${index}`,
+        tooltipKey: `enemy-action-${props.enemy.id}-${index}`,
       }
     })
   }
@@ -84,7 +84,7 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
     segments: [{ text: formatLegacyLabel(skill) }],
     tooltips: { 0: skill.detail },
     description: skill.detail,
-    tooltipKey: `enemy-skill-${props.enemy.numericId}-${index}`,
+    tooltipKey: `enemy-skill-${props.enemy.id}-${index}`,
   }))
 })
 

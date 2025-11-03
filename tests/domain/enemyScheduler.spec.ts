@@ -36,7 +36,7 @@ class LogSkillAction extends Skill {
     const enemy = context.source as Enemy
     context.battle.addLogEntry({
       message: `${enemy.name}は${this.label}を使った`,
-      metadata: { enemyId: enemy.numericId, action: this.label },
+      metadata: { enemyId: enemy.id, action: this.label },
     })
   }
 }
@@ -113,7 +113,7 @@ describe('Enemy action scheduling', () => {
     const battle = createBattle(enemy)
     const player = battle.player
     const action = new HeavenChainAction()
-    const targetId = enemy.numericId
+    const targetId = enemy.id
     if (targetId === undefined) {
       throw new Error('enemy numeric id not assigned')
     }

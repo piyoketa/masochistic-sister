@@ -42,7 +42,7 @@ function createBattleWithHand(
 }
 
 function requireCardId(card: Card): number {
-  const id = card.numericId
+  const id = card.id
   if (id === undefined) {
     throw new Error('Card missing repository id')
   }
@@ -76,14 +76,14 @@ describe('Card operation validation', () => {
     const auraCard = repo.create(() => new Card({ action: new MasochisticAuraAction() }))
     const battle = createBattleWithHand([auraCard], [], repo)
     const snail = battle.enemyTeam.members.find((enemy) => enemy.name === 'かたつむり')
-    expect(snail?.numericId).toBeDefined()
+    expect(snail?.id).toBeDefined()
 
     const auraCardId = requireCardId(auraCard)
 
-    battle.playCard(auraCardId, [{ type: 'target-enemy', payload: snail!.numericId }])
+    battle.playCard(auraCardId, [{ type: 'target-enemy', payload: snail!.id }])
 
-    expect(battle.hand.list().some((card) => card.numericId === auraCardId)).toBe(false)
-    expect(battle.discardPile.list().some((card) => card.numericId === auraCardId)).toBe(true)
+    expect(battle.hand.list().some((card) => card.id === auraCardId)).toBe(false)
+    expect(battle.discardPile.list().some((card) => card.id === auraCardId)).toBe(true)
   })
 
   it('requires hand selection for Hand Swap', () => {
@@ -104,9 +104,9 @@ describe('Card operation validation', () => {
 
     battle.playCard(swapCardId, [{ type: 'select-hand-card', payload: extraCardId }])
 
-    expect(battle.hand.list().some((card) => card.numericId === extraCardId)).toBe(false)
-    expect(battle.discardPile.list().some((card) => card.numericId === extraCardId)).toBe(true)
-    expect(battle.discardPile.list().some((card) => card.numericId === swapCardId)).toBe(true)
-    expect(battle.hand.list().some((card) => card.numericId === drawCardId)).toBe(true)
+    expect(battle.hand.list().some((card) => card.id === extraCardId)).toBe(false)
+    expect(battle.discardPile.list().some((card) => card.id === extraCardId)).toBe(true)
+    expect(battle.discardPile.list().some((card) => card.id === swapCardId)).toBe(true)
+    expect(battle.hand.list().some((card) => card.id === drawCardId)).toBe(true)
   })
 })
