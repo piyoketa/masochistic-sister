@@ -5,9 +5,7 @@ export interface StateProps {
   id: string
   name: string
   magnitude?: number
-  description?: string
   cardDefinition?: CardDefinition
-  descriptionBuilder?: (state: State) => string
 }
 
 export class State {
@@ -29,23 +27,11 @@ export class State {
     return this.props.magnitude
   }
 
-  description(): string {
-    return this.createDescription()
-  }
-
   get cardDefinitionBase(): CardDefinition | undefined {
     return this.props.cardDefinition
   }
 
-  createDescription(): string {
-    if (this.props.descriptionBuilder) {
-      return this.props.descriptionBuilder(this)
-    }
-
-    if (this.props.description) {
-      return this.props.description
-    }
-
+  description(): string {
     return ''
   }
 
