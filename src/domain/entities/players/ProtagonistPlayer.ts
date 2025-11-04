@@ -5,8 +5,8 @@ export class ProtagonistPlayer extends Player {
     super({
       id: 'player-1',
       name: '聖女',
-      maxHp: 100,
-      currentHp: 100,
+      maxHp: 150,
+      currentHp: 150,
       maxMana: 3,
       currentMana: 3,
       ...overrides,
