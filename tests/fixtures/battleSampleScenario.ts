@@ -46,21 +46,12 @@ export interface BattleScenario {
   references: ScenarioReferences
 }
 
-export type ThirdTurnBuilder = (args: {
-  actionLog: ActionLog
-  references: ScenarioReferences
-}) => Record<string, number>
-
 export function requireCardId(card: Card | undefined): number {
   if (!card || card.id === undefined) {
     throw new Error('Card missing repository id')
   }
-
   return card.id
 }
-
-const isMemoryCardWithTitle = (card: Card, title: string): boolean =>
-  card.title === title && (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
 
 export function createBaseBattle(): Battle {
   const cardRepository = new CardRepository()
@@ -109,7 +100,6 @@ export function collectScenarioReferences(snapshot: BattleSnapshot): ScenarioRef
     if (!enemy) {
       throw new Error(`Enemy ${name} not found in sample snapshot`)
     }
-
     return enemy.id
   }
 
@@ -126,13 +116,13 @@ export function collectScenarioReferences(snapshot: BattleSnapshot): ScenarioRef
   }
 }
 
-export function createBattleScenario(thirdTurnBuilder: ThirdTurnBuilder): BattleScenario {
+export function createBattleScenario(): BattleScenario {
   const createBattle = () => createBaseBattle()
   const sampleSnapshot = createBattle().getSnapshot()
   const references = collectScenarioReferences(sampleSnapshot)
   const actionLog = new ActionLog()
 
-  const steps = {
+  const steps: ScenarioSteps = {
     battleStart: actionLog.push({ type: 'battle-start' }),
     playerTurn1Start: actionLog.push({ type: 'start-player-turn', draw: 5 }),
     playMasochisticAura: actionLog.push({
@@ -150,197 +140,7 @@ export function createBattleScenario(thirdTurnBuilder: ThirdTurnBuilder): Battle
       card: references.battlePrepIds[0]!,
     }),
     endPlayerTurn1: actionLog.push({ type: 'end-player-turn' }),
-    startEnemyTurn1: actionLog.push({ type: 'start-enemy-turn' }),
-    orcActs: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orc }),
-    orcDancerActs: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orcDancer }),
-    tentacleActs: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.tentacle }),
-    snailActs: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.snail }),
-    endEnemyTurn1: actionLog.push({ type: 'end-player-turn' }),
-    startPlayerTurn2: actionLog.push({ type: 'start-player-turn', draw: 2 }),
-    playHeavenChainOnTentacle: actionLog.push({
-      type: 'play-card',
-      card: references.heavenChainIds[1]!,
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
-    }),
-    playHeavenChainOnSnail: actionLog.push({
-      type: 'play-card',
-      card: references.heavenChainIds[2]!,
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
-    }),
-    playAcidSpitOnSnail: actionLog.push({
-      type: 'play-card',
-      card: (battle) => {
-        const card = battle.cardRepository.find((candidate) =>
-          isMemoryCardWithTitle(candidate, '酸を吐く'),
-        )
-        if (!card) {
-          throw new Error('手札に酸を吐くの記憶カードが存在しません')
-        }
-
-        return requireCardId(card)
-      },
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
-    }),
-    playStickyState: actionLog.push({
-      type: 'play-card',
-      card: (battle) => {
-        const card = battle.cardRepository.find((candidate) => candidate.title === 'ねばねば')
-        if (!card) {
-          throw new Error('手札にねばねばの状態カードが存在しません')
-        }
-
-        return requireCardId(card)
-      },
-    }),
-    endPlayerTurn2: actionLog.push({ type: 'end-player-turn' }),
-    startEnemyTurn2: actionLog.push({ type: 'start-enemy-turn' }),
-    orcActsSecond: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orc }),
-    orcDancerActsSecond: actionLog.push({
-      type: 'enemy-action',
-      enemy: references.enemyIds.orcDancer,
-    }),
-    tentacleActsSecond: actionLog.push({
-      type: 'enemy-action',
-      enemy: references.enemyIds.tentacle,
-    }),
-    snailActsSecond: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.snail }),
-    endEnemyTurn2: actionLog.push({ type: 'end-player-turn' }),
-    startPlayerTurn3: actionLog.push({ type: 'start-player-turn', draw: 2 }),
-  } as ScenarioSteps
-
-  const thirdTurnSteps = thirdTurnBuilder({ actionLog, references })
-  const combinedSteps: ScenarioSteps = { ...steps, ...thirdTurnSteps }
-
-  return {
-    createBattle,
-    replayer: new ActionLogReplayer({
-      createBattle,
-      actionLog,
-    }),
-    steps: combinedSteps,
-    references,
-  }
-}
-
-export function buildThirdTurnPattern1({
-  actionLog,
-  references,
-}: {
-  actionLog: ActionLog
-  references: ScenarioReferences
-}) {
-  const steps: ScenarioSteps = {
-    playFlurryOnSnail: actionLog.push({
-      type: 'play-card',
-      card: (battle) => {
-        const card = battle.cardRepository.find((candidate) =>
-          isMemoryCardWithTitle(candidate, '乱れ突き'),
-        )
-        if (!card) {
-          throw new Error('手札に乱れ突きの記憶カードが存在しません')
-        }
-        return requireCardId(card)
-      },
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
-    }),
-    endPlayerTurn3: actionLog.push({ type: 'end-player-turn' }),
-    startEnemyTurn3: actionLog.push({ type: 'start-enemy-turn' }),
-    orcActsThird: actionLog.push({ type: 'enemy-action', enemy: references.enemyIds.orc }),
-  }
-
-  return steps
-}
-
-export function buildThirdTurnPattern2({
-  actionLog,
-  references,
-}: {
-  actionLog: ActionLog
-  references: ScenarioReferences
-}) {
-  const steps: ScenarioSteps = {
-    playFlurryOnOrc: actionLog.push({
-      type: 'play-card',
-      card: (battle) => {
-        const card = battle.cardRepository.find((candidate) =>
-          isMemoryCardWithTitle(candidate, '乱れ突き'),
-        )
-        if (!card) {
-          throw new Error('手札に乱れ突きの記憶カードが存在しません')
-        }
-        return requireCardId(card)
-      },
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
-    }),
-    playMucusShotOnOrcDancer: actionLog.push({
-      type: 'play-card',
-      card: (battle) => {
-        const card = battle.cardRepository.find(
-          (candidate) => isMemoryCardWithTitle(candidate, '粘液飛ばし'),
-        )
-        if (!card) {
-          throw new Error('手札に粘液飛ばしの記憶カードが存在しません')
-        }
-        return requireCardId(card)
-      },
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
-    }),
-    playHeavenChainOnTentacleTurn3: actionLog.push({
-      type: 'play-card',
-      card: references.heavenChainIds[4]!,
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
-    }),
-    endPlayerTurn3Pattern2: actionLog.push({ type: 'end-player-turn' }),
-    startEnemyTurn3Pattern2: actionLog.push({ type: 'start-enemy-turn' }),
-    orcDancerActsThirdAlt: actionLog.push({
-      type: 'enemy-action',
-      enemy: references.enemyIds.orcDancer,
-    }),
-    tentacleActsThirdAlt: actionLog.push({
-      type: 'enemy-action',
-      enemy: references.enemyIds.tentacle,
-    }),
-    snailActsThirdAlt: actionLog.push({
-      type: 'enemy-action',
-      enemy: references.enemyIds.snail,
-    }),
-  }
-
-  return steps
-}
-
-export function createBattleSampleScenario(): BattleScenario {
-  return createBattleScenario(buildThirdTurnPattern1)
-}
-
-export function createBattleSampleScenarioPattern2(): BattleScenario {
-  return createBattleScenario(buildThirdTurnPattern2)
-}
-
-export function createBattleSampleScenarioPattern3(): BattleScenario {
-  const createBattle = () => createBaseBattle()
-  const sampleSnapshot = createBattle().getSnapshot()
-  const references = collectScenarioReferences(sampleSnapshot)
-  const actionLog = new ActionLog()
-
-  const steps: ScenarioSteps = {
-    battleStart: actionLog.push({ type: 'battle-start' }),
-    playerTurn1Start: actionLog.push({ type: 'start-player-turn', draw: 5 }),
-    playMasochisticAura: actionLog.push({
-      type: 'play-card',
-      card: references.masochisticAuraId,
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
-    }),
-    playCorrosionState: actionLog.push({
-      type: 'play-card',
-      card: (battle) => {
-        const card = battle.cardRepository.find((candidate) => candidate.title === '腐食')
-        if (!card) {
-          throw new Error('手札に腐食状態カードが存在しません')
-        }
-        return requireCardId(card)
-      },
-    }),
+    startPlayerTurn2: actionLog.push({ type: 'start-player-turn' }),
   }
 
   return {
@@ -354,6 +154,13 @@ export function createBattleSampleScenarioPattern3(): BattleScenario {
   }
 }
 
+export function createBattleSampleScenario(): BattleScenario {
+  return createBattleScenario()
+}
+
+export function createBattleSampleScenarioPattern2(): BattleScenario {
+  return createBattleScenario()
+}
 
 export {
   AcidSpitAction,

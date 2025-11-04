@@ -1,4 +1,18 @@
-import type { BattleSnapshot } from './Battle'
+/**
+ * ActionLogReplayer.ts の責務:
+ * - ActionLog に記録されたエントリ列を順に適用し、Battle インスタンスと各時点のスナップショットを再構築する。
+ * - 直近エントリを UI 向けに解決（resolve）し、敵行動の詳細など派生情報を含む `ResolvedBattleActionLogEntry` を得る。
+ *
+ * このクラスの責務ではないこと:
+ * - ActionLog の正当性検証や補正処理（矛盾は Battle 側で例外として扱う）。
+ * - 新しい戦闘操作の生成や保存。既存ログの再生専用ユーティリティである。
+ *
+ * 主な通信相手とインターフェース:
+ * - `Battle`: `createBattle` で生成し、`executeActionLog` により進行、`getSnapshot` や `getLastEnemyTurnSummary` で盤面情報を取得する。
+ * - `ActionLog`: `BattleActionLogEntry` を列挙し、`resolveValue` を通じて遅延評価された値を実値に展開する。
+ * - `Enemy` / `Card`: `summarizeEnemy`・`summarizeCard` で UI 表示用の簡易サマリへ変換する。同じ「カード」概念でも `CardDefinition` は表示用メタ情報のみ扱う点が異なる。
+ */
+import type { BattleSnapshot, EnemyTurnActionSummary } from './Battle'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { Battle } from './Battle'
 import type { Enemy } from '../entities/Enemy'
@@ -54,22 +68,13 @@ export class ActionLogReplayer {
   private resolveEntry(entry: BattleActionLogEntry, battle: Battle): ResolvedBattleActionLogEntry {
     switch (entry.type) {
       case 'battle-start':
-      case 'end-player-turn':
-      case 'start-enemy-turn':
         return entry
       case 'start-player-turn':
         return { ...entry }
-      case 'draw':
-        return { ...entry }
       case 'play-card':
         return this.resolvePlayCardEntry(entry, battle)
-      case 'enemy-action': {
-        const enemyId = this.actionLog.resolveValue(entry.enemy, battle)
-        return {
-          type: 'enemy-action',
-          enemy: enemyId,
-        }
-      }
+      case 'end-player-turn':
+        return this.resolveEndPlayerTurnEntry(battle)
       default:
         return entry
     }
@@ -140,6 +145,14 @@ export class ActionLogReplayer {
     }
   }
 
+  private resolveEndPlayerTurnEntry(battle: Battle): ResolvedBattleActionLogEntry {
+    const summary = battle.getLastEnemyTurnSummary()
+    return {
+      type: 'end-player-turn',
+      enemyActions: summary?.actions ?? [],
+    }
+  }
+
   private extractEnemyId(payload: unknown): number {
     if (typeof payload === 'number' && Number.isInteger(payload) && payload >= 0) {
       return payload
@@ -178,7 +191,6 @@ export class ActionLogReplayer {
 export type ResolvedBattleActionLogEntry =
   | { type: 'battle-start' }
   | { type: 'start-player-turn'; draw?: number }
-  | { type: 'draw'; count: number }
   | {
       type: 'play-card'
       cardId: number
@@ -188,9 +200,7 @@ export type ResolvedBattleActionLogEntry =
       selectedHandCardId?: number
       selectedHandCard?: CardSummary
     }
-  | { type: 'end-player-turn' }
-  | { type: 'start-enemy-turn' }
-  | { type: 'enemy-action'; enemy: number }
+  | { type: 'end-player-turn'; enemyActions: EnemyTurnActionSummary[] }
 
 export type ResolvedPlayCardOperation =
   | {

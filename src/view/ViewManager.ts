@@ -428,8 +428,7 @@ export class ViewManager {
         break
       }
       case 'end-player-turn': {
-        this.appendActionLogEntry({ type: 'end-player-turn' }, { playerAction: true })
-        this.runEnemyTurnSequence()
+        this.resolveEndPlayerTurnSequence()
         break
       }
       case 'start-battle': {
@@ -482,31 +481,13 @@ export class ViewManager {
     return index
   }
 
-  private runEnemyTurnSequence(): void {
+  private resolveEndPlayerTurnSequence(): void {
     const battle = this.battleInstance
     if (!battle) {
       return
     }
 
-    this.appendActionLogEntry({ type: 'start-enemy-turn' })
-
-    const order = battle.enemyTeam.turnOrder
-    for (const enemyId of order) {
-      const enemy = battle.enemyTeam.findEnemy(enemyId)
-      if (!enemy) {
-        continue
-      }
-      if (enemy.currentHp <= 0) {
-        continue
-      }
-
-      this.appendActionLogEntry({
-        type: 'enemy-action',
-        enemy: enemyId,
-      })
-    }
-
-    this.appendActionLogEntry({ type: 'end-player-turn' })
+    this.appendActionLogEntry({ type: 'end-player-turn' }, { playerAction: true })
 
     const desiredHandSize = 5
     const currentHandSize = battle.hand.list().length
@@ -566,22 +547,13 @@ export class ViewManager {
   ): ResolvedBattleActionLogEntry | undefined {
     switch (entry.type) {
       case 'battle-start':
-      case 'end-player-turn':
-      case 'start-enemy-turn':
         return entry
       case 'start-player-turn':
         return { ...entry }
-      case 'draw':
-        return { ...entry }
       case 'play-card':
         return this.resolvePlayCardEntry(entry, battle)
-      case 'enemy-action': {
-        const enemyId = this.actionLog.resolveValue(entry.enemy, battle)
-        return {
-          type: 'enemy-action',
-          enemy: enemyId,
-        }
-      }
+      case 'end-player-turn':
+        return this.resolveEndPlayerTurnEntry(battle)
       default:
         return undefined
     }
@@ -652,6 +624,14 @@ export class ViewManager {
       targetEnemy: resolved.targetEnemy,
       selectedHandCardId: resolved.selectedHandCardId,
       selectedHandCard: resolved.selectedHandCard,
+    }
+  }
+
+  private resolveEndPlayerTurnEntry(battle: Battle): ResolvedBattleActionLogEntry {
+    const summary = battle.getLastEnemyTurnSummary()
+    return {
+      type: 'end-player-turn',
+      enemyActions: summary?.actions ?? [],
     }
   }
 

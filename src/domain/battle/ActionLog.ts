@@ -6,18 +6,15 @@ type ValueFactory<T> = T | ((battle: Battle) => T)
 export type BattleActionLogEntry =
   | { type: 'battle-start' }
   | { type: 'start-player-turn'; draw?: number }
-  | { type: 'draw'; count: number }
   | {
-    type: 'play-card'
-    card: ValueFactory<number>
-    operations?: Array<{
-      type: CardOperation['type']
-      payload?: ValueFactory<CardOperation['payload']>
-    }>
-  }
+      type: 'play-card'
+      card: ValueFactory<number>
+      operations?: Array<{
+        type: CardOperation['type']
+        payload?: ValueFactory<CardOperation['payload']>
+      }>
+    }
   | { type: 'end-player-turn' }
-  | { type: 'start-enemy-turn' }
-  | { type: 'enemy-action'; enemy: ValueFactory<number> }
 
 export class ActionLog {
   private readonly entries: BattleActionLogEntry[] = []

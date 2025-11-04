@@ -15,6 +15,7 @@ import type { BattleLogEntry } from './BattleLog'
 import { TurnManager, type TurnState } from './TurnManager'
 import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
+import type { ActionType } from '../entities/Action'
 
 export interface BattleConfig {
   id: string
@@ -58,6 +59,28 @@ export interface BattleSnapshot {
   log: ReturnType<BattleLog['list']>
 }
 
+export interface EnemyTurnActionCardGain {
+  id?: number
+  title: string
+}
+
+export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated'
+
+export interface EnemyTurnActionSummary {
+  enemyId: number
+  enemyName: string
+  actionName: string
+  actionType?: ActionType
+  skipped: boolean
+  skipReason?: EnemyTurnSkipReason
+  damageToPlayer?: number
+  cardsAddedToPlayerHand: EnemyTurnActionCardGain[]
+}
+
+export interface EnemyTurnSummary {
+  actions: EnemyTurnActionSummary[]
+}
+
 export class Battle {
   private readonly idValue: string
   private readonly playerValue: Player
@@ -73,6 +96,7 @@ export class Battle {
   private logSequence = 0
   private executedActionLogIndex = -1
   private eventSequence = 0
+  private lastEnemyTurnSummaryValue?: EnemyTurnSummary
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -137,6 +161,20 @@ export class Battle {
 
   get cardRepository(): CardRepository {
     return this.cardRepositoryValue
+  }
+
+  getLastEnemyTurnSummary(): EnemyTurnSummary | undefined {
+    if (!this.lastEnemyTurnSummaryValue) {
+      return undefined
+    }
+
+    // summaryは履歴参照用なので、参照渡しによる外部改変を避けるために浅いコピーを返す
+    return {
+      actions: this.lastEnemyTurnSummaryValue.actions.map((action) => ({
+        ...action,
+        cardsAddedToPlayerHand: action.cardsAddedToPlayerHand.map((card) => ({ ...card })),
+      })),
+    }
   }
 
   getSnapshot(): BattleSnapshot {
@@ -212,20 +250,96 @@ export class Battle {
     card.play(this, operations)
   }
 
-  endPlayerTurn(): void {}
+  endPlayerTurn(): void {
+    this.turn.moveToPhase('player-end')
+  }
 
   startEnemyTurn(): void {
     this.turn.startEnemyTurn()
     this.enemyTeam.startTurn()
   }
 
-  performEnemyAction(enemyId: number): void {
+  performEnemyAction(enemyId: number): EnemyTurnActionSummary {
     const enemy = this.enemyTeam.findEnemy(enemyId)
     if (!enemy) {
       throw new Error(`Enemy ${enemyId} not found`)
     }
 
+    const playerHpBefore = this.playerValue.currentHp
+    const handBefore = this.handValue.list()
+    const actionLogLengthBefore = enemy.actionLog.length
+    const hadActedBeforeCall = enemy.hasActedThisTurn
+
     enemy.act(this)
+
+    const actionLogLengthAfter = enemy.actionLog.length
+    const handAfter = this.handValue.list()
+    const damageToPlayer = Math.max(0, playerHpBefore - this.playerValue.currentHp)
+    const cardsAddedToHand = this.extractNewHandCards(handBefore, handAfter)
+
+    if (actionLogLengthAfter > actionLogLengthBefore) {
+      const executedAction = enemy.actionLog[actionLogLengthAfter - 1]
+      return {
+        enemyId,
+        enemyName: enemy.name,
+        actionName: executedAction.name,
+        actionType: executedAction.type,
+        skipped: false,
+        cardsAddedToPlayerHand: cardsAddedToHand,
+        damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+      }
+    }
+
+    return {
+      enemyId,
+      enemyName: enemy.name,
+      actionName: hadActedBeforeCall ? '行動済み' : '行動不能',
+      skipped: true,
+      skipReason: hadActedBeforeCall ? 'already-acted' : 'no-action',
+      cardsAddedToPlayerHand: cardsAddedToHand,
+      damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+    }
+  }
+
+  private executeEnemyTurn(): EnemyTurnSummary {
+    // 敵の行動はActionLogに直接保存せず、ターン終了エントリ解決時に都度再計算する方針のため、
+    // ここで行動順に処理してサマリを保持する。
+    this.startEnemyTurn()
+
+    const actions: EnemyTurnActionSummary[] = []
+    for (const enemyId of this.enemyTeam.turnOrder) {
+      const enemy = this.enemyTeam.findEnemy(enemyId)
+      if (!enemy) {
+        continue
+      }
+      if (enemy.currentHp <= 0) {
+        actions.push({
+          enemyId,
+          enemyName: enemy.name,
+          actionName: '戦闘不能',
+          skipped: true,
+          skipReason: 'defeated',
+          cardsAddedToPlayerHand: [],
+        })
+        continue
+      }
+
+      actions.push(this.performEnemyAction(enemyId))
+    }
+
+    const summary: EnemyTurnSummary = { actions }
+    this.lastEnemyTurnSummaryValue = summary
+    return summary
+  }
+
+  private extractNewHandCards(before: Card[], after: Card[]): EnemyTurnActionCardGain[] {
+    const beforeSet = new Set(before)
+    return after
+      .filter((card) => !beforeSet.has(card))
+      .map((card) => ({
+        id: card.id,
+        title: card.title,
+      }))
   }
 
   resolveEvents(): void {
@@ -271,6 +385,7 @@ export class Battle {
     if (lastIndex < this.executedActionLogIndex) {
       throw new Error('指定されたActionLogのインデックスは現在の進行度より小さいため、巻き戻しには新しいBattleインスタンスを使用してください。')
     }
+    this.lastEnemyTurnSummaryValue = undefined
 
     for (let index = this.executedActionLogIndex + 1; index <= lastIndex; index += 1) {
       const entry = actionLog.at(index)
@@ -295,9 +410,6 @@ export class Battle {
         }
         this.resolveEvents()
         break
-      case 'draw':
-        this.drawForPlayer(entry.count)
-        break
       case 'play-card': {
         const cardId = actionLog.resolveValue(entry.card, this)
         const operations =
@@ -311,15 +423,9 @@ export class Battle {
         this.playCard(cardId, operations)
         break
       }
-      case 'end-player-turn':
+      case 'end-player-turn': {
         this.endPlayerTurn()
-        break
-      case 'start-enemy-turn':
-        this.startEnemyTurn()
-        break
-      case 'enemy-action': {
-        const enemyId = actionLog.resolveValue(entry.enemy, this)
-        this.performEnemyAction(enemyId)
+        this.executeEnemyTurn()
         break
       }
       default:
