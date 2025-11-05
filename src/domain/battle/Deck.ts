@@ -30,7 +30,10 @@ export class Deck {
   drawOne(target: Hand): Card | undefined {
     const card = this.cards.shift()
     if (card) {
-      target.add(card)
+      if (!target.add(card)) {
+        this.cards.unshift(card)
+        return undefined
+      }
     }
     return card
   }

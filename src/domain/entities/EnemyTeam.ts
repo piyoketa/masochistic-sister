@@ -57,4 +57,8 @@ export class EnemyTeam {
   endTurn(): void {
     this.membersValue.forEach((enemy) => enemy.resetTurn())
   }
+
+  areAllDefeated(): boolean {
+    return this.membersValue.every((enemy) => enemy.currentHp <= 0)
+  }
 }

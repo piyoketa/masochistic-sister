@@ -75,6 +75,9 @@ export class ActionLogReplayer {
         return this.resolvePlayCardEntry(entry, battle)
       case 'end-player-turn':
         return this.resolveEndPlayerTurnEntry(battle)
+      case 'victory':
+      case 'gameover':
+        return { type: entry.type }
       default:
         return entry
     }
@@ -190,7 +193,7 @@ export class ActionLogReplayer {
 
 export type ResolvedBattleActionLogEntry =
   | { type: 'battle-start' }
-  | { type: 'start-player-turn'; draw?: number }
+  | { type: 'start-player-turn'; draw?: number; handOverflow?: boolean }
   | {
       type: 'play-card'
       cardId: number
@@ -201,6 +204,8 @@ export type ResolvedBattleActionLogEntry =
       selectedHandCard?: CardSummary
     }
   | { type: 'end-player-turn'; enemyActions: EnemyTurnActionSummary[] }
+  | { type: 'victory' }
+  | { type: 'gameover' }
 
 export type ResolvedPlayCardOperation =
   | {

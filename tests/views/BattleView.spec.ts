@@ -74,6 +74,7 @@ function createSnapshot(): BattleSnapshot {
       phase: 'player-draw',
     },
     log: [],
+    status: 'in-progress',
   }
 }
 

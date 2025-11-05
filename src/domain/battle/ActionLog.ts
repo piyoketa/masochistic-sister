@@ -5,7 +5,7 @@ type ValueFactory<T> = T | ((battle: Battle) => T)
 
 export type BattleActionLogEntry =
   | { type: 'battle-start' }
-  | { type: 'start-player-turn'; draw?: number }
+  | { type: 'start-player-turn'; draw?: number; handOverflow?: boolean }
   | {
       type: 'play-card'
       card: ValueFactory<number>
@@ -15,6 +15,8 @@ export type BattleActionLogEntry =
       }>
     }
   | { type: 'end-player-turn' }
+  | { type: 'victory' }
+  | { type: 'gameover' }
 
 export class ActionLog {
   private readonly entries: BattleActionLogEntry[] = []

@@ -554,6 +554,9 @@ export class ViewManager {
         return this.resolvePlayCardEntry(entry, battle)
       case 'end-player-turn':
         return this.resolveEndPlayerTurnEntry(battle)
+      case 'victory':
+      case 'gameover':
+        return { type: entry.type }
       default:
         return undefined
     }

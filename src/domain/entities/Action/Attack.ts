@@ -90,7 +90,7 @@ export abstract class Attack extends Action {
     if (this.isPlayer(defender)) {
       context.battle.damagePlayer(totalDamage)
     } else {
-      defender.takeDamage(totalDamage)
+      context.battle.damageEnemy(defender, totalDamage)
     }
 
     this.applyInflictedStates(context, defender)

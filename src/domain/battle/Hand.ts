@@ -7,21 +7,44 @@ type StateConstructor<T extends State = State> = abstract new (...args: any[]) =
 
 export class Hand {
   private readonly cards: Card[]
+  private readonly limit: number
 
-  constructor(initialCards: Card[] = []) {
+  constructor(initialCards: Card[] = [], limit = 10) {
     this.cards = [...initialCards]
+    this.limit = limit
   }
 
   list(): Card[] {
     return [...this.cards]
   }
 
-  add(card: Card): void {
+  size(): number {
+    return this.cards.length
+  }
+
+  maxSize(): number {
+    return this.limit
+  }
+
+  isAtLimit(): boolean {
+    return this.cards.length >= this.limit
+  }
+
+  add(card: Card): boolean {
+    if (this.isAtLimit()) {
+      return false
+    }
+
     this.cards.push(card)
+    return true
   }
 
   addMany(cards: Card[]): void {
-    this.cards.push(...cards)
+    for (const card of cards) {
+      if (!this.add(card)) {
+        break
+      }
+    }
   }
 
   remove(card: Card): void {
@@ -31,9 +54,19 @@ export class Hand {
     }
   }
 
+  removeOldest(match: (card: Card) => boolean): Card | undefined {
+    const index = this.cards.findIndex((card) => match(card))
+    if (index === -1) {
+      return undefined
+    }
+
+    const [removed] = this.cards.splice(index, 1)
+    return removed
+  }
+
   find(cardId: number): Card | undefined {
     return this.cards.find((card) => card.id === cardId)
-}
+  }
 
   hasCardOf(actionOrState: ActionConstructor | StateConstructor): boolean {
     return this.cards.some((card) => {

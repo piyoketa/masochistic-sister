@@ -57,6 +57,7 @@ function createSnapshot(hand: Card[]): BattleSnapshot {
       phase: 'player-draw',
     },
     log: [],
+    status: 'in-progress',
   }
 }
 

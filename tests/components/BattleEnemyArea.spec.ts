@@ -58,6 +58,7 @@ function createSnapshot(withEnemy = false): BattleSnapshot | undefined {
       phase: 'player-draw',
     },
     log: [],
+    status: 'in-progress',
   }
 }
 

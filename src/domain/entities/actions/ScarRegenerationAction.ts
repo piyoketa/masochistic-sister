@@ -1,17 +1,17 @@
 /*
-ScarRegenerationAction.ts の責務:
-- 手札内の記憶カードを1枚選択させ、その複製を生成して同じく手札へ加えるスキルアクションを提供する。
+ScarRegenerationAction.ts（カード「疼き」）の責務:
+- 手札内の記憶カードを1枚選択させ、その複製を生成して同じく手札へ加える。
 - 選択対象は `SelectHandCardOperation` のフィルター機能で制限し、誤選択時には明示的なエラーメッセージを返す。
-- 複製カードの生成には `CardRepository` を利用し、リポジトリIDを割り振ったうえで手札ゾーンへ登録する。
+- 複製カード生成は `CardRepository` に委譲し、`Battle.addCardToPlayerHand` を通じて手札へ追加する。
 
 責務ではないこと:
-- 複製対象カードの内容を編集・強化する処理（元カードと同一の仕様で生成するに留める）。
-- 生成後の記憶カード消費やドロー調整等、追加的なリソース操作。必要があれば呼び出し元のカードが別途処理する。
+- 複製対象カードの強化や改変。複製は原則として同一のカード特性を維持する。
+- 手札上限の調整やカード移動後の副作用処理（捨て札・除外など）。
 
 主要な通信相手とインターフェース:
-- `SelectHandCardOperation`: 記憶カードのみ選択できるようフィルターを設定し、完了後に `operation.card` から対象を取得する。
-- `CardRepository`: `create` を通じて新たな `Card` インスタンスにIDを割り振り、手札へ安全に追加する。
-- `Battle.addCardToPlayerHand`: 生成した複製カードを戦闘の手札ゾーンに投入する。`Card.copyWith` を使うことで `Card` の持つ `Action`/`State` をそのまま引き継ぐ。
+- `SelectHandCardOperation`: 記憶カードのみ選択できるようフィルターを設定し、結果を `operation.card` から取得する。
+- `CardRepository`: `create` を通じて新たなカードインスタンスにリポジトリIDを割り振る。
+- `Battle.addCardToPlayerHand`: 手札追加と手札上限管理を一元化する。
 */
 import { Skill, type ActionContext } from '../Action'
 import {
@@ -68,7 +68,7 @@ export class ScarRegenerationAction extends Skill {
     ) as SelectHandCardOperation | undefined
 
     if (!operation) {
-      throw new Error('SelectHandCardOperation is required for ScarRegenerationAction')
+      throw new Error('SelectHandCardOperation is required for 疼き')
     }
 
     return operation

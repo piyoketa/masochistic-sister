@@ -17,6 +17,8 @@ import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
 
+export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
+
 export interface BattleConfig {
   id: string
   player: Player
@@ -57,6 +59,7 @@ export interface BattleSnapshot {
   events: BattleEvent[]
   turn: TurnState
   log: ReturnType<BattleLog['list']>
+  status: BattleStatus
 }
 
 export interface EnemyTurnActionCardGain {
@@ -97,6 +100,7 @@ export class Battle {
   private executedActionLogIndex = -1
   private eventSequence = 0
   private lastEnemyTurnSummaryValue?: EnemyTurnSummary
+  private statusValue: BattleStatus = 'in-progress'
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -163,6 +167,10 @@ export class Battle {
     return this.cardRepositoryValue
   }
 
+  get status(): BattleStatus {
+    return this.statusValue
+  }
+
   getLastEnemyTurnSummary(): EnemyTurnSummary | undefined {
     if (!this.lastEnemyTurnSummaryValue) {
       return undefined
@@ -211,6 +219,7 @@ export class Battle {
       events: this.eventsValue.list(),
       turn: this.turnValue.current,
       log: this.logValue.list(),
+      status: this.statusValue,
     }
   }
 
@@ -222,8 +231,16 @@ export class Battle {
     this.player.resetMana()
   }
 
-  drawForPlayer(count: number): void {
+  drawForPlayer(count: number): { drawn: number; skippedDueToHandLimit: boolean } {
+    let drawn = 0
+    let skippedDueToHandLimit = false
+
     for (let i = 0; i < count; i += 1) {
+      if (this.hand.isAtLimit()) {
+        skippedDueToHandLimit = true
+        break
+      }
+
       if (this.deck.size() === 0) {
         const reloaded = this.reloadDeckFromDiscard()
         if (!reloaded) {
@@ -233,9 +250,14 @@ export class Battle {
 
       const card = this.deck.drawOne(this.hand)
       if (!card) {
+        skippedDueToHandLimit = this.hand.isAtLimit()
         break
       }
+
+      drawn += 1
     }
+
+    return { drawn, skippedDueToHandLimit }
   }
 
   playCard(cardId: number, operations: CardOperation[] = []): void {
@@ -377,10 +399,27 @@ export class Battle {
 
   damagePlayer(amount: number): void {
     this.player.takeDamage(amount)
+    this.checkPlayerDefeat()
+  }
+
+  damageEnemy(enemy: Enemy, amount: number): void {
+    enemy.takeDamage(amount)
+    this.checkEnemyTeamDefeat()
   }
 
   addCardToPlayerHand(card: Card): void {
-    this.hand.add(card)
+    if (this.hand.add(card)) {
+      return
+    }
+
+    const replacement = this.hand.removeOldest((candidate) => candidate.definition.cardType !== 'status')
+    if (replacement) {
+      this.discardPileValue.add(replacement)
+      this.hand.add(card)
+      return
+    }
+
+    this.discardPileValue.add(card)
   }
 
   executeActionLog(actionLog: ActionLog, targetIndex?: number): void {
@@ -399,6 +438,7 @@ export class Battle {
       this.applyActionLogEntry(actionLog, entry)
       this.executedActionLogIndex = index
     }
+
   }
 
   private applyActionLogEntry(actionLog: ActionLog, entry: BattleActionLogEntry): void {
@@ -409,7 +449,10 @@ export class Battle {
       case 'start-player-turn':
         this.startPlayerTurn()
         if (entry.draw && entry.draw > 0) {
-          this.drawForPlayer(entry.draw)
+          const drawResult = this.drawForPlayer(entry.draw)
+          if (drawResult.skippedDueToHandLimit) {
+            entry.handOverflow = true
+          }
         }
         this.resolveEvents()
         break
@@ -431,6 +474,12 @@ export class Battle {
         this.executeEnemyTurn()
         break
       }
+      case 'victory':
+        this.recordOutcome('victory')
+        break
+      case 'gameover':
+        this.recordOutcome('gameover')
+        break
       default:
         throw new Error(`未対応のActionLogエントリ type=${(entry as { type: string }).type}`)
     }
@@ -474,5 +523,25 @@ export class Battle {
 
   private isMemoryCard(card: Card): boolean {
     return (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
+  }
+
+  private recordOutcome(outcome: BattleStatus): void {
+    if (this.statusValue !== 'in-progress') {
+      return
+    }
+
+    this.statusValue = outcome
+  }
+
+  private checkPlayerDefeat(): void {
+    if (this.playerValue.currentHp <= 0) {
+      this.recordOutcome('gameover')
+    }
+  }
+
+  private checkEnemyTeamDefeat(): void {
+    if (this.enemyTeamValue.areAllDefeated()) {
+      this.recordOutcome('victory')
+    }
   }
 }
