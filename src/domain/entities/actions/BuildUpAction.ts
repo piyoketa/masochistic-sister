@@ -1,4 +1,5 @@
 import { Skill } from '../Action'
+import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import { StrengthState } from '../states/StrengthState'
 
 export class BuildUpAction extends Skill {
@@ -7,7 +8,9 @@ export class BuildUpAction extends Skill {
       name: 'ビルドアップ',
       cardDefinition: {
         title: 'ビルドアップ',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 1,
       },
       gainStates: [() => new StrengthState(10)],

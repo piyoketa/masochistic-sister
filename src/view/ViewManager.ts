@@ -114,7 +114,7 @@ export class ViewManager {
           ? Math.min(normalizedInitialIndex, this.actionLog.length - 1)
           : -1
 
-    this.stateValue = reactive<BattleViewState>({
+    this.stateValue = reactive({
       snapshot: undefined,
       previousSnapshot: undefined,
       lastResolvedEntry: undefined,
@@ -131,7 +131,7 @@ export class ViewManager {
         locked: false,
         queued: [],
       },
-    })
+    }) as unknown as BattleViewState
 
     this.stateProxy = readonly(this.stateValue) as Readonly<BattleViewState>
   }
@@ -741,5 +741,3 @@ export class ViewManager {
     }
   }
 }
-
-export type { AnimationScriptInput }

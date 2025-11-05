@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { State } from '@/domain/entities/State'
+import { StatusTypeCardTag } from '@/domain/entities/cardTags'
 
 class BaseState extends State {
   constructor() {
@@ -30,7 +31,9 @@ class CardState extends State {
       name: 'カード生成',
       cardDefinition: {
         title: '状態カード',
-        type: 'status',
+        cardType: 'status',
+        type: new StatusTypeCardTag(),
+        target: undefined,
         cost: 0,
       },
     })
@@ -67,6 +70,10 @@ describe('State 基底クラス', () => {
   it('カード定義を持つ状態はcreateCardDefinitionで複製を返す', () => {
     const state = new CardState()
     const definition = state.createCardDefinition()
-    expect(definition).toEqual({ title: '状態カード', type: 'status', cost: 0 })
+    expect(definition.title).toBe('状態カード')
+    expect(definition.cardType).toBe('status')
+    expect(definition.type).toBeInstanceOf(StatusTypeCardTag)
+    expect(definition.target).toBeUndefined()
+    expect(definition.cost).toBe(0)
   })
 })

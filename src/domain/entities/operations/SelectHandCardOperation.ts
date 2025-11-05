@@ -3,6 +3,7 @@ SelectHandCardOperation.ts の責務:
 - プレイヤーの手札からカードを指定し、アクションへ渡すための `Operation` 実装を提供する。
 - 入力として渡されたカードID（数値またはオブジェクト）を検証し、`Battle.hand.find` を通じて対象カードを特定する。
 - 完了後は選択したカードのリポジトリIDをメタデータへ格納し、後続処理（ログやビュー表示）が参照できるようにする。
+- 追加要件として `filter` コールバックを受け取り、用途ごとに選択可能なカードの条件（記憶カード限定など）を絞り込めるようにする。
 
 責務ではないこと:
 - カード選択の要求タイミングやキャンセル処理。これらはアクション側や UI 層（`BattleHandArea` など）が制御する。
@@ -16,11 +17,21 @@ SelectHandCardOperation.ts の責務:
 import type { Card } from '../Card'
 import { Operation, type OperationContext } from './OperationBase'
 
+export interface SelectHandCardOperationConfig {
+  filter?: (card: Card, context: OperationContext) => boolean
+  filterMessage?: string
+}
+
 export class SelectHandCardOperation extends Operation<Card> {
   static readonly TYPE = 'select-hand-card'
 
-  constructor() {
+  private readonly filter?: (card: Card, context: OperationContext) => boolean
+  private readonly filterMessage: string
+
+  constructor(config: SelectHandCardOperationConfig = {}) {
     super(SelectHandCardOperation.TYPE)
+    this.filter = config.filter
+    this.filterMessage = config.filterMessage ?? '選択できないカードが指定されました'
   }
 
   protected resolve(payload: unknown, context: OperationContext): Card {
@@ -28,6 +39,10 @@ export class SelectHandCardOperation extends Operation<Card> {
     const card = context.battle.hand.find(cardId)
     if (!card) {
       throw new Error(`Card ${cardId} not found in hand`)
+    }
+
+    if (this.filter && !this.filter(card, context)) {
+      throw new Error(this.filterMessage)
     }
 
     return card

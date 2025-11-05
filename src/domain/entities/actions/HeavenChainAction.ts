@@ -1,5 +1,10 @@
 import { Skill, type ActionContext } from '../Action'
-import { ExhaustCardTag, SacredCardTag } from '../cardTags'
+import {
+  EnemySingleTargetCardTag,
+  ExhaustCardTag,
+  SacredCardTag,
+  SkillTypeCardTag,
+} from '../cardTags'
 import type { Enemy } from '../Enemy'
 import { SkipTurnAction } from './SkipTurnAction'
 import { TargetEnemyOperation, type Operation } from '../operations'
@@ -10,7 +15,9 @@ export class HeavenChainAction extends Skill {
       name: '天の鎖',
       cardDefinition: {
         title: '天の鎖',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new EnemySingleTargetCardTag(),
         cost: 1,
         cardTags: [new ExhaustCardTag(), new SacredCardTag()],
       },
@@ -32,10 +39,7 @@ export class HeavenChainAction extends Skill {
     }
 
     const message = `${target.name}は天の鎖で縛られていて何もできない！`
-    const postponed = target.discardNextScheduledAction()
-    if (postponed) {
-      target.prependAction(postponed)
-    }
+    target.discardNextScheduledAction()
     target.queueImmediateAction(new SkipTurnAction(message))
 
     context.battle.addLogEntry({

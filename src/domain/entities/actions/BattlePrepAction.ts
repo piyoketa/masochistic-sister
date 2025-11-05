@@ -1,4 +1,5 @@
 import { Skill, type ActionContext } from '../Action'
+import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 
 export class BattlePrepAction extends Skill {
   constructor() {
@@ -6,7 +7,9 @@ export class BattlePrepAction extends Skill {
       name: '戦いの準備',
       cardDefinition: {
         title: '戦いの準備',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 1,
       },
     })

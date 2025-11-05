@@ -279,6 +279,9 @@ export class Battle {
 
     if (actionLogLengthAfter > actionLogLengthBefore) {
       const executedAction = enemy.actionLog[actionLogLengthAfter - 1]
+      if (!executedAction) {
+        throw new Error('Enemy action log entry missing after execution')
+      }
       return {
         enemyId,
         enemyName: enemy.name,

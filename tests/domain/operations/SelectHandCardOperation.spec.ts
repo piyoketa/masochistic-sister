@@ -4,6 +4,7 @@ import { Player } from '@/domain/entities/Player'
 import { Card } from '@/domain/entities/Card'
 import { Skill } from '@/domain/entities/Action'
 import type { CardDefinition } from '@/domain/entities/CardDefinition'
+import { SelfTargetCardTag, SkillTypeCardTag } from '@/domain/entities/cardTags'
 
 class DummySkill extends Skill {
   constructor() {
@@ -11,7 +12,9 @@ class DummySkill extends Skill {
       name: '手札カード',
       cardDefinition: {
         title: '手札カード',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 0,
       } satisfies CardDefinition,
     })

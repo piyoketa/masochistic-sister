@@ -4,6 +4,8 @@ import { Operation, type CardOperation } from '@/domain/entities/operations'
 import { Player } from '@/domain/entities/Player'
 import { Enemy } from '@/domain/entities/Enemy'
 import { State } from '@/domain/entities/State'
+import { SelfTargetCardTag, SkillTypeCardTag } from '@/domain/entities/cardTags'
+import { SelfTargetCardTag, SkillTypeCardTag } from '@/domain/entities/cardTags'
 
 class MetadataOperation extends Operation<number> {
   static readonly TYPE = 'metadata-operation'
@@ -47,7 +49,9 @@ class OperationAction extends Action {
       name: '操作付き行動',
       cardDefinition: {
         title: '操作付き行動',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 1,
       },
       ...(overrides ?? {}),
@@ -73,7 +77,9 @@ class GainStateAction extends Action {
       name: '状態付与',
       cardDefinition: {
         title: '状態付与',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 0,
       },
       gainStates: [
@@ -101,7 +107,9 @@ class DummySkill extends Skill {
       name: 'ダミースキル',
       cardDefinition: {
         title: 'ダミースキル',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 1,
       },
     })

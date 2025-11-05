@@ -48,6 +48,10 @@ export class MemoryManager {
   private buildMemoryOverrides(baseAttack: Attack, damages: Damages) {
     const baseDefinition = baseAttack.createCardDefinition()
     const memoryTag = new MemoryCardTag()
+    if (baseDefinition.cardType !== 'attack') {
+      throw new Error('Memory cards can only be created from attack definitions')
+    }
+
     const baseTags = baseDefinition.cardTags ?? []
     const cardTags = [...baseTags, memoryTag]
 

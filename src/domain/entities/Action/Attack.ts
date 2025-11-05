@@ -26,6 +26,7 @@ import {
 import type { ActionContext, ActionType, BaseActionProps } from './ActionBase'
 import { Action } from './ActionBase'
 import { isPlayerEntity } from '../typeGuards'
+import type { CardDefinition } from '../CardDefinition'
 
 export interface AttackProps extends BaseActionProps {
   baseDamage: Damages
@@ -56,10 +57,10 @@ export abstract class Attack extends Action {
     const mergedProps: BaseActionProps = {
       ...currentProps,
       ...(overrides ?? {}),
-      cardDefinition: {
-        ...currentProps.cardDefinition,
-        ...(overrides?.cardDefinition ?? {}),
-      },
+      cardDefinition: mergeCardDefinition(
+        currentProps.cardDefinition,
+        overrides?.cardDefinition,
+      ),
     }
 
     Object.assign(clone, this)
@@ -166,5 +167,59 @@ export abstract class Attack extends Action {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected canInflictState(_context: ActionContext, _defender: Player | Enemy, _state: State): boolean {
     return true
+  }
+}
+
+function mergeCardDefinition(
+  base: CardDefinition,
+  overrides?: Partial<CardDefinition>,
+): CardDefinition {
+  if (!overrides) {
+    return { ...base }
+  }
+
+  if (overrides.cardType && overrides.cardType !== base.cardType) {
+    throw new Error('Card definition overrides cannot change cardType')
+  }
+
+  if (overrides.type && overrides.type !== base.type) {
+    throw new Error('Card definition overrides cannot change type tag')
+  }
+
+  if ('target' in overrides && overrides.target !== undefined && overrides.target !== base.target) {
+    throw new Error('Card definition overrides cannot change target tag')
+  }
+
+  const cardTags = overrides.cardTags ?? base.cardTags
+  const { cardType, type, target, cardTags: _ignored, ...rest } = overrides
+
+  if (base.cardType === 'status') {
+    return {
+      ...base,
+      ...rest,
+      cardType: 'status',
+      type: base.type,
+      cardTags,
+    }
+  }
+
+  if (base.cardType === 'attack') {
+    return {
+      ...base,
+      ...rest,
+      cardType: 'attack',
+      type: base.type,
+      cardTags,
+      target: base.target,
+    }
+  }
+
+  return {
+    ...base,
+    ...rest,
+    cardType: 'skill',
+    type: base.type,
+    cardTags,
+    target: base.target,
   }
 }

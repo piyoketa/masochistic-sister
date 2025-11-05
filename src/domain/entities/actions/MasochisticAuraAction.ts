@@ -1,5 +1,5 @@
 import { Skill, type ActionContext } from '../Action'
-import { ArcaneCardTag } from '../cardTags'
+import { ArcaneCardTag, EnemySingleTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import type { Enemy } from '../Enemy'
 import { TargetEnemyOperation } from '../operations'
 import type { Operation } from '../operations'
@@ -10,7 +10,9 @@ export class MasochisticAuraAction extends Skill {
       name: '被虐のオーラ',
       cardDefinition: {
         title: '被虐のオーラ',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new EnemySingleTargetCardTag(),
         cost: 1,
         cardTags: [new ArcaneCardTag()],
       },

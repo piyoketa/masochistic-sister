@@ -1,6 +1,6 @@
-import { CardTag } from '../CardTag'
+import { CardCategoryTag } from '../CardTag'
 
-export class ArcaneCardTag extends CardTag {
+export class ArcaneCardTag extends CardCategoryTag {
   constructor() {
     super({
       id: 'tag-arcane',

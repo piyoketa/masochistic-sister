@@ -1,4 +1,5 @@
 import { State } from '../State'
+import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
 export class CorrosionState extends State {
@@ -9,7 +10,9 @@ export class CorrosionState extends State {
       magnitude,
       cardDefinition: {
         title: '腐食',
-        type: 'status',
+        cardType: 'status',
+        type: new StatusTypeCardTag(),
+        target: undefined,
         cost: 1,
       },
     })

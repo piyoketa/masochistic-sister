@@ -1,5 +1,6 @@
 import { Skill, type ActionContext } from '../Action'
 import { SelectHandCardOperation } from '../operations'
+import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import type { Operation } from '../operations'
 
 export class HandSwapAction extends Skill {
@@ -8,7 +9,9 @@ export class HandSwapAction extends Skill {
       name: '手札入れ替え',
       cardDefinition: {
         title: '手札入れ替え',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 1,
       },
     })

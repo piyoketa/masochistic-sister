@@ -1,5 +1,6 @@
 import { Attack } from '../Action'
 import { Damages } from '../Damages'
+import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 import { CorrosionState } from '../states/CorrosionState'
 
 export class AcidSpitAction extends Attack {
@@ -10,7 +11,9 @@ export class AcidSpitAction extends Attack {
       inflictStates: [() => new CorrosionState()],
       cardDefinition: {
         title: '酸を吐く',
-        type: 'attack',
+        cardType: 'attack',
+        type: new SingleAttackCardTag(),
+        target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
     })

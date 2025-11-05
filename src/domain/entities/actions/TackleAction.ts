@@ -1,5 +1,6 @@
 import { Attack } from '../Action'
 import { Damages } from '../Damages'
+import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 
 export class TackleAction extends Attack {
   constructor() {
@@ -8,7 +9,9 @@ export class TackleAction extends Attack {
       baseDamage: new Damages({ baseAmount: 20, baseCount: 1, type: 'single' }),
       cardDefinition: {
         title: 'たいあたり',
-        type: 'attack',
+        cardType: 'attack',
+        type: new SingleAttackCardTag(),
+        target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
     })

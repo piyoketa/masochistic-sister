@@ -1,6 +1,6 @@
-import { CardTag } from '../CardTag'
+import { CardCategoryTag } from '../CardTag'
 
-export class MemoryCardTag extends CardTag {
+export class MemoryCardTag extends CardCategoryTag {
   constructor() {
     super({
       id: 'tag-memory',

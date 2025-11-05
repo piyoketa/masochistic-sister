@@ -7,6 +7,8 @@ import type { Enemy } from '@/domain/entities/Enemy'
 import { Player } from '@/domain/entities/Player'
 import { Enemy as EnemyEntity } from '@/domain/entities/Enemy'
 import { State } from '@/domain/entities/State'
+import { EnemySingleTargetCardTag, SingleAttackCardTag } from '@/domain/entities/cardTags'
+import { EnemySingleTargetCardTag, SingleAttackCardTag } from '@/domain/entities/cardTags'
 
 class TestPlayer extends Player {
   private readonly customStates: State[] = []
@@ -37,7 +39,9 @@ class TestAttack extends Attack {
       name: 'テスト攻撃',
       cardDefinition: {
         title: 'テスト攻撃',
-        type: 'attack',
+        cardType: 'attack',
+        type: new SingleAttackCardTag(),
+        target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
       baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),

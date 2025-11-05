@@ -6,8 +6,8 @@ export class OrcEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     super({
       name: 'オーク',
-      maxHp: 50,
-      currentHp: 50,
+      maxHp: 40,
+      currentHp: 40,
       actions: [new TackleAction(), new BuildUpAction()],
       image: '/assets/enemies/orc.jpg',
       ...overrides,

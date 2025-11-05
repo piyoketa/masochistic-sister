@@ -5,6 +5,11 @@ import { Attack, type AttackProps } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
 import type { Battle } from '@/domain/battle/Battle'
 import { State } from '@/domain/entities/State'
+import {
+  EnemySingleTargetCardTag,
+  SingleAttackCardTag,
+  StatusTypeCardTag,
+} from '@/domain/entities/cardTags'
 
 class TestAttack extends Attack {
   constructor(overrides?: Partial<AttackProps>) {
@@ -12,7 +17,9 @@ class TestAttack extends Attack {
       name: '記憶攻撃',
       cardDefinition: {
         title: '記憶攻撃',
-        type: 'attack',
+        cardType: 'attack',
+        type: new SingleAttackCardTag(),
+        target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
       baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
@@ -62,7 +69,9 @@ describe('MemoryManager', () => {
       name: '記憶状態',
       cardDefinition: {
         title: '記憶状態',
-        type: 'status',
+        cardType: 'status',
+        type: new StatusTypeCardTag(),
+        target: undefined,
         cost: 0,
       },
     })

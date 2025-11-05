@@ -86,8 +86,8 @@ export class Card {
     return this.definition.title
   }
 
-  get type(): CardDefinition['type'] {
-    return this.definition.type
+  get type(): CardDefinition['cardType'] {
+    return this.definition.cardType
   }
 
   get cost(): number {
@@ -165,10 +165,59 @@ export class Card {
     const baseDefinition = this.actionRef
       ? this.actionRef.createCardDefinition()
       : this.stateRef!.createCardDefinition()
+    const overrides = this.definitionOverridesValue
+
+    if (!overrides) {
+      return { ...baseDefinition }
+    }
+
+    if (overrides.cardType && overrides.cardType !== baseDefinition.cardType) {
+      throw new Error('Card definition overrides cannot change cardType')
+    }
+
+    if (overrides.type && overrides.type !== baseDefinition.type) {
+      throw new Error('Card definition overrides cannot change type tag')
+    }
+
+    if ('target' in overrides && overrides.target !== undefined && overrides.target !== baseDefinition.target) {
+      throw new Error('Card definition overrides cannot change target tag')
+    }
+
+    const cardTags =
+      overrides.cardTags !== undefined
+        ? (overrides.cardTags as typeof baseDefinition.cardTags)
+        : baseDefinition.cardTags
+
+    const { cardType, type, target, cardTags: _ignored, ...rest } = overrides
+
+    if (baseDefinition.cardType === 'status') {
+      return {
+        ...baseDefinition,
+        ...rest,
+        cardType: 'status',
+        type: baseDefinition.type,
+        cardTags,
+      }
+    }
+
+    if (baseDefinition.cardType === 'attack') {
+      return {
+        ...baseDefinition,
+        ...rest,
+        cardType: 'attack',
+        type: baseDefinition.type,
+        cardTags,
+        target: baseDefinition.target,
+      }
+    }
 
     return {
       ...baseDefinition,
-      ...this.definitionOverridesValue,
+      ...rest,
+      cardType: 'skill',
+      type: baseDefinition.type,
+      cardTags,
+      target: baseDefinition.target,
     }
   }
 }

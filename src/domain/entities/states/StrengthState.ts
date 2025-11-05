@@ -1,4 +1,5 @@
 import { State } from '../State'
+import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
 export class StrengthState extends State {
@@ -9,7 +10,9 @@ export class StrengthState extends State {
       magnitude,
       cardDefinition: {
         title: '筋力上昇',
-        type: 'status',
+        cardType: 'status',
+        type: new StatusTypeCardTag(),
+        target: undefined,
         cost: 1,
       },
     })

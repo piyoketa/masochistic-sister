@@ -54,6 +54,7 @@ function createSnapshot(hand: Card[]): BattleSnapshot {
     turn: {
       turnCount: 1,
       activeSide: 'player',
+      phase: 'player-draw',
     },
     log: [],
   }

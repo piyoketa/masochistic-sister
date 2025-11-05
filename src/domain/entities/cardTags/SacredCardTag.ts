@@ -1,6 +1,6 @@
-import { CardTag } from '../CardTag'
+import { CardCategoryTag } from '../CardTag'
 
-export class SacredCardTag extends CardTag {
+export class SacredCardTag extends CardCategoryTag {
   constructor() {
     super({
       id: 'tag-sacred',

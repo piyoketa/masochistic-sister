@@ -25,7 +25,15 @@ import { StickyState } from '@/domain/entities/states/StickyState'
 import { StrengthState } from '@/domain/entities/states/StrengthState'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 
-export type ScenarioSteps = Record<string, number>
+export interface ScenarioSteps {
+  battleStart: number
+  playerTurn1Start: number
+  playMasochisticAura: number
+  playHeavenChainOnOrc: number
+  playBattlePrep: number
+  endPlayerTurn1: number
+  startPlayerTurn2: number
+}
 
 export interface ScenarioReferences {
   masochisticAuraId: number

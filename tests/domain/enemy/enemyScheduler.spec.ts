@@ -5,7 +5,8 @@
  *   や先頭除去（discardNextScheduledAction）を介して操作され、行動順序を一元管理する。
  * - デフォルトの行動キューは、初回にランダムで技を選び、その後は登録済みの技を交互に実行する。
  * - HeavenChainAction により次の行動がキャンセルされた場合、現在ターンは SkipTurnAction を
- *   実行し、キャンセルされた行動は次ターン冒頭に必ず実行されるようキューへ戻される。
+ *   実行し、キャンセルされた行動は破棄される。次ターンは、元々その次に予定されていた行動
+ *   から再開する。
  * - BeamEnemyActionQueue のようにキューを差し替えることで、チャージ行動→大技といった
  *   敵固有の行動パターンを簡潔に表現できる。
  */
@@ -26,6 +27,7 @@ import { ProtagonistPlayer } from '@/domain/entities/players'
 import { Skill, type ActionContext } from '@/domain/entities/Action'
 import { HeavenChainAction } from '@/domain/entities/actions'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
+import { SelfTargetCardTag, SkillTypeCardTag } from '@/domain/entities/cardTags'
 import { BeamEnemyActionQueue, DefaultEnemyActionQueue } from '@/domain/entities/enemy/actionQueues'
 
 class LogSkillAction extends Skill {
@@ -34,7 +36,9 @@ class LogSkillAction extends Skill {
       name: label,
       cardDefinition: {
         title: label,
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 0,
       },
     })
@@ -109,7 +113,7 @@ describe('DefaultEnemyActionQueue', () => {
     ])
   })
 
-  it('天の鎖でスキップ後、次のターンに予定行動を再開する', () => {
+  it('天の鎖は現在ターンの行動を破棄し、次ターンは次の予定行動を実行する', () => {
     const enemy = new Enemy({
       name: 'オーク',
       maxHp: 10,
@@ -120,11 +124,13 @@ describe('DefaultEnemyActionQueue', () => {
         new DefaultEnemyActionQueue({ initialActionPredicate: (action) => action === actionA }),
     })
 
-    // TODO: 天の鎖実行前の敵の行動Queueをテストすること
-
     const battle = createBattle(enemy)
     const player = battle.player
     const action = new HeavenChainAction()
+
+    const queueBefore = enemy.queuedActions
+    expect(queueBefore).toHaveLength(1)
+    expect(queueBefore[0]).toBe(actionA)
 
     action.execute({
       battle,
@@ -134,18 +140,30 @@ describe('DefaultEnemyActionQueue', () => {
       operations: [],
     })
 
-    enemy.resetTurn()
-    enemy.act(battle)
+    const queueAfterHeavenChain = enemy.queuedActions
+    expect(queueAfterHeavenChain).toHaveLength(2)
+    expect(queueAfterHeavenChain[0]).toBeInstanceOf(SkipTurnAction)
+    expect(queueAfterHeavenChain[1]).toBe(actionB)
 
     enemy.resetTurn()
     enemy.act(battle)
 
-    // TODO: 天の鎖実行後の敵の行動Queueをテストすること
+    const queueAfterSkip = enemy.queuedActions
+    expect(queueAfterSkip).toHaveLength(1)
+    expect(queueAfterSkip[0]).toBe(actionB)
+
+    enemy.resetTurn()
+    enemy.act(battle)
+
+    const queueAfterNextTurn = enemy.queuedActions
+    expect(queueAfterNextTurn).toHaveLength(1)
+    expect(queueAfterNextTurn[0]).toBe(actionA)
+
     const messages = battle.log.list().map((entry) => entry.message)
     expect(messages).toEqual([
       'オークは天の鎖で動きを封じられた。',
       'オークは天の鎖で縛られていて何もできない！',
-      'オークはたいあたりを使った',
+      'オークは酸を吐くを使った',
     ])
   })
 
@@ -159,18 +177,22 @@ describe('DefaultEnemyActionQueue', () => {
     })
     const battle = createBattle(enemy)
 
+    const originallyScheduled = enemy.queuedActions[0]
+    expect(originallyScheduled).toBeDefined()
+
     enemy.queueImmediateAction(new SkipTurnAction(() => '追加で縛られている'))
-    expect(enemy.queuedActions[0]?.name).toBe('追加で縛られている')
+    expect(enemy.queuedActions[0]).toBeInstanceOf(SkipTurnAction)
 
     enemy.resetTurn()
     enemy.act(battle)
 
     expect(enemy.queuedActions.length).toBeGreaterThan(0)
     const nextAction = enemy.queuedActions[0]
-    expect(nextAction).toBe(actionA)
+    expect(nextAction).toBe(originallyScheduled)
 
     const firstEntry = battle.log.list()[0]
     expect(firstEntry?.metadata?.action).toBe('skip')
+    expect(firstEntry?.message).toBe('追加で縛られている')
   })
 })
 

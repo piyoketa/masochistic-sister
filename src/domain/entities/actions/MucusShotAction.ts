@@ -1,6 +1,7 @@
 import { Attack, type ActionContext } from '../Action'
 import { Damages } from '../Damages'
 import { StickyState } from '../states/StickyState'
+import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 import type { Player } from '../Player'
 import type { Enemy } from '../Enemy'
 import { isPlayerEntity } from '../typeGuards'
@@ -13,7 +14,9 @@ export class MucusShotAction extends Attack {
       inflictStates: [() => new StickyState(1)],
       cardDefinition: {
         title: '粘液飛ばし',
-        type: 'attack',
+        cardType: 'attack',
+        type: new SingleAttackCardTag(),
+        target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
     })

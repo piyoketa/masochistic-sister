@@ -4,6 +4,8 @@ import { Hand } from '@/domain/battle/Hand'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import type { Battle } from '@/domain/battle/Battle'
 import { State } from '@/domain/entities/State'
+import { StatusTypeCardTag } from '@/domain/entities/cardTags'
+import { StatusTypeCardTag } from '@/domain/entities/cardTags'
 import { Card } from '@/domain/entities/Card'
 
 class TestPlayer extends Player {
@@ -42,7 +44,9 @@ describe('Player.addState スタック処理', () => {
       magnitude,
       cardDefinition: {
         title: `state-${id}`,
-        type: 'status',
+        cardType: 'status',
+        type: new StatusTypeCardTag(),
+        target: undefined,
         cost: 0,
       },
     })

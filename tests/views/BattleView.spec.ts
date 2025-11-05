@@ -71,6 +71,7 @@ function createSnapshot(): BattleSnapshot {
     turn: {
       turnCount: 1,
       activeSide: 'player',
+      phase: 'player-draw',
     },
     log: [],
   }

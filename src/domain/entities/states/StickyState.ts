@@ -1,4 +1,5 @@
 import { State } from '../State'
+import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
 export class StickyState extends State {
@@ -9,7 +10,9 @@ export class StickyState extends State {
       magnitude,
       cardDefinition: {
         title: 'ねばねば',
-        type: 'status',
+        cardType: 'status',
+        type: new StatusTypeCardTag(),
+        target: undefined,
         cost: 1,
       },
     })

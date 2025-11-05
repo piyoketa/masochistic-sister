@@ -1,4 +1,5 @@
 import { Skill } from '../Action'
+import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import { AccelerationState } from '../states/AccelerationState'
 
 export class BattleDanceAction extends Skill {
@@ -7,7 +8,9 @@ export class BattleDanceAction extends Skill {
       name: '戦いの舞い',
       cardDefinition: {
         title: '戦いの舞い',
-        type: 'skill',
+        cardType: 'skill',
+        type: new SkillTypeCardTag(),
+        target: new SelfTargetCardTag(),
         cost: 1,
       },
       gainStates: [() => new AccelerationState(1)],
