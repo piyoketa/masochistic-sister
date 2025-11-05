@@ -145,6 +145,11 @@ export abstract class Action {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected perform(_context: ActionContext): void {}
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  canUse(_context: { battle: Battle; source: Player | Enemy }): boolean {
+    return true
+  }
+
   private resolveRequiredOperations(
     requiredOperations: Operation[],
     params: { battle: Battle; source: Player | Enemy; operations: CardOperation[] },

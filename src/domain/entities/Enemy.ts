@@ -15,6 +15,8 @@ export interface EnemyProps {
   futureActions?: Action[]
   rng?: () => number
   actionQueueFactory?: () => EnemyActionQueue
+  allyTags?: string[]
+  allyBuffWeights?: Record<string, number>
 }
 
 export class Enemy {
@@ -28,6 +30,8 @@ export class Enemy {
   private readonly rng: () => number
   private readonly actionHistory: Action[] = []
   private readonly actionQueue: EnemyActionQueue
+  private readonly allyTagsValue: string[]
+  private readonly allyBuffWeightsValue: Record<string, number>
   private actedThisTurn = false
   private idValue?: number
 
@@ -40,6 +44,8 @@ export class Enemy {
     this.stateList = [...(props.states ?? [])]
     this.imageValue = props.image
     this.rng = props.rng ?? Math.random
+    this.allyTagsValue = [...(props.allyTags ?? [])]
+    this.allyBuffWeightsValue = { ...(props.allyBuffWeights ?? {}) }
     this.actionQueue = props.actionQueueFactory ? props.actionQueueFactory() : new DefaultEnemyActionQueue()
     this.actionQueue.initialize(this.actionCandidates, this.rng)
     if (props.futureActions) {
@@ -172,5 +178,13 @@ export class Enemy {
 
   prependAction(action: Action): void {
     this.actionQueue.prepend(action)
+  }
+
+  hasAllyTag(tag: string): boolean {
+    return this.allyTagsValue.includes(tag)
+  }
+
+  getAllyBuffWeight(key: string): number {
+    return this.allyBuffWeightsValue[key] ?? 0
   }
 }

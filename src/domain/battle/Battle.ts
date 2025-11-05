@@ -455,6 +455,7 @@ export class Battle {
           }
         }
         this.resolveEvents()
+        this.enemyTeam.planUpcomingActions(this)
         break
       case 'play-card': {
         const cardId = actionLog.resolveValue(entry.card, this)

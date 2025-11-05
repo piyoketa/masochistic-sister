@@ -1,5 +1,7 @@
 import type { Enemy } from './Enemy'
 import { EnemyRepository } from '../repository/EnemyRepository'
+import type { Battle } from '../battle/Battle'
+import { AllyBuffSkill } from './Action'
 
 export interface EnemyTeamProps {
   id: string
@@ -60,5 +62,68 @@ export class EnemyTeam {
 
   areAllDefeated(): boolean {
     return this.membersValue.every((enemy) => enemy.currentHp <= 0)
+  }
+
+  planUpcomingActions(battle: Battle): void {
+    for (const enemy of this.membersValue) {
+      // 複数回の破棄に耐えられるよう、先頭がAllyBuffSkillである限りループする
+      for (;;) {
+        const upcoming = enemy.queuedActions[0]
+        if (!(upcoming instanceof AllyBuffSkill)) {
+          break
+        }
+
+        if (!upcoming.canUse({ battle, source: enemy })) {
+          enemy.discardNextScheduledAction()
+          continue
+        }
+
+        const targetId = this.selectAllyTargetFor(upcoming, enemy)
+        if (targetId === undefined) {
+          enemy.discardNextScheduledAction()
+          continue
+        }
+
+        upcoming.setPlannedTarget(targetId)
+        const targetEnemy = this.findEnemy(targetId)
+        if (targetEnemy) {
+          battle.addLogEntry({
+            message: `${enemy.name}は追い風で${targetEnemy.name}を支援しようとしている。`,
+            metadata: { enemyId: enemy.id, targetId },
+          })
+        }
+        break
+      }
+    }
+  }
+
+  private selectAllyTargetFor(skill: AllyBuffSkill, source: Enemy): number | undefined {
+    const candidates = this.membersValue.filter((ally) => ally.currentHp > 0)
+    const filtered = candidates.filter((ally) =>
+      skill.requiredAllyTags.every((tag) => ally.hasAllyTag(tag)),
+    )
+
+    if (filtered.length === 0) {
+      return undefined
+    }
+
+    const weighted = filtered
+      .map((ally) => ({ ally, weight: ally.getAllyBuffWeight(skill.affinityKey) }))
+      .filter(({ weight }) => weight > 0)
+
+    if (weighted.length === 0) {
+      return undefined
+    }
+
+    const total = weighted.reduce((sum, entry) => sum + entry.weight, 0)
+    let threshold = Math.random() * total
+    for (const entry of weighted) {
+      threshold -= entry.weight
+      if (threshold <= 0) {
+        return entry.ally.id
+      }
+    }
+
+    return weighted[weighted.length - 1]?.ally.id
   }
 }

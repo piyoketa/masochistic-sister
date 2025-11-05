@@ -6,3 +6,4 @@ Action モジュールのエントリーポイント:
 export * from './ActionBase'
 export * from './Skill'
 export * from './Attack'
+export * from './AllyBuffSkill'
