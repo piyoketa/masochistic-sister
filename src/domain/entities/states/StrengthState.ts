@@ -27,7 +27,11 @@ export class StrengthState extends State {
     return true
   }
 
-  override modifyDamage(params: DamageCalculationParams): DamageCalculationParams {
+  override isPreHitModifier(): boolean {
+    return true
+  }
+
+  override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
     if (params.role !== 'attacker') {
       return params
     }

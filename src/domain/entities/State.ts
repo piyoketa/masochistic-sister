@@ -1,5 +1,5 @@
 import type { CardDefinition } from './CardDefinition'
-import type { DamageCalculationParams } from './Damages'
+import type { DamageCalculationParams, DamageOutcome, Damages } from './Damages'
 import type { Battle } from '../battle/Battle'
 import type { Player } from './Player'
 import type { Enemy } from './Enemy'
@@ -66,6 +66,14 @@ export class State {
 
   remove(): void {}
 
+  isPreHitModifier(): boolean {
+    return false
+  }
+
+  isPostHitModifier(): boolean {
+    return false
+  }
+
   affectsAttacker(): boolean {
     return false
   }
@@ -74,7 +82,7 @@ export class State {
     return false
   }
 
-  modifyDamage(params: DamageCalculationParams): DamageCalculationParams {
+  modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
     return params
   }
 
@@ -89,7 +97,35 @@ export class State {
     action: Action
   }): void {}
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onHitResolved(_context: DamageHitContext): boolean {
+    return false
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onDamageSequenceResolved(_context: DamageSequenceContext): void {}
+
   protected setMagnitude(value: number | undefined): void {
     this.props.magnitude = value
   }
+}
+
+export interface DamageHitContext {
+  battle: Battle
+  attack: Action
+  attacker: Player | Enemy
+  defender: Player | Enemy
+  damages: Damages
+  index: number
+  outcome: DamageOutcome
+  role: 'attacker' | 'defender'
+}
+
+export interface DamageSequenceContext {
+  battle: Battle
+  attack: Action
+  attacker: Player | Enemy
+  defender: Player | Enemy
+  damages: Damages
+  outcomes: readonly DamageOutcome[]
 }

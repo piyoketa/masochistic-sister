@@ -1,23 +1,23 @@
 /*
 Attack.ts の責務:
-- 攻撃アクション共通のロジック（ダメージ計算、追加状態付与、ターゲット操作の強制など）を実装し、個別の攻撃アクションへ継承させる。
-- 攻撃カードの複製（記憶カード化）や、演出に必要なダメージプロファイル情報を統一的に扱う。
+- 攻撃アクション共通のロジック（ヒット前/後のダメージ計算、追加状態付与、ターゲット操作）を実装し、派生クラスへ共通土台を提供する。
+- 攻撃カードの複製（記憶カード化）や、演出に必要な `DamageOutcome` 配列の生成までを担い、UI 表示やログ出力の基礎データを準備する。
 
 責務ではないこと:
 - 与ダメージ後のログ出力や敵行動の予約管理など、バトル全体のフロー制御。
-- ダメージ計算アルゴリズムそのもの（各種 `State` が拡張する）や、ビュー向けの表示整形。
+- 各 State 個別のダメージ調整アルゴリズム（State 側のフックで拡張する）や、ビュー層での表示整形。
 
 主要な通信相手とインターフェース:
 - `ActionBase.ts` の `Action`: 基底クラスとしてカード定義やコンテキスト準備を提供し、攻撃固有処理をオーバーライドする。
-- `Damages`: 攻撃プロファイルを表現する値オブジェクト。`calcDamages` で攻撃側・防御側の `State` を参照して最終値を算出する。
-- `TargetEnemyOperation`: 攻撃対象の選択を要求する `Operation`。敵行動（プレイヤーが対象）時には省略できるよう `shouldRequireOperation` を調整する。
-- `Player.rememberEnemyAttack`: プレイヤーが被弾した攻撃を「記憶カード」として生成する。状態付与の記録は `Player.addState` 経由で行う。
+- `Damages`: 攻撃プロファイルを表現する値オブジェクト。pre-hit 計算結果と post-hit `DamageOutcome[]` を保持させる。
+- `TargetEnemyOperation`: 攻撃対象の選択を要求する Operation。敵行動（プレイヤーが対象）時には省略できるよう `shouldRequireOperation` を調整する。
+- `Player.rememberEnemyAttack`: プレイヤーが被弾した攻撃を「記憶カード」として生成する。post-hit 結果を保持した `Damages` を渡す。
 */
 import type { Battle } from '../../battle/Battle'
 import type { Enemy } from '../Enemy'
 import type { Player } from '../Player'
 import type { State } from '../State'
-import { Damages } from '../Damages'
+import { Damages, type DamageEffectType, type DamageOutcome } from '../Damages'
 import {
   TargetEnemyOperation,
   type CardOperation,
@@ -31,15 +31,18 @@ import type { CardDefinition } from '../CardDefinition'
 export interface AttackProps extends BaseActionProps {
   baseDamage: Damages
   inflictStates?: Array<() => State>
+  effectType?: DamageEffectType
 }
 
 export abstract class Attack extends Action {
   protected readonly baseProfile: Damages
+  protected readonly effectType: DamageEffectType
   private readonly inflictStateFactories: Array<() => State>
 
   protected constructor(props: AttackProps) {
     super(props)
     this.baseProfile = props.baseDamage
+    this.effectType = props.effectType ?? 'slash'
     this.inflictStateFactories = props.inflictStates ? [...props.inflictStates] : []
   }
 
@@ -84,14 +87,32 @@ export abstract class Attack extends Action {
 
     this.beforeAttack(context, defender)
 
-    const damages = this.calcDamages(context.source, defender)
-    const totalDamage = Math.max(0, damages.amount * damages.count)
+    const damages = this.calcDamages(context.source, defender, context.battle)
+    const baseOutcomes = this.initializeOutcomes(damages)
+    this.applyPostHitModifiers({
+      battle: context.battle,
+      attacker: context.source,
+      defender,
+      damages,
+      outcomes: baseOutcomes,
+    })
+    const resolvedOutcomes = this.truncateOutcomesByDefenderHp(defender, baseOutcomes)
+    damages.setOutcomes(resolvedOutcomes)
+    const totalDamage = damages.totalPostHitDamage
 
     if (this.isPlayer(defender)) {
       context.battle.damagePlayer(totalDamage)
     } else {
       context.battle.damageEnemy(defender, totalDamage)
     }
+
+    this.invokePostSequenceHooks({
+      battle: context.battle,
+      attacker: context.source,
+      defender,
+      damages,
+      outcomes: damages.outcomes,
+    })
 
     this.applyInflictedStates(context, defender)
     this.onAfterDamage(context, damages, defender)
@@ -107,13 +128,21 @@ export abstract class Attack extends Action {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected onAfterDamage(_context: ActionContext, _damages: Damages, _defender: Player | Enemy): void {}
 
-  calcDamages(attacker: Player | Enemy, defender: Player | Enemy): Damages {
+  calcDamages(attacker: Player | Enemy, defender: Player | Enemy, battle?: Battle): Damages {
     return new Damages({
       baseAmount: this.baseProfile.baseAmount,
       baseCount: this.baseProfile.baseCount,
       type: this.baseProfile.type,
       attackerStates: this.collectStates(attacker),
       defenderStates: this.collectStates(defender),
+      context: battle
+        ? {
+            battle,
+            attack: this,
+            attacker,
+            defender,
+          }
+        : undefined,
     })
   }
 
@@ -167,6 +196,153 @@ export abstract class Attack extends Action {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected canInflictState(_context: ActionContext, _defender: Player | Enemy, _state: State): boolean {
     return true
+  }
+
+  private initializeOutcomes(damages: Damages): DamageOutcome[] {
+    return Array.from({ length: damages.count }, () => ({
+      damage: damages.amount,
+      effectType: this.effectType,
+    }))
+  }
+
+  private applyPostHitModifiers(params: {
+    battle: Battle
+    attacker: Player | Enemy
+    defender: Player | Enemy
+    damages: Damages
+    outcomes: DamageOutcome[]
+  }): void {
+    const attackerStates = this.collectStates(params.attacker)
+    const defenderStates = this.collectStates(params.defender)
+
+    for (let index = 0; index < params.outcomes.length; index += 1) {
+      const outcome = params.outcomes[index]!
+      this.applyPostHitForStates({
+        states: attackerStates,
+        battle: params.battle,
+        attacker: params.attacker,
+        defender: params.defender,
+        damages: params.damages,
+        outcome,
+        index,
+        role: 'attacker',
+      })
+      this.applyPostHitForStates({
+        states: defenderStates,
+        battle: params.battle,
+        attacker: params.attacker,
+        defender: params.defender,
+        damages: params.damages,
+        outcome,
+        index,
+        role: 'defender',
+      })
+    }
+  }
+
+  private applyPostHitForStates(params: {
+    states: State[]
+    battle: Battle
+    attacker: Player | Enemy
+    defender: Player | Enemy
+    damages: Damages
+    outcome: DamageOutcome
+    index: number
+    role: 'attacker' | 'defender'
+  }): void {
+    for (const state of params.states) {
+      if (!state.isPostHitModifier()) {
+        continue
+      }
+
+      const beforeDamage = params.outcome.damage
+      const beforeEffect = params.outcome.effectType
+      const reacted = state.onHitResolved({
+        battle: params.battle,
+        attack: this,
+        attacker: params.attacker,
+        defender: params.defender,
+        damages: params.damages,
+        index: params.index,
+        outcome: params.outcome,
+        role: params.role,
+      })
+
+      if (
+        reacted ||
+        beforeDamage !== params.outcome.damage ||
+        beforeEffect !== params.outcome.effectType
+      ) {
+        params.damages.registerPostHitState(params.role, state)
+      }
+    }
+  }
+
+  private truncateOutcomesByDefenderHp(defender: Player | Enemy, outcomes: DamageOutcome[]): DamageOutcome[] {
+    let remainingHp = this.getCurrentHp(defender)
+    if (remainingHp <= 0) {
+      return []
+    }
+
+    const result: DamageOutcome[] = []
+    for (const outcome of outcomes) {
+      if (remainingHp <= 0) {
+        break
+      }
+
+      const appliedDamage = Math.min(outcome.damage, remainingHp)
+      result.push({
+        damage: appliedDamage,
+        effectType: outcome.effectType,
+      })
+      remainingHp -= appliedDamage
+
+      if (outcome.damage <= 0) {
+        continue
+      }
+    }
+
+    return result
+  }
+
+  private getCurrentHp(entity: Player | Enemy): number {
+    if (this.isPlayer(entity)) {
+      return entity.currentHp
+    }
+    return entity.currentHp
+  }
+
+  private invokePostSequenceHooks(params: {
+    battle: Battle
+    attacker: Player | Enemy
+    defender: Player | Enemy
+    damages: Damages
+    outcomes: readonly DamageOutcome[]
+  }): void {
+    const context = {
+      battle: params.battle,
+      attack: this,
+      attacker: params.attacker,
+      defender: params.defender,
+      damages: params.damages,
+      outcomes: params.outcomes,
+    }
+
+    for (const state of this.resolvePostHitStates(params.attacker, params.damages.postHitAttackerStateEffects)) {
+      state.onDamageSequenceResolved(context)
+    }
+
+    for (const state of this.resolvePostHitStates(params.defender, params.damages.postHitDefenderStateEffects)) {
+      state.onDamageSequenceResolved(context)
+    }
+  }
+
+  private resolvePostHitStates(entity: Player | Enemy, recorded: readonly State[]): State[] {
+    if (recorded.length > 0) {
+      return Array.from(recorded)
+    }
+
+    return this.collectStates(entity).filter((state) => state.isPostHitModifier())
   }
 }
 

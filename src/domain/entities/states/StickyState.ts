@@ -20,11 +20,15 @@ export class StickyState extends State {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `連続攻撃を受けるとき、回数+${bonus}`
+   return `連続攻撃を受けるとき、回数+${bonus}`
   }
 
-  override modifyDamage(params: DamageCalculationParams): DamageCalculationParams {
-    if (params.role !== 'defender' || params.count <= 1) {
+  override isPreHitModifier(): boolean {
+    return true
+  }
+
+  override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
+    if (params.role !== 'defender' || params.type !== 'multi' || params.count <= 1) {
       return params
     }
 

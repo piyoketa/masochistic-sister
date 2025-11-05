@@ -9,15 +9,22 @@ import {
   CorrosionState,
   HardShellState,
   StickyState,
+  BarrierState,
+  FlightState,
+  HeavyweightState,
+  LightweightState,
 } from '@/domain/entities/states'
 import { Enemy } from '@/domain/entities/Enemy'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import type { State } from '@/domain/entities/State'
 import { Hand } from '@/domain/battle/Hand'
 import { Card } from '@/domain/entities/Card'
-import type { Battle } from '@/domain/battle/Battle'
+import { Battle } from '@/domain/battle/Battle'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { Damages } from '@/domain/entities/Damages'
+import { EnemyTeam } from '@/domain/entities/EnemyTeam'
+import { Deck } from '@/domain/battle/Deck'
+import type { Attack } from '@/domain/entities/Action'
 
 function createPlayerWithHand() {
   const player = new ProtagonistPlayer()
@@ -54,6 +61,81 @@ function createTentacleFlurryAction() {
   return new FlurryAction().cloneWithDamages(
     new Damages({ baseAmount: 10, baseCount: 3, type: 'multi' }),
   )
+}
+
+class InspectableFlurryAction extends FlurryAction {
+  capturedDamages?: Damages
+
+  constructor() {
+    super()
+    const override = new Damages({ baseAmount: 10, baseCount: 3, type: 'multi' })
+    const clone = this.cloneWithDamages(override) as this
+    Object.assign(this, clone)
+  }
+
+  protected override onAfterDamage(
+    context: Parameters<FlurryAction['onAfterDamage']>[0],
+    damages: Damages,
+    defender: Parameters<FlurryAction['onAfterDamage']>[2],
+  ): void {
+    this.capturedDamages = damages
+    super.onAfterDamage(context, damages, defender)
+  }
+}
+
+class InspectableTackleAction extends TackleAction {
+  capturedDamages?: Damages
+
+  protected override onAfterDamage(
+    context: Parameters<TackleAction['onAfterDamage']>[0],
+    damages: Damages,
+    defender: Parameters<TackleAction['onAfterDamage']>[2],
+  ): void {
+    this.capturedDamages = damages
+    super.onAfterDamage(context, damages, defender)
+  }
+}
+
+function createBattleWithEnemy(enemy: Enemy) {
+  const player = new ProtagonistPlayer()
+  const deck = new Deck()
+  const enemyTeam = new EnemyTeam({ id: 'test-team', members: [enemy] })
+  const battle = new Battle({
+    id: 'battle-test',
+    player,
+    enemyTeam,
+    deck,
+  })
+
+  const registeredEnemy = enemyTeam.members[0]
+  if (!registeredEnemy) {
+    throw new Error('登録された敵が取得できませんでした')
+  }
+
+  return {
+    battle,
+    player,
+    enemy: registeredEnemy,
+  }
+}
+
+function executePlayerAttack(params: {
+  battle: Battle
+  player: ProtagonistPlayer
+  enemy: Enemy
+  attack: Attack
+}) {
+  const { battle, player, enemy, attack } = params
+  const enemyId = enemy.id
+  if (enemyId === undefined) {
+    throw new Error('Enemy id is required for targeting')
+  }
+  const context = attack.prepareContext({
+    battle,
+    source: player,
+    operations: [{ type: 'target-enemy', payload: enemyId }],
+  })
+  attack.execute(context)
 }
 
 describe('Attack#calcDamagesの挙動', () => {
@@ -186,5 +268,112 @@ describe('Attack#calcDamagesの挙動', () => {
     expect(damages.amount).toBe(20)
     expect(damages.count).toBe(1)
     expect(damages.defenderStates).not.toContain(sticky)
+  })
+
+  it('重量化(1)でダメージが15、回数が2になる', () => {
+    const action = createTentacleFlurryAction()
+    const attackerHelper = createPlayerWithHand()
+    attackerHelper.addState(new HeavyweightState(1))
+    const defender = createEnemyWithStates()
+
+    const damages = action.calcDamages(attackerHelper.player, defender)
+
+    expect(damages.amount).toBe(15)
+    expect(damages.count).toBe(2)
+  })
+
+  it('軽量化(1)でダメージが6、回数が4になる', () => {
+    const action = createTentacleFlurryAction()
+    const attackerHelper = createPlayerWithHand()
+    attackerHelper.addState(new LightweightState(1))
+    const defender = createEnemyWithStates()
+
+    const damages = action.calcDamages(attackerHelper.player, defender)
+
+    expect(damages.amount).toBe(6)
+    expect(damages.count).toBe(4)
+  })
+
+  it('飛行状態の敵にはダメージが1に制限される', () => {
+    const action = createTentacleFlurryAction()
+    const attacker = createPlayerWithHand().player
+    const defenderEnemy = createEnemyWithStates([new FlightState(1)])
+
+    const damages = action.calcDamages(attacker, defenderEnemy)
+
+    expect(damages.amount).toBe(1)
+    expect(damages.count).toBe(3)
+  })
+})
+
+describe('Attack.performのダメージアウトカム', () => {
+  it('バリアが連撃の最初の2ヒットをガードする', () => {
+    const enemy = new Enemy({
+      name: '防御テスト',
+      maxHp: 40,
+      currentHp: 40,
+      actions: [new SkipTurnAction('何もしない')],
+      states: [new BarrierState(2)],
+      image: '',
+    })
+    const { battle, player, enemy: registeredEnemy } = createBattleWithEnemy(enemy)
+    const attack = new InspectableFlurryAction()
+
+    executePlayerAttack({ battle, player, enemy: registeredEnemy, attack })
+
+    expect(registeredEnemy.currentHp).toBe(30)
+    const damages = attack.capturedDamages
+    expect(damages).toBeDefined()
+    expect(damages?.outcomes).toEqual([
+      { damage: 0, effectType: 'guarded' },
+      { damage: 0, effectType: 'guarded' },
+      { damage: 10, effectType: 'slash' },
+    ])
+    expect(damages?.postHitDefenderStateEffects.length).toBeGreaterThanOrEqual(1)
+    const barrier = registeredEnemy.states.find((state) => state instanceof BarrierState) as BarrierState | undefined
+    expect(barrier?.magnitude).toBe(0)
+  })
+
+  it('HPを削り切った場合は余剰ヒットを省略する', () => {
+    const enemy = new Enemy({
+      name: '削り切り',
+      maxHp: 25,
+      currentHp: 25,
+      actions: [new SkipTurnAction('何もしない')],
+      image: '',
+    })
+    const { battle, player, enemy: registeredEnemy } = createBattleWithEnemy(enemy)
+    const attack = new InspectableFlurryAction()
+
+    executePlayerAttack({ battle, player, enemy: registeredEnemy, attack })
+
+    expect(registeredEnemy.currentHp).toBe(0)
+    const damages = attack.capturedDamages
+    expect(damages?.outcomes).toEqual([
+      { damage: 10, effectType: 'slash' },
+      { damage: 10, effectType: 'slash' },
+      { damage: 5, effectType: 'slash' },
+    ])
+    expect(damages?.totalPostHitDamage).toBe(25)
+  })
+
+  it('飛行状態の敵にはヒット毎に1ダメージだけ与えられる', () => {
+    const enemy = new Enemy({
+      name: '飛行テスト',
+      maxHp: 10,
+      currentHp: 10,
+      actions: [new SkipTurnAction('何もしない')],
+      states: [new FlightState(1)],
+      image: '',
+    })
+    const { battle, player, enemy: registeredEnemy } = createBattleWithEnemy(enemy)
+    const attack = new InspectableTackleAction()
+
+    executePlayerAttack({ battle, player, enemy: registeredEnemy, attack })
+
+    expect(registeredEnemy.currentHp).toBe(9)
+    const damages = attack.capturedDamages
+    expect(damages?.outcomes).toEqual([{ damage: 1, effectType: 'slash' }])
+    expect(damages?.totalPostHitDamage).toBe(1)
   })
 })
