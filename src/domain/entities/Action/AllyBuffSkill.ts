@@ -63,7 +63,7 @@ export abstract class AllyBuffSkill extends Skill {
   override canUse(context: { battle: ActionContext['battle']; source: Player | Enemy }): boolean {
     const team = context.battle.enemyTeam
     return team
-      .members.filter((enemy) => enemy.currentHp > 0) // TODO: 「逃走」状態も存在するので、Enemyが生きているかどうかは別メソッドに委譲する
+      .members.filter((enemy) => enemy.isActive())
       .some((enemy) =>
         this.requiredTags.every((tag) => enemy.hasAllyTag(tag)),
       )
@@ -92,7 +92,7 @@ export abstract class AllyBuffSkill extends Skill {
 
   protected override perform(context: ActionContext): void {
     const target = this.resolveAllyTarget(context)
-    if (!target || target.currentHp <= 0) {
+    if (!target || !target.isActive()) {
       return
     }
 

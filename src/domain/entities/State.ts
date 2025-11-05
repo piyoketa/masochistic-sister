@@ -1,5 +1,9 @@
 import type { CardDefinition } from './CardDefinition'
 import type { DamageCalculationParams } from './Damages'
+import type { Battle } from '../battle/Battle'
+import type { Player } from './Player'
+import type { Enemy } from './Enemy'
+import type { Action } from './Action'
 
 export interface StateProps {
   id: string
@@ -73,6 +77,17 @@ export class State {
   modifyDamage(params: DamageCalculationParams): DamageCalculationParams {
     return params
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onTurnStart(_context: { battle: Battle; owner: Player | Enemy }): void {}
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onActionResolved(_context: {
+    battle: Battle
+    owner: Player | Enemy
+    actor: Player | Enemy
+    action: Action
+  }): void {}
 
   protected setMagnitude(value: number | undefined): void {
     this.props.magnitude = value

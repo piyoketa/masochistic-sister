@@ -19,6 +19,8 @@ export interface EnemyProps {
   allyBuffWeights?: Record<string, number>
 }
 
+export type EnemyStatus = 'active' | 'defeated' | 'escaped'
+
 export class Enemy {
   private readonly nameValue: string
   private readonly maxHpValue: number
@@ -34,6 +36,7 @@ export class Enemy {
   private readonly allyBuffWeightsValue: Record<string, number>
   private actedThisTurn = false
   private idValue?: number
+  private statusValue: EnemyStatus = 'active'
 
   constructor(props: EnemyProps) {
     this.nameValue = props.name
@@ -99,6 +102,10 @@ export class Enemy {
     return this.idValue
   }
 
+  get status(): EnemyStatus {
+    return this.statusValue
+  }
+
   assignId(id: number): void {
     if (this.idValue !== undefined && this.idValue !== id) {
       throw new Error(`Enemy already assigned to repository id ${this.idValue}`)
@@ -112,6 +119,14 @@ export class Enemy {
   }
 
   act(battle: Battle): void {
+    if (!this.isActive()) {
+      battle.addLogEntry({
+        message: `${this.name}は戦線から離脱しているため、行動できない。`,
+        metadata: { enemyId: this.id, reason: 'inactive' },
+      })
+      return
+    }
+
     if (this.actedThisTurn) {
       battle.addLogEntry({
         message: `${this.name}は既に行動したため、何もしなかった。`,
@@ -142,6 +157,22 @@ export class Enemy {
 
   takeDamage(amount: number): void {
     this.currentHpValue = Math.max(0, this.currentHpValue - Math.max(0, Math.floor(amount)))
+    if (this.currentHpValue <= 0) {
+      this.statusValue = 'defeated'
+    }
+  }
+
+  flee(battle: Battle): void {
+    if (this.statusValue !== 'active') {
+      return
+    }
+    this.statusValue = 'escaped'
+    this.actionQueue.clearAll()
+    battle.addLogEntry({
+      message: `${this.name}は恐怖に駆られて逃走した。`,
+      metadata: { enemyId: this.id, reason: 'flee' },
+    })
+    battle.onEnemyStatusChanged()
   }
 
   addState(state: State, _options?: { battle?: Battle }): void {
@@ -186,5 +217,36 @@ export class Enemy {
 
   getAllyBuffWeight(key: string): number {
     return this.allyBuffWeightsValue[key] ?? 0
+  }
+
+  isActive(): boolean {
+    return this.statusValue === 'active' && this.currentHpValue > 0
+  }
+
+  handleTurnStart(battle: Battle): void {
+    if (!this.isActive()) {
+      return
+    }
+    this.forEachState((state) => state.onTurnStart({ battle, owner: this }))
+  }
+
+  handleActionResolved(battle: Battle, actor: Player | Enemy, action: Action): void {
+    this.forEachState((state) =>
+      state.onActionResolved({
+        battle,
+        owner: this,
+        actor,
+        action,
+      }),
+    )
+  }
+
+  private forEachState(consumer: (state: State) => void): void {
+    for (const trait of this.traitList) {
+      consumer(trait)
+    }
+    for (const state of this.stateList) {
+      consumer(state)
+    }
   }
 }

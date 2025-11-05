@@ -2,8 +2,9 @@
 import { Card } from '../entities/Card'
 import type { CardOperation } from '../entities/operations'
 import type { Player } from '../entities/Player'
-import type { Enemy } from '../entities/Enemy'
+import type { Enemy, EnemyStatus } from '../entities/Enemy'
 import type { EnemyTeam } from '../entities/EnemyTeam'
+import type { Action } from '../entities/Action'
 import type { State } from '../entities/State'
 import { Hand } from './Hand'
 import { Deck } from './Deck'
@@ -51,6 +52,7 @@ export interface BattleSnapshot {
     traits: State[]
     states: State[]
     hasActedThisTurn: boolean
+    status: EnemyStatus
   }>
   deck: Card[]
   hand: Card[]
@@ -210,6 +212,7 @@ export class Battle {
           traits: enemy.traits,
           states: enemy.states,
           hasActedThisTurn: enemy.hasActedThisTurn,
+          status: enemy.status,
         }
       }),
       deck: this.deckValue.list(),
@@ -278,7 +281,7 @@ export class Battle {
 
   startEnemyTurn(): void {
     this.turn.startEnemyTurn()
-    this.enemyTeam.startTurn()
+    this.enemyTeam.startTurn(this)
   }
 
   performEnemyAction(enemyId: number): EnemyTurnActionSummary {
@@ -404,6 +407,14 @@ export class Battle {
 
   damageEnemy(enemy: Enemy, amount: number): void {
     enemy.takeDamage(amount)
+    this.checkEnemyTeamDefeat()
+  }
+
+  notifyActionResolved(details: { source: Player | Enemy; action: Action }): void {
+    this.enemyTeam.handleActionResolved(this, details.source, details.action)
+  }
+
+  onEnemyStatusChanged(): void {
     this.checkEnemyTeamDefeat()
   }
 

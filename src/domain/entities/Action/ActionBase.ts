@@ -116,6 +116,7 @@ export abstract class Action {
   execute(context: ActionContext): void {
     this.perform(context)
     this.applyGainStates(context)
+    context.battle.notifyActionResolved({ source: context.source, action: this })
   }
 
   get gainStatePreviews(): State[] {

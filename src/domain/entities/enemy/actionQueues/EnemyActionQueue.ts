@@ -35,6 +35,11 @@ export abstract class EnemyActionQueue {
     this.pending.push(action)
   }
 
+  clearAll(): void {
+    this.pending.length = 0
+    this.actions.length = 0
+  }
+
   discardNext(): Action | undefined {
     this.populate()
     const action = this.pending.shift()

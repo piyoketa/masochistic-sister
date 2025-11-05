@@ -40,6 +40,8 @@ function createPlayer(): Player {
 function createBattleStub(player: Player) {
   return {
     player,
+    enemyTeam: { handleActionResolved: () => {} },
+    notifyActionResolved: () => {},
   } as unknown as Parameters<Action['prepareContext']>[0]['battle']
 }
 

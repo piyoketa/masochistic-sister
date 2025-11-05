@@ -2,6 +2,8 @@ import type { Enemy } from './Enemy'
 import { EnemyRepository } from '../repository/EnemyRepository'
 import type { Battle } from '../battle/Battle'
 import { AllyBuffSkill } from './Action'
+import type { Player } from './Player'
+import type { Action } from './Action'
 
 export interface EnemyTeamProps {
   id: string
@@ -54,18 +56,23 @@ export class EnemyTeam {
 
   reorder(order: number[]): void {}
 
-  startTurn(): void {}
+  startTurn(battle: Battle): void {
+    this.membersValue.forEach((enemy) => enemy.handleTurnStart(battle))
+  }
 
   endTurn(): void {
     this.membersValue.forEach((enemy) => enemy.resetTurn())
   }
 
   areAllDefeated(): boolean {
-    return this.membersValue.every((enemy) => enemy.currentHp <= 0)
+    return this.membersValue.every((enemy) => !enemy.isActive())
   }
 
   planUpcomingActions(battle: Battle): void {
     for (const enemy of this.membersValue) {
+      if (!enemy.isActive()) {
+        continue
+      }
       // 複数回の破棄に耐えられるよう、先頭がAllyBuffSkillである限りループする
       for (;;) {
         const upcoming = enemy.queuedActions[0]
@@ -98,7 +105,7 @@ export class EnemyTeam {
   }
 
   private selectAllyTargetFor(skill: AllyBuffSkill, source: Enemy): number | undefined {
-    const candidates = this.membersValue.filter((ally) => ally.currentHp > 0)
+    const candidates = this.membersValue.filter((ally) => ally.isActive())
     const filtered = candidates.filter((ally) =>
       skill.requiredAllyTags.every((tag) => ally.hasAllyTag(tag)),
     )
@@ -125,5 +132,9 @@ export class EnemyTeam {
     }
 
     return weighted[weighted.length - 1]?.ally.id
+  }
+
+  handleActionResolved(battle: Battle, actor: Player | Enemy, action: Action): void {
+    this.membersValue.forEach((enemy) => enemy.handleActionResolved(battle, actor, action))
   }
 }
