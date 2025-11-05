@@ -93,9 +93,9 @@ describe('BattleView', () => {
 
     await flushPromises()
 
-    const result = scenario.replayer.run(scenario.steps.playMasochisticAura)
+    const result = scenario.replayer.run(scenario.steps.playMasochisticAuraOnSnail)
     viewManager.enqueueAnimation({
-      entryIndex: scenario.steps.playMasochisticAura,
+      entryIndex: scenario.steps.playMasochisticAuraOnSnail,
       commands: [
         {
           type: 'update-snapshot',
@@ -136,7 +136,7 @@ describe('BattleView', () => {
     expect(button.attributes('disabled')).toBeUndefined()
 
     viewManager.enqueueAnimation({
-      entryIndex: scenario.steps.playMasochisticAura,
+      entryIndex: scenario.steps.playMasochisticAuraOnSnail,
       commands: [{ type: 'wait', duration: 1000 }],
     })
 

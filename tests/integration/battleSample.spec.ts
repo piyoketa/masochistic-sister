@@ -1,6 +1,3 @@
-// このテストファイルでは、被虐のオーラ戦闘シナリオの進行と副作用を網羅的に検証する。
-// 各テストは「状況設定」「結果検証」の2セクションで構成し、あらゆるexpect直前に検証意図を日本語コメントで明記する。
-// さらに、手札が変動するケースでは必ず手札枚数の検証を含める。
 import { describe, it, expect } from 'vitest'
 
 import {
@@ -10,73 +7,48 @@ import {
   CorrosionState,
   FlurryAction,
   MucusShotAction,
-  SkipTurnAction,
   StickyState,
   StrengthState,
   TackleAction,
   createBattleSampleScenario,
-  createBattleSampleScenarioPattern2,
   requireCardId,
 } from '../fixtures/battleSampleScenario'
 
 const battleSampleScenario = createBattleSampleScenario()
 const Steps = battleSampleScenario.steps as Record<string, number>
 const Refs = battleSampleScenario.references
-const firstHeavenChainId = Refs.heavenChainIds[0]!
-const secondHeavenChainId = Refs.heavenChainIds[1]!
-const thirdHeavenChainId = Refs.heavenChainIds[2]!
-const firstBattlePrepId = Refs.battlePrepIds[0]!
-const fourthHeavenChainId = Refs.heavenChainIds[3]!
-const secondBattlePrepId = Refs.battlePrepIds[1]!
-const fifthHeavenChainId = Refs.heavenChainIds[4]!
 
 const isMemoryCard = (card: { cardTags?: Array<{ id: string }>; title: string }): boolean =>
   (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
 
-const isMemoryCardWithTitle = (
-  card: { cardTags?: Array<{ id: string }>; title: string },
-  title: string,
-): boolean => card.title === title && isMemoryCard(card)
-
 const countMemoryCards = (
   cards: Array<{ cardTags?: Array<{ id: string }>; title: string }>,
   title: string,
-): number => cards.filter((card) => isMemoryCardWithTitle(card, title)).length
+): number => cards.filter((card) => isMemoryCard(card) && card.title === title).length
 
-function runScenario(stepIndex: number | undefined) {
-  if (stepIndex === undefined) {
-    throw new Error('Step index is undefined')
+function runScenario(stepKey: keyof typeof Steps) {
+  const index = Steps[stepKey]
+  if (index === undefined) {
+    throw new Error(`Step ${String(stepKey)} is not defined`)
   }
-  // ActionLogReplayerで指定インデックスまで再生し、試験用のバトル状態を取得するユーティリティ
-  return battleSampleScenario.replayer.run(stepIndex)
+
+  return battleSampleScenario.replayer.run(index)
 }
 
-const battleSampleScenarioPattern2 = createBattleSampleScenarioPattern2()
-const StepsPattern2 = battleSampleScenarioPattern2.steps as Record<string, number>
-const RefsPattern2 = battleSampleScenarioPattern2.references
-const fifthHeavenChainIdPattern2 = RefsPattern2.heavenChainIds[4]!
-
-function runScenarioPattern2(stepIndex: number | undefined) {
-  if (stepIndex === undefined) {
-    throw new Error('Step index is undefined')
-  }
-  return battleSampleScenarioPattern2.replayer.run(stepIndex)
-}
-
-describe('被虐のオーラ初手ターンのログ再生', () => {
-  it('バトル開始エントリで初期盤面が構築される', () => {
-    const { snapshot, lastEntry } = runScenario(Steps.battleStart)
+describe('新戦闘シナリオ: 記憶を操る初期ターン', () => {
+  it('バトル開始で盤面が初期化される', () => {
+    const { snapshot, lastEntry } = runScenario('battleStart')
 
     expect(lastEntry?.type).toBe('battle-start')
     expect(snapshot.player.currentHp).toBe(150)
     expect(snapshot.player.currentMana).toBe(3)
     expect(snapshot.hand).toHaveLength(0)
-    expect(snapshot.deck).toHaveLength(8)
-    expect(snapshot.events).toHaveLength(0)
+    expect(snapshot.deck).toHaveLength(9)
+    expect(snapshot.status).toBe('in-progress')
   })
 
-  it('プレイヤーターン開始エントリで5枚ドローする', () => {
-    const { snapshot, initialSnapshot, lastEntry } = runScenario(Steps.playerTurn1Start)
+  it('ターン開始時に5枚ドローし、山札順序が維持される', () => {
+    const { snapshot, initialSnapshot, lastEntry } = runScenario('playerTurn1Start')
 
     expect(lastEntry?.type).toBe('start-player-turn')
     expect(lastEntry?.draw).toBe(5)
@@ -87,57 +59,57 @@ describe('被虐のオーラ初手ターンのログ再生', () => {
     expect(snapshot.deck.map(requireCardId)).toEqual(
       initialSnapshot.deck.slice(5).map(requireCardId),
     )
-    expect(snapshot.player.currentMana).toBe(3)
-    expect(snapshot.player.currentHp).toBe(150)
-    expect(snapshot.events).toHaveLength(0)
   })
 
-  it('被虐のオーラでかたつむりが即時行動し記憶が手札に加わる', () => {
-    const { battle, snapshot, lastEntry } = runScenario(Steps.playMasochisticAura)
+  it('被虐のオーラでかたつむりが即座に行動し記憶・腐食カードを得る', () => {
+    const { battle, snapshot, lastEntry } = runScenario('playMasochisticAuraOnSnail')
 
     expect(lastEntry?.type).toBe('play-card')
-    expect(lastEntry?.type === 'play-card' ? lastEntry.cardId : undefined).toBe(Refs.masochisticAuraId)
-    expect(lastEntry?.type === 'play-card' ? lastEntry.targetEnemyId : undefined).toBe(Refs.enemyIds.snail)
-
+    expect(lastEntry?.type === 'play-card' ? lastEntry.cardId : undefined).toBe(
+      Refs.masochisticAuraIds[0],
+    )
     expect(snapshot.player.currentMana).toBe(2)
     expect(snapshot.player.currentHp).toBe(145)
     expect(snapshot.hand).toHaveLength(6)
-    expect(snapshot.discardPile.map(requireCardId)).toEqual([Refs.masochisticAuraId])
+    expect(snapshot.discardPile.map(requireCardId)).toEqual([Refs.masochisticAuraIds[0]])
+
     expect(battle.hand.hasCardOf(AcidSpitAction)).toBe(true)
     expect(battle.hand.hasCardOf(CorrosionState)).toBe(true)
+    expect(battle.player.getStates().some((state) => state instanceof CorrosionState)).toBe(true)
 
     const snail = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.snail)
     expect(snail?.hasActedThisTurn).toBe(true)
   })
 
-  it('天の鎖でオークの今ターンの行動を拘束する', () => {
-    const { battle, snapshot, lastEntry } = runScenario(Steps.playHeavenChainOnOrc)
+  it('日課で追加2ドローし、天の鎖と疼きが手札に入る', () => {
+    const { snapshot, lastEntry } = runScenario('playDailyRoutine')
 
     expect(lastEntry?.type).toBe('play-card')
-    expect(lastEntry?.type === 'play-card' ? lastEntry.cardId : undefined).toBe(firstHeavenChainId)
-    expect(lastEntry?.type === 'play-card' ? lastEntry.targetEnemyId : undefined).toBe(Refs.enemyIds.orc)
-
+    expect(lastEntry?.type === 'play-card' ? lastEntry.cardId : undefined).toBe(
+      Refs.dailyRoutineId,
+    )
     expect(snapshot.player.currentMana).toBe(1)
-    expect(snapshot.hand).toHaveLength(5)
-    expect(snapshot.exilePile.map(requireCardId)).toEqual([firstHeavenChainId])
-
-    const orc = battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
-    expect(orc?.queuedActions[0]).toBeInstanceOf(SkipTurnAction)
-    expect(orc?.hasActedThisTurn).toBe(false)
+    expect(snapshot.hand.map((card) => card.title)).toEqual([
+      '天の鎖',
+      '天の鎖',
+      '戦いの準備',
+      '腐食',
+      '酸を吐く',
+      '天の鎖',
+      '疼き',
+    ])
   })
 
-  it('戦いの準備で次ターンのマナ増加イベントを予約する', () => {
-    const { snapshot, lastEntry } = runScenario(Steps.playBattlePrep)
+  it('戦いの準備でイベントが予約され、手札とマナが更新される', () => {
+    const { snapshot, lastEntry } = runScenario('playBattlePrep')
 
     expect(lastEntry?.type).toBe('play-card')
-    expect(lastEntry?.type === 'play-card' ? lastEntry.cardId : undefined).toBe(firstBattlePrepId)
-    expect(lastEntry?.type === 'play-card' ? lastEntry.operations.length : undefined).toBe(0)
-
     expect(snapshot.player.currentMana).toBe(0)
-    expect(snapshot.hand).toHaveLength(4)
-    expect(snapshot.discardPile.map(requireCardId)).toEqual([
-      Refs.masochisticAuraId,
-      firstBattlePrepId,
+    expect(snapshot.hand).toHaveLength(6)
+    expect(snapshot.discardPile.map((card) => card.title)).toEqual([
+      '被虐のオーラ',
+      '日課',
+      '戦いの準備',
     ])
     expect(snapshot.events).toEqual([
       expect.objectContaining({
@@ -148,759 +120,112 @@ describe('被虐のオーラ初手ターンのログ再生', () => {
     ])
   })
 
-  it('ターン終了エントリで敵行動が自動解決される', () => {
-    const { battle, snapshot, lastEntry } = runScenario(Steps.endPlayerTurn1)
+  it('敵ターン1でログと手札・状態が期待通り変化する', () => {
+    const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn1')
 
     expect(lastEntry?.type).toBe('end-player-turn')
-    expect(lastEntry?.type === 'end-player-turn' ? lastEntry.enemyActions.length : undefined).toBe(4)
+    expect(lastEntry?.type === 'end-player-turn' ? lastEntry.enemyActions.map((a) => a.actionName) : [])
+      .toEqual(['たいあたり', '戦いの舞い', '粘液飛ばし', '行動済み'])
 
-    const actions = lastEntry?.type === 'end-player-turn' ? lastEntry.enemyActions : []
-    expect(actions[0]).toMatchObject({
-      enemyId: Refs.enemyIds.orc,
-      actionName: '足止め',
-      skipped: false,
-      damageToPlayer: undefined,
-    })
-    expect(actions[1]).toMatchObject({
-      enemyId: Refs.enemyIds.orcDancer,
-      actionName: '戦いの舞い',
-      skipped: false,
-      damageToPlayer: undefined,
-    })
-    expect(actions[2]).toMatchObject({
-      enemyId: Refs.enemyIds.tentacle,
-      actionName: '粘液飛ばし',
-      skipped: false,
-      damageToPlayer: 15,
-    })
-    expect(actions[3]).toMatchObject({
-      enemyId: Refs.enemyIds.snail,
-      actionName: '行動済み',
-      skipped: true,
-      skipReason: 'already-acted',
-      damageToPlayer: undefined,
-    })
-
-    expect(snapshot.player.currentHp).toBe(130)
-    expect(snapshot.player.currentMana).toBe(0)
-    expect(snapshot.hand).toHaveLength(6)
-    expect(battle.hand.hasCardOf(MucusShotAction)).toBe(true)
-    expect(battle.hand.hasCardOf(StickyState)).toBe(true)
-
-    const orc = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.orc)
-    expect(orc?.hasActedThisTurn).toBe(true)
-    const orcDancer = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.orcDancer)
-    expect(orcDancer?.hasActedThisTurn).toBe(true)
-    const tentacle = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.tentacle)
-    expect(tentacle?.hasActedThisTurn).toBe(true)
-    const snail = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.snail)
-    expect(snail?.hasActedThisTurn).toBe(true)
-
-    expect(snapshot.events).toEqual([
-      expect.objectContaining({
-        type: 'mana',
-        scheduledTurn: 2,
-        payload: expect.objectContaining({ amount: 1 }),
-      }),
-    ])
-  })
-})
-
-describe.skip('Battle sample scenario', () => {
-  it('初回ドローフェイズで5枚引く', () => {
-    // -- 状況設定 --
-    // プレイヤーターン開始直後のドローフェイズのスナップショットを取得する
-    const { snapshot, initialSnapshot } = runScenario(Steps.playerTurn1Start)
-
-    // -- 結果検証 --
-    // 手札枚数が5枚であることを確認する
-    expect(snapshot.hand).toHaveLength(5)
-    // 手札のカードIDが初期山札の先頭5枚と一致することを確認する
-    expect(snapshot.hand.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(0, 5).map(requireCardId),
-    )
-    // 山札の内容が初期山札の6枚目以降と一致することを確認する
-    expect(snapshot.deck.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(5).map(requireCardId),
-    )
-    // プレイヤーの現在マナが3のままであることを確認する
-    expect(snapshot.player.currentMana).toBe(3)
-    // プレイヤーの現在HPが100のままであることを確認する
     expect(snapshot.player.currentHp).toBe(100)
-  })
-
-  
-  it('被虐のオーラを発動し、かたつむりを即座に行動させる', () => {
-    // -- 状況設定 --
-    // プレイヤーターン1で被虐のオーラをプレイした直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.playMasochisticAura)
-    // 状況確認：被虐のオーラがかたつむりを対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 被虐のオーラがプレイされたことを確認する
-      expect(lastEntry.cardId).toBe(Refs.masochisticAuraId)
-      // 対象敵がかたつむりであることを確認する
-      expect(lastEntry.targetEnemyId).toBe(Refs.enemyIds.snail)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが2に減少していることを確認する
-    expect(snapshot.player.currentMana).toBe(2)
-    // プレイヤーの現在HPが95に減少していることを確認する
-    expect(snapshot.player.currentHp).toBe(95)
-    // 手札枚数が6枚になっていることを確認する
-    expect(snapshot.hand).toHaveLength(6)
-    // 手札に酸を吐く（記憶カード）が存在することを確認する
-    expect(battle.hand.hasCardOf(AcidSpitAction)).toBe(true)
-    // 手札に状態カード：腐食が存在することを確認する
-    expect(battle.hand.hasCardOf(CorrosionState)).toBe(true)
-    const masochisticAuraId = Refs.masochisticAuraId
-    // 被虐のオーラが捨て札に移動していることを確認する
-    expect(battle.cardRepository.findWithLocation(masochisticAuraId)).toMatchObject({
-      location: 'discardPile',
-    })
-    // 除外ゾーンが空であることを確認する
-    expect(snapshot.exilePile).toHaveLength(0)
-    const snail = snapshot.enemies.find((enemy) => enemy.name === 'かたつむり')
-    // かたつむりが行動済み状態になっていることを確認する
-    expect(snail?.hasActedThisTurn).toBe(true)
-  })
-
-  it('天の鎖でオークの行動を封じる', () => {
-    // -- 状況設定 --
-    // プレイヤーターン1で天の鎖をオークへ使用した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.playHeavenChainOnOrc)
-    // 状況確認：天の鎖がオークを対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 対象カードが１枚目の天の鎖であることを確認する
-      expect(lastEntry.cardId).toBe(firstHeavenChainId)
-      // 対象敵がオークであることを確認する
-      expect(lastEntry.targetEnemyId).toBe(Refs.enemyIds.orc)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが1に減少していることを確認する
-    expect(snapshot.player.currentMana).toBe(1)
-    // 手札枚数が5枚になっていることを確認する
-    expect(snapshot.hand).toHaveLength(5)
-    // 除外ゾーンに天の鎖が移動していることを確認する
-    expect(snapshot.exilePile.map(requireCardId)).toContain(firstHeavenChainId)
-    const orc = battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
-    // オークのインスタンスが取得できていることを確認する
-    expect(orc).toBeDefined()
-    // オークの行動キュー先頭がSkipTurnActionであることを確認する
-    expect(orc?.queuedActions[0]).toBeInstanceOf(SkipTurnAction)
-    // オークがまだ行動していないことを確認する
-    expect(orc?.hasActedThisTurn).toBe(false)
-  })
-
-  it('戦いの準備でマナを使い切りカードを捨て札に送る', () => {
-    // -- 状況設定 --
-    // プレイヤーターン1で戦いの準備をプレイした直後のスナップショットを取得する
-    const { snapshot, lastEntry } = runScenario(Steps.playBattlePrep)
-    // 状況確認：戦いの準備が操作指定なしでプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 対象カードが戦いの準備であることを確認する
-      expect(lastEntry.cardId).toBe(firstBattlePrepId)
-      // 操作キューが空であることを確認する
-      expect(lastEntry.operations).toHaveLength(0)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが0になっていることを確認する
-    expect(snapshot.player.currentMana).toBe(0)
-    // 手札枚数が4枚になっていることを確認する
-    expect(snapshot.hand).toHaveLength(4)
-    // 捨て札に被虐のオーラと戦いの準備が並んでいることを確認する
-    expect(snapshot.discardPile.map(requireCardId)).toEqual([
-      Refs.masochisticAuraId,
-      firstBattlePrepId,
-    ])
-    // ターン2開始でマナが1回復するイベントが予約されていることを確認する
-    expect(snapshot.events).toEqual([
-      expect.objectContaining({
-        type: 'mana',
-        scheduledTurn: 2,
-        payload: expect.objectContaining({ amount: 1 }),
-      }),
-    ])
-  })
-
-  it('オークは封印されたため行動をスキップする', () => {
-    // -- 状況設定 --
-    // オークが敵ターンで行動処理された直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.orcActs)
-    // 状況確認：オークの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がオークであることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.orc)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在HPが95で維持されていることを確認する
-    expect(snapshot.player.currentHp).toBe(95)
-    const orc = battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
-    // オークが行動済み状態になっていることを確認する
-    expect(orc?.hasActedThisTurn).toBe(true)
-    const history = orc?.actionLog ?? []
-    const finalAction = history[history.length - 1]
-    // 最後に実行された行動がSkipTurnActionであることを確認する
-    expect(finalAction).toBeInstanceOf(SkipTurnAction)
-  })
-
-  it('オークダンサーが戦いの舞いで加速(1)を得る', () => {
-    // -- 状況設定 --
-    // オークダンサーの戦いの舞いが実行された直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.orcDancerActs)
-    // 状況確認：オークダンサーの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がオークダンサーであることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.orcDancer)
-    }
-
-    // -- 結果検証 --
-    const orcDancer = battle.enemyTeam.findEnemy(Refs.enemyIds.orcDancer)
-    const history = orcDancer?.actionLog ?? []
-    const finalAction = history[history.length - 1]
-    // 最後の行動がBattleDanceActionであることを確認する
-    expect(finalAction).toBeInstanceOf(BattleDanceAction)
-    const orcDancerSnapshot = snapshot.enemies.find(
-      (enemy) => enemy.id === Refs.enemyIds.orcDancer,
-    )
-    // オークダンサーにAccelerationStateが付与されていることを確認する
-    expect(orcDancerSnapshot?.states.some((state) => state instanceof AccelerationState)).toBe(true)
-    // プレイヤーの現在HPが95で維持されていることを確認する
-    expect(snapshot.player.currentHp).toBe(95)
-  })
-
-  it('触手の粘液飛ばしでプレイヤーが15ダメージを受け、被弾カードが手札に追加される', () => {
-    // -- 状況設定 --
-    // 触手の粘液飛ばしが解決した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.tentacleActs)
-    // 状況確認：触手の行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵が触手であることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.tentacle)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在HPが80まで減少していることを確認する
-    expect(snapshot.player.currentHp).toBe(80)
-    const currentHandSize = battle.hand.list().length
-    // 敵攻撃後の手札枚数が6枚であることを確認する
-    expect(currentHandSize).toBe(6)
-    // 手札に粘液飛ばし（記憶カード）と状態カードねばねばが追加されていることを確認する
+    expect(snapshot.hand).toHaveLength(9)
+    expect(battle.hand.hasCardOf(TackleAction)).toBe(true)
     expect(battle.hand.hasCardOf(MucusShotAction)).toBe(true)
     expect(battle.hand.hasCardOf(StickyState)).toBe(true)
+
+    const states = battle.player.getStates()
+    expect(states.some((state) => state instanceof CorrosionState)).toBe(true)
+    expect(states.some((state) => state instanceof StickyState)).toBe(true)
   })
 
-  it('かたつむりは被虐のオーラで既に行動済みのため敵ターンでは何もしない', () => {
-    // -- 状況設定 --
-    // かたつむりの敵ターン処理が行われた直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.snailActs)
-    // 状況確認：かたつむりの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がかたつむりであることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.snail)
-    }
+  it('ターン2開始時、手札上限により1枚のみドローされマナ＋1される', () => {
+    const { snapshot, lastEntry } = runScenario('playerTurn2Start')
 
-    // -- 結果検証 --
-    // プレイヤーの現在HPが80で維持されていることを確認する
-    expect(snapshot.player.currentHp).toBe(80)
-    const hand = battle.hand.list()
-    // 手札枚数が6枚のままであることを確認する（ねばねばが手札に残っている）
-    expect(hand).toHaveLength(6)
-    // 手札内の酸を吐く（記憶カード）の枚数が1枚であることを確認する
-    const acidMemoryCount = countMemoryCards(hand, '酸を吐く')
-    expect(acidMemoryCount).toBe(1)
-    // 手札にたいあたりの記憶カードが存在しないことを確認する
-    expect(hand.some((card) => isMemoryCardWithTitle(card, 'たいあたり'))).toBe(false)
-    // 手札にTackleActionカードが存在しないことを確認する
-    expect(battle.hand.hasCardOf(TackleAction)).toBe(false)
-  })
-
-  it('２ターン目のドローフェイズで手札が整い、マナが４になる', () => {
-    // -- 状況設定 --
-    // ２ターン目開始時のドローフェイズ直後のスナップショットを取得する
-    const { snapshot, lastEntry } = runScenario(Steps.startPlayerTurn2)
-    // 状況確認：プレイヤーターン開始イベントが記録されていることを確認する
     expect(lastEntry?.type).toBe('start-player-turn')
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが4になっていることを確認する
+    expect(lastEntry?.handOverflow).toBe(true)
+    expect(snapshot.hand).toHaveLength(10)
     expect(snapshot.player.currentMana).toBe(4)
-    // ドロー後の手札枚数が8枚であることを確認する
-    expect(snapshot.hand).toHaveLength(8)
-    const handIds = snapshot.hand.map(requireCardId)
-    // 手札に指定したカードID群が含まれていることを確認する
-    expect(handIds).toEqual(
-      expect.arrayContaining([
-        secondHeavenChainId,
-        thirdHeavenChainId,
-        fourthHeavenChainId,
-        secondBattlePrepId,
-      ]),
-    )
-    // 予約イベントが空であることを確認する
-    expect(snapshot.events).toHaveLength(0)
-    // 山札の内容が想定どおり1枚だけ残っていることを確認する
-    expect(snapshot.deck.map(requireCardId)).toEqual([fifthHeavenChainId])
-    // TODO: プレイヤーのStateが、ねばねば(1)と腐食(1)であることを確認する
   })
 
-  it('２ターン目に天の鎖で触手を封じる', () => {
-    // -- 状況設定 --
-    // ２ターン目に天の鎖を触手へ使用した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.playHeavenChainOnTentacle)
-    // 状況確認：天の鎖が触手を対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 対象カードが２枚目の天の鎖であることを確認する
-      expect(lastEntry.cardId).toBe(secondHeavenChainId)
-      // 対象敵が触手であることを確認する
-      expect(lastEntry.targetEnemyId).toBe(Refs.enemyIds.tentacle)
-    }
+  it('たいあたりでかたつむりを撃破し、手札と捨て札が更新される', () => {
+    const { battle, snapshot, lastEntry } = runScenario('playTackleOnSnail')
 
-    // -- 結果検証 --
-    // プレイヤーの現在マナが3に減少していることを確認する
+    expect(lastEntry?.type).toBe('play-card')
     expect(snapshot.player.currentMana).toBe(3)
-    // プレイ後の手札枚数が7枚であることを確認する
-    expect(snapshot.hand).toHaveLength(7)
-    // 手札から天の鎖が取り除かれていることを確認する
-    expect(snapshot.hand.map(requireCardId)).not.toContain(secondHeavenChainId)
-    // 除外ゾーンに天の鎖が移動していることを確認する
-    expect(snapshot.exilePile.map(requireCardId)).toContain(secondHeavenChainId)
-    // カードリポジトリ上でも除外ゾーン扱いになっていることを確認する
-    expect(battle.cardRepository.findWithLocation(secondHeavenChainId)).toMatchObject({
-      location: 'exilePile',
-    })
-    const tentacle = battle.enemyTeam.findEnemy(Refs.enemyIds.tentacle)
-    // 触手の行動キュー先頭がSkipTurnActionであることを確認する
-    expect(tentacle?.queuedActions[0]).toBeInstanceOf(SkipTurnAction)
-    // 触手がまだ行動していないことを確認する
-    expect(tentacle?.hasActedThisTurn).toBe(false)
-  })
-
-  it('２ターン目に天の鎖でかたつむりを封じる', () => {
-    // -- 状況設定 --
-    // ２ターン目に天の鎖をかたつむりへ使用した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.playHeavenChainOnSnail)
-    // 状況確認：天の鎖がかたつむりを対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 対象カードが３枚目の天の鎖であることを確認する
-      expect(lastEntry.cardId).toBe(thirdHeavenChainId)
-      // 対象敵がかたつむりであることを確認する
-      expect(lastEntry.targetEnemyId).toBe(Refs.enemyIds.snail)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが2に減少していることを確認する
-    expect(snapshot.player.currentMana).toBe(2)
-    // プレイ後の手札枚数が6枚であることを確認する
-    expect(snapshot.hand).toHaveLength(6)
-    // 除外ゾーンに対象の天の鎖が移動していることを確認する
-    expect(snapshot.exilePile.map(requireCardId)).toContain(thirdHeavenChainId)
-    // 手札から天の鎖が取り除かれていることを確認する
-    expect(snapshot.hand.map(requireCardId)).not.toContain(thirdHeavenChainId)
-    // カードリポジトリ上でも除外ゾーン扱いになっていることを確認する
-    expect(battle.cardRepository.findWithLocation(thirdHeavenChainId)).toMatchObject({
-      location: 'exilePile',
-    })
     const snail = battle.enemyTeam.findEnemy(Refs.enemyIds.snail)
-    // かたつむりの行動キュー先頭がSkipTurnActionであることを確認する
-    expect(snail?.queuedActions[0]).toBeInstanceOf(SkipTurnAction)
-    // かたつむりがまだ行動していないことを確認する
-    expect(snail?.hasActedThisTurn).toBe(false)
-  })
-
-  it('酸を吐くでかたつむりに腐食(1)を付与する', () => {
-    // -- 状況設定 --
-    // 酸を吐く（記憶カード）をかたつむりへ使用した直後のスナップショットを取得する
-    const { snapshot, battle, lastEntry } = runScenario(Steps.playAcidSpitOnSnail)
-    // 状況確認：酸を吐く（記憶カード）がかたつむりを対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 対象敵がかたつむりであることを確認する
-      expect(lastEntry.targetEnemyId).toBe(Refs.enemyIds.snail)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが1に減少していることを確認する
-    expect(snapshot.player.currentMana).toBe(1)
-    // プレイ後の手札枚数が5枚であることを確認する
-    expect(snapshot.hand).toHaveLength(5)
-    const snail = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.snail)
-    // かたつむりの現在HPが10になっていることを確認する
-    expect(snail?.currentHp).toBe(10)
-    // かたつむりに腐食(1)が付与されていることを確認する
-    expect(
-      snail?.states.some((state) => state instanceof CorrosionState && state.magnitude === 1),
-    ).toBe(true)
-    // 使用した酸を吐く（記憶カード）が捨て札に移動していることを確認する
-    expect(snapshot.discardPile.some((card) => isMemoryCardWithTitle(card, '酸を吐く'))).toBe(true)
-    // 手札から酸を吐く（記憶カード）がなくなっていることを確認する
-    expect(battle.hand.hasCardOf(AcidSpitAction)).toBe(false)
-  })
-
-  it('２ターン目４枚目「ねばねば」を使用する', () => {
-    // -- 状況設定 --
-    // ２ターン目に状態異常：ねばねばをプレイした直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.playStickyState)
-    // 状況確認：状態異常：ねばねばが操作指定なしでプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    let stickyCardId: number | undefined
-    if (lastEntry?.type === 'play-card') {
-      // 対象カードが状態異常：ねばねばであることを確認する
-      stickyCardId = lastEntry.cardId
-      const stickyCardInfo = battle.cardRepository.findWithLocation(stickyCardId)
-      expect(stickyCardInfo?.card.title).toBe('ねばねば')
-      // 操作キューが空であることを確認する
-      expect(lastEntry.operations).toHaveLength(0)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが0に減少していることを確認する
-    expect(snapshot.player.currentMana).toBe(0)
-    // 手札枚数が4枚になっていることを確認する
-    expect(snapshot.hand).toHaveLength(4)
-    // 除外ゾーンに状態異常：ねばねばが移動していることを確認する
-    if (stickyCardId !== undefined) {
-      expect(snapshot.exilePile.map(requireCardId)).toContain(stickyCardId)
-    }
-    // プレイヤーの状態からStickyStateが消えていることを確認する
-    expect(battle.player.getStates().some((state) => state instanceof StickyState)).toBe(false)
-  })
-
-  it('２ターン目の敵ターン開始で敵側フェーズへ移行する', () => {
-    // -- 状況設定 --
-    // ２ターン目プレイヤーフェイズ終了後、敵ターン開始イベント直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.startEnemyTurn2)
-    // 状況確認：敵ターン開始イベントが記録されていることを確認する
-    expect(lastEntry?.type).toBe('start-enemy-turn')
-
-    // -- 結果検証 --
-    // ターンマネージャのアクティブサイドが敵になっていることを確認する
-    expect(battle.turn.current.activeSide).toBe('enemy')
-    // プレイヤーの現在マナが0であることを確認する（ねばねばを使用したため）
-    expect(snapshot.player.currentMana).toBe(0)
-  })
-
-  it('２ターン目の敵ターンでオークがビルドアップを行う', () => {
-    // -- 状況設定 --
-    // ２ターン目敵ターンでオークの行動が解決した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.orcActsSecond)
-    // 状況確認：オークの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がオークであることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.orc)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在HPが80で維持されていることを確認する
-    expect(snapshot.player.currentHp).toBe(80)
-    const orc = battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
-    // オークにStrengthState(10)が付与されていることを確認する
-    expect(
-      orc?.states.some((state) => state instanceof StrengthState && state.magnitude === 10),
-    ).toBe(true)
-  })
-
-  it('２ターン目の敵ターンでオークダンサーが強化された乱れ突きを行う', () => {
-    // -- 状況設定 --
-    // ２ターン目敵ターンでオークダンサーの行動が解決した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.orcDancerActsSecond)
-    // 状況確認：オークダンサーの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がオークダンサーであることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.orcDancer)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在HPが20まで減少していることを確認する
-    expect(snapshot.player.currentHp).toBe(20)
-    const currentHandSize = battle.hand.list().length
-    // 乱れ突きの記憶が追加された結果、手札枚数が5枚に戻っていることを確認する
-    expect(currentHandSize).toBe(5)
-    // 手札に乱れ突きの記憶カードが存在することを確認する
-    expect(battle.hand.hasCardOf(FlurryAction)).toBe(true)
-    // 手札に状態カード：腐食が残っていることを確認する
-    expect(battle.hand.hasCardOf(CorrosionState)).toBe(true)
-
-    const rememberedFlurry = battle.hand
-      .list()
-      .find((card) => isMemoryCardWithTitle(card, '乱れ突き'))
-    // 追加された記憶カードが存在することを確認する
-    expect(rememberedFlurry).toBeDefined()
-    const action = rememberedFlurry?.action
-    // 記憶カードのアクションがFlurryActionであることを確認する
-    expect(action).toBeInstanceOf(FlurryAction)
-    if (action instanceof FlurryAction) {
-      // 乱れ突きの基礎ダメージが20であることを確認する
-      expect(action.baseDamages.amount).toBe(20)
-      // 乱れ突きのヒット数が3回であることを確認する
-      expect(action.baseDamages.count).toBe(3)
-    }
-  })
-
-  it('２ターン目の敵ターンで天の鎖を受けた触手は行動できない', () => {
-    // -- 状況設定 --
-    // ２ターン目敵ターンで触手の行動が解決した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.tentacleActsSecond)
-    // 状況確認：触手の行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵が触手であることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.tentacle)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在HPが20で維持されていることを確認する
-    expect(snapshot.player.currentHp).toBe(20)
-    const tentacle = battle.enemyTeam.findEnemy(Refs.enemyIds.tentacle)
-    const history = tentacle?.actionLog ?? []
-    const finalAction = history[history.length - 1]
-    // 最後に実行された行動がSkipTurnActionであることを確認する
-    expect(finalAction).toBeInstanceOf(SkipTurnAction)
-  })
-
-  it('２ターン目の敵ターンで天の鎖を受けたかたつむりは行動できない', () => {
-    // -- 状況設定 --
-    // ２ターン目敵ターンでかたつむりの行動が解決した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.snailActsSecond)
-    // 状況確認：かたつむりの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がかたつむりであることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.snail)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在HPが20で維持されていることを確認する
-    expect(snapshot.player.currentHp).toBe(20)
-    const snail = battle.enemyTeam.findEnemy(Refs.enemyIds.snail)
-    const history = snail?.actionLog ?? []
-    const finalAction = history[history.length - 1]
-    // 最後に実行された行動がSkipTurnActionであることを確認する
-    expect(finalAction).toBeInstanceOf(SkipTurnAction)
-  })
-
-  it('３ターン目のドローフェイズで山札がリフレッシュされる', () => {
-    // -- 状況設定 --
-    // ３ターン目開始時のドローフェイズ直後のスナップショットを取得する
-    const { snapshot, lastEntry } = runScenario(Steps.startPlayerTurn3)
-    // 状況確認：プレイヤーターン開始イベントが記録されていることを確認する
-    expect(lastEntry?.type).toBe('start-player-turn')
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが3になっていることを確認する
-    expect(snapshot.player.currentMana).toBe(3)
-    // ドロー後の手札枚数が5枚以上であることを確認する
-    expect(snapshot.hand.length).toBeGreaterThanOrEqual(5)
-    // 手札に天の鎖（5枚目）が含まれていることを確認する
-    expect(snapshot.hand.map(requireCardId)).toEqual(
-      expect.arrayContaining([fifthHeavenChainId]),
-    )
-    // 手札に酸を吐く（記憶カード）が含まれていることを確認する
-    expect(snapshot.hand.some((card) => isMemoryCardWithTitle(card, '酸を吐く'))).toBe(true)
-    // 捨て札が空であることを確認する
-    expect(snapshot.discardPile).toHaveLength(0)
-    // 山札に被虐のオーラと戦いの準備が戻っていることを確認する
-    expect(snapshot.deck.map(requireCardId)).toEqual(
-      expect.arrayContaining([Refs.masochisticAuraId, firstBattlePrepId]),
-    )
-    // 山札枚数が2枚であることを確認する
-    expect(snapshot.deck).toHaveLength(2)
-  })
-
-  it('乱れ突き（記憶カード）でかたつむりを撃破する', () => {
-    // -- 状況設定 --
-    // ３ターン目に乱れ突き（記憶カード）をかたつむりへ使用した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.playFlurryOnSnail)
-    // 状況確認：乱れ突き（記憶カード）がかたつむりを対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 乱れ突きの記憶カードがプレイされていることを確認する
-      expect(lastEntry.cardId).toBeDefined()
-      // 対象敵がかたつむりであることを確認する
-      expect(lastEntry.targetEnemyId).toBe(Refs.enemyIds.snail)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが2に減少していることを確認する
-    expect(snapshot.player.currentMana).toBe(2)
-    // プレイ後の手札枚数が6枚であることを確認する（リフレッシュ後の手札構成が維持される）
-    expect(snapshot.hand.length).toBe(6)
-    const snail = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.snail)
-    // かたつむりのHPが0になっていることを確認する
     expect(snail?.currentHp).toBe(0)
-    // 腐食状態が維持されていることを確認する
-    expect(snail?.states.some((state) => state instanceof CorrosionState)).toBe(true)
-    // 乱れ突きの記憶カードが捨て札に移動していることを確認する
-    expect(snapshot.discardPile.some((card) => isMemoryCardWithTitle(card, '乱れ突き'))).toBe(true)
-    // 手札から乱れ突きの記憶カードがなくなっていることを確認する
-    expect(battle.hand.hasCardOf(FlurryAction)).toBe(false)
+    expect(snapshot.hand).toHaveLength(9)
+    expect(snapshot.discardPile.some((card) => card.title === 'たいあたり')).toBe(true)
   })
 
-  it('３ターン目の敵ターンでオークのたいあたりが決着を付ける', () => {
-    // -- 状況設定 --
-    // ３ターン目敵ターンでオークのたいあたりが解決した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenario(Steps.orcActsThird)
-    // 状況確認：オークの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がオークであることを確認する
-      expect(lastEntry.enemy).toBe(Refs.enemyIds.orc)
-    }
+  it('酸を吐くと粘液飛ばしで触手を撃破し、腐食を手放す', () => {
+    const afterAcid = runScenario('playAcidSpitOnTentacle')
+    expect(afterAcid.snapshot.player.currentMana).toBe(2)
+    const tentacleAfterAcid = afterAcid.battle.enemyTeam.findEnemy(Refs.enemyIds.tentacle)
+    expect(tentacleAfterAcid?.currentHp).toBe(20)
+    expect(tentacleAfterAcid?.states.some((state) => state instanceof CorrosionState)).toBe(true)
 
-    // -- 結果検証 --
-    // プレイヤーの現在HPが0になっていることを確認する
-    expect(snapshot.player.currentHp).toBe(0)
-    const orc = battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
-    const history = orc?.actionLog ?? []
-    const finalAction = history[history.length - 1]
-    // 最後に実行された行動がTackleActionであることを確認する
-    expect(finalAction).toBeInstanceOf(TackleAction)
-  })
-
-  it('乱れ突き（記憶カード）でオークを撃破する（パターン2）', () => {
-    // -- 状況設定 --
-    // パターン2で乱れ突き（記憶カード）をオークへ使用した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenarioPattern2(StepsPattern2.playFlurryOnOrc)
-    // 状況確認：乱れ突き（記憶カード）がオークを対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 対象敵がオークであることを確認する
-      expect(lastEntry.targetEnemyId).toBe(RefsPattern2.enemyIds.orc)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが2に減少していることを確認する
-    expect(snapshot.player.currentMana).toBe(2)
-    // プレイ後の手札枚数が6枚に落ち着いていることを確認する
-    expect(snapshot.hand.length).toBe(6)
-    const orc = snapshot.enemies.find((enemy) => enemy.id === RefsPattern2.enemyIds.orc)
-    // オークのHPが0になっていることを確認する
-    expect(orc?.currentHp).toBe(0)
-    // 乱れ突きの記憶カードが捨て札に移動していることを確認する
-    expect(snapshot.discardPile.some((card) => isMemoryCardWithTitle(card, '乱れ突き'))).toBe(true)
-    // 手札から乱れ突きの記憶カードがなくなっていることを確認する
-    expect(battle.hand.hasCardOf(FlurryAction)).toBe(false)
-  })
-
-  it('粘液飛ばし（記憶カード）でオークダンサーにねばねばを付与する（パターン2）', () => {
-    // -- 状況設定 --
-    // パターン2で粘液飛ばし（記憶カード）をオークダンサーへ使用した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenarioPattern2(
-      StepsPattern2.playMucusShotOnOrcDancer,
-    )
-    // 状況確認：粘液飛ばし（記憶カード）がオークダンサーを対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 対象敵がオークダンサーであることを確認する
-      expect(lastEntry.targetEnemyId).toBe(RefsPattern2.enemyIds.orcDancer)
-    }
-
-    // -- 結果検証 --
-    // プレイヤーの現在マナが1に減少していることを確認する
+    const { battle, snapshot } = runScenario('playMucusShotOnTentacle')
     expect(snapshot.player.currentMana).toBe(1)
-    // プレイ後の手札枚数が5枚であることを確認する
-    expect(snapshot.hand.length).toBe(5)
-    const orcDancer = snapshot.enemies.find(
-      (enemy) => enemy.id === RefsPattern2.enemyIds.orcDancer,
-    )
-    // オークダンサーのHPが35になっていることを確認する
-    expect(orcDancer?.currentHp).toBe(35)
-    const stickyMagnitude = (orcDancer?.states ?? [])
-      .filter((state) => state instanceof StickyState)
-      .reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
-    // ねばねばの付与量が1であることを確認する
-    expect(stickyMagnitude).toBe(1)
-    // 粘液飛ばしの記憶カードが捨て札に移動していることを確認する
-    expect(snapshot.discardPile.some((card) => isMemoryCardWithTitle(card, '粘液飛ばし'))).toBe(true)
-    // 手札から粘液飛ばしの記憶カードがなくなっていることを確認する
-    expect(battle.hand.hasCardOf(MucusShotAction)).toBe(false)
+    const tentacle = battle.enemyTeam.findEnemy(Refs.enemyIds.tentacle)
+    expect(tentacle?.currentHp).toBe(0)
+    expect(snapshot.hand).toHaveLength(7)
+
+    const afterCorrosion = runScenario('playCorrosion')
+    expect(afterCorrosion.snapshot.player.currentMana).toBe(0)
+    expect(afterCorrosion.snapshot.hand).toHaveLength(6)
+    expect(afterCorrosion.snapshot.exilePile.map((card) => card.title)).toContain('腐食')
+    const remainingStates = afterCorrosion.battle.player.getStates()
+    expect(remainingStates.some((state) => state instanceof StickyState)).toBe(true)
+    expect(remainingStates.some((state) => state instanceof CorrosionState)).toBe(false)
   })
 
-  it('３枚目の天の鎖で触手を拘束する（パターン2）', () => {
-    // -- 状況設定 --
-    // パターン2で３枚目の天の鎖を触手へ使用した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenarioPattern2(
-      StepsPattern2.playHeavenChainOnTentacleTurn3,
-    )
-    // 状況確認：天の鎖が触手を対象にプレイされたログであることを確認する
-    expect(lastEntry?.type).toBe('play-card')
-    if (lastEntry?.type === 'play-card') {
-      // 対象敵が触手であることを確認する
-      expect(lastEntry.targetEnemyId).toBe(RefsPattern2.enemyIds.tentacle)
-    }
+  it('敵ターン2で筋力と加速が付与され、乱れ突きの記憶を得る', () => {
+    const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn2')
 
-    // -- 結果検証 --
-    // プレイヤーの現在マナが0になっていることを確認する
-    expect(snapshot.player.currentMana).toBe(0)
-    // プレイ後の手札枚数が4枚であることを確認する
-    expect(snapshot.hand.length).toBe(4)
-    // 除外ゾーンに天の鎖が移動していることを確認する
-    expect(snapshot.exilePile.map(requireCardId)).toContain(fifthHeavenChainIdPattern2)
-    const tentacle = battle.enemyTeam.findEnemy(RefsPattern2.enemyIds.tentacle)
-    // 触手の行動キュー先頭がSkipTurnActionであることを確認する
-    expect(tentacle?.queuedActions[0]).toBeInstanceOf(SkipTurnAction)
+    expect(lastEntry?.type).toBe('end-player-turn')
+    expect(lastEntry?.type === 'end-player-turn' ? lastEntry.enemyActions.map((a) => a.actionName) : [])
+      .toEqual(['ビルドアップ', '乱れ突き', '戦闘不能', '戦闘不能'])
+
+    expect(snapshot.player.currentHp).toBe(60)
+    expect(snapshot.hand).toHaveLength(7)
+    expect(battle.hand.hasCardOf(FlurryAction)).toBe(true)
+
+    const orc = battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
+    expect(orc?.states.some((state) => state instanceof StrengthState)).toBe(true)
+    const dancer = battle.enemyTeam.findEnemy(Refs.enemyIds.orcDancer)
+    expect(dancer?.states.some((state) => state instanceof AccelerationState)).toBe(true)
   })
 
-  it('オークダンサーが戦いの舞いで加速(2)になる（パターン2）', () => {
-    // -- 状況設定 --
-    // パターン2でオークダンサーの戦いの舞いが解決した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenarioPattern2(
-      StepsPattern2.orcDancerActsThirdAlt,
-    )
-    // 状況確認：オークダンサーの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がオークダンサーであることを確認する
-      expect(lastEntry.enemy).toBe(RefsPattern2.enemyIds.orcDancer)
-    }
+  it('ターン3開始時に山札リロードと2ドローが行われる', () => {
+    const { snapshot, lastEntry } = runScenario('playerTurn3Start')
 
-    // -- 結果検証 --
-    // プレイヤーの現在HPが20で維持されていることを確認する
-    expect(snapshot.player.currentHp).toBe(20)
-    const orcDancer = battle.enemyTeam.findEnemy(RefsPattern2.enemyIds.orcDancer)
-    const accelerationMagnitude = (orcDancer?.states ?? [])
-      .filter((state) => state instanceof AccelerationState)
-      .reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
-    // 加速状態の合計値が2であることを確認する
-    expect(accelerationMagnitude).toBe(2)
+    expect(lastEntry?.type).toBe('start-player-turn')
+    expect(snapshot.hand).toHaveLength(9)
+    expect(snapshot.hand.filter((card) => card.title === '天の鎖')).toHaveLength(4)
+    expect(snapshot.hand.some((card) => card.title === '酸を吐く')).toBe(true)
   })
 
-  it('かたつむりの酸を吐くでHPが5になり腐食が2枚になる（パターン2）', () => {
-    // -- 状況設定 --
-    // パターン2でかたつむりの酸を吐くが解決した直後のスナップショットを取得する
-    const { battle, snapshot, lastEntry } = runScenarioPattern2(StepsPattern2.snailActsThirdAlt)
-    // 状況確認：かたつむりの行動ログが記録されていることを確認する
-    expect(lastEntry?.type).toBe('enemy-action')
-    if (lastEntry?.type === 'enemy-action') {
-      // 行動した敵がかたつむりであることを確認する
-      expect(lastEntry.enemy).toBe(RefsPattern2.enemyIds.snail)
-    }
+  it('疼きで乱れ突きを複製し、オークとオークダンサーを撃破して勝利する', () => {
+    const afterAche = runScenario('playAcheOnFlurry')
+    expect(afterAche.snapshot.player.currentMana).toBe(2)
+    const flurryCount = countMemoryCards(afterAche.snapshot.hand, '乱れ突き')
+    expect(flurryCount).toBe(2)
+    expect(afterAche.snapshot.exilePile.map((card) => card.title)).toContain('疼き')
 
-    // -- 結果検証 --
-    // プレイヤーの現在HPが5まで減少していることを確認する
-    expect(snapshot.player.currentHp).toBe(5)
-    const corrosionCards = battle.hand.list().filter((card) => card.state instanceof CorrosionState)
-    // 手札に腐食状態カードが2枚あることを確認する
-    expect(corrosionCards).toHaveLength(2)
-    const totalCorrosion = battle.player
-      .getStates()
-      .filter((state) => state instanceof CorrosionState)
-      .reduce((sum, state) => sum + (state.magnitude ?? 0), 0)
-    // プレイヤーに累計腐食2が付与されていることを確認する
-    expect(totalCorrosion).toBe(2)
+    const afterFirstFlurry = runScenario('playFlurryOnOrc')
+    const orc = afterFirstFlurry.battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
+    expect(afterFirstFlurry.snapshot.player.currentMana).toBe(1)
+    expect(orc?.currentHp).toBe(0)
+
+    const afterSecondFlurry = runScenario('playFlurryOnOrcDancer')
+    const dancer = afterSecondFlurry.battle.enemyTeam.findEnemy(Refs.enemyIds.orcDancer)
+    expect(afterSecondFlurry.snapshot.player.currentMana).toBe(0)
+    expect(dancer?.currentHp).toBe(0)
+
+    const { snapshot, battle, lastEntry } = runScenario('victory')
+    expect(lastEntry?.type).toBe('victory')
+    expect(battle.status).toBe('victory')
+    expect(snapshot.enemies.every((enemy) => enemy.currentHp === 0)).toBe(true)
   })
 })

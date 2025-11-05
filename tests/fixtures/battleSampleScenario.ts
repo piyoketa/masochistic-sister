@@ -36,9 +36,11 @@ export interface ScenarioSteps {
 }
 
 export interface ScenarioReferences {
-  masochisticAuraId: number
-  heavenChainIds: [number, number, number, number, number]
-  battlePrepIds: [number, number]
+  masochisticAuraIds: [number, number]
+  heavenChainIds: [number, number, number, number]
+  battlePrepId: number
+  dailyRoutineId: number
+  acheId: number
   enemyIds: {
     orc: number
     orcDancer: number
@@ -87,21 +89,21 @@ export function collectScenarioReferences(snapshot: BattleSnapshot): ScenarioRef
     snapshot.deck.filter((card) => card.title === title).map((card) => requireCardId(card))
 
   const heavenChainIds = collectCardIdsByTitle('天の鎖')
-  const battlePrepIds = collectCardIdsByTitle('戦いの準備')
+  const masochisticAuraIds = collectCardIdsByTitle('被虐のオーラ')
 
-  if (heavenChainIds.length < 5) {
-    throw new Error('デフォルトデッキに天の鎖が5枚未満です')
+  if (heavenChainIds.length < 4) {
+    throw new Error('デフォルトデッキに天の鎖が4枚未満です')
   }
-  if (battlePrepIds.length < 2) {
-    throw new Error('デフォルトデッキに戦いの準備が2枚未満です')
+  if (masochisticAuraIds.length < 2) {
+    throw new Error('デフォルトデッキに被虐のオーラが2枚未満です')
   }
 
-  const heavenChainTuple = heavenChainIds.slice(0, 5) as [number, number, number, number, number]
-  const battlePrepTuple = battlePrepIds.slice(0, 2) as [number, number]
+  const heavenChainTuple = heavenChainIds.slice(0, 4) as [number, number, number, number]
+  const masochisticAuraTuple = masochisticAuraIds.slice(0, 2) as [number, number]
 
-  const masochisticAuraId = requireCardId(
-    snapshot.deck.find((card) => card.title === '被虐のオーラ'),
-  )
+  const battlePrepId = requireCardId(snapshot.deck.find((card) => card.title === '戦いの準備'))
+  const dailyRoutineId = requireCardId(snapshot.deck.find((card) => card.title === '日課'))
+  const acheId = requireCardId(snapshot.deck.find((card) => card.title === '疼き'))
 
   const findEnemyId = (name: string): number => {
     const enemy = snapshot.enemies.find((candidate) => candidate.name === name)
@@ -112,9 +114,11 @@ export function collectScenarioReferences(snapshot: BattleSnapshot): ScenarioRef
   }
 
   return {
-    masochisticAuraId,
+    masochisticAuraIds: masochisticAuraTuple,
     heavenChainIds: heavenChainTuple,
-    battlePrepIds: battlePrepTuple,
+    battlePrepId,
+    dailyRoutineId,
+    acheId,
     enemyIds: {
       orc: findEnemyId('オーク'),
       orcDancer: findEnemyId('オークダンサー'),
@@ -130,25 +134,118 @@ export function createBattleScenario(): BattleScenario {
   const references = collectScenarioReferences(sampleSnapshot)
   const actionLog = new ActionLog()
 
+  const findMemoryCardId = (battle: Battle, title: string): number => {
+    const inHand = battle.hand
+      .list()
+      .find(
+        (candidate) =>
+          candidate.title === title &&
+          (candidate.cardTags ?? []).some((tag) => tag.id === 'tag-memory'),
+      )
+
+    if (inHand) {
+      return requireCardId(inHand)
+    }
+
+    const fallback = battle.cardRepository.find(
+      (candidate) =>
+        candidate.title === title &&
+        (candidate.cardTags ?? []).some((tag) => tag.id === 'tag-memory'),
+    )
+
+    if (!fallback) {
+      throw new Error(`${title} の記憶カードが見つかりません`)
+    }
+
+    return requireCardId(fallback)
+  }
+
+  const findStatusCardId = (battle: Battle, title: string): number => {
+    const card = battle.hand
+      .list()
+      .find(
+        (candidate) =>
+          candidate.title === title &&
+          (candidate.definition.cardType === 'status' || candidate.state !== undefined),
+      )
+
+    if (card) {
+      return requireCardId(card)
+    }
+
+    const fallback = battle.cardRepository.find(
+      (candidate) =>
+        candidate.title === title &&
+        (candidate.definition.cardType === 'status' || candidate.state !== undefined),
+    )
+
+    if (!fallback) {
+      throw new Error(`${title} の状態カードが見つかりません`)
+    }
+
+    return requireCardId(fallback)
+  }
+
   const steps: ScenarioSteps = {
     battleStart: actionLog.push({ type: 'battle-start' }),
     playerTurn1Start: actionLog.push({ type: 'start-player-turn', draw: 5 }),
-    playMasochisticAura: actionLog.push({
+    playMasochisticAuraOnSnail: actionLog.push({
       type: 'play-card',
-      card: references.masochisticAuraId,
+      card: references.masochisticAuraIds[0]!,
       operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
     }),
-    playHeavenChainOnOrc: actionLog.push({
+    playDailyRoutine: actionLog.push({
       type: 'play-card',
-      card: references.heavenChainIds[0]!,
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
+      card: references.dailyRoutineId,
     }),
     playBattlePrep: actionLog.push({
       type: 'play-card',
-      card: references.battlePrepIds[0]!,
+      card: references.battlePrepId,
     }),
     endPlayerTurn1: actionLog.push({ type: 'end-player-turn' }),
-    startPlayerTurn2: actionLog.push({ type: 'start-player-turn' }),
+    playerTurn2Start: actionLog.push({ type: 'start-player-turn', draw: 2 }),
+    playTackleOnSnail: actionLog.push({
+      type: 'play-card',
+      card: (battle) => findMemoryCardId(battle, 'たいあたり'),
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
+    }),
+    playAcidSpitOnTentacle: actionLog.push({
+      type: 'play-card',
+      card: (battle) => findMemoryCardId(battle, '酸を吐く'),
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
+    }),
+    playMucusShotOnTentacle: actionLog.push({
+      type: 'play-card',
+      card: (battle) => findMemoryCardId(battle, '粘液飛ばし'),
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
+    }),
+    playCorrosion: actionLog.push({
+      type: 'play-card',
+      card: (battle) => findStatusCardId(battle, '腐食'),
+    }),
+    endPlayerTurn2: actionLog.push({ type: 'end-player-turn' }),
+    playerTurn3Start: actionLog.push({ type: 'start-player-turn', draw: 2 }),
+    playAcheOnFlurry: actionLog.push({
+      type: 'play-card',
+      card: references.acheId,
+      operations: [
+        {
+          type: 'select-hand-card',
+          payload: (battle) => findMemoryCardId(battle, '乱れ突き'),
+        },
+      ],
+    }),
+    playFlurryOnOrc: actionLog.push({
+      type: 'play-card',
+      card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
+    }),
+    playFlurryOnOrcDancer: actionLog.push({
+      type: 'play-card',
+      card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+      operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
+    }),
+    victory: actionLog.push({ type: 'victory' }),
   }
 
   return {

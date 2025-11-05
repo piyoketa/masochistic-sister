@@ -18,10 +18,10 @@ describe('ViewManager', () => {
 
     await manager.initialize()
 
-    const result = scenario.replayer.run(scenario.steps.playMasochisticAura)
+    const result = scenario.replayer.run(scenario.steps.playMasochisticAuraOnSnail)
 
     const scriptId = manager.enqueueAnimation({
-      entryIndex: scenario.steps.playMasochisticAura,
+      entryIndex: scenario.steps.playMasochisticAuraOnSnail,
       commands: [
         {
           type: 'update-snapshot',
@@ -44,7 +44,7 @@ describe('ViewManager', () => {
     manager.completeCurrentAnimation(scriptId)
 
     expect(manager.state.snapshot?.player.currentMana).toBe(result.snapshot.player.currentMana)
-    expect(manager.state.executedIndex).toBe(scenario.steps.playMasochisticAura)
+    expect(manager.state.executedIndex).toBe(scenario.steps.playMasochisticAuraOnSnail)
     expect(manager.state.input.locked).toBe(false)
     expect(events).toContain('animation-start')
     expect(events).toContain('animation-complete')
