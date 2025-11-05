@@ -23,6 +23,7 @@ import {
 } from '@/domain/entities/actions'
 import { MemoryCardTag } from '@/domain/entities/cardTags/MemoryCardTag'
 import type { CardOperation } from '@/domain/entities/operations'
+import { CorrosionState } from '@/domain/entities/states'
 
 function createBattleWithHand(
   handCards: Card[],
@@ -171,20 +172,22 @@ describe('Card operation validation', () => {
     expect(battle.player.currentMana).toBe(3)
   })
 
-  it('再装填で手札を全て入れ替える', () => {
+  it('再装填で状態異常以外の手札を入れ替える', () => {
     const repo = new CardRepository()
     const reloadCard = repo.create(() => new Card({ action: new ReloadAction() }))
+    const statusCard = repo.create(() => new Card({ state: new CorrosionState(1) }))
     const handCardA = repo.create(() => new Card({ action: new BattlePrepAction() }))
     const handCardB = repo.create(() => new Card({ action: new HandSwapAction() }))
     const drawCardA = repo.create(() => new Card({ action: new BattlePrepAction() }))
     const drawCardB = repo.create(() => new Card({ action: new BattlePrepAction() }))
     const battle = createBattleWithHand(
-      [reloadCard, handCardA, handCardB],
+      [reloadCard, statusCard, handCardA, handCardB],
       [drawCardA, drawCardB],
       repo,
     )
 
     const reloadId = requireCardId(reloadCard)
+    const statusCardId = requireCardId(statusCard)
     const handCardAId = requireCardId(handCardA)
     const handCardBId = requireCardId(handCardB)
     const drawCardAId = requireCardId(drawCardA)
@@ -194,10 +197,12 @@ describe('Card operation validation', () => {
 
     expect(battle.discardPile.list().some((card) => card.id === handCardAId)).toBe(true)
     expect(battle.discardPile.list().some((card) => card.id === handCardBId)).toBe(true)
+    expect(battle.discardPile.list().some((card) => card.id === statusCardId)).toBe(false)
     const handIds = battle.hand.list().map((card) => card.id)
     expect(handIds).toContain(drawCardAId)
     expect(handIds).toContain(drawCardBId)
     expect(handIds).not.toContain(handCardAId)
     expect(handIds).not.toContain(handCardBId)
+    expect(handIds).toContain(statusCardId)
   })
 })

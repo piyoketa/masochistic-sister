@@ -4,6 +4,7 @@ import { BattlePrepAction } from '../actions/BattlePrepAction'
 import { MasochisticAuraAction } from '../actions/MasochisticAuraAction'
 import { DailyRoutineAction } from '../actions/DailyRoutineAction'
 import { ScarRegenerationAction } from '../actions/ScarRegenerationAction'
+import { ReloadAction } from '../actions/ReloadAction'
 import type { CardRepository } from '../../repository/CardRepository'
 
 export interface TestDeckResult {
@@ -47,5 +48,49 @@ export function buildTestDeck(cardRepository: CardRepository): TestDeckResult {
     battlePrep,
     dailyRoutine,
     ache,
+  }
+}
+
+export interface Scenario2DeckResult {
+  deck: Card[]
+  heavenChains: readonly [Card, Card, Card, Card]
+  masochisticAuras: readonly [Card, Card]
+  battlePrep: Card
+  dailyRoutine: Card
+  reload: Card
+}
+
+export function buildScenario2Deck(cardRepository: CardRepository): Scenario2DeckResult {
+  const heavenChains = Array.from({ length: 4 }, () =>
+    cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
+  ) as [Card, Card, Card, Card]
+
+  const masochisticAuras = Array.from({ length: 2 }, () =>
+    cardRepository.create(() => new Card({ action: new MasochisticAuraAction() })),
+  ) as [Card, Card]
+
+  const battlePrep = cardRepository.create(() => new Card({ action: new BattlePrepAction() }))
+  const dailyRoutine = cardRepository.create(() => new Card({ action: new DailyRoutineAction() }))
+  const reload = cardRepository.create(() => new Card({ action: new ReloadAction() }))
+
+  const deck: Card[] = [
+    heavenChains[0],
+    heavenChains[1],
+    battlePrep,
+    masochisticAuras[0],
+    dailyRoutine,
+    heavenChains[2],
+    masochisticAuras[1],
+    reload,
+    heavenChains[3],
+  ]
+
+  return {
+    deck,
+    heavenChains,
+    masochisticAuras,
+    battlePrep,
+    dailyRoutine,
+    reload,
   }
 }

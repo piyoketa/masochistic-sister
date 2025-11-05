@@ -1,3 +1,4 @@
 export { buildDefaultDeck } from './DefaultDeck'
-export { buildTestDeck } from './TestDeck'
+export { buildTestDeck, buildScenario2Deck } from './TestDeck'
 export type { DefaultDeckResult } from './DefaultDeck'
+export type { TestDeckResult, Scenario2DeckResult } from './TestDeck'

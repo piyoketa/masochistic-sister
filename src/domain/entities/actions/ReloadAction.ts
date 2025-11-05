@@ -1,7 +1,7 @@
 /*
 ReloadAction.ts の責務:
-- 現在の手札をすべて捨て札に移し、同じ枚数だけ即座に引き直すスキル効果を提供する。
-- 処理順序（手札枚数の確定 → 捨て札移動 → ドロー）を明示し、手札がゼロ枚の場合は何もせず終了する。
+- 状態異常カード（cardType: status）を手元に残し、それ以外の手札を捨て札へ送り、同じ枚数だけ即座に引き直すスキル効果を提供する。
+- 処理順序（対象カードの抽出 → 手札からの除去 → 捨て札投入 → ドロー）を明示し、対象カードが存在しない場合は何もせず終了する。
 - カードの移動先は常に捨て札で統一し、記憶カード等のタグに依存した例外は設けない。
 
 責務ではないこと:
@@ -31,19 +31,22 @@ export class ReloadAction extends Skill {
   }
 
   protected override description(): string {
-    return '手札を一掃し、同じ枚数だけ引き直す'
+    return '状態異常以外の手札を捨て、同じ枚数だけ引き直す'
   }
 
   protected override perform(context: ActionContext): void {
-    const handCards = context.battle.hand.list()
-    const discardCount = handCards.length
+    const hand = context.battle.hand
+    const recyclable = hand
+      .list()
+      .filter((card) => card.definition.cardType !== 'status')
+    const discardCount = recyclable.length
 
     if (discardCount === 0) {
       return
     }
 
-    for (const card of handCards) {
-      context.battle.hand.remove(card)
+    for (const card of recyclable) {
+      hand.remove(card)
       context.battle.discardPile.add(card)
     }
 
