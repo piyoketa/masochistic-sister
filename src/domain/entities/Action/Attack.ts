@@ -99,11 +99,19 @@ export abstract class Attack extends Action {
     const resolvedOutcomes = this.truncateOutcomesByDefenderHp(defender, baseOutcomes)
     damages.setOutcomes(resolvedOutcomes)
     const totalDamage = damages.totalPostHitDamage
+    const shouldDrain = this.hasDrainEffect(context)
 
     if (this.isPlayer(defender)) {
       context.battle.damagePlayer(totalDamage)
     } else {
       context.battle.damageEnemy(defender, totalDamage)
+    }
+    if (shouldDrain) {
+      this.applyDrainHeal({
+        battle: context.battle,
+        source: context.source,
+        amount: totalDamage,
+      })
     }
 
     this.invokePostSequenceHooks({
@@ -343,6 +351,30 @@ export abstract class Attack extends Action {
     }
 
     return this.collectStates(entity).filter((state) => state.isPostHitModifier())
+  }
+
+  private hasDrainEffect(context: ActionContext): boolean {
+    const tags = context.metadata?.cardTags
+    if (Array.isArray(tags)) {
+      return tags.includes('tag-drain')
+    }
+    const definitionTags = this.cardDefinitionBase.cardTags ?? []
+    return definitionTags.some((tag) => tag.id === 'tag-drain')
+  }
+
+  private applyDrainHeal(params: { battle: Battle; source: Player | Enemy; amount: number }): void {
+    const amount = Math.max(0, Math.floor(params.amount))
+    if (amount <= 0) {
+      return
+    }
+
+    const source = params.source
+    if (this.isPlayer(source)) {
+      source.heal(amount)
+      return
+    }
+
+    source.heal(amount)
   }
 }
 

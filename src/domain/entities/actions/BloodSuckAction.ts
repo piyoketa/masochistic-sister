@@ -1,0 +1,43 @@
+/*
+BloodSuckAction.ts の責務:
+- 吸血攻撃カードの共通挙動（10ダメージ＋ドレイン付与）を定義し、敵味方を問わず同一ロジックで利用できるようにする。
+- 攻撃のダメージプロファイルと `DrainCardTag` を設定して、`Attack` 基底クラスによるドレイン処理を有効化する。
+
+責務ではないこと:
+- 実際のHP回復処理の適用タイミング管理（`Attack` 側が `cardTags` を参照して実行する）。
+- 敵固有AIやターン順制御など、カード以外の行動ロジック。
+
+主要な通信相手とインターフェース:
+- `Attack`: ダメージ計算・ヒット解決のフレームワークを継承し、必要なプロファイルやタグを提供する。
+- `Damages`: 単発10ダメージの情報を渡し、演出用 `DamageOutcome` を生成させる。
+- `CardDefinition`: カード表示用のメタ情報（タイトル、タグ、コストなど）を組み立て、UI層へ提供する。
+*/
+import { Attack } from '../Action'
+import { Damages } from '../Damages'
+import {
+  DrainCardTag,
+  EnemySingleTargetCardTag,
+  SingleAttackCardTag,
+} from '../cardTags'
+
+export class BloodSuckAction extends Attack {
+  constructor() {
+    super({
+      name: '吸血',
+      baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
+      effectType: 'bite',
+      cardDefinition: {
+        title: '吸血',
+        cardType: 'attack',
+        type: new SingleAttackCardTag(),
+        target: new EnemySingleTargetCardTag(),
+        cost: 1,
+        cardTags: [new DrainCardTag()],
+      },
+    })
+  }
+
+  protected override description(): string {
+    return '10ダメージを与え、与えたダメージ分だけ体力を回復する'
+  }
+}

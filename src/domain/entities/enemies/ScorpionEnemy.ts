@@ -15,6 +15,8 @@ export class ScorpionEnemy extends Enemy {
       currentHp: 30,
       actions: [new PoisonStingAction(), flurry],
       image: '/assets/enemies/scorpion.jpg',
+      allyTags: ['acceleratable', 'multi-attack'],
+      allyBuffWeights: { tailwind: 30 },      
       ...overrides,
     })
   }

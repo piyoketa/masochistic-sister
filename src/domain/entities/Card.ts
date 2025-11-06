@@ -23,6 +23,7 @@ export class Card {
   private readonly defensiveStatesValue?: State[]
   private readonly definitionOverridesValue?: Partial<CardDefinition>
   private readonly definitionValue: CardDefinition
+  private extraTags: CardTag[] = []
 
   constructor(props: CardProps) {
     if (!props.action && !props.state) {
@@ -63,7 +64,17 @@ export class Card {
   }
 
   get cardTags(): CardTag[] | undefined {
-    return this.cardTagsValue ?? this.definition.cardTags
+    const baseTags = this.cardTagsValue ?? this.definition.cardTags ?? []
+    if (this.extraTags.length === 0) {
+      return baseTags.length > 0 ? [...baseTags] : undefined
+    }
+    const combined = [...baseTags]
+    for (const tag of this.extraTags) {
+      if (combined.every((existing) => existing.id !== tag.id)) {
+        combined.push(tag)
+      }
+    }
+    return combined
   }
 
   get offensiveStates(): State[] | undefined {
@@ -130,6 +141,13 @@ export class Card {
       source: battle.player,
       operations,
     })
+    if (!context.metadata) {
+      context.metadata = {}
+    }
+    if (this.id !== undefined) {
+      context.metadata.cardId = this.id
+    }
+    context.metadata.cardTags = (this.cardTags ?? []).map((tag) => tag.id)
 
     battle.player.spendMana(this.cost)
     battle.hand.remove(this)
@@ -148,6 +166,24 @@ export class Card {
       defensiveStates: overrides.defensiveStates ?? this.defensiveStatesValue,
       definitionOverrides: overrides.definitionOverrides ?? this.definitionOverridesValue,
     })
+  }
+
+  addTemporaryTag(tag: CardTag): void {
+    if (this.extraTags.some((entry) => entry.id === tag.id)) {
+      return
+    }
+    this.extraTags = [...this.extraTags, tag]
+  }
+
+  removeTemporaryTag(tagId: string): void {
+    if (this.extraTags.length === 0) {
+      return
+    }
+    this.extraTags = this.extraTags.filter((tag) => tag.id !== tagId)
+  }
+
+  hasTag(tagId: string): boolean {
+    return (this.cardTags ?? []).some((tag) => tag.id === tagId)
   }
 
   private moveToNextZone(battle: Battle): void {

@@ -497,13 +497,43 @@ export class Battle {
   }
 
   private applyEvent(event: BattleEvent): void {
-    if (event.type === 'mana') {
-      const rawAmount = (event.payload as { amount?: unknown }).amount
-      const amount = typeof rawAmount === 'number' ? rawAmount : Number(rawAmount ?? 0)
-      if (Number.isFinite(amount) && amount !== 0) {
-        this.player.gainTemporaryMana(amount)
+    switch (event.type) {
+      case 'mana': {
+        const rawAmount = (event.payload as { amount?: unknown }).amount
+        const amount = typeof rawAmount === 'number' ? rawAmount : Number(rawAmount ?? 0)
+        if (Number.isFinite(amount) && amount !== 0) {
+          this.player.gainTemporaryMana(amount)
+        }
+        break
       }
+      case 'custom':
+        this.handleCustomEvent(event)
+        break
+      default:
+        break
     }
+  }
+
+  private handleCustomEvent(event: BattleEvent): void {
+    const payload = event.payload as { action?: unknown; cardId?: unknown; tagId?: unknown }
+    if (payload?.action !== 'remove-card-tag') {
+      return
+    }
+
+    const rawCardId = payload.cardId
+    const rawTagId = payload.tagId
+    const cardId = typeof rawCardId === 'number' ? rawCardId : Number(rawCardId)
+    const tagId = typeof rawTagId === 'string' ? rawTagId : String(rawTagId ?? '')
+
+    if (!Number.isInteger(cardId) || tagId.length === 0) {
+      return
+    }
+
+    const card = this.cardRepositoryValue.findById(cardId)
+    if (!card) {
+      return
+    }
+    card.removeTemporaryTag(tagId)
   }
 
   private reloadDeckFromDiscard(): boolean {

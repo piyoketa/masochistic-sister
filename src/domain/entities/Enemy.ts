@@ -155,6 +155,14 @@ export class Enemy {
     }
   }
 
+  heal(amount: number): void {
+    const healAmount = Math.max(0, Math.floor(amount))
+    if (healAmount <= 0) {
+      return
+    }
+    this.currentHpValue = Math.min(this.maxHpValue, this.currentHpValue + healAmount)
+  }
+
   flee(battle: Battle): void {
     if (this.statusValue !== 'active') {
       return
