@@ -13,10 +13,15 @@ import {
 import type { CardOperation } from '@/domain/entities/operations'
 import { ActionLog } from '@/domain/battle/ActionLog'
 import type { Battle } from '@/domain/battle/Battle'
-import { createDefaultSnailBattle, createTestCaseBattle } from '@/domain/battle/battlePresets'
+import {
+  createDefaultSnailBattle,
+  createTestCaseBattle,
+  createTestCaseBattle2,
+  createStage2Battle,
+} from '@/domain/battle/battlePresets'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
-type BattlePresetKey = 'default' | 'stage1' | 'testcase1'
+type BattlePresetKey = 'default' | 'stage1' | 'testcase1' | 'testcase2' | 'stage2'
 
 const props = defineProps<{ viewManager?: ViewManager; preset?: BattlePresetKey }>()
 const battleFactory = resolveBattleFactory(props.preset)
@@ -336,6 +341,10 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
   switch (preset) {
     case 'testcase1':
       return createTestCaseBattle
+    case 'testcase2':
+      return createTestCaseBattle2
+    case 'stage2':
+      return createStage2Battle
     case 'stage1':
     case 'default':
     default:

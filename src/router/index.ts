@@ -26,6 +26,18 @@ const router = createRouter({
       component: () => import('@/views/BattleView.vue'),
       props: { preset: 'testcase1' },
     },
+    {
+      path: '/battle/testcase2',
+      name: 'battle-testcase2',
+      component: () => import('@/views/BattleView.vue'),
+      props: { preset: 'testcase2' },
+    },
+    {
+      path: '/battle/stage2',
+      name: 'battle-stage2',
+      component: () => import('@/views/BattleView.vue'),
+      props: { preset: 'stage2' },
+    },
   ],
 })
 

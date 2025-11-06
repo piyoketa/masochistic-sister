@@ -15,15 +15,20 @@ import {
   SlugEnemy,
 } from '../enemies'
 
+export interface IronBloomTeamOptions {
+  mode?: 'scripted' | 'random'
+}
+
 export class IronBloomTeam extends EnemyTeam {
-  constructor() {
+  constructor(options?: IronBloomTeamOptions) {
+    const scripted = options?.mode !== 'random'
     super({
       id: 'enemy-team-iron-bloom',
       members: [
-        new OrcLancerEnemy(),
-        new KamaitachiEnemy(),
-        new IronBloomEnemy(),
-        new SlugEnemy(),
+        new OrcLancerEnemy(scripted ? undefined : { actionQueueFactory: undefined }),
+        new KamaitachiEnemy(scripted ? undefined : { actionQueueFactory: undefined }),
+        new IronBloomEnemy(scripted ? undefined : { actionQueueFactory: undefined }),
+        new SlugEnemy(scripted ? undefined : { actionQueueFactory: undefined }),
       ],
     })
   }

@@ -8,13 +8,24 @@ import { BattleLog } from './BattleLog'
 import { TurnManager } from './TurnManager'
 import { CardRepository } from '../repository/CardRepository'
 import { ProtagonistPlayer } from '../entities/players'
-import { buildDefaultDeck, buildTestDeck } from '../entities/decks'
-import { SnailTeam, TestEnemyTeam } from '../entities/enemyTeams'
+import type { Card } from '../entities/Card'
+import {
+  buildDefaultDeck,
+  buildTestDeck,
+  buildScenario2Deck,
+  buildDefaultDeck2,
+} from '../entities/decks'
+import { SnailTeam, TestEnemyTeam, IronBloomTeam } from '../entities/enemyTeams'
 import type { EnemyTeam } from '../entities/EnemyTeam'
+
+interface DeckBuilderResult {
+  deck: Card[]
+  [key: string]: unknown
+}
 
 interface BattlePreset {
   id: string
-  deckBuilder: (repository: CardRepository) => { deck: ReturnType<typeof buildDefaultDeck>['deck'] }
+  deckBuilder: (repository: CardRepository) => DeckBuilderResult
   enemyTeamFactory: () => EnemyTeam
 }
 
@@ -52,5 +63,21 @@ export function createTestCaseBattle(): Battle {
     id: 'battle-testcase1',
     deckBuilder: buildTestDeck,
     enemyTeamFactory: () => new TestEnemyTeam(),
+  })
+}
+
+export function createTestCaseBattle2(): Battle {
+  return createBattleFromPreset({
+    id: 'battle-testcase2',
+    deckBuilder: buildScenario2Deck,
+    enemyTeamFactory: () => new IronBloomTeam(),
+  })
+}
+
+export function createStage2Battle(): Battle {
+  return createBattleFromPreset({
+    id: 'battle-stage2',
+    deckBuilder: buildDefaultDeck2,
+    enemyTeamFactory: () => new IronBloomTeam({ mode: 'random' }),
   })
 }

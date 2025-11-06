@@ -94,3 +94,11 @@ export function buildScenario2Deck(cardRepository: CardRepository): Scenario2Dec
     reload,
   }
 }
+
+export function buildDefaultDeck2(cardRepository: CardRepository): Scenario2DeckResult {
+  const base = buildScenario2Deck(cardRepository)
+  return {
+    ...base,
+    deck: shuffle([...base.deck]),
+  }
+}
