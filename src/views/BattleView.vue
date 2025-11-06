@@ -18,10 +18,19 @@ import {
   createTestCaseBattle,
   createTestCaseBattle2,
   createStage2Battle,
+  createStage3Battle,
+  createStage4Battle,
 } from '@/domain/battle/battlePresets'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
-type BattlePresetKey = 'default' | 'stage1' | 'testcase1' | 'testcase2' | 'stage2'
+type BattlePresetKey =
+  | 'default'
+  | 'stage1'
+  | 'testcase1'
+  | 'testcase2'
+  | 'stage2'
+  | 'stage3'
+  | 'stage4'
 
 const props = defineProps<{ viewManager?: ViewManager; preset?: BattlePresetKey }>()
 const battleFactory = resolveBattleFactory(props.preset)
@@ -345,6 +354,10 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
       return createTestCaseBattle2
     case 'stage2':
       return createStage2Battle
+    case 'stage3':
+      return createStage3Battle
+    case 'stage4':
+      return createStage4Battle
     case 'stage1':
     case 'default':
     default:

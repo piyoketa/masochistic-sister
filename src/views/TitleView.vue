@@ -12,11 +12,6 @@ type PresetRoute = {
 
 const presets: PresetRoute[] = [
   {
-    label: 'フリーバトル',
-    description: 'デフォルトのスネイル遭遇。デッキ・敵ともにランダム構成。',
-    route: { name: 'battle' },
-  },
-  {
     label: 'Stage 1 (固定ログ再生)',
     description: 'シナリオ1と同じ初期デッキと敵編成。ActionLogで再現。',
     route: { name: 'battle-stage1' },
@@ -35,6 +30,16 @@ const presets: PresetRoute[] = [
     label: 'Stage 2 (ランダム挙動)',
     description: 'シナリオ2と同じデッキ／敵チームで、初期順序と行動をランダムに体験。',
     route: { name: 'battle-stage2' },
+  },
+  {
+    label: 'Stage 3 (ハチドリ＆サソリ)',
+    description: 'DefaultDeckでハチドリ／サソリ編成と交戦。追い風支援の挙動を確認。',
+    route: { name: 'battle-stage3' },
+  },
+  {
+    label: 'Stage 4 (オークヒーロー戦)',
+    description: 'DefaultDeckでエリート戦。大型・吸血・加速の組み合わせを検証。',
+    route: { name: 'battle-stage4' },
   },
 ]
 

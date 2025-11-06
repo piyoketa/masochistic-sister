@@ -15,7 +15,13 @@ import {
   buildScenario2Deck,
   buildDefaultDeck2,
 } from '../entities/decks'
-import { SnailTeam, TestEnemyTeam, IronBloomTeam } from '../entities/enemyTeams'
+import {
+  SnailTeam,
+  TestEnemyTeam,
+  IronBloomTeam,
+  HummingbirdScorpionTeam,
+  OrcHeroEliteTeam,
+} from '../entities/enemyTeams'
 import type { EnemyTeam } from '../entities/EnemyTeam'
 
 interface DeckBuilderResult {
@@ -79,5 +85,21 @@ export function createStage2Battle(): Battle {
     id: 'battle-stage2',
     deckBuilder: buildDefaultDeck2,
     enemyTeamFactory: () => new IronBloomTeam({ mode: 'random' }),
+  })
+}
+
+export function createStage3Battle(): Battle {
+  return createBattleFromPreset({
+    id: 'battle-stage3',
+    deckBuilder: buildDefaultDeck,
+    enemyTeamFactory: () => new HummingbirdScorpionTeam(),
+  })
+}
+
+export function createStage4Battle(): Battle {
+  return createBattleFromPreset({
+    id: 'battle-stage4',
+    deckBuilder: buildDefaultDeck,
+    enemyTeamFactory: () => new OrcHeroEliteTeam(),
   })
 }

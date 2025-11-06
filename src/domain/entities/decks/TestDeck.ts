@@ -99,6 +99,15 @@ export function buildDefaultDeck2(cardRepository: CardRepository): Scenario2Deck
   const base = buildScenario2Deck(cardRepository)
   return {
     ...base,
-    deck: shuffle([...base.deck]),
+    deck: shuffleCards([...base.deck]),
   }
+}
+
+function shuffleCards(cards: Card[]): Card[] {
+  // Fisher-Yates shuffle: デッキ順序を均等にランダム化し、テストケース用に多様な初期配置を生成する。
+  for (let index = cards.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    ;[cards[index], cards[swapIndex]] = [cards[swapIndex]!, cards[index]!]
+  }
+  return cards
 }
