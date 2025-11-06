@@ -37,10 +37,10 @@ export class GuardianPetalState extends State {
 
   override description(): string {
     const charge = this.magnitude ?? 0
-    return `ターン開始時、自身にバリア(${charge})を付与する`
+    return `プレイヤーのターン開始時、自身にバリア(${charge})を付与する`
   }
 
-  override onTurnStart(context: { battle: Battle; owner: Player | Enemy }): void {
+  override onPlayerTurnStart(context: { battle: Battle; owner: Player | Enemy }): void {
     const desired = Math.max(0, Math.floor(this.magnitude ?? 0))
     if (desired <= 0) {
       return

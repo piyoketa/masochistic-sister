@@ -230,6 +230,13 @@ export class Enemy {
     this.forEachState((state) => state.onTurnStart({ battle, owner: this }))
   }
 
+  handlePlayerTurnStart(battle: Battle): void {
+    if (!this.isActive()) {
+      return
+    }
+    this.forEachState((state) => state.onPlayerTurnStart({ battle, owner: this }))
+  }
+
   handleActionResolved(battle: Battle, actor: Player | Enemy, action: Action): void {
     this.forEachState((state) =>
       state.onActionResolved({

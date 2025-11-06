@@ -11,6 +11,7 @@ import {
   StickyState,
 } from '../fixtures/battleSampleScenario2'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
+import { BarrierState } from '@/domain/entities/states/BarrierState'
 
 const battleSampleScenario = createBattleScenario2()
 const Steps = battleSampleScenario.steps
@@ -38,7 +39,7 @@ describe('シナリオ2: 鉄花チームとの交戦', () => {
   })
 
   it('ターン開始時に5枚ドローし、初期手札を構築する', () => {
-    const { snapshot, initialSnapshot, lastEntry } = runScenario('playerTurn1Start')
+    const { battle, snapshot, initialSnapshot, lastEntry } = runScenario('playerTurn1Start')
 
     expect(lastEntry?.type).toBe('start-player-turn')
     expect(lastEntry?.draw).toBe(5)
@@ -49,6 +50,13 @@ describe('シナリオ2: 鉄花チームとの交戦', () => {
     expect(snapshot.deck.map(requireCardId)).toEqual(
       initialSnapshot.deck.slice(5).map(requireCardId),
     )
+
+    const ironBloom = battle.enemyTeam.findEnemy(Refs.enemyIds.ironBloom)
+    const hasBarrier =
+      ironBloom?.states.some(
+        (state) => state instanceof BarrierState && (state.magnitude ?? 0) === 3,
+      ) ?? false
+    expect(hasBarrier).toBe(true)
   })
 
   it('被虐のオーラで鉄花が粘液飛ばしを即時発動し、状態カードを獲得する', () => {

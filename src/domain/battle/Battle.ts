@@ -231,6 +231,7 @@ export class Battle {
   startPlayerTurn(): void {
     this.turn.startPlayerTurn()
     this.enemyTeam.endTurn()
+    this.enemyTeam.handlePlayerTurnStart(this)
     this.player.resetMana()
   }
 

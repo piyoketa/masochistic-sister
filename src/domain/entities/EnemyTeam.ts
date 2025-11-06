@@ -60,6 +60,10 @@ export class EnemyTeam {
     this.membersValue.forEach((enemy) => enemy.handleTurnStart(battle))
   }
 
+  handlePlayerTurnStart(battle: Battle): void {
+    this.membersValue.forEach((enemy) => enemy.handlePlayerTurnStart(battle))
+  }
+
   endTurn(): void {
     this.membersValue.forEach((enemy) => enemy.resetTurn())
   }

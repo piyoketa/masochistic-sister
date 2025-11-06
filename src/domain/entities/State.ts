@@ -90,6 +90,9 @@ export class State {
   onTurnStart(_context: { battle: Battle; owner: Player | Enemy }): void {}
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onPlayerTurnStart(_context: { battle: Battle; owner: Player | Enemy }): void {}
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onActionResolved(_context: {
     battle: Battle
     owner: Player | Enemy
