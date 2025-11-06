@@ -77,9 +77,6 @@ export class BarrierState extends State {
     const remaining = this.magnitude ?? 0
     const next = Math.max(0, remaining - Math.max(0, Math.floor(amount)))
     this.setMagnitude(next)
-    if (next <= 0) {
-      this.removeFromOwnerCache = true
-    }
   }
 
 

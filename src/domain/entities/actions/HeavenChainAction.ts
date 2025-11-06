@@ -8,6 +8,7 @@ import {
 import type { Enemy } from '../Enemy'
 import { SkipTurnAction } from './SkipTurnAction'
 import { TargetEnemyOperation, type Operation } from '../operations'
+import { LargeState } from '../states/LargeState'
 
 export class HeavenChainAction extends Skill {
   constructor() {
@@ -36,6 +37,14 @@ export class HeavenChainAction extends Skill {
     const target = context.target as Enemy | undefined
     if (!target) {
       throw new Error('天の鎖の対象となる敵が見つかりませんでした')
+    }
+
+    if (target.getStates().some((state) => state instanceof LargeState)) {
+      context.battle.addLogEntry({
+        message: `${target.name}は巨大な体で鎖を振り払った！`,
+        metadata: { enemyId: target.id, action: 'heaven-chain-immune' },
+      })
+      return
     }
 
     const message = `${target.name}は天の鎖で縛られていて何もできない！`
