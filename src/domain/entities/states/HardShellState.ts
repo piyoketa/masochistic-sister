@@ -20,7 +20,7 @@ export class HardShellState extends State {
 
   override description(): string {
     const reduction = this.magnitude ?? 0
-    return `受けるダメージを-${reduction}する`
+    return `受けるダメージを${reduction}軽減する`
   }
 
   override affectsDefender(): boolean {

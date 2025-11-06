@@ -40,7 +40,7 @@ describe('臆病と出血ステート', () => {
       maxHp: 10,
       currentHp: 10,
       actions: [new BattlePrepAction()],
-      traits: [new CowardTrait()],
+      states: [new CowardTrait()],
       image: 'coward.png',
     })
 

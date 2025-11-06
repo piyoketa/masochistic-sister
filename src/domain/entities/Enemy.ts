@@ -9,7 +9,6 @@ export interface EnemyProps {
   maxHp: number
   currentHp: number
   actions: Action[]
-  traits?: State[]
   states?: State[]
   image: string
   futureActions?: Action[]
@@ -26,7 +25,6 @@ export class Enemy {
   private readonly maxHpValue: number
   private currentHpValue: number
   private readonly actionCandidates: Action[]
-  private readonly traitList: State[]
   private readonly stateList: State[]
   private readonly imageValue: string
   private readonly rng: () => number
@@ -43,7 +41,6 @@ export class Enemy {
     this.maxHpValue = props.maxHp
     this.currentHpValue = props.currentHp
     this.actionCandidates = [...props.actions]
-    this.traitList = [...(props.traits ?? [])]
     this.stateList = [...(props.states ?? [])]
     this.imageValue = props.image
     this.rng = props.rng ?? Math.random
@@ -84,10 +81,6 @@ export class Enemy {
 
   get hasActedThisTurn(): boolean {
     return this.actedThisTurn
-  }
-
-  get traits(): State[] {
-    return [...this.traitList]
   }
 
   get states(): State[] {
@@ -192,7 +185,7 @@ export class Enemy {
   }
 
   getStates(): State[] {
-    return [...this.traitList, ...this.stateList]
+    return [...this.stateList]
   }
 
   discardNextScheduledAction(): Action | undefined {
@@ -249,9 +242,6 @@ export class Enemy {
   }
 
   private forEachState(consumer: (state: State) => void): void {
-    for (const trait of this.traitList) {
-      consumer(trait)
-    }
     for (const state of this.stateList) {
       consumer(state)
     }

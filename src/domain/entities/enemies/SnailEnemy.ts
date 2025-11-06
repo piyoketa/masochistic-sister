@@ -10,7 +10,7 @@ export class SnailEnemy extends Enemy {
       maxHp: 10,
       currentHp: 10,
       actions: [new TackleAction(), new AcidSpitAction()],
-      traits: [new HardShellState()],
+      states: [new HardShellState()],
       image: '/assets/enemies/snail.jpg',
       ...overrides,
     })

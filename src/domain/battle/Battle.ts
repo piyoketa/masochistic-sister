@@ -49,7 +49,6 @@ export interface BattleSnapshot {
     name: string
     currentHp: number
     maxHp: number
-    traits: State[]
     states: State[]
     hasActedThisTurn: boolean
     status: EnemyStatus
@@ -209,7 +208,6 @@ export class Battle {
           name: enemy.name,
           currentHp: enemy.currentHp,
           maxHp: enemy.maxHp,
-          traits: enemy.traits,
           states: enemy.states,
           hasActedThisTurn: enemy.hasActedThisTurn,
           status: enemy.status,

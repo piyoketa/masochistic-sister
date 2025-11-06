@@ -25,6 +25,7 @@ import { Attack } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
 import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import type { ViewManager } from '@/view/ViewManager'
+import type { CardTag } from '@/domain/entities/CardTag'
 
 interface HandEntry {
   key: string
@@ -114,33 +115,19 @@ function buildCardPresentation(card: Card, index: number): {
   tagEntries: CardTagInfo[]
 } {
   const definition = card.definition
-  const operations = definition.operations ?? []
   const tagEntries: CardTagInfo[] = []
+  const seenTagIds = new Set<string>()
 
   let description = card.description
   let descriptionSegments: Array<{ text: string; highlighted?: boolean }> | undefined
   let attackStyle: AttackStyle | undefined
 
-  if (card.type === 'status') {
-    tagEntries.push({
-      id: 'synthetic-card-type-status',
-      label: '[状態異常]',
-      description: '敵や自身に状態異常を付与するカード。',
-    })
+  addTagEntry(definition.type, tagEntries, seenTagIds)
+  if ('target' in definition) {
+    addTagEntry(definition.target, tagEntries, seenTagIds)
   }
-
-  if (operations.includes(TargetEnemyOperation.TYPE)) {
-    tagEntries.push({
-      id: 'synthetic-target-enemy',
-      label: '[敵１体]',
-      description: '対象：敵１体',
-    })
-  } else {
-    tagEntries.push({
-      id: 'synthetic-target-self',
-      label: '[自身]',
-      description: '対象：自身',
-    })
+  for (const tag of card.cardTags ?? []) {
+    addTagEntry(tag, tagEntries, seenTagIds)
   }
 
   const action = card.action
@@ -205,27 +192,30 @@ function buildCardPresentation(card: Card, index: number): {
       }
     }
 
-    const pattern = hint.pattern ?? {
-      amount: damages.baseAmount,
-      count: damages.baseCount,
-      type: damages.type,
-    }
-    if (pattern) {
-      const count = Math.max(1, Math.floor(pattern.count ?? 1))
+    const typeTagId = definition.type.id
+    if (typeTagId === 'tag-type-multi-attack') {
+      attackStyle = 'multi'
+    } else if (typeTagId === 'tag-type-single-attack') {
+      attackStyle = 'single'
+    } else {
+      const count = Math.max(1, Math.floor(damages.baseCount ?? 1))
       attackStyle = count > 1 ? 'multi' : 'single'
     }
   }
 
-  const runtimeTags = card.cardTags ?? []
-  for (const tag of runtimeTags) {
-    tagEntries.push({
-      id: tag.id,
-      label: `[${tag.name}]`,
-      description: tag.description,
-    })
-  }
-
   return { description, descriptionSegments, attackStyle, tagEntries }
+}
+
+function addTagEntry(tag: CardTag | undefined, entries: CardTagInfo[], registry: Set<string>): void {
+  if (!tag || registry.has(tag.id)) {
+    return
+  }
+  registry.add(tag.id)
+  entries.push({
+    id: tag.id,
+    label: `[${tag.name}]`,
+    description: tag.description,
+  })
 }
 
 function isCardDisabled(entry: HandEntry): boolean {

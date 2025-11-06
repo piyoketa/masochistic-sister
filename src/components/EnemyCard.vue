@@ -1,7 +1,7 @@
 /**
  * EnemyCard
  * =========
- * 敵ステータスを表示し、次の行動予測やTraits/Statesの詳細を description overlay に流すコンポーネント。
+ * 敵ステータスを表示し、次の行動予測や付与ステートの詳細を description overlay に流すコンポーネント。
  * このカードは親ビュー(BattleView)から敵情報を受け取り、hoverイベントで description overlay を更新する。
  * - props.enemy: 表示する敵情報 (EnemyInfo)
  * - emits hover-start/hover-end: 親に現在の hover 状態を伝搬
@@ -88,8 +88,7 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
   }))
 })
 
-const traitChips = computed(() => (props.enemy.traits ?? []).map(formatTraitChip))
-const stateChips = computed(() => (props.enemy.states ?? []).map(formatTraitChip))
+const stateChips = computed(() => (props.enemy.states ?? []).map(formatStateChip))
 
 function handleEnter(): void {
   emit('hover-start')
@@ -193,7 +192,7 @@ function extractLegacyMagnitude(detail: string): number | undefined {
   return Number.isFinite(value) ? value : undefined
 }
 
-function formatTraitChip(trait: EnemyTrait): { key: string; label: string; description: string } {
+function formatStateChip(trait: EnemyTrait): { key: string; label: string; description: string } {
   const magnitude = extractLegacyMagnitude(trait.detail)
   const label = magnitude !== undefined ? `${trait.name}(${magnitude})` : trait.name
   return {
@@ -233,22 +232,6 @@ function formatTraitChip(trait: EnemyTrait): { key: string; label: string; descr
               {{ segment.text }}
             </span>
           </span>
-        </li>
-      </ul>
-    </section>
-
-    <section v-if="traitChips.length" class="enemy-card__section">
-      <h5 class="enemy-card__label">Traits</h5>
-      <ul class="enemy-card__list enemy-card__list--chips">
-        <li
-          v-for="trait in traitChips"
-          :key="trait.key"
-          class="enemy-card__chip enemy-card__chip--plain"
-          @mouseenter="(event) => showTooltip(event, trait.description, `enemy-trait-${trait.key}`)"
-          @mousemove="(event) => updateTooltipPosition(event, `enemy-trait-${trait.key}`, trait.description)"
-          @mouseleave="() => hideTooltip(`enemy-trait-${trait.key}`)"
-        >
-          {{ trait.label }}
         </li>
       </ul>
     </section>

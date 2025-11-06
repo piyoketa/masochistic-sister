@@ -46,7 +46,6 @@ export type EnemyInfo = {
   }
   nextActions?: EnemyActionHint[]
   skills: EnemySkill[]
-  traits?: EnemyTrait[]
   states?: EnemyTrait[]
 }
 

@@ -12,7 +12,7 @@ BattleEnemyArea の責務:
 - BattleView（親）: props で snapshot / battle / 選択状態を受け取り、hover-start・hover-end・enemy-click・cancel-selection を emit する。
 - EnemyCard: 各敵カードを描画する。`enemy: EnemyInfo`、`selectable: boolean` 等の既存インターフェースを利用。
   `EnemyInfo` は `@/types/battle` の型で、スナップショットから生成した情報を格納する。類似する型として `BattleSnapshot['enemies'][number]` があるが、
-  EnemyInfo はビュー描画向けに nextActions や traits の整形済み情報を持つ点が異なる。
+  EnemyInfo はビュー描画向けに nextActions や states の整形済み情報を持つ点が異なる。
 -->
 <script setup lang="ts">
 import { computed } from 'vue'
@@ -59,11 +59,6 @@ const enemies = computed<EnemyInfo[]>(() => {
 
   return aliveEnemies.value.map((enemySnapshot) => {
     const enemy = battle.enemyTeam.findEnemy(enemySnapshot.id) as Enemy | undefined
-    const traits = mergeTraits(
-      mapStatesToTraits(enemySnapshot.traits),
-      mapStatesToTraits(enemySnapshot.states),
-    )
-
     return {
       id: enemySnapshot.id,
       name: enemySnapshot.name,
@@ -77,8 +72,7 @@ const enemies = computed<EnemyInfo[]>(() => {
         name: action.name,
         detail: action.describe(),
       })) ?? [],
-      traits,
-      states: mapStatesToTraits(enemySnapshot.states) ?? [],
+      states: mapStatesToEntries(enemySnapshot.states) ?? [],
     }
   })
 })
@@ -93,7 +87,7 @@ function handleContextMenu(enemy: EnemyInfo, event: MouseEvent): void {
   emit('cancel-selection')
 }
 
-function mapStatesToTraits(states?: State[]): EnemyTrait[] | undefined {
+function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
   if (!states || states.length === 0) {
     return undefined
   }
@@ -103,19 +97,6 @@ function mapStatesToTraits(states?: State[]): EnemyTrait[] | undefined {
     detail: state.description(),
     magnitude: state.magnitude,
   }))
-}
-
-function mergeTraits(...groups: Array<EnemyTrait[] | undefined>): EnemyTrait[] {
-  const registry = new Map<string, EnemyTrait>()
-  for (const group of groups) {
-    if (!group) {
-      continue
-    }
-    for (const trait of group) {
-      registry.set(trait.name, trait)
-    }
-  }
-  return Array.from(registry.values())
 }
 
 function summarizeEnemyActions(battle: Battle, enemyId: number): EnemyActionHint[] {
