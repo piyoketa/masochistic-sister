@@ -1,6 +1,6 @@
 import { Action, type ActionContext } from '../Action'
 import type { Enemy } from '../Enemy'
-import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
+import { SelfTargetCardTag, SkipTypeCardTag } from '../cardTags'
 
 export class SkipTurnAction extends Action {
   static readonly ICON = '⛓'
@@ -11,8 +11,8 @@ export class SkipTurnAction extends Action {
       name: '足止め',
       cardDefinition: {
         title: '足止め',
-        cardType: 'skill',
-        type: new SkillTypeCardTag(),
+        cardType: 'skip',
+        type: new SkipTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 0,
       },
@@ -27,8 +27,8 @@ export class SkipTurnAction extends Action {
     }
   }
 
-  override get type(): 'skill' {
-    return 'skill'
+  override get type(): 'skip' {
+    return 'skip'
   }
 
   protected override description(): string {

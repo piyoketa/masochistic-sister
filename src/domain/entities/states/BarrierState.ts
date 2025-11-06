@@ -14,6 +14,8 @@ BarrierState.ts の責務:
 */
 import { State, type DamageHitContext } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
+import type { Enemy } from '../Enemy'
+import type { Player } from '../Player'
 
 export class BarrierState extends State {
   constructor(magnitude = 0) {
@@ -61,6 +63,9 @@ export class BarrierState extends State {
     this.consume(1)
     context.outcome.damage = 0
     context.outcome.effectType = 'guarded'
+    if ((this.magnitude ?? 0) <= 0) {
+      this.removeFromOwner(context.defender)
+    }
     return true
   }
 
@@ -72,5 +77,15 @@ export class BarrierState extends State {
     const remaining = this.magnitude ?? 0
     const next = Math.max(0, remaining - Math.max(0, Math.floor(amount)))
     this.setMagnitude(next)
+    if (next <= 0) {
+      this.removeFromOwnerCache = true
+    }
+  }
+
+
+  private removeFromOwner(owner: Player | Enemy): void {
+    if ('removeState' in owner && typeof owner.removeState === 'function') {
+      owner.removeState(this.id)
+    }
   }
 }

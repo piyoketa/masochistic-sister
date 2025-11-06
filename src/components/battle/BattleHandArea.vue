@@ -373,6 +373,7 @@ defineExpose({ resetSelection, cancelSelection })
 
 <style scoped>
 .hand-zone {
+  padding-left: 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;

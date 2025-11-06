@@ -7,7 +7,7 @@ import type {
   StatusTypeTag,
 } from './CardTag'
 
-export type CardType = 'attack' | 'skill' | 'status'
+export type CardType = 'attack' | 'skill' | 'status' | 'skip'
 
 interface BaseCardDefinition<
   TCardType extends CardType,
@@ -37,4 +37,13 @@ export interface StatusCardDefinition
   target?: undefined
 }
 
-export type CardDefinition = AttackCardDefinition | SkillCardDefinition | StatusCardDefinition
+export interface SkipCardDefinition
+  extends BaseCardDefinition<'skip', SkipTypeCardTag> {
+  target?: undefined
+}
+
+export type CardDefinition =
+  | AttackCardDefinition
+  | SkillCardDefinition
+  | StatusCardDefinition
+  | SkipCardDefinition

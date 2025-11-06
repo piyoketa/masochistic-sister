@@ -330,8 +330,8 @@ describe('Attack.performのダメージアウトカム', () => {
       { damage: 10, effectType: 'slash' },
     ])
     expect(damages?.postHitDefenderStateEffects.length).toBeGreaterThanOrEqual(1)
-    const barrier = registeredEnemy.states.find((state) => state instanceof BarrierState) as BarrierState | undefined
-    expect(barrier?.magnitude).toBe(0)
+    const barrier = registeredEnemy.states.find((state) => state instanceof BarrierState)
+    expect(barrier).toBeUndefined()
   })
 
   it('HPを削り切った場合は余剰ヒットを省略する', () => {

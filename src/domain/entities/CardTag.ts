@@ -43,3 +43,4 @@ export abstract class CardCategoryTag extends CardTag {}
 export type AttackTypeTag = CardTypeTag<'attack'>
 export type SkillTypeTag = CardTypeTag<'skill'>
 export type StatusTypeTag = CardTypeTag<'status'>
+export type SkipTypeTag = CardTypeTag<'skip'>
