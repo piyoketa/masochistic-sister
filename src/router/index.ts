@@ -50,6 +50,11 @@ const router = createRouter({
       component: () => import('@/views/BattleView.vue'),
       props: { preset: 'stage4' },
     },
+    {
+      path: '/demo/damage-effects',
+      name: 'damage-effects-demo',
+      component: () => import('@/views/DamageEffectsDemoView.vue'),
+    },
   ],
 })
 

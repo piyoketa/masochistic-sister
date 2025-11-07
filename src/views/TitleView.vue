@@ -41,6 +41,11 @@ const presets: PresetRoute[] = [
     description: 'DefaultDeckでエリート戦。大型・吸血・加速の組み合わせを検証。',
     route: { name: 'battle-stage4' },
   },
+  {
+    label: 'Damage Effects Demo',
+    description: '被ダメージ演出コンポーネントの挙動を確認するデモ。',
+    route: { name: 'damage-effects-demo' },
+  },
 ]
 
 const navigateTo = (route: PresetRoute['route']) => {
