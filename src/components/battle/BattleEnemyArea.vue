@@ -23,7 +23,7 @@ import type { State } from '@/domain/entities/State'
 import type { EnemyInfo, EnemyTrait, EnemyActionHint } from '@/types/battle'
 import type { Enemy } from '@/domain/entities/Enemy'
 import { Damages } from '@/domain/entities/Damages'
-import { Attack, Action as BattleAction } from '@/domain/entities/Action'
+import { Attack, Action as BattleAction, AllyBuffSkill } from '@/domain/entities/Action'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 
 const props = defineProps<{
@@ -147,7 +147,7 @@ function summarizeEnemyAction(battle: Battle, enemy: Enemy, action: BattleAction
     return buildAttackActionHint(battle, enemy, action)
   }
 
-  return buildSkillActionHint(action)
+  return buildSkillActionHint(battle, action)
 }
 
 function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): EnemyActionHint {
@@ -187,14 +187,23 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
   }
 }
 
-function buildSkillActionHint(action: BattleAction): EnemyActionHint {
+function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyActionHint {
   const gainState = action.gainStatePreviews[0]
+  let targetName: string | undefined
+  if (action instanceof AllyBuffSkill) {
+    const plannedTargetId = action.getPlannedTarget?.()
+    if (plannedTargetId !== undefined) {
+      const target = battle.enemyTeam.findEnemy(plannedTargetId)
+      targetName = target?.name
+    }
+  }
 
   return {
     title: action.name,
     type: action.type,
     icon: '',
     description: action.describe(),
+    targetName,
     selfState: gainState
       ? {
           name: gainState.name,
@@ -241,8 +250,8 @@ function buildSkillActionHint(action: BattleAction): EnemyActionHint {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 240px;
-  padding: 12px;
+  min-height: 320px;
+  padding: 20px;
 }
 
 .enemy-grid {

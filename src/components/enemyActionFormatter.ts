@@ -16,6 +16,12 @@ export function formatEnemyActionLabel(
 ): FormattedEnemyActionLabel {
   const includeTitle = options.includeTitle ?? true
   const segments: Array<{ text: string; highlighted?: boolean }> = []
+  const appendTarget = () => {
+    if (!action.targetName) {
+      return
+    }
+    segments.push({ text: `→ ${action.targetName}` })
+  }
 
   if (action.acted) {
     const text = '💤行動済み'
@@ -60,6 +66,7 @@ export function formatEnemyActionLabel(
       segments.push({ text: formatStateText('🌀', status.name, status.magnitude) })
     }
 
+    appendTarget()
     const label = segments.map((segment) => segment.text).join('')
     return { label, segments }
   }
@@ -71,16 +78,23 @@ export function formatEnemyActionLabel(
         segments.push({ text: `${action.title}：` })
       }
       segments.push({ text: formatStateText('🔱', state.name, state.magnitude) })
+      appendTarget()
       const label = segments.map((segment) => segment.text).join('')
       return { label, segments }
     }
 
     if (includeTitle) {
-      const label = `${action.title}✨`
-      return { label, segments: [{ text: action.title }, { text: '✨' }] }
+      segments.push({ text: action.title })
+      segments.push({ text: '✨' })
+      appendTarget()
+      const label = segments.map((segment) => segment.text).join('')
+      return { label, segments }
     }
 
-    return { label: '✨', segments: [{ text: '✨' }] }
+    segments.push({ text: '✨' })
+    appendTarget()
+    const label = segments.map((segment) => segment.text).join('')
+    return { label, segments }
   }
 
   const fallback = includeTitle ? action.title : ''

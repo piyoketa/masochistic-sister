@@ -13,6 +13,7 @@ export type EnemyActionHint = {
   title: string
   type: 'attack' | 'skill' | 'skip'
   description?: string
+  targetName?: string
   pattern?: {
     amount: number
     count?: number
@@ -68,5 +69,7 @@ export type CardInfo = {
   description: string
   descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
   attackStyle?: AttackStyle
-  cardTags?: CardTagInfo[]
+  primaryTags?: CardTagInfo[]
+  effectTags?: CardTagInfo[]
+  categoryTags?: CardTagInfo[]
 }

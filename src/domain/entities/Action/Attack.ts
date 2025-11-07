@@ -27,6 +27,7 @@ import type { ActionContext, ActionType, BaseActionProps } from './ActionBase'
 import { Action } from './ActionBase'
 import { isPlayerEntity } from '../typeGuards'
 import type { CardDefinition } from '../CardDefinition'
+import type { DamagePattern } from '../Damages'
 
 export interface AttackProps extends BaseActionProps {
   baseDamage: Damages
@@ -358,7 +359,7 @@ export abstract class Attack extends Action {
     if (Array.isArray(tags)) {
       return tags.includes('tag-drain')
     }
-    const definitionTags = this.cardDefinitionBase.cardTags ?? []
+    const definitionTags = this.cardDefinitionBase.effectTags ?? []
     return definitionTags.some((tag) => tag.id === 'tag-drain')
   }
 
@@ -376,6 +377,42 @@ export abstract class Attack extends Action {
 
     source.heal(amount)
   }
+
+  describeForPlayerCard(options?: PlayerAttackDescriptionOptions): PlayerAttackDescription {
+    const base = options?.baseDamages ?? this.baseProfile
+    const display = options?.displayDamages ?? base
+
+    const baseAmount = Math.max(0, Math.floor(base.amount))
+    const baseCount = Math.max(1, Math.floor(base.count))
+    const amount = Math.max(0, Math.floor(display.amount))
+    const count = Math.max(1, Math.floor(display.count))
+    const pattern: DamagePattern = display.type ?? base.type
+    const isMulti = pattern === 'multi' || count > 1
+
+    const amountChanged = amount !== baseAmount
+    const countChanged = count !== baseCount
+
+    const segments: Array<{ text: string; highlighted?: boolean }> = []
+    segments.push({ text: isMulti ? '⚔️' : '💥' })
+    segments.push({ text: `${amount}`, highlighted: amountChanged })
+    if (isMulti) {
+      segments.push({ text: `×${count}`, highlighted: countChanged })
+    }
+    segments.push({ text: 'ダメージ' })
+
+    const inflictedStates = options?.inflictedStates ?? this.inflictStatePreviews
+    if (inflictedStates.length > 0) {
+      for (const state of inflictedStates) {
+        segments.push({ text: '\n' })
+        const magnitude = state.magnitude !== undefined ? `(${state.magnitude})` : ''
+        segments.push({ text: `${state.name}${magnitude}` })
+        segments.push({ text: 'を与える' })
+      }
+    }
+
+    const label = segments.map((segment) => segment.text).join('')
+    return { label, segments }
+  }
 }
 
 function mergeCardDefinition(
@@ -383,7 +420,11 @@ function mergeCardDefinition(
   overrides?: Partial<CardDefinition>,
 ): CardDefinition {
   if (!overrides) {
-    return { ...base }
+    return {
+      ...base,
+      effectTags: base.effectTags ? [...base.effectTags] : undefined,
+      categoryTags: base.categoryTags ? [...base.categoryTags] : undefined,
+    }
   }
 
   if (overrides.cardType && overrides.cardType !== base.cardType) {
@@ -398,8 +439,28 @@ function mergeCardDefinition(
     throw new Error('Card definition overrides cannot change target tag')
   }
 
-  const cardTags = overrides.cardTags ?? base.cardTags
-  const { cardType, type, target, cardTags: _ignored, ...rest } = overrides
+  const effectTags =
+    overrides.effectTags !== undefined
+      ? [...overrides.effectTags]
+      : base.effectTags
+      ? [...base.effectTags]
+      : undefined
+
+  const categoryTags =
+    overrides.categoryTags !== undefined
+      ? [...overrides.categoryTags]
+      : base.categoryTags
+      ? [...base.categoryTags]
+      : undefined
+
+  const {
+    cardType,
+    type,
+    target,
+    effectTags: _ignoredEffect,
+    categoryTags: _ignoredCategory,
+    ...rest
+  } = overrides
 
   if (base.cardType === 'status') {
     return {
@@ -407,7 +468,8 @@ function mergeCardDefinition(
       ...rest,
       cardType: 'status',
       type: base.type,
-      cardTags,
+      effectTags,
+      categoryTags,
     }
   }
 
@@ -417,7 +479,8 @@ function mergeCardDefinition(
       ...rest,
       cardType: 'attack',
       type: base.type,
-      cardTags,
+      effectTags,
+      categoryTags,
       target: base.target,
     }
   }
@@ -427,7 +490,19 @@ function mergeCardDefinition(
     ...rest,
     cardType: 'skill',
     type: base.type,
-    cardTags,
+    effectTags,
+    categoryTags,
     target: base.target,
   }
+}
+
+export interface PlayerAttackDescriptionOptions {
+  baseDamages?: Damages
+  displayDamages?: Damages
+  inflictedStates?: State[]
+}
+
+export interface PlayerAttackDescription {
+  label: string
+  segments: Array<{ text: string; highlighted?: boolean }>
 }

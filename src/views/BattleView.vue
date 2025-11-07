@@ -616,8 +616,8 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
 }
 
 :deep(.enemy-zone) {
-  flex: 0 0 230px;
-  max-height: 230px;
+  flex: 0 0 320px;
+  max-height: 320px;
   padding: 0 16px;
 }
 

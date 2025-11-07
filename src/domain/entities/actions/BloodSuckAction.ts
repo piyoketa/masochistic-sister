@@ -32,7 +32,7 @@ export class BloodSuckAction extends Attack {
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),
         cost: 1,
-        cardTags: [new DrainCardTag()],
+        effectTags: [new DrainCardTag()],
       },
     })
   }

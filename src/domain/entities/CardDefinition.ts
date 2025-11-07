@@ -1,5 +1,6 @@
 import type {
   AttackTypeTag,
+  CardCategoryTag,
   CardTag,
   CardTargetTag,
   CardTypeTag,
@@ -18,7 +19,8 @@ interface BaseCardDefinition<
   type: TTypeTag
   cost: number
   image?: string
-  cardTags?: CardTag[]
+  effectTags?: CardTag[]
+  categoryTags?: CardCategoryTag[]
   operations?: string[]
 }
 

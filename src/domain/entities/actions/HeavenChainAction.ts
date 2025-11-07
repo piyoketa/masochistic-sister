@@ -20,7 +20,8 @@ export class HeavenChainAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new EnemySingleTargetCardTag(),
         cost: 1,
-        cardTags: [new ExhaustCardTag(), new SacredCardTag()],
+        effectTags: [new ExhaustCardTag()],
+        categoryTags: [new SacredCardTag()],
       },
     })
   }

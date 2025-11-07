@@ -52,15 +52,15 @@ export class MemoryManager {
       throw new Error('Memory cards can only be created from attack definitions')
     }
 
-    const baseTags = baseDefinition.cardTags ?? []
-    const cardTags = [...baseTags, memoryTag]
+    const baseCategoryTags = baseDefinition.categoryTags ?? []
+    const categoryTags = [...baseCategoryTags, memoryTag]
 
     return {
       name: baseAttack.name,
       cardDefinition: {
         ...baseDefinition,
         title: baseDefinition.title ?? baseAttack.name,
-        cardTags,
+        categoryTags,
       },
     }
   }

@@ -7,6 +7,7 @@ const baseHint = (overrides: Partial<EnemyActionHint>): EnemyActionHint => ({
   title: overrides.title ?? 'unknown',
   type: overrides.type ?? 'skill',
   description: overrides.description,
+  targetName: overrides.targetName,
   pattern: overrides.pattern,
   calculatedPattern: overrides.calculatedPattern,
   status: overrides.status,
@@ -103,6 +104,14 @@ describe('formatEnemyActionLabel', () => {
     )
     expect(label).toBe('手札入れ替え✨')
     expect(segments).toEqual([{ text: '手札入れ替え' }, { text: '✨' }])
+  })
+
+  it('appends target name for ally-targeting skills', () => {
+    const { label, segments } = formatEnemyActionLabel(
+      baseHint({ title: '追い風', type: 'skill', targetName: 'なめくじ' }),
+    )
+    expect(label).toBe('追い風✨→ なめくじ')
+    expect(segments).toEqual([{ text: '追い風' }, { text: '✨' }, { text: '→ なめくじ' }])
   })
 
   it('omits title when requested', () => {

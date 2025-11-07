@@ -36,7 +36,8 @@ export class ScarRegenerationAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 1,
-        cardTags: [new ArcaneCardTag(), new ExhaustCardTag()],
+        effectTags: [new ExhaustCardTag()],
+        categoryTags: [new ArcaneCardTag()],
       },
     })
   }

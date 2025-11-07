@@ -19,11 +19,10 @@ import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Card } from '@/domain/entities/Card'
 import type { Enemy } from '@/domain/entities/Enemy'
 import ActionCard from '@/components/ActionCard.vue'
-import type { CardInfo, CardTagInfo, EnemyActionHint, AttackStyle } from '@/types/battle'
+import type { CardInfo, CardTagInfo, AttackStyle } from '@/types/battle'
 import { TargetEnemyOperation, type CardOperation } from '@/domain/entities/operations'
 import { Attack } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
-import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import type { ViewManager } from '@/view/ViewManager'
 import type { CardTag } from '@/domain/entities/CardTag'
 
@@ -66,6 +65,8 @@ const interactionState = reactive<{
   isAwaitingEnemy: false,
 })
 
+const hoveredCardKey = ref<string | null>(null)
+
 const supportedOperations = new Set<string>([TargetEnemyOperation.TYPE])
 
 const handEntries = computed<HandEntry[]>(() => {
@@ -80,13 +81,35 @@ const handEntries = computed<HandEntry[]>(() => {
 
 const hasCards = computed(() => handEntries.value.length > 0)
 
+const hoveredCardIndex = computed(() =>
+  hoveredCardKey.value
+    ? handEntries.value.findIndex((entry) => entry.key === hoveredCardKey.value)
+    : -1,
+)
+
+function cardWrapperClasses(index: number): Record<string, boolean> {
+  const hoveredIndex = hoveredCardIndex.value
+  return {
+    'hand-card-wrapper--hovered': hoveredIndex === index,
+    'hand-card-wrapper--adjacent-left': hoveredIndex !== -1 && index === hoveredIndex - 1,
+    'hand-card-wrapper--adjacent-right': hoveredIndex !== -1 && index === hoveredIndex + 1,
+  }
+}
+
 function buildHandEntry(card: Card, index: number, currentMana: number): HandEntry {
   const definition = card.definition
   const identifier = card.id !== undefined ? `card-${card.id}` : `card-${index}`
   const operations = definition.operations ?? []
   const affordable = card.cost <= currentMana
 
-  const { description, descriptionSegments, attackStyle, tagEntries } = buildCardPresentation(card, index)
+  const {
+    description,
+    descriptionSegments,
+    attackStyle,
+    primaryTags,
+    effectTags,
+    categoryTags,
+  } = buildCardPresentation(card, index)
 
   return {
     key: identifier,
@@ -99,7 +122,9 @@ function buildHandEntry(card: Card, index: number, currentMana: number): HandEnt
       description,
       descriptionSegments,
       attackStyle,
-      cardTags: tagEntries,
+      primaryTags,
+      effectTags,
+      categoryTags,
     },
     card,
     id: card.id,
@@ -112,67 +137,39 @@ function buildCardPresentation(card: Card, index: number): {
   description: string
   descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
   attackStyle?: AttackStyle
-  tagEntries: CardTagInfo[]
+  primaryTags: CardTagInfo[]
+  effectTags: CardTagInfo[]
+  categoryTags: CardTagInfo[]
 } {
   const definition = card.definition
-  const tagEntries: CardTagInfo[] = []
+  const primaryTags: CardTagInfo[] = []
+  const effectTags: CardTagInfo[] = []
+  const categoryTags: CardTagInfo[] = []
   const seenTagIds = new Set<string>()
 
   let description = card.description
   let descriptionSegments: Array<{ text: string; highlighted?: boolean }> | undefined
   let attackStyle: AttackStyle | undefined
 
-  addTagEntry(definition.type, tagEntries, seenTagIds)
+  addTagEntry(definition.type, primaryTags, seenTagIds)
   if ('target' in definition) {
-    addTagEntry(definition.target, tagEntries, seenTagIds)
+    addTagEntry(definition.target, primaryTags, seenTagIds)
   }
-  for (const tag of card.cardTags ?? []) {
-    addTagEntry(tag, tagEntries, seenTagIds)
-  }
+  addTagEntries(effectTags, card.effectTags)
+  addTagEntries(categoryTags, card.categoryTags)
 
   const action = card.action
   const battle = props.viewManager.battle
 
   if (action instanceof Attack) {
     const damages = action.baseDamages
-    const primaryState = action.inflictStatePreviews[0]
-    const hint: EnemyActionHint = {
-      title: card.title,
-      type: 'attack',
-      icon: '',
-      pattern: {
-        amount: damages.baseAmount,
-        count: damages.baseCount,
-        type: damages.type,
-      },
-      calculatedPattern: undefined,
-      status: primaryState
-        ? {
-            name: primaryState.name,
-            magnitude: primaryState.magnitude ?? 1,
-          }
-        : undefined,
-      description: action.describe(),
-    }
-
-    const formatWithCalculated = (calculated?: { amount: number; count?: number }) => {
-      const formatted = formatEnemyActionLabel(
-        calculated
-          ? {
-              ...hint,
-              calculatedPattern: {
-                amount: calculated.amount,
-                count: calculated.count,
-              },
-            }
-          : hint,
-        { includeTitle: false },
-      )
-      description = formatted.label
-      descriptionSegments = formatted.segments
-    }
-
-    formatWithCalculated()
+    const formatted = action.describeForPlayerCard({
+      baseDamages: damages,
+      displayDamages: damages,
+      inflictedStates: action.inflictStatePreviews,
+    })
+    description = formatted.label
+    descriptionSegments = formatted.segments
 
     const targetEnemyId = props.hoveredEnemyId
     if (battle && interactionState.selectedCardKey === `card-${card.id ?? index}` && targetEnemyId !== null) {
@@ -185,10 +182,13 @@ function buildCardPresentation(card: Card, index: number): {
           attackerStates: battle.player.getStates(),
           defenderStates: enemy.getStates(),
         })
-        formatWithCalculated({
-          amount: calculatedDamages.amount,
-          count: calculatedDamages.count,
+        const recalculated = action.describeForPlayerCard({
+          baseDamages: damages,
+          displayDamages: calculatedDamages,
+          inflictedStates: action.inflictStatePreviews,
         })
+        description = recalculated.label
+        descriptionSegments = recalculated.segments
       }
     }
 
@@ -203,7 +203,7 @@ function buildCardPresentation(card: Card, index: number): {
     }
   }
 
-  return { description, descriptionSegments, attackStyle, tagEntries }
+  return { description, descriptionSegments, attackStyle, primaryTags, effectTags, categoryTags }
 }
 
 function addTagEntry(tag: CardTag | undefined, entries: CardTagInfo[], registry: Set<string>): void {
@@ -216,6 +216,22 @@ function addTagEntry(tag: CardTag | undefined, entries: CardTagInfo[], registry:
     label: `[${tag.name}]`,
     description: tag.description,
   })
+}
+
+function addTagEntries(entries: CardTagInfo[], tags?: readonly CardTag[]): void {
+  if (!tags) {
+    return
+  }
+  for (const tag of tags) {
+    if (entries.some((existing) => existing.id === tag.id)) {
+      continue
+    }
+    entries.push({
+      id: tag.id,
+      label: `[${tag.name}]`,
+      description: tag.description,
+    })
+  }
 }
 
 function isCardDisabled(entry: HandEntry): boolean {
@@ -235,10 +251,11 @@ function isCardDisabled(entry: HandEntry): boolean {
 }
 
 
-function handleCardHoverStart(): void {
+function handleCardHoverStart(entry: HandEntry): void {
   if (interactionState.isAwaitingEnemy) {
     return
   }
+  hoveredCardKey.value = entry.key
   emit('update-footer', '左クリック：使用　右クリック：詳細')
 }
 
@@ -246,6 +263,7 @@ function handleCardHoverEnd(): void {
   if (interactionState.isAwaitingEnemy) {
     return
   }
+  hoveredCardKey.value = null
   emit('reset-footer')
 }
 
@@ -333,6 +351,7 @@ function resetSelection(options?: { keepSelection?: boolean }): void {
     interactionState.selectedCardKey = null
     interactionState.selectedCardId = null
   }
+  hoveredCardKey.value = null
   emit('reset-footer')
   emit('hide-overlay')
 }
@@ -354,37 +373,73 @@ defineExpose({ resetSelection, cancelSelection })
     </div>
     <div v-else-if="isInitializing" class="zone-message">カード情報を読み込み中...</div>
     <div v-else-if="!hasCards" class="zone-message">手札は空です</div>
-    <TransitionGroup v-else name="hand-card" tag="div" class="hand-grid">
-      <ActionCard
-        v-for="entry in handEntries"
+    <TransitionGroup v-else name="hand-card" tag="div" class="hand-track">
+      <div
+        v-for="(entry, index) in handEntries"
         :key="entry.key"
-        v-bind="entry.info"
-        :operations="entry.operations"
-        :affordable="entry.affordable"
-        :selected="interactionState.selectedCardKey === entry.key"
-        :disabled="isCardDisabled(entry)"
-        @click="handleCardClick(entry)"
-        @mouseenter="handleCardHoverStart"
-        @mouseleave="handleCardHoverEnd"
-      />
+        class="hand-card-wrapper"
+        :class="cardWrapperClasses(index)"
+      >
+        <ActionCard
+          v-bind="entry.info"
+          :operations="entry.operations"
+          :affordable="entry.affordable"
+          :selected="interactionState.selectedCardKey === entry.key"
+          :disabled="isCardDisabled(entry)"
+          @click="handleCardClick(entry)"
+          @mouseenter="() => handleCardHoverStart(entry)"
+          @mouseleave="handleCardHoverEnd"
+        />
+      </div>
     </TransitionGroup>
   </section>
 </template>
 
 <style scoped>
 .hand-zone {
-  padding-left: 20px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 12px;
-  min-height: 220px;
+  padding: 30px 32px;
+  min-height: 210px;
 }
 
-.hand-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
+.hand-track {
+  --card-width: 150px;
+  --card-overlap: 48px;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0;
+  min-height: 150px;
+}
+
+.hand-card-wrapper {
+  position: relative;
+  width: var(--card-width);
+  margin-left: calc(-1 * var(--card-overlap));
+  transition: transform 0.2s ease, z-index 0.2s ease;
+  z-index: 1;
+}
+
+.hand-card-wrapper:first-child {
+  margin-left: 0;
+}
+
+.hand-card-wrapper--hovered {
+  z-index: 3;
+  transform: translateY(-8px);
+}
+
+.hand-card-wrapper--adjacent-left {
+  z-index: 1;
+  transform: translateX(-27px);
+}
+
+.hand-card-wrapper--adjacent-right {
+  z-index: 1;
+  transform: translateX(27px);
 }
 
 .zone-message {

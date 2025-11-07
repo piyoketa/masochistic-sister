@@ -1,5 +1,6 @@
 import type { Action, ActionContext } from './Action'
 import type { CardTag } from './CardTag'
+import { CardCategoryTag } from './CardTag'
 import type { State } from './State'
 import type { CardDefinition } from './CardDefinition'
 import type { Battle } from '../battle/Battle'
@@ -24,6 +25,7 @@ export class Card {
   private readonly definitionOverridesValue?: Partial<CardDefinition>
   private readonly definitionValue: CardDefinition
   private extraTags: CardTag[] = []
+  private extraCategoryTags: CardCategoryTag[] = []
 
   constructor(props: CardProps) {
     if (!props.action && !props.state) {
@@ -63,18 +65,65 @@ export class Card {
     return this.stateRef
   }
 
-  get cardTags(): CardTag[] | undefined {
-    const baseTags = this.cardTagsValue ?? this.definition.cardTags ?? []
-    if (this.extraTags.length === 0) {
-      return baseTags.length > 0 ? [...baseTags] : undefined
-    }
-    const combined = [...baseTags]
-    for (const tag of this.extraTags) {
-      if (combined.every((existing) => existing.id !== tag.id)) {
-        combined.push(tag)
+  get effectTags(): CardTag[] | undefined {
+    const collected: CardTag[] = []
+    const append = (tag: CardTag) => {
+      if (collected.every((existing) => existing.id !== tag.id)) {
+        collected.push(tag)
       }
     }
-    return combined
+
+    for (const tag of this.definition.effectTags ?? []) {
+      append(tag)
+    }
+
+    for (const tag of this.cardTagsValue ?? []) {
+      if (!(tag instanceof CardCategoryTag)) {
+        append(tag)
+      }
+    }
+
+    for (const tag of this.extraTags) {
+      if (!(tag instanceof CardCategoryTag)) {
+        append(tag)
+      }
+    }
+
+    return collected.length > 0 ? [...collected] : undefined
+  }
+
+  get categoryTags(): CardCategoryTag[] | undefined {
+    const collected: CardCategoryTag[] = []
+    const append = (tag: CardCategoryTag) => {
+      if (collected.every((existing) => existing.id !== tag.id)) {
+        collected.push(tag)
+      }
+    }
+
+    for (const tag of this.definition.categoryTags ?? []) {
+      append(tag)
+    }
+
+    for (const tag of this.cardTagsValue ?? []) {
+      if (tag instanceof CardCategoryTag) {
+        append(tag)
+      }
+    }
+
+    for (const tag of this.extraCategoryTags) {
+      append(tag)
+    }
+
+    return collected.length > 0 ? [...collected] : undefined
+  }
+
+  get cardTags(): CardTag[] | undefined {
+    const effect = this.effectTags ?? []
+    const category = this.categoryTags ?? []
+    if (effect.length === 0 && category.length === 0) {
+      return undefined
+    }
+    return [...effect, ...category]
   }
 
   get offensiveStates(): State[] | undefined {
@@ -169,6 +218,14 @@ export class Card {
   }
 
   addTemporaryTag(tag: CardTag): void {
+    if (tag instanceof CardCategoryTag) {
+      if (this.extraCategoryTags.some((entry) => entry.id === tag.id)) {
+        return
+      }
+      this.extraCategoryTags = [...this.extraCategoryTags, tag]
+      return
+    }
+
     if (this.extraTags.some((entry) => entry.id === tag.id)) {
       return
     }
@@ -176,10 +233,12 @@ export class Card {
   }
 
   removeTemporaryTag(tagId: string): void {
-    if (this.extraTags.length === 0) {
-      return
+    if (this.extraTags.length > 0) {
+      this.extraTags = this.extraTags.filter((tag) => tag.id !== tagId)
     }
-    this.extraTags = this.extraTags.filter((tag) => tag.id !== tagId)
+    if (this.extraCategoryTags.length > 0) {
+      this.extraCategoryTags = this.extraCategoryTags.filter((tag) => tag.id !== tagId)
+    }
   }
 
   hasTag(tagId: string): boolean {
@@ -204,7 +263,11 @@ export class Card {
     const overrides = this.definitionOverridesValue
 
     if (!overrides) {
-      return { ...baseDefinition }
+      return {
+        ...baseDefinition,
+        effectTags: baseDefinition.effectTags ? [...baseDefinition.effectTags] : undefined,
+        categoryTags: baseDefinition.categoryTags ? [...baseDefinition.categoryTags] : undefined,
+      }
     }
 
     if (overrides.cardType && overrides.cardType !== baseDefinition.cardType) {
@@ -219,12 +282,28 @@ export class Card {
       throw new Error('Card definition overrides cannot change target tag')
     }
 
-    const cardTags =
-      overrides.cardTags !== undefined
-        ? (overrides.cardTags as typeof baseDefinition.cardTags)
-        : baseDefinition.cardTags
+    const effectTags =
+      overrides.effectTags !== undefined
+        ? [...overrides.effectTags]
+        : baseDefinition.effectTags
+        ? [...baseDefinition.effectTags]
+        : undefined
 
-    const { cardType, type, target, cardTags: _ignored, ...rest } = overrides
+    const categoryTags =
+      overrides.categoryTags !== undefined
+        ? [...overrides.categoryTags]
+        : baseDefinition.categoryTags
+        ? [...baseDefinition.categoryTags]
+        : undefined
+
+    const {
+      cardType,
+      type,
+      target,
+      effectTags: _ignoredEffect,
+      categoryTags: _ignoredCategory,
+      ...rest
+    } = overrides
 
     if (baseDefinition.cardType === 'status') {
       return {
@@ -232,7 +311,8 @@ export class Card {
         ...rest,
         cardType: 'status',
         type: baseDefinition.type,
-        cardTags,
+        effectTags,
+        categoryTags,
       }
     }
 
@@ -242,7 +322,8 @@ export class Card {
         ...rest,
         cardType: 'attack',
         type: baseDefinition.type,
-        cardTags,
+        effectTags,
+        categoryTags,
         target: baseDefinition.target,
       }
     }
@@ -252,7 +333,8 @@ export class Card {
       ...rest,
       cardType: 'skill',
       type: baseDefinition.type,
-      cardTags,
+      effectTags,
+      categoryTags,
       target: baseDefinition.target,
     }
   }

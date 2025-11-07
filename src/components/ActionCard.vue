@@ -11,7 +11,9 @@ const props = defineProps<{
   description: string
   descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
   attackStyle?: AttackStyle
-  cardTags?: CardTagInfo[]
+  primaryTags?: CardTagInfo[]
+  effectTags?: CardTagInfo[]
+  categoryTags?: CardTagInfo[]
   operations?: string[]
   selected?: boolean
   disabled?: boolean
@@ -34,7 +36,9 @@ const costClasses = computed(() => [
   { 'card-cost--unavailable': props.affordable === false },
 ])
 
-const tagList = computed(() => props.cardTags ?? [])
+const primaryTagList = computed(() => props.primaryTags ?? [])
+const effectTagList = computed(() => props.effectTags ?? [])
+const categoryTagList = computed(() => props.categoryTags ?? [])
 
 const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
   useDescriptionOverlay()
@@ -110,9 +114,9 @@ function handleTagLeave(tag: CardTagInfo): void {
       <h4>{{ props.title }}</h4>
     </header>
 
-    <div v-if="tagList.length" class="tag-list">
+    <div v-if="primaryTagList.length" class="tag-list tag-list--primary">
       <span
-        v-for="tag in tagList"
+        v-for="tag in primaryTagList"
         :key="tag.id"
         @mouseenter="(event) => handleTagEnter(event, tag)"
         @mousemove="(event) => handleTagMove(event, tag)"
@@ -125,19 +129,41 @@ function handleTagLeave(tag: CardTagInfo): void {
     <section class="card-body">
       <p class="card-description">
         <template v-if="props.descriptionSegments && props.descriptionSegments.length">
-          <span
-            v-for="(segment, index) in props.descriptionSegments"
-            :key="index"
-            :class="{ 'value--boosted': segment.highlighted }"
-          >
-            {{ segment.text }}
-          </span>
+          <template v-for="(segment, index) in props.descriptionSegments" :key="index">
+            <br v-if="segment.text === '\n'" />
+            <span v-else :class="{ 'value--boosted': segment.highlighted }">
+              {{ segment.text }}
+            </span>
+          </template>
         </template>
         <template v-else>
           {{ props.description }}
         </template>
       </p>
+      <div v-if="effectTagList.length" class="tag-list tag-list--effect">
+        <span
+          v-for="tag in effectTagList"
+          :key="tag.id"
+          @mouseenter="(event) => handleTagEnter(event, tag)"
+          @mousemove="(event) => handleTagMove(event, tag)"
+          @mouseleave="() => handleTagLeave(tag)"
+        >
+          {{ tag.label }}
+        </span>
+      </div>
     </section>
+
+    <footer v-if="categoryTagList.length" class="category-tag-list">
+      <span
+        v-for="tag in categoryTagList"
+        :key="tag.id"
+        @mouseenter="(event) => handleTagEnter(event, tag)"
+        @mousemove="(event) => handleTagMove(event, tag)"
+        @mouseleave="() => handleTagLeave(tag)"
+      >
+        {{ tag.label }}
+      </span>
+    </footer>
   </article>
 </template>
 
@@ -151,7 +177,7 @@ function handleTagLeave(tag: CardTagInfo): void {
   min-height: 140px;
   padding: 12px;
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(31, 29, 44, 0.9), rgba(18, 18, 24, 0.95));
+  background: linear-gradient(180deg, rgba(31, 29, 44, 1), rgba(18, 18, 24, 1));
   border: 5px solid transparent;
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.45);
   transition: transform 140ms ease, box-shadow 140ms ease;
@@ -173,17 +199,17 @@ function handleTagLeave(tag: CardTagInfo): void {
 
 .action-card--attack {
   border-color: #d3333f;
-  background: linear-gradient(180deg, rgba(211, 51, 63, 0.16), rgba(18, 18, 24, 0.95));
+  background: linear-gradient(180deg, rgba(211, 51, 63, 1), rgba(18, 18, 24, 1));
 }
 
 .action-card--skill {
   border-color: #2c6fe1;
-  background: linear-gradient(180deg, rgba(44, 111, 225, 0.16), rgba(18, 18, 24, 0.95));
+  background: linear-gradient(180deg, rgba(44, 111, 225, 1), rgba(18, 18, 24, 1));
 }
 
 .action-card--status {
   border-color: #29292d;
-  background: linear-gradient(180deg, rgba(90, 90, 98, 0.4), rgba(34, 34, 42, 0.92));
+  background: linear-gradient(180deg, rgba(90, 90, 98, 1), rgba(34, 34, 42, 1));
 }
 
 .action-card--selected {
@@ -207,7 +233,7 @@ function handleTagLeave(tag: CardTagInfo): void {
   left: -6px;
   padding: 4px 8px;
   border-radius: 12px;
-  background: rgba(255, 227, 115, 0.92);
+  background: rgba(255, 227, 115, 1);
   color: #402510;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -216,7 +242,7 @@ function handleTagLeave(tag: CardTagInfo): void {
 }
 
 .card-cost--unavailable {
-  background: rgba(112, 112, 118, 0.65);
+  background: rgba(112, 112, 118, 1);
   color: rgba(235, 235, 235, 0.85);
   box-shadow: none;
 }
@@ -248,7 +274,35 @@ function handleTagLeave(tag: CardTagInfo): void {
 }
 
 .tag-list span {
+  background: rgba(255, 255, 255, 0.18);
+  padding: 0 6px;
+  border-radius: 10px;
+}
+
+.tag-list--primary {
+  margin-top: 4px;
+}
+
+.tag-list--effect {
+  margin-top: 6px;
+  justify-content: flex-start;
+}
+
+.category-tag-list {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(235, 235, 240, 0.7);
+}
+
+.category-tag-list span {
   background: rgba(255, 255, 255, 0.08);
+  padding: 0 6px;
+  border-radius: 12px;
 }
 
 .card-body {
@@ -259,15 +313,14 @@ function handleTagLeave(tag: CardTagInfo): void {
   color: rgba(245, 245, 245, 0.92);
 }
 
-.card-description .value--boosted {
-  color: #4cff9f;
-}
-
 .card-description {
   margin: 0;
   font-size: 10px;
   line-height: 1.4;
-  white-space: pre-line;
+}
+
+.card-description .value--boosted {
+  color: #4cff9f;
 }
 
 </style>
