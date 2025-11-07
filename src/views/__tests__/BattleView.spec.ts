@@ -294,6 +294,7 @@ describe('BattleView', () => {
     const updatedSnapshot = {
       ...snapshot!,
       player: { ...snapshot!.player, currentHp: 0 },
+      status: 'gameover' as const,
     }
 
     viewManager.applyAnimationCommand({

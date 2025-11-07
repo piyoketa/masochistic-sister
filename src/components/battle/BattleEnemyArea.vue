@@ -42,42 +42,49 @@ const emit = defineEmits<{
   (event: 'cancel-selection'): void
 }>()
 
-const aliveEnemies = computed(() => {
-  const current = props.snapshot
-  if (!current) {
-    return []
-  }
-  return current.enemies.filter((enemy) => enemy.currentHp > 0)
-})
+interface EnemySlot {
+  id: number
+  isActive: boolean
+  enemy?: EnemyInfo
+}
 
-const enemies = computed<EnemyInfo[]>(() => {
+const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
   const battle = props.battle
   if (!current || !battle) {
     return []
   }
 
-  return aliveEnemies.value.map((enemySnapshot) => {
+  return current.enemies.map((enemySnapshot) => {
     const enemy = battle.enemyTeam.findEnemy(enemySnapshot.id) as Enemy | undefined
+    const isActive = enemySnapshot.status === 'active' && enemySnapshot.currentHp > 0
+    const enemyInfo = isActive
+      ? {
+          id: enemySnapshot.id,
+          name: enemySnapshot.name,
+          image: enemy?.image ?? '',
+          hp: {
+            current: enemySnapshot.currentHp,
+            max: enemySnapshot.maxHp,
+          },
+          nextActions: summarizeEnemyActions(battle, enemySnapshot.id),
+          skills:
+            enemy?.actions.map((action) => ({
+              name: action.name,
+              detail: action.describe(),
+            })) ?? [],
+          states: mapStatesToEntries(enemySnapshot.states) ?? [],
+        }
+      : undefined
     return {
       id: enemySnapshot.id,
-      name: enemySnapshot.name,
-      image: enemy?.image ?? '',
-      hp: {
-        current: enemySnapshot.currentHp,
-        max: enemySnapshot.maxHp,
-      },
-      nextActions: summarizeEnemyActions(battle, enemySnapshot.id),
-      skills: enemy?.actions.map((action) => ({
-        name: action.name,
-        detail: action.describe(),
-      })) ?? [],
-      states: mapStatesToEntries(enemySnapshot.states) ?? [],
+      isActive,
+      enemy: enemyInfo,
     }
   })
 })
 
-const hasEnemies = computed(() => enemies.value.length > 0)
+const hasVisibleEnemies = computed(() => enemySlots.value.some((slot) => slot.isActive))
 
 function handleContextMenu(enemy: EnemyInfo, event: MouseEvent): void {
   if (!props.isSelectingEnemy) {
@@ -205,20 +212,26 @@ function buildSkillActionHint(action: BattleAction): EnemyActionHint {
       {{ errorMessage }}
     </div>
     <div v-else-if="isInitializing" class="zone-message">読み込み中...</div>
-    <div v-else-if="!hasEnemies" class="zone-message">表示できる敵がありません</div>
+    <div v-else-if="!hasVisibleEnemies" class="zone-message">表示できる敵がありません</div>
     <TransitionGroup v-else name="enemy-card" tag="div" class="enemy-grid">
-      <EnemyCard
-        v-for="enemy in enemies"
-        :key="enemy.id"
-        :enemy="enemy"
-        :selectable="isSelectingEnemy"
-        :hovered="isSelectingEnemy && hoveredEnemyId === enemy.id"
-        :selected="isSelectingEnemy && hoveredEnemyId === enemy.id"
-        @mouseenter="() => emit('hover-start', enemy.id)"
-        @mouseleave="() => emit('hover-end', enemy.id)"
-        @click="() => emit('enemy-click', enemy)"
-        @contextmenu.prevent="handleContextMenu(enemy, $event)"
-      />
+      <div
+        v-for="slot in enemySlots"
+        :key="slot.id"
+        class="enemy-slot"
+        :class="{ 'enemy-slot--spacer': !slot.isActive }"
+      >
+        <EnemyCard
+          v-if="slot.enemy"
+          :enemy="slot.enemy"
+          :selectable="isSelectingEnemy"
+          :hovered="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
+          :selected="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
+          @mouseenter="() => emit('hover-start', slot.enemy!.id)"
+          @mouseleave="() => emit('hover-end', slot.enemy!.id)"
+          @click="() => emit('enemy-click', slot.enemy!)"
+          @contextmenu.prevent="handleContextMenu(slot.enemy!, $event)"
+        />
+      </div>
     </TransitionGroup>
   </section>
 </template>
@@ -236,6 +249,16 @@ function buildSkillActionHint(action: BattleAction): EnemyActionHint {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 16px;
+}
+
+.enemy-slot {
+  min-height: 200px;
+}
+
+.enemy-slot--spacer {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
 }
 
 .zone-message {

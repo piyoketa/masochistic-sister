@@ -1,3 +1,19 @@
+/*
+ViewManager.ts の責務:
+- `ActionLog` と `Battle` インスタンスを橋渡しし、UI へ渡すスナップショットやアニメーションキューを一元管理する。
+- プレイヤー入力（カード使用やターン終了）を ActionLog エントリへ変換し、`Battle.executeActionLog` を通じて盤面を前進させる。
+- ActionLog のリプレイ／巻き戻し、入力キューのロック制御、UI 通知イベントの発火を担当する。
+
+責務ではないこと:
+- 実際のダメージ計算やバトルルールの適用（`Battle` / `Action` が担う）。
+- UI レイヤー固有の表示・アニメーション制御。ここでは抽象的なコマンド（`AnimationScript`）列のみ生成し、描画は `BattleView` 側に委譲する。
+- ActionLog の永続化やネットワーク同期。本クラスはローカル状態のみを扱う。
+
+主要な通信相手:
+- `Battle`: `createBattle` で生成し、ActionLog に従って進行させる。スナップショットや敵行動サマリの取得もここから行う。
+- `ActionLog` / `ActionLogReplayer`: 新規エントリの push やリプレイ処理を通じて、ログ再生と巻き戻しを実現する。
+- `BattleView`: `ViewManagerEvent` を購読して UI 状態を更新し、プレイヤー入力を `enqueuePlayerInput` として渡す。
+*/
 import { reactive, readonly } from 'vue'
 import { ActionLog, type BattleActionLogEntry } from '@/domain/battle/ActionLog'
 import {

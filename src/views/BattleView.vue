@@ -138,23 +138,9 @@ const playerHpGauge = computed(() => ({
 const deckCount = computed(() => snapshot.value?.deck.length ?? 0)
 const discardCount = computed(() => snapshot.value?.discardPile.length ?? 0)
 // TODO: ドメイン層へ移し、ビュー側に条件判定を残さない
-const isGameOver = computed(() => (snapshot.value?.player.currentHp ?? 0) <= 0)
-const isVictory = computed(() => {
-  const current = snapshot.value
-  if (!current) {
-    return false
-  }
-  const playerHp = current.player?.currentHp ?? 0
-  if (playerHp <= 0) {
-    return false
-  }
-  const enemyList = current.enemies ?? []
-  if (enemyList.length === 0) {
-    return false
-  }
-  const survivingEnemies = enemyList.filter((enemy) => enemy.currentHp > 0)
-  return survivingEnemies.length === 0
-})
+const battleStatus = computed(() => snapshot.value?.status ?? 'in-progress')
+const isGameOver = computed(() => battleStatus.value === 'gameover')
+const isVictory = computed(() => battleStatus.value === 'victory')
 const canRetry = computed(() => viewManager.canRetry())
 const canUndo = computed(() => viewManager.hasUndoableAction())
 
