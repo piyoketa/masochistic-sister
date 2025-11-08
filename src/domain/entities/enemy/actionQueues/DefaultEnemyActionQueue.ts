@@ -1,5 +1,5 @@
 import type { Action } from '../../Action'
-import { EnemyActionQueue } from './EnemyActionQueue'
+import { EnemyActionQueue, type EnemyActionQueueStateSnapshot } from './EnemyActionQueue'
 
 export interface DefaultEnemyActionQueueOptions {
   initialActionType?: abstract new (...args: any[]) => Action
@@ -80,5 +80,20 @@ export class DefaultEnemyActionQueue extends EnemyActionQueue {
     const nextIndex = (this.lastIndex + 1) % count
     this.lastIndex = nextIndex
     return this.actions[nextIndex]
+  }
+
+  override serializeState(): EnemyActionQueueStateSnapshot {
+    return {
+      ...super.serializeState(),
+      metadata: {
+        lastIndex: this.lastIndex,
+      },
+    }
+  }
+
+  override restoreState(snapshot: EnemyActionQueueStateSnapshot): void {
+    super.restoreState(snapshot)
+    const meta = snapshot.metadata ?? {}
+    this.lastIndex = typeof meta.lastIndex === 'number' ? meta.lastIndex : undefined
   }
 }

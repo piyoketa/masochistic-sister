@@ -69,7 +69,6 @@ export interface BattleScenario {
   steps: ScenarioSteps
   references: ScenarioReferences
   operationLog: OperationLog
-  turnDrawPlan: number[]
 }
 
 function finalizeScenarioSteps(partial: Partial<ScenarioSteps>): ScenarioSteps {
@@ -156,7 +155,6 @@ export function createBattleScenario(): BattleScenario {
   const createBattle = () => createBaseBattle()
   const sampleSnapshot = createBattle().getSnapshot()
   const references = collectScenarioReferences(sampleSnapshot)
-  const turnDrawPlan = [5, 2, 2, 2]
   const operationLog = new OperationLog()
 
   const findMemoryCardId = (battle: Battle, title: string): number => {
@@ -289,9 +287,7 @@ export function createBattleScenario(): BattleScenario {
   const operationReplayer = new OperationLogReplayer({
     createBattle,
     operationLog,
-    turnDrawPlan,
-    defaultDrawCount: turnDrawPlan[turnDrawPlan.length - 1] ?? 2,
-    onEntryAppended: (entry, index) => {
+    onEntryAppended: (entry, { index }) => {
       if (entry.type === 'battle-start') {
         recordStep('battleStart', index)
       } else if (entry.type === 'start-player-turn') {
@@ -327,7 +323,6 @@ export function createBattleScenario(): BattleScenario {
     steps: finalizedSteps,
     references,
     operationLog,
-    turnDrawPlan,
   }
 }
 

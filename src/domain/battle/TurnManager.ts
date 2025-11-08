@@ -56,4 +56,8 @@ export class TurnManager {
       phase: 'player-draw',
     }
   }
+
+  setState(state: TurnState): void {
+    this.state = { ...state }
+  }
 }

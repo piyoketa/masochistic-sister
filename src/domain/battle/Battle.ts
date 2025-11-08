@@ -2,7 +2,7 @@
 import { Card } from '../entities/Card'
 import type { CardOperation } from '../entities/operations'
 import type { Player } from '../entities/Player'
-import type { Enemy, EnemyStatus } from '../entities/Enemy'
+import type { Enemy, EnemyQueueSnapshot, EnemyStatus } from '../entities/Enemy'
 import type { EnemyTeam } from '../entities/EnemyTeam'
 import type { Action } from '../entities/Action'
 import type { State } from '../entities/State'
@@ -86,6 +86,14 @@ export interface StateEventLogEntry {
   subjectId?: number
   stateId: string
   payload?: unknown
+}
+
+export interface FullBattleSnapshot {
+  snapshot: BattleSnapshot
+  enemyQueues: Array<{
+    enemyId: number
+    queue: EnemyQueueSnapshot
+  }>
 }
 
 export interface EnemyTurnSummary {
@@ -252,7 +260,69 @@ export class Battle {
     }
   }
 
-  initialize(): void {}
+  captureFullSnapshot(): FullBattleSnapshot {
+    const base = this.getSnapshot()
+    const enemyQueues = this.enemyTeamValue.members.map((enemy) => ({
+      enemyId: enemy.id ?? -1,
+      queue: enemy.serializeQueueSnapshot(),
+    }))
+
+    return {
+      snapshot: base,
+      enemyQueues,
+    }
+  }
+
+  restoreFullSnapshot(state: FullBattleSnapshot): void {
+    const base = state.snapshot
+    this.statusValue = base.status
+    this.playerValue.setCurrentHp(base.player.currentHp)
+    this.playerValue.setCurrentMana(base.player.currentMana)
+
+    this.deckValue.replace(base.deck)
+    this.handValue.replace(base.hand)
+    this.discardPileValue.replace(base.discardPile)
+    this.exilePileValue.replace(base.exilePile)
+    this.eventsValue.replace(base.events)
+    this.turnValue.setState(base.turn)
+    this.logValue.replace(base.log)
+
+    const idToEnemy = new Map<number, Enemy>()
+    for (const enemy of this.enemyTeamValue.members) {
+      if (enemy.id !== undefined) {
+        idToEnemy.set(enemy.id, enemy)
+      }
+    }
+
+    for (const enemySnapshot of base.enemies) {
+      const enemy = idToEnemy.get(enemySnapshot.id)
+      if (!enemy) {
+        continue
+      }
+      enemy.setCurrentHp(enemySnapshot.currentHp)
+      enemy.setStatus(enemySnapshot.status)
+      enemy.setHasActedThisTurn(enemySnapshot.hasActedThisTurn)
+      enemy.replaceStates(enemySnapshot.states)
+      const queueState = state.enemyQueues.find((entry) => entry.enemyId === enemySnapshot.id)
+      if (queueState) {
+        enemy.restoreQueueSnapshot(queueState.queue)
+      }
+    }
+
+    this.resolvedEventsBuffer = []
+    this.stateEventBuffer = []
+  }
+
+  initialize(): void {
+    // バトル開始時は山札の上から3枚を初期手札として配る。最初のターン開始時ドローとは切り分け、カードの並びを固定できるようにする。
+    this.turnValue.setState({
+      turnCount: 1,
+      activeSide: 'player',
+      phase: 'player-draw',
+    })
+    this.playerValue.resetMana()
+    this.drawForPlayer(3)
+  }
 
   startPlayerTurn(): void {
     this.turn.startPlayerTurn()

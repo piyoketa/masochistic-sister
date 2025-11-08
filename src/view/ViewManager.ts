@@ -1,41 +1,41 @@
 /*
 ViewManager.ts の責務:
-- `ActionLog` と `Battle` インスタンスを橋渡しし、UI へ渡すスナップショットやアニメーションキューを一元管理する。
-- プレイヤー入力（カード使用やターン終了）を ActionLog エントリへ変換し、`Battle.executeActionLog` を通じて盤面を前進させる。
-- ActionLog のリプレイ／巻き戻し、入力キューのロック制御、UI 通知イベントの発火を担当する。
+- OperationLog（プレイヤー操作列）と Battle/ActionLog を橋渡しし、UI が参照するスナップショットやアニメーションキューを管理する。
+- OperationLog を追加・巻き戻しした際に、OperationRunner を用いて Battle/ActionLog を再構築・進行させる。
+- View 層からの入力キューとロック制御、イベント通知を担う。
 
 責務ではないこと:
-- 実際のダメージ計算やバトルルールの適用（`Battle` / `Action` が担う）。
-- UI レイヤー固有の表示・アニメーション制御。ここでは抽象的なコマンド（`AnimationScript`）列のみ生成し、描画は `BattleView` 側に委譲する。
-- ActionLog の永続化やネットワーク同期。本クラスはローカル状態のみを扱う。
-
-主要な通信相手:
-- `Battle`: `createBattle` で生成し、ActionLog に従って進行させる。スナップショットや敵行動サマリの取得もここから行う。
-- `ActionLog` / `ActionLogReplayer`: 新規エントリの push やリプレイ処理を通じて、ログ再生と巻き戻しを実現する。
-- `BattleView`: `ViewManagerEvent` を購読して UI 状態を更新し、プレイヤー入力を `enqueuePlayerInput` として渡す。
+- ダメージ計算や敵行動などのドメインロジックそのもの（Battle/Action が担う）。
+- 具体的な描画や CSS アニメーション。ここでは AnimationScript のキューを管理するだけで、描画は `BattleView` 側へ委譲する。
+- OperationLog の永続化。現状ではメモリ内のセッションのみを扱う。
 */
 import { reactive, readonly } from 'vue'
+import type { CardOperation } from '@/domain/entities/operations'
+import type { Enemy } from '@/domain/entities/Enemy'
+import type { Card } from '@/domain/entities/Card'
+import { OperationLog, type OperationLogEntry } from '@/domain/battle/OperationLog'
+import {
+  OperationRunner,
+  OperationRunnableError,
+  type EntryAppendContext,
+} from '@/domain/battle/OperationRunner'
 import { ActionLog, type BattleActionLogEntry } from '@/domain/battle/ActionLog'
 import {
-  ActionLogReplayer,
   type ResolvedBattleActionLogEntry,
   type ResolvedPlayCardOperation,
   type EnemySummary,
   type CardSummary,
 } from '@/domain/battle/ActionLogReplayer'
 import type { Battle, BattleSnapshot } from '@/domain/battle/Battle'
-import type { CardOperation } from '@/domain/entities/operations'
-import type { Enemy } from '@/domain/entities/Enemy'
-import type { Card } from '@/domain/entities/Card'
 
 export interface ViewManagerConfig {
   createBattle: () => Battle
-  actionLog?: ActionLog
+  operationLog?: OperationLog
   playbackOptions?: {
     defaultSpeed?: number
     autoPlay?: boolean
   }
-  initialActionLogIndex?: number
+  initialOperationIndex?: number
 }
 
 export type PlayerInput =
@@ -101,41 +101,43 @@ export type ViewManagerEventListener = (event: ViewManagerEvent) => void
 
 export class ViewManager {
   private readonly createBattle: () => Battle
-  private readonly actionLog: ActionLog
+  private readonly operationLog: OperationLog
   private readonly stateValue: BattleViewState
   private readonly stateProxy: Readonly<BattleViewState>
   private readonly listeners = new Set<ViewManagerEventListener>()
-  private readonly initialActionLogIndex: number
+  private readonly initialOperationIndex: number
   private animationSequence = 0
   private isProcessingInputQueue = false
-  private initialExecutedIndex = -1
-  private playerActionHistory: number[] = []
-
-  private battleInstance?: Battle
   private isInitializing = false
+
+  private actionLog: ActionLog = new ActionLog()
+  private battleInstance?: Battle
+  private executedOperationIndex = -1
+  private operationRunner?: OperationRunner
+  private suspendRunnerEvents = false
 
   constructor(config: ViewManagerConfig) {
     this.createBattle = config.createBattle
-    const sourceActionLog = config.actionLog ?? new ActionLog()
-    this.actionLog = new ActionLog(sourceActionLog.toArray())
-    this.initialActionLogIndex = config.initialActionLogIndex ?? -1
+    const sourceOperationLog = config.operationLog ?? new OperationLog()
+    const sourceEntries = sourceOperationLog.toArray()
+    const defaultInitialOperationIndex = sourceEntries.length - 1
+    this.initialOperationIndex =
+      config.initialOperationIndex !== undefined
+        ? Math.min(config.initialOperationIndex, defaultInitialOperationIndex)
+        : defaultInitialOperationIndex
+    const initialEntries =
+      this.initialOperationIndex >= 0 ? sourceEntries.slice(0, this.initialOperationIndex + 1) : []
+    this.operationLog = new OperationLog(initialEntries)
 
     const defaultSpeed = config.playbackOptions?.defaultSpeed ?? 1
     const autoPlay = config.playbackOptions?.autoPlay ?? false
-    const normalizedInitialIndex = Math.max(-1, this.initialActionLogIndex)
-    const executedIndex =
-      this.actionLog.length === 0
-        ? -1
-        : normalizedInitialIndex >= 0
-          ? Math.min(normalizedInitialIndex, this.actionLog.length - 1)
-          : -1
 
     this.stateValue = reactive({
       snapshot: undefined,
       previousSnapshot: undefined,
       lastResolvedEntry: undefined,
-      actionLogLength: this.actionLog.length,
-      executedIndex,
+      actionLogLength: 0,
+      executedIndex: -1,
       playback: {
         status: 'idle',
         speed: defaultSpeed,
@@ -150,6 +152,65 @@ export class ViewManager {
     }) as unknown as BattleViewState
 
     this.stateProxy = readonly(this.stateValue) as Readonly<BattleViewState>
+  }
+
+  private executeOperationWithRunner(
+    operation: OperationLogEntry,
+    options: { operationIndex?: number; operationLog?: OperationLog } = {},
+  ): void {
+    const runner = this.operationRunner
+    const battle = this.battleInstance
+    if (!runner || !battle) {
+      throw new Error('OperationRunner is not initialized')
+    }
+
+    const sourceLog = options.operationLog ?? this.operationLog
+    switch (operation.type) {
+      case 'play-card': {
+        const cardId = sourceLog.resolveValue(operation.card, battle)
+        const resolvedOperations =
+          operation.operations?.map((op) => ({
+            type: op.type,
+            payload:
+              op.payload === undefined ? undefined : sourceLog.resolveValue(op.payload, battle),
+          })) ?? undefined
+        runner.playCard(cardId, resolvedOperations)
+        break
+      }
+      case 'end-player-turn': {
+        runner.endPlayerTurn()
+        break
+      }
+      default: {
+        const exhaustiveCheck: never = operation
+        throw new Error(`Unsupported operation type: ${(exhaustiveCheck as { type: string }).type}`)
+      }
+    }
+
+    if (typeof options.operationIndex === 'number') {
+      this.executedOperationIndex = options.operationIndex
+    }
+  }
+
+  private syncStateFromBattle(): void {
+    const battle = this.battleInstance
+    this.stateValue.previousSnapshot = this.stateValue.snapshot
+
+    if (!battle) {
+      this.stateValue.snapshot = undefined
+      this.stateValue.lastResolvedEntry = undefined
+      this.stateValue.actionLogLength = this.actionLog.length
+      this.stateValue.executedIndex = this.actionLog.length - 1
+      this.notifyState()
+      return
+    }
+
+    this.stateValue.snapshot = battle.getSnapshot()
+    const lastEntry = this.actionLog.at(this.actionLog.length - 1)
+    this.stateValue.lastResolvedEntry = lastEntry ? this.resolveActionLogEntry(lastEntry, battle) : undefined
+    this.stateValue.actionLogLength = this.actionLog.length
+    this.stateValue.executedIndex = this.actionLog.length - 1
+    this.notifyState()
   }
 
   get state(): Readonly<BattleViewState> {
@@ -182,35 +243,9 @@ export class ViewManager {
     this.notifyState()
 
     try {
-      const replayer = new ActionLogReplayer({
-        createBattle: this.createBattle,
-        actionLog: this.actionLog,
-      })
-
-      const normalizedInitialIndex = Math.max(-1, this.initialActionLogIndex)
-      const targetIndex =
-        this.actionLog.length === 0
-          ? -1
-          : Math.min(normalizedInitialIndex, this.actionLog.length - 1)
-      const effectiveIndex = Number.isFinite(targetIndex) ? targetIndex : -1
-
-      const result = replayer.run(effectiveIndex)
-
-      this.actionLog.truncateAfter(effectiveIndex)
-      this.rebuildPlayerActionHistory(effectiveIndex)
-
-      this.battleInstance = result.battle
-      this.stateValue.previousSnapshot = result.initialSnapshot
-      this.stateValue.snapshot = result.snapshot
-      this.stateValue.lastResolvedEntry = result.lastEntry
-      this.stateValue.actionLogLength = this.actionLog.length
-      this.stateValue.executedIndex = effectiveIndex
+      this.rebuildFromOperations(this.initialOperationIndex)
       this.stateValue.playback.status = 'idle'
       this.setInputLock(false, { silent: true })
-      void this.processInputQueue()
-
-      this.initialExecutedIndex = effectiveIndex
-
       this.notifyState()
       this.emit({ type: 'initialized', state: this.stateProxy })
     } catch (unknownError) {
@@ -240,40 +275,26 @@ export class ViewManager {
   }
 
   canRetry(): boolean {
-    return this.stateValue.executedIndex !== this.initialExecutedIndex
+    return true
   }
 
   hasUndoableAction(): boolean {
-    // Reference reactive state to ensure Vue reactivity tracks changes
-    const executedIndex = this.stateValue.executedIndex
-    void this.stateValue.actionLogLength
-    const lastActionIndex = this.playerActionHistory[this.playerActionHistory.length - 1]
-    return (
-      lastActionIndex !== undefined &&
-      lastActionIndex > this.initialExecutedIndex &&
-      executedIndex >= lastActionIndex
-    )
+    return this.operationLog.length - 1 > this.initialOperationIndex
   }
 
   resetToInitialState(): void {
-    const targetIndex = this.initialExecutedIndex
-    this.actionLog.truncateAfter(targetIndex)
-    this.rebuildPlayerActionHistory(targetIndex)
-    this.reloadBattleAt(targetIndex)
+    this.operationLog.truncateAfter(this.initialOperationIndex)
+    this.rebuildFromOperations(this.initialOperationIndex)
   }
 
   undoLastPlayerAction(): boolean {
-    const lastActionIndex = this.playerActionHistory[this.playerActionHistory.length - 1]
-    if (lastActionIndex === undefined || lastActionIndex <= this.initialExecutedIndex) {
+    const lastIndex = this.operationLog.length - 1
+    if (lastIndex <= this.initialOperationIndex) {
       return false
     }
 
-    this.playerActionHistory.pop()
-
-    const truncateIndex = lastActionIndex - 1
-    this.actionLog.truncateAfter(truncateIndex)
-    this.trimPlayerActionHistory(truncateIndex)
-    this.reloadBattleAt(truncateIndex)
+    this.operationLog.truncateAfter(lastIndex - 1)
+    this.rebuildFromOperations(lastIndex - 1)
     return true
   }
 
@@ -366,37 +387,8 @@ export class ViewManager {
     }
   }
 
-  private startNextAnimation(): void {
-    if (this.stateValue.playback.current) {
-      return
-    }
-
-    const next = this.stateValue.playback.queue.shift()
-    if (!next) {
-      if (this.stateValue.playback.status !== 'idle') {
-        this.stateValue.playback.status = 'idle'
-        this.setInputLock(false)
-        this.notifyState()
-      }
-      return
-    }
-
-    this.stateValue.playback.current = {
-      script: next,
-      startedAt: Date.now(),
-    }
-    this.stateValue.playback.status = 'playing'
-    this.setInputLock(true)
-    this.notifyState()
-    this.emit({ type: 'animation-start', script: next })
-  }
-
   private async processInputQueue(): Promise<void> {
     if (this.isProcessingInputQueue) {
-      return
-    }
-
-    if (!this.battleInstance) {
       return
     }
 
@@ -419,142 +411,106 @@ export class ViewManager {
   }
 
   private applyPlayerInput(input: PlayerInput): void {
-    const battle = this.battleInstance
-    if (!battle) {
-      throw new Error('Battle is not initialized')
-    }
-
+    const operation = this.convertInputToOperation(input)
     this.stateValue.input.queued.shift()
     this.notifyState()
 
+    if (!operation) {
+      return
+    }
+
+    try {
+      this.applyOperation(operation)
+    } catch (error) {
+      throw error instanceof Error ? error : new Error(String(error))
+    }
+  }
+
+  private convertInputToOperation(input: PlayerInput): OperationLogEntry | null {
     switch (input.type) {
-      case 'play-card': {
-        const operations = input.operations?.map((operation) => ({
-          type: operation.type,
-          payload: operation.payload,
-        }))
-        this.appendActionLogEntry(
-          {
-            type: 'play-card',
-            card: input.cardId,
-            operations,
-          },
-          { playerAction: true },
-        )
-        break
-      }
-      case 'end-player-turn': {
-        this.resolveEndPlayerTurnSequence()
-        break
-      }
-      case 'start-battle': {
-        this.appendActionLogEntry({ type: 'battle-start' })
-        break
-      }
-      case 'custom': {
-        return
-      }
+      case 'play-card':
+        return {
+          type: 'play-card',
+          card: input.cardId,
+          operations: input.operations?.map((operation) => ({
+            type: operation.type,
+            payload: operation.payload,
+          })),
+        }
+      case 'end-player-turn':
+        return { type: 'end-player-turn' }
+      case 'start-battle':
+      case 'custom':
+        return null
       default:
         throw new Error(`Unsupported player input type: ${(input as { type: string }).type}`)
     }
-
   }
 
-  private updateSnapshotFromBattle(entryIndex: number): void {
-    const battle = this.battleInstance
-    if (!battle) {
-      return
-    }
-
-    const snapshot = battle.getSnapshot()
-    const entry = this.actionLog.at(entryIndex)
-    const resolved = entry ? this.resolveActionLogEntry(entry, battle) : undefined
-
-    this.stateValue.previousSnapshot = this.stateValue.snapshot
-    this.stateValue.snapshot = snapshot
-    this.stateValue.lastResolvedEntry = resolved
-    this.stateValue.actionLogLength = this.actionLog.length
-    this.stateValue.executedIndex = entryIndex
-
-    this.notifyState()
-  }
-
-  private appendActionLogEntry(
-    entry: BattleActionLogEntry,
-    options: { playerAction?: boolean } = {},
-  ): number {
-    const battle = this.battleInstance
-    if (!battle) {
-      throw new Error('Battle is not initialized')
-    }
-
-    const index = this.actionLog.push(entry)
-    battle.executeActionLog(this.actionLog, index)
-    this.updateSnapshotFromBattle(index)
-    if (options.playerAction) {
-      this.playerActionHistory.push(index)
-    }
-    return index
-  }
-
-  private resolveEndPlayerTurnSequence(): void {
-    const battle = this.battleInstance
-    if (!battle) {
-      return
-    }
-
-    this.appendActionLogEntry({ type: 'end-player-turn' }, { playerAction: true })
-
-    const desiredHandSize = 5
-    const currentHandSize = battle.hand.list().length
-    const drawCount = Math.max(0, desiredHandSize - currentHandSize)
-
-    this.appendActionLogEntry({
-      type: 'start-player-turn',
-      draw: drawCount > 0 ? drawCount : undefined,
-    })
-  }
-
-  private normalizeAnimationScript(script: AnimationScriptInput): AnimationScript {
-    const id = script.id ?? this.generateAnimationId()
-    return {
-      id,
-      entryIndex: script.entryIndex,
-      commands: script.commands,
-      resolvedEntry: script.resolvedEntry,
-      metadata: script.metadata,
+  private applyOperation(operation: OperationLogEntry): void {
+    const operationIndex = this.operationLog.push(operation)
+    try {
+      if (!this.operationRunner) {
+        this.rebuildFromOperations(operationIndex)
+        return
+      }
+      this.executeOperationWithRunner(operation, { operationIndex })
+      this.syncStateFromBattle()
+    } catch (error) {
+      this.operationLog.truncateAfter(operationIndex - 1)
+      this.rebuildFromOperations(this.operationLog.length - 1)
+      throw error
     }
   }
 
-  private generateAnimationId(): string {
-    this.animationSequence += 1
-    return `animation-script-${this.animationSequence}`
-  }
+  private rebuildFromOperations(targetOperationIndex: number): void {
+    const clampedIndex =
+      this.operationLog.length === 0 ? -1 : Math.min(targetOperationIndex, this.operationLog.length - 1)
 
-  private reloadBattleAt(targetIndex: number): void {
-    const previousSnapshot = this.stateValue.snapshot
-    const normalizedIndex =
-      this.actionLog.length === 0 ? -1 : Math.min(targetIndex, this.actionLog.length - 1)
-    const replayer = new ActionLogReplayer({
-      createBattle: this.createBattle,
-      actionLog: this.actionLog,
-    })
-    const result = replayer.run(normalizedIndex)
+    this.suspendRunnerEvents = true
+    try {
+      const battle = this.createBattle()
+      const actionLog = new ActionLog()
+      const runner = new OperationRunner({
+        battle,
+        actionLog,
+        onEntryAppended: (entry, context) => this.handleRunnerEntryAppended(entry, context),
+      })
 
-    this.battleInstance = result.battle
-    this.stateValue.previousSnapshot = previousSnapshot
-    this.stateValue.snapshot = result.snapshot
-    this.stateValue.lastResolvedEntry = result.lastEntry
-    this.stateValue.actionLogLength = this.actionLog.length
-    this.stateValue.executedIndex = normalizedIndex
+      this.battleInstance = battle
+      this.actionLog = actionLog
+      this.operationRunner = runner
+
+      runner.initializeIfNeeded()
+
+      for (let index = 0; index <= clampedIndex; index += 1) {
+        const operation = this.operationLog.at(index)
+        if (!operation) {
+          continue
+        }
+        this.executeOperationWithRunner(operation, { operationIndex: index })
+      }
+
+      this.executedOperationIndex = clampedIndex
+    } catch (error) {
+      this.operationRunner = undefined
+      this.battleInstance = undefined
+      this.actionLog = new ActionLog()
+      if (error instanceof OperationRunnableError) {
+        throw error
+      }
+      throw error instanceof Error ? error : new Error(String(error))
+    } finally {
+      this.suspendRunnerEvents = false
+    }
+
     this.stateValue.playback.queue.length = 0
     this.stateValue.playback.current = undefined
     this.stateValue.playback.status = 'idle'
-    this.stateValue.input.locked = false
+    this.setInputLock(false, { silent: true })
     this.stateValue.input.queued.length = 0
 
-    this.notifyState()
-    this.emit({ type: 'state', state: this.stateProxy })
+    this.syncStateFromBattle()
   }
 
   private resolveActionLogEntry(
@@ -569,7 +525,7 @@ export class ViewManager {
       case 'play-card':
         return this.resolvePlayCardEntry(entry, battle)
       case 'end-player-turn':
-        return this.resolveEndPlayerTurnEntry()
+        return { type: 'end-player-turn' }
       case 'victory':
       case 'gameover':
         return { type: entry.type }
@@ -646,10 +602,6 @@ export class ViewManager {
     }
   }
 
-  private resolveEndPlayerTurnEntry(): ResolvedBattleActionLogEntry {
-    return { type: 'end-player-turn' }
-  }
-
   private extractEnemyId(payload: unknown): number {
     if (typeof payload === 'number' && Number.isInteger(payload) && payload >= 0) {
       return payload
@@ -711,28 +663,59 @@ export class ViewManager {
     }
   }
 
-  private isPlayerActionEntry(entry: BattleActionLogEntry): boolean {
-    return entry.type === 'play-card' || entry.type === 'end-player-turn'
+  private normalizeAnimationScript(script: AnimationScriptInput): AnimationScript {
+    const id = script.id ?? this.generateAnimationId()
+    return {
+      id,
+      entryIndex: script.entryIndex,
+      commands: script.commands,
+      resolvedEntry: script.resolvedEntry,
+      metadata: script.metadata,
+    }
   }
 
-  private trimPlayerActionHistory(upToIndex: number): void {
-    this.playerActionHistory = this.playerActionHistory.filter((index) => index <= upToIndex)
+  private generateAnimationId(): string {
+    this.animationSequence += 1
+    return `animation-script-${this.animationSequence}`
   }
 
-  private rebuildPlayerActionHistory(upToIndex: number): void {
-    if (upToIndex < 0) {
-      this.playerActionHistory = []
+  private handleRunnerEntryAppended(entry: BattleActionLogEntry, _context: EntryAppendContext): void {
+    if (this.suspendRunnerEvents) {
       return
     }
 
-    const history: number[] = []
-    for (let index = 0; index <= upToIndex; index += 1) {
-      const entry = this.actionLog.at(index)
-      if (entry && this.isPlayerActionEntry(entry)) {
-        history.push(index)
-      }
+    const battle = this.battleInstance
+    if (!battle) {
+      return
     }
-    this.playerActionHistory = history
+
+    this.stateValue.lastResolvedEntry = this.resolveActionLogEntry(entry, battle) ?? this.stateValue.lastResolvedEntry
+    this.stateValue.actionLogLength = this.actionLog.length
+  }
+
+  private startNextAnimation(): void {
+    if (this.stateValue.playback.current) {
+      return
+    }
+
+    const next = this.stateValue.playback.queue.shift()
+    if (!next) {
+      if (this.stateValue.playback.status !== 'idle') {
+        this.stateValue.playback.status = 'idle'
+        this.setInputLock(false)
+        this.notifyState()
+      }
+      return
+    }
+
+    this.stateValue.playback.current = {
+      script: next,
+      startedAt: Date.now(),
+    }
+    this.stateValue.playback.status = 'playing'
+    this.setInputLock(true)
+    this.notifyState()
+    this.emit({ type: 'animation-start', script: next })
   }
 
   private setInputLock(locked: boolean, options: { silent?: boolean } = {}): void {

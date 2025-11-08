@@ -11,7 +11,7 @@ import {
   type ViewManagerEvent,
 } from '@/view/ViewManager'
 import type { CardOperation } from '@/domain/entities/operations'
-import { ActionLog } from '@/domain/battle/ActionLog'
+import { OperationLog } from '@/domain/battle/OperationLog'
 import type { Battle } from '@/domain/battle/Battle'
 import {
   createDefaultSnailBattle,
@@ -141,8 +141,14 @@ const discardCount = computed(() => snapshot.value?.discardPile.length ?? 0)
 const battleStatus = computed(() => snapshot.value?.status ?? 'in-progress')
 const isGameOver = computed(() => battleStatus.value === 'gameover')
 const isVictory = computed(() => battleStatus.value === 'victory')
-const canRetry = computed(() => viewManager.canRetry())
-const canUndo = computed(() => viewManager.hasUndoableAction())
+const canRetry = computed(() => {
+  void managerState.snapshot
+  return viewManager.canRetry()
+})
+const canUndo = computed(() => {
+  void managerState.actionLogLength
+  return viewManager.hasUndoableAction()
+})
 
 const handCardCount = computed(() => snapshot.value?.hand.length ?? 0)
 
@@ -319,16 +325,11 @@ function handleContextMenu(): void {
 }
 
 function createDefaultViewManager(createBattle: () => Battle): ViewManager {
-  const actionLog = new ActionLog([
-    { type: 'battle-start' },
-    { type: 'start-player-turn', draw: 5 },
-  ])
-
   return new ViewManager({
     createBattle,
-    actionLog,
+    operationLog: new OperationLog(),
     playbackOptions: { defaultSpeed: 1, autoPlay: false },
-    initialActionLogIndex: 1,
+    initialOperationIndex: -1,
   })
 }
 

@@ -68,4 +68,9 @@ export class BattleEventQueue {
 
     return ready
   }
+
+  replace(events: BattleEvent[]): void {
+    this.events.length = 0
+    this.events.push(...events.map((event) => ({ ...event, payload: { ...event.payload } })))
+  }
 }

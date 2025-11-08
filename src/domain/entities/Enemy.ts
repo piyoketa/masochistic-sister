@@ -1,8 +1,9 @@
 import type { Action } from './Action'
 import type { State } from './State'
 import type { Battle } from '../battle/Battle'
-import type { EnemyActionQueue } from './enemy/actionQueues'
+import type { EnemyActionQueue, EnemyActionQueueStateSnapshot } from './enemy/actionQueues'
 import { DefaultEnemyActionQueue } from './enemy/actionQueues'
+import type { Player } from './Player'
 
 export interface EnemyProps {
   name: string
@@ -19,6 +20,11 @@ export interface EnemyProps {
 }
 
 export type EnemyStatus = 'active' | 'defeated' | 'escaped'
+
+export interface EnemyQueueSnapshot {
+  queueState: EnemyActionQueueStateSnapshot
+  actionHistory: Action[]
+}
 
 export class Enemy {
   private readonly nameValue: string
@@ -253,6 +259,36 @@ export class Enemy {
         action,
       }),
     )
+  }
+
+  serializeQueueSnapshot(): EnemyQueueSnapshot {
+    return {
+      queueState: this.actionQueue.serializeState(),
+      actionHistory: [...this.actionHistory],
+    }
+  }
+
+  restoreQueueSnapshot(snapshot: EnemyQueueSnapshot): void {
+    this.actionQueue.restoreState(snapshot.queueState)
+    this.actionHistory.length = 0
+    this.actionHistory.push(...snapshot.actionHistory)
+  }
+
+  setCurrentHp(value: number): void {
+    this.currentHpValue = Math.max(0, Math.min(this.maxHpValue, Math.floor(value)))
+  }
+
+  setStatus(status: EnemyStatus): void {
+    this.statusValue = status
+  }
+
+  setHasActedThisTurn(acted: boolean): void {
+    this.actedThisTurn = acted
+  }
+
+  replaceStates(states: State[]): void {
+    this.stateList.length = 0
+    this.stateList.push(...states)
   }
 
   private forEachState(consumer: (state: State) => void): void {

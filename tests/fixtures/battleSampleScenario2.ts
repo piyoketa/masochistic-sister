@@ -68,7 +68,6 @@ export interface BattleScenario2 {
   steps: Scenario2Steps
   references: Scenario2References
   operationLog: OperationLog
-  turnDrawPlan: number[]
 }
 
 function finalizeScenario2Steps(partial: Partial<Scenario2Steps>): Scenario2Steps {
@@ -183,7 +182,6 @@ export function createBattleScenario2(): BattleScenario2 {
   const sampleSnapshot = createBattle().getSnapshot()
   const references = collectScenario2References(sampleSnapshot)
   const operationLog = new OperationLog()
-  const turnDrawPlan = [5, 2, 2, 2]
   const operationStepHints: Partial<Record<number, Scenario2StepKey>> = {}
 
   const registerOperation = (
@@ -252,9 +250,7 @@ export function createBattleScenario2(): BattleScenario2 {
   const operationReplayer = new OperationLogReplayer({
     createBattle,
     operationLog,
-    turnDrawPlan,
-    defaultDrawCount: turnDrawPlan[turnDrawPlan.length - 1] ?? 2,
-    onEntryAppended: (entry, index) => {
+    onEntryAppended: (entry, { index }) => {
       if (entry.type === 'battle-start') {
         recordStep('battleStart', index)
       } else if (entry.type === 'start-player-turn') {
@@ -290,7 +286,6 @@ export function createBattleScenario2(): BattleScenario2 {
     steps,
     references,
     operationLog,
-    turnDrawPlan,
   }
 }
 

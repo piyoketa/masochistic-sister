@@ -27,4 +27,10 @@ export class BattleLog {
     this.entries.length = 0
     this.sequence = 0
   }
+
+  replace(entries: BattleLogEntry[]): void {
+    this.entries.length = 0
+    this.entries.push(...entries)
+    this.sequence = entries.length
+  }
 }

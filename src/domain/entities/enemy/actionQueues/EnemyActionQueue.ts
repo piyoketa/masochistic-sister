@@ -1,5 +1,11 @@
 import type { Action } from '../../Action'
 
+export interface EnemyActionQueueStateSnapshot {
+  pending: Action[]
+  actions: Action[]
+  metadata?: Record<string, unknown>
+}
+
 export abstract class EnemyActionQueue {
   protected actions: Action[] = []
   protected pending: Action[] = []
@@ -63,4 +69,16 @@ export abstract class EnemyActionQueue {
   protected onActionDiscarded(_action: Action): void {}
 
   protected abstract populate(): void
+
+  serializeState(): EnemyActionQueueStateSnapshot {
+    return {
+      pending: [...this.pending],
+      actions: [...this.actions],
+    }
+  }
+
+  restoreState(snapshot: EnemyActionQueueStateSnapshot): void {
+    this.pending = [...snapshot.pending]
+    this.actions = [...snapshot.actions]
+  }
 }

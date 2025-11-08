@@ -22,4 +22,9 @@ export class ExilePile {
   clear(): void {
     this.cards.length = 0
   }
+
+  replace(cards: Card[]): void {
+    this.cards.length = 0
+    this.cards.push(...cards)
+  }
 }

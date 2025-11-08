@@ -63,4 +63,9 @@ export class Deck {
   addManyToBottom(cards: Card[]): void {
     this.cards.push(...cards)
   }
+
+  replace(cards: Card[]): void {
+    this.cards.length = 0
+    this.cards.push(...cards)
+  }
 }

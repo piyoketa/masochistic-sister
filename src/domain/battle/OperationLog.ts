@@ -35,6 +35,18 @@ export class OperationLog {
     return [...this.entries]
   }
 
+  truncateAfter(index: number): void {
+    const keepLength = index >= 0 ? index + 1 : 0
+    if (keepLength >= this.entries.length) {
+      return
+    }
+    if (keepLength <= 0) {
+      this.entries.length = 0
+      return
+    }
+    this.entries.length = keepLength
+  }
+
   get length(): number {
     return this.entries.length
   }

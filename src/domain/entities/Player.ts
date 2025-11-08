@@ -88,6 +88,14 @@ export class Player {
     this.currentManaValue = this.maxManaValue
   }
 
+  setCurrentHp(value: number): void {
+    this.currentHpValue = Math.max(0, Math.min(this.maxHpValue, Math.floor(value)))
+  }
+
+  setCurrentMana(value: number): void {
+    this.currentManaValue = Math.max(0, Math.min(this.maxManaValue, Math.floor(value)))
+  }
+
   addState(state: State, options?: { battle?: Battle }): void {
     const battle = options?.battle
     if (battle && state.cardDefinitionBase) {

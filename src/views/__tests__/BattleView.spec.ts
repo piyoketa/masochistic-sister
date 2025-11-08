@@ -52,8 +52,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const wrapper = mount(BattleView, {
@@ -80,8 +80,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const wrapper = mount(BattleView, {
@@ -119,8 +119,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const wrapper = mount(BattleView, {
@@ -155,8 +155,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const wrapper = mount(BattleView, {
@@ -182,8 +182,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const wrapper = mount(BattleView, {
@@ -207,8 +207,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const wrapper = mount(BattleView, {
@@ -240,8 +240,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const wrapper = mount(BattleView, {
@@ -272,8 +272,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const wrapper = mount(BattleView, {
@@ -315,8 +315,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const queueSpy = vi.spyOn(viewManager, 'queuePlayerAction')
@@ -364,8 +364,8 @@ describe('BattleView', () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const queueSpy = vi.spyOn(viewManager, 'queuePlayerAction')

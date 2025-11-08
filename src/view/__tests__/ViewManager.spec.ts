@@ -7,8 +7,8 @@ describe('ViewManager', () => {
     const scenario = createBattleSampleScenario()
     const manager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     const events: string[] = []
@@ -54,8 +54,8 @@ describe('ViewManager', () => {
     const scenario = createBattleSampleScenario()
     const manager = new ViewManager({
       createBattle: scenario.createBattle,
-      actionLog: scenario.replayer.getActionLog(),
-      initialActionLogIndex: scenario.steps.playerTurn1Start,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
     })
 
     await manager.initialize()

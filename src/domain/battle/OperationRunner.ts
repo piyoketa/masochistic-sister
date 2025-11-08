@@ -1,17 +1,43 @@
 import type { Battle } from './Battle'
+import type { FullBattleSnapshot } from './Battle'
 import type { BattleActionLogEntry } from './ActionLog'
 import { ActionLog } from './ActionLog'
 
-interface OperationRunnerConfig {
+export interface EntryAppendContext {
+  index: number
+  waitMs: number
+  groupId?: string
+}
+
+export interface OperationRunnerConfig {
   battle: Battle
   actionLog?: ActionLog
-  turnDrawPlan?: number[]
-  defaultDrawCount?: number
-  onEntryAppended?: (entry: BattleActionLogEntry, index: number) => void
+  initialSnapshot?: FullBattleSnapshot
+  onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
 }
 
 interface AppendOptions {
   suppressFlush?: boolean
+}
+
+export interface OperationRunnableErrorOptions {
+  actionEntry?: BattleActionLogEntry
+  operationIndex?: number
+  cause?: unknown
+}
+
+export class OperationRunnableError extends Error {
+  public readonly actionEntry?: BattleActionLogEntry
+  public readonly operationIndex?: number
+  public readonly cause?: unknown
+
+  constructor(message: string, options: OperationRunnableErrorOptions = {}) {
+    super(message)
+    this.name = 'OperationRunnableError'
+    this.actionEntry = options.actionEntry
+    this.operationIndex = options.operationIndex
+    this.cause = options.cause
+  }
 }
 
 type PlayCardOperations = Extract<
@@ -22,31 +48,41 @@ type PlayCardOperations = Extract<
 export class OperationRunner {
   private readonly battle: Battle
   private readonly actionLog: ActionLog
-  private readonly drawPlan: number[]
-  private readonly defaultDrawCount: number
-  private readonly onEntryAppended?: (entry: BattleActionLogEntry, index: number) => void
+  private readonly onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
+  private readonly initialSnapshot: FullBattleSnapshot
 
   private initialized = false
-  private nextDrawIndex = 0
   private recordedOutcome?: Battle['status']
+  private enemyActGroupCounter = 0
 
   constructor(config: OperationRunnerConfig) {
     this.battle = config.battle
     this.actionLog = config.actionLog ?? new ActionLog()
-    this.drawPlan = [...(config.turnDrawPlan ?? [])]
-    this.defaultDrawCount = config.defaultDrawCount ?? 5
     this.onEntryAppended = config.onEntryAppended
+    if (config.initialSnapshot) {
+      this.initialSnapshot = config.initialSnapshot
+      this.battle.restoreFullSnapshot(config.initialSnapshot)
+    } else {
+      this.initialSnapshot = this.battle.captureFullSnapshot()
+    }
   }
 
   getActionLog(): ActionLog {
     return this.actionLog
   }
 
+  getInitialSnapshot(): FullBattleSnapshot {
+    return this.initialSnapshot
+  }
+
+  captureSnapshot(): FullBattleSnapshot {
+    return this.battle.captureFullSnapshot()
+  }
+
   initializeIfNeeded(): void {
     if (this.initialized) {
       return
     }
-
     this.initialized = true
     this.appendEntry({ type: 'battle-start' })
     this.appendStartPlayerTurn()
@@ -75,7 +111,7 @@ export class OperationRunner {
   }
 
   private appendStartPlayerTurn(): number {
-    const draw = this.getNextDrawCount()
+    const draw = this.calculateTurnStartDraw()
     return this.appendEntry({
       type: 'start-player-turn',
       draw: draw > 0 ? draw : undefined,
@@ -83,8 +119,14 @@ export class OperationRunner {
   }
 
   private appendEntry(entry: BattleActionLogEntry, options?: AppendOptions): number {
-    const index = this.actionLog.push(entry)
-    this.battle.executeActionLog(this.actionLog, index)
+    let index = -1
+    try {
+      index = this.actionLog.push(entry)
+      this.battle.executeActionLog(this.actionLog, index)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new OperationRunnableError(message, { actionEntry: entry, cause: error })
+    }
 
     if (!options?.suppressFlush) {
       this.flushResolvedEvents()
@@ -92,8 +134,31 @@ export class OperationRunner {
       this.appendBattleOutcomeIfNeeded()
     }
 
-    this.onEntryAppended?.(entry, index)
+    this.emitEntryAppended(entry, index)
     return index
+  }
+
+  private emitEntryAppended(entry: BattleActionLogEntry, index: number): void {
+    if (!this.onEntryAppended) {
+      return
+    }
+    const waitInfo = this.getWaitInfo(entry)
+    this.onEntryAppended(entry, { index, ...waitInfo })
+  }
+
+  private getWaitInfo(entry: BattleActionLogEntry): { waitMs: number; groupId?: string } {
+    switch (entry.type) {
+      case 'enemy-act':
+        return {
+          waitMs: 500,
+          groupId: `enemy-act:${entry.enemyId}:${this.enemyActGroupCounter++}`,
+        }
+      case 'player-event':
+      case 'state-event':
+        return { waitMs: 200 }
+      default:
+        return { waitMs: 0 }
+    }
   }
 
   private flushResolvedEvents(): void {
@@ -169,18 +234,7 @@ export class OperationRunner {
     }
   }
 
-  private getNextDrawCount(): number {
-    if (this.drawPlan.length === 0) {
-      return this.defaultDrawCount
-    }
-
-    if (this.nextDrawIndex < this.drawPlan.length) {
-      const value = this.drawPlan[this.nextDrawIndex]
-      this.nextDrawIndex += 1
-      return value ?? this.defaultDrawCount
-    }
-
-    this.nextDrawIndex += 1
-    return this.drawPlan[this.drawPlan.length - 1] ?? this.defaultDrawCount
+  private calculateTurnStartDraw(): number {
+    return 2
   }
 }

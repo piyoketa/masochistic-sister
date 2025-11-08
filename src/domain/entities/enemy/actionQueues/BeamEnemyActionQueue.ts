@@ -1,5 +1,5 @@
 import type { Action } from '../../Action'
-import { EnemyActionQueue } from './EnemyActionQueue'
+import { EnemyActionQueue, type EnemyActionQueueStateSnapshot } from './EnemyActionQueue'
 
 /**
  * BeamEnemyActionQueue
@@ -53,5 +53,18 @@ export class BeamEnemyActionQueue extends EnemyActionQueue {
 
   override resetTurn(): void {
     // チャージ状態はターンまたぎで維持するため何もしない
+  }
+
+  override serializeState(): EnemyActionQueueStateSnapshot {
+    return {
+      ...super.serializeState(),
+      metadata: { stage: this.stage },
+    }
+  }
+
+  override restoreState(snapshot: EnemyActionQueueStateSnapshot): void {
+    super.restoreState(snapshot)
+    const meta = snapshot.metadata ?? {}
+    this.stage = typeof meta.stage === 'number' ? meta.stage : 0
   }
 }

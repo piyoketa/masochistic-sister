@@ -83,4 +83,13 @@ export class Hand {
   clear(): void {
     this.cards.length = 0
   }
+
+  replace(cards: Card[]): void {
+    this.clear()
+    for (const card of cards) {
+      if (!this.add(card)) {
+        break
+      }
+    }
+  }
 }

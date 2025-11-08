@@ -46,9 +46,6 @@ describe('OperationLogとActionLogの整合性', () => {
     const opReplayer = new OperationLogReplayer({
       createBattle: battleSampleScenario.createBattle,
       operationLog: battleSampleScenario.operationLog,
-      turnDrawPlan: battleSampleScenario.turnDrawPlan,
-      defaultDrawCount:
-        battleSampleScenario.turnDrawPlan[battleSampleScenario.turnDrawPlan.length - 1] ?? 2,
     })
     const { actionLog } = opReplayer.buildActionLog()
     expect(actionLog.toArray()).toEqual(battleSampleScenario.replayer.getActionLog().toArray())
@@ -73,22 +70,28 @@ describe('シナリオ2: 鉄花チームとの交戦', () => {
       expect(readStepEntryType('playFlurryOnKamaitachi', 1)).toBe('state-event')
     })
   })
-  it('バトル開始で初期盤面が整う', () => {
-    const { snapshot, lastEntry } = runScenario('battleStart')
+  it('バトル開始で初期3枚の手札が配られる', () => {
+    const { snapshot, initialSnapshot, lastEntry } = runScenario('battleStart')
 
     expect(lastEntry?.type).toBe('battle-start')
     expect(snapshot.player.currentHp).toBe(150)
     expect(snapshot.player.currentMana).toBe(3)
-    expect(snapshot.deck).toHaveLength(9)
-    expect(snapshot.hand).toHaveLength(0)
+    expect(snapshot.hand).toHaveLength(3)
+    expect(snapshot.deck).toHaveLength(initialSnapshot.deck.length - 3)
+    expect(snapshot.hand.map(requireCardId)).toEqual(
+      initialSnapshot.deck.slice(0, 3).map(requireCardId),
+    )
+    expect(snapshot.deck.map(requireCardId)).toEqual(
+      initialSnapshot.deck.slice(3).map(requireCardId),
+    )
     expect(snapshot.status).toBe('in-progress')
   })
 
-  it('ターン開始時に5枚ドローし、初期手札を構築する', () => {
+  it('バトル開始の初期3枚 + ターン開始の2枚で手札5枚が揃う', () => {
     const { battle, snapshot, initialSnapshot, lastEntry } = runScenario('playerTurn1Start')
 
     expect(lastEntry?.type).toBe('start-player-turn')
-    expect(lastEntry?.draw).toBe(5)
+    expect(lastEntry?.draw).toBe(2)
     expect(snapshot.hand).toHaveLength(5)
     expect(snapshot.hand.map(requireCardId)).toEqual(
       initialSnapshot.deck.slice(0, 5).map(requireCardId),
@@ -97,12 +100,14 @@ describe('シナリオ2: 鉄花チームとの交戦', () => {
       initialSnapshot.deck.slice(5).map(requireCardId),
     )
 
-    const ironBloom = battle.enemyTeam.findEnemy(Refs.enemyIds.ironBloom)
-    const hasBarrier =
-      ironBloom?.states.some(
+    const ironBloomSnapshot = snapshot.enemies.find(
+      (enemy) => enemy.id === Refs.enemyIds.ironBloom,
+    )
+    expect(
+      ironBloomSnapshot?.states.some(
         (state) => state instanceof BarrierState && (state.magnitude ?? 0) === 3,
-      ) ?? false
-    expect(hasBarrier).toBe(true)
+      ),
+    ).toBe(true)
   })
 
   it('被虐のオーラで鉄花が粘液飛ばしを即時発動し、状態カードを獲得する', () => {

@@ -1,17 +1,15 @@
 import { ActionLog } from './ActionLog'
 import type { BattleActionLogEntry } from './ActionLog'
 import { ActionLogReplayer } from './ActionLogReplayer'
-import type { Battle } from './Battle'
-import { OperationRunner } from './OperationRunner'
+import type { Battle, FullBattleSnapshot } from './Battle'
+import { OperationRunner, OperationRunnableError } from './OperationRunner'
 import type { OperationLogEntry } from './OperationLog'
 import { OperationLog } from './OperationLog'
 
 export interface OperationLogReplayerConfig {
   createBattle: () => Battle
   operationLog: OperationLog
-  turnDrawPlan?: number[]
-  defaultDrawCount?: number
-  onEntryAppended?: (entry: BattleActionLogEntry, index: number) => void
+  onEntryAppended?: (entry: BattleActionLogEntry, context: { index: number; waitMs: number; groupId?: string }) => void
   onOperationApplied?: (params: {
     operation: OperationLogEntry
     operationIndex: number
@@ -21,24 +19,20 @@ export interface OperationLogReplayerConfig {
 
 export interface OperationLogReplayResult {
   battle: Battle
-  snapshot: ReturnType<Battle['getSnapshot']>
   actionLog: ActionLog
-  initialSnapshot: ReturnType<Battle['getSnapshot']>
+  initialSnapshot: FullBattleSnapshot
+  finalSnapshot: FullBattleSnapshot
 }
 
 export class OperationLogReplayer {
   private readonly createBattle: () => Battle
   private readonly operationLog: OperationLog
-  private readonly turnDrawPlan?: number[]
-  private readonly defaultDrawCount?: number
   private readonly onEntryAppended?: OperationLogReplayerConfig['onEntryAppended']
   private readonly onOperationApplied?: OperationLogReplayerConfig['onOperationApplied']
 
   constructor(config: OperationLogReplayerConfig) {
     this.createBattle = config.createBattle
     this.operationLog = config.operationLog
-    this.turnDrawPlan = config.turnDrawPlan
-    this.defaultDrawCount = config.defaultDrawCount
     this.onEntryAppended = config.onEntryAppended
     this.onOperationApplied = config.onOperationApplied
   }
@@ -46,15 +40,14 @@ export class OperationLogReplayer {
   buildActionLog(): OperationLogReplayResult {
     const battle = this.createBattle()
     const actionLog = new ActionLog()
+    const initialSnapshot = battle.captureFullSnapshot()
+
     const runner = new OperationRunner({
       battle,
       actionLog,
-      turnDrawPlan: this.turnDrawPlan,
-      defaultDrawCount: this.defaultDrawCount,
+      initialSnapshot,
       onEntryAppended: this.onEntryAppended,
     })
-
-    const initialSnapshot = battle.getSnapshot()
 
     runner.initializeIfNeeded()
 
@@ -64,42 +57,53 @@ export class OperationLogReplayer {
         continue
       }
 
-      switch (operation.type) {
-        case 'play-card': {
-          const cardId = this.operationLog.resolveValue(operation.card, battle)
-          const resolvedOperations =
-            operation.operations?.map((op) => ({
-              type: op.type,
-              payload:
-                op.payload === undefined ? undefined : this.operationLog.resolveValue(op.payload, battle),
-            })) ?? undefined
-          const actionLogIndex = runner.playCard(cardId, resolvedOperations)
-          this.onOperationApplied?.({
-            operation,
+      try {
+        switch (operation.type) {
+          case 'play-card': {
+            const cardId = this.operationLog.resolveValue(operation.card, battle)
+            const resolvedOperations =
+              operation.operations?.map((op) => ({
+                type: op.type,
+                payload:
+                  op.payload === undefined ? undefined : this.operationLog.resolveValue(op.payload, battle),
+              })) ?? undefined
+            const actionLogIndex = runner.playCard(cardId, resolvedOperations)
+            this.onOperationApplied?.({
+              operation,
+              operationIndex: index,
+              actionLogIndex,
+            })
+            break
+          }
+          case 'end-player-turn': {
+            const actionLogIndex = runner.endPlayerTurn()
+            this.onOperationApplied?.({
+              operation,
+              operationIndex: index,
+              actionLogIndex,
+            })
+            break
+          }
+          default: {
+            const exhaustiveCheck: never = operation
+            throw new Error(`Unsupported operation type: ${(exhaustiveCheck as { type: string }).type}`)
+          }
+        }
+      } catch (error) {
+        if (error instanceof OperationRunnableError) {
+          throw new OperationRunnableError(error.message, {
+            actionEntry: error.actionEntry,
+            cause: error.cause,
             operationIndex: index,
-            actionLogIndex,
           })
-          break
         }
-        case 'end-player-turn': {
-          const actionLogIndex = runner.endPlayerTurn()
-          this.onOperationApplied?.({
-            operation,
-            operationIndex: index,
-            actionLogIndex,
-          })
-          break
-        }
-        default: {
-          const exhaustiveCheck: never = operation
-          throw new Error(`Unsupported operation type: ${(exhaustiveCheck as { type: string }).type}`)
-        }
+        throw error
       }
     }
 
-    const snapshot = battle.getSnapshot()
+    const finalSnapshot = battle.captureFullSnapshot()
 
-    return { battle, snapshot, initialSnapshot, actionLog }
+    return { battle, actionLog, initialSnapshot, finalSnapshot }
   }
 
   toActionLogReplayer(actionLog: ActionLog): ActionLogReplayer {

@@ -55,9 +55,6 @@ describe('OperationLogとActionLogの整合性', () => {
     const opReplayer = new OperationLogReplayer({
       createBattle: battleSampleScenario.createBattle,
       operationLog: battleSampleScenario.operationLog,
-      turnDrawPlan: battleSampleScenario.turnDrawPlan,
-      defaultDrawCount:
-        battleSampleScenario.turnDrawPlan[battleSampleScenario.turnDrawPlan.length - 1] ?? 2,
     })
     const { actionLog } = opReplayer.buildActionLog()
     expect(actionLog.toArray()).toEqual(battleSampleScenario.replayer.getActionLog().toArray())
@@ -81,22 +78,28 @@ describe('新戦闘シナリオ: 記憶を操る初期ターン', () => {
       expect(types).toEqual(['enemy-act', 'enemy-act', 'enemy-act', 'enemy-act'])
     })
   })
-  it('バトル開始で盤面が初期化される', () => {
-    const { snapshot, lastEntry } = runScenario('battleStart')
+  it('バトル開始で初期3枚の手札が配られる', () => {
+    const { snapshot, initialSnapshot, lastEntry } = runScenario('battleStart')
 
     expect(lastEntry?.type).toBe('battle-start')
     expect(snapshot.player.currentHp).toBe(150)
     expect(snapshot.player.currentMana).toBe(3)
-    expect(snapshot.hand).toHaveLength(0)
-    expect(snapshot.deck).toHaveLength(9)
+    expect(snapshot.hand).toHaveLength(3)
+    expect(snapshot.deck).toHaveLength(initialSnapshot.deck.length - 3)
+    expect(snapshot.hand.map(requireCardId)).toEqual(
+      initialSnapshot.deck.slice(0, 3).map(requireCardId),
+    )
+    expect(snapshot.deck.map(requireCardId)).toEqual(
+      initialSnapshot.deck.slice(3).map(requireCardId),
+    )
     expect(snapshot.status).toBe('in-progress')
   })
 
-  it('ターン開始時に5枚ドローし、山札順序が維持される', () => {
+  it('ターン開始時は追加で2枚ドローし、山札順序が維持される', () => {
     const { snapshot, initialSnapshot, lastEntry } = runScenario('playerTurn1Start')
 
     expect(lastEntry?.type).toBe('start-player-turn')
-    expect(lastEntry?.draw).toBe(5)
+    expect(lastEntry?.draw).toBe(2)
     expect(snapshot.hand).toHaveLength(5)
     expect(snapshot.hand.map(requireCardId)).toEqual(
       initialSnapshot.deck.slice(0, 5).map(requireCardId),
