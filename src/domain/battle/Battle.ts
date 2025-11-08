@@ -81,6 +81,13 @@ export interface EnemyTurnActionSummary {
   cardsAddedToPlayerHand: EnemyTurnActionCardGain[]
 }
 
+export interface StateEventLogEntry {
+  subject: 'player' | 'enemy'
+  subjectId?: number
+  stateId: string
+  payload?: unknown
+}
+
 export interface EnemyTurnSummary {
   actions: EnemyTurnActionSummary[]
 }
@@ -102,6 +109,8 @@ export class Battle {
   private eventSequence = 0
   private lastEnemyTurnSummaryValue?: EnemyTurnSummary
   private statusValue: BattleStatus = 'in-progress'
+  private resolvedEventsBuffer: BattleEvent[] = []
+  private stateEventBuffer: StateEventLogEntry[] = []
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -184,6 +193,25 @@ export class Battle {
         cardsAddedToPlayerHand: action.cardsAddedToPlayerHand.map((card) => ({ ...card })),
       })),
     }
+  }
+
+  consumeResolvedEvents(): BattleEvent[] {
+    const events = this.resolvedEventsBuffer.map((event) => ({
+      ...event,
+      payload: { ...event.payload },
+    }))
+    this.resolvedEventsBuffer = []
+    return events
+  }
+
+  recordStateEvent(event: StateEventLogEntry): void {
+    this.stateEventBuffer.push(event)
+  }
+
+  consumeStateEvents(): StateEventLogEntry[] {
+    const events = [...this.stateEventBuffer]
+    this.stateEventBuffer = []
+    return events
   }
 
   getSnapshot(): BattleSnapshot {
@@ -372,6 +400,14 @@ export class Battle {
   resolveEvents(): void {
     const currentTurn = this.turnValue.current.turnCount
     const readyEvents = this.eventsValue.extractReady(currentTurn)
+    if (readyEvents.length > 0) {
+      this.resolvedEventsBuffer = readyEvents.map((event) => ({
+        ...event,
+        payload: { ...event.payload },
+      }))
+    } else {
+      this.resolvedEventsBuffer = []
+    }
 
     for (const event of readyEvents) {
       this.applyEvent(event)
@@ -480,6 +516,11 @@ export class Battle {
         this.playCard(cardId, operations)
         break
       }
+      case 'player-event':
+      case 'enemy-act':
+      case 'state-event':
+        // TODO: 新しいActionLogエントリ種別に対応した盤面更新を実装する
+        break
       case 'end-player-turn': {
         this.endPlayerTurn()
         this.executeEnemyTurn()

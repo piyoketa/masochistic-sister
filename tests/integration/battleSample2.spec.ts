@@ -12,10 +12,25 @@ import {
 } from '../fixtures/battleSampleScenario2'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import { BarrierState } from '@/domain/entities/states/BarrierState'
+import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
 
 const battleSampleScenario = createBattleScenario2()
 const Steps = battleSampleScenario.steps
 const Refs = battleSampleScenario.references
+const actionLog = battleSampleScenario.replayer.getActionLog()
+
+const readEntryType = (index: number): string | undefined => {
+  const entry = actionLog.at(index)
+  return (entry as { type?: string })?.type
+}
+
+const readStepEntryType = (stepKey: keyof typeof Steps, offset = 0): string | undefined => {
+  const baseIndex = Steps[stepKey]
+  if (baseIndex === undefined) {
+    return undefined
+  }
+  return readEntryType(baseIndex + offset)
+}
 
 function runScenario(stepKey: keyof typeof Steps) {
   const index = Steps[stepKey]
@@ -26,7 +41,38 @@ function runScenario(stepKey: keyof typeof Steps) {
   return battleSampleScenario.replayer.run(index)
 }
 
+describe('OperationLogとActionLogの整合性', () => {
+  it('シナリオ2のOperationLogからActionLogを再構築できる', () => {
+    const opReplayer = new OperationLogReplayer({
+      createBattle: battleSampleScenario.createBattle,
+      operationLog: battleSampleScenario.operationLog,
+      turnDrawPlan: battleSampleScenario.turnDrawPlan,
+      defaultDrawCount:
+        battleSampleScenario.turnDrawPlan[battleSampleScenario.turnDrawPlan.length - 1] ?? 2,
+    })
+    const { actionLog } = opReplayer.buildActionLog()
+    expect(actionLog.toArray()).toEqual(battleSampleScenario.replayer.getActionLog().toArray())
+  })
+})
+
 describe('シナリオ2: 鉄花チームとの交戦', () => {
+  describe('ActionLogエントリ構造（計画ベース）', () => {
+
+    it('ターン2開始イベントは player-event で処理される', () => {
+      expect(readStepEntryType('playerTurn2Start', 1)).toBe('player-event')
+    })
+
+    it('ターン2終了後も enemy-act が並び、最後はなめくじの行動で締める', () => {
+      const types = [1, 2, 3, 4].map((offset) =>
+        readStepEntryType('endPlayerTurn2', offset),
+      )
+      expect(types).toEqual(['enemy-act', 'enemy-act', 'enemy-act', 'enemy-act'])
+    })
+
+    it('かまいたち撃破後の逃走は state-event になる', () => {
+      expect(readStepEntryType('playFlurryOnKamaitachi', 1)).toBe('state-event')
+    })
+  })
   it('バトル開始で初期盤面が整う', () => {
     const { snapshot, lastEntry } = runScenario('battleStart')
 
@@ -105,12 +151,9 @@ describe('シナリオ2: 鉄花チームとの交戦', () => {
   it('敵ターン1で想定通りの連撃と追加カードが発生する', () => {
     const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn1')
 
-    expect(lastEntry?.type).toBe('end-player-turn')
-    expect(
-      lastEntry?.type === 'end-player-turn'
-        ? lastEntry.enemyActions.map((action) => action.actionName)
-        : [],
-    ).toEqual(['戦いの舞い', '乱れ突き', '行動済み', '足止め'])
+    const resolved = lastEntry as { type?: string; enemyActions?: unknown }
+    expect(resolved?.type).toBe('end-player-turn')
+    expect(resolved?.enemyActions).toBeUndefined()
 
     expect(snapshot.player.currentHp).toBe(120)
     expect(snapshot.hand).toHaveLength(5)
@@ -127,6 +170,7 @@ describe('シナリオ2: 鉄花チームとの交戦', () => {
     expect(lastEntry?.draw).toBe(2)
     expect(snapshot.hand).toHaveLength(7)
     expect(snapshot.player.currentMana).toBe(4)
+    expect(readStepEntryType('playerTurn2Start', 1)).toBe('player-event')
     expect(snapshot.hand.map((card) => card.title)).toEqual([
       '天の鎖',
       '日課',
@@ -188,12 +232,9 @@ describe('シナリオ2: 鉄花チームとの交戦', () => {
   it('敵ターン2で追い風は不発となり、なめくじの酸を吐くを受ける', () => {
     const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn2')
 
-    expect(lastEntry?.type).toBe('end-player-turn')
-    expect(
-      lastEntry?.type === 'end-player-turn'
-        ? lastEntry.enemyActions.map((action) => action.actionName)
-        : [],
-    ).toEqual(['戦闘不能', '追い風', '戦闘不能', '酸を吐く'])
+    const resolved = lastEntry as { type?: string; enemyActions?: unknown }
+    expect(resolved?.type).toBe('end-player-turn')
+    expect(resolved?.enemyActions).toBeUndefined()
 
     expect(snapshot.player.currentHp).toBe(75)
     expect(snapshot.hand).toHaveLength(8)
@@ -226,6 +267,7 @@ describe('シナリオ2: 鉄花チームとの交戦', () => {
 
     expect(lastEntry?.type).toBe('play-card')
     expect(snapshot.player.currentMana).toBe(1)
+    expect(readStepEntryType('playFlurryOnKamaitachi', 1)).toBe('state-event')
 
     const kamaitachi = battle.enemyTeam.findEnemy(Refs.enemyIds.kamaitachi)
     expect(kamaitachi?.status).toBe('defeated')

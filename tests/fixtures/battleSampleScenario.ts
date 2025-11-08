@@ -1,4 +1,3 @@
-import { ActionLog } from '@/domain/battle/ActionLog'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import { Battle } from '@/domain/battle/Battle'
 import { BattleEventQueue } from '@/domain/battle/BattleEvent'
@@ -8,6 +7,8 @@ import { DiscardPile } from '@/domain/battle/DiscardPile'
 import { ExilePile } from '@/domain/battle/ExilePile'
 import { Hand } from '@/domain/battle/Hand'
 import { ActionLogReplayer } from '@/domain/battle/ActionLogReplayer'
+import { OperationLog } from '@/domain/battle/OperationLog'
+import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
 import { TurnManager } from '@/domain/battle/TurnManager'
 import { Card } from '@/domain/entities/Card'
 import { buildTestDeck } from '@/domain/entities/decks'
@@ -25,15 +26,28 @@ import { StickyState } from '@/domain/entities/states/StickyState'
 import { StrengthState } from '@/domain/entities/states/StrengthState'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 
-export interface ScenarioSteps {
-  battleStart: number
-  playerTurn1Start: number
-  playMasochisticAura: number
-  playHeavenChainOnOrc: number
-  playBattlePrep: number
-  endPlayerTurn1: number
-  startPlayerTurn2: number
-}
+const scenarioStepKeys = [
+  'battleStart',
+  'playerTurn1Start',
+  'playMasochisticAuraOnSnail',
+  'playDailyRoutine',
+  'playBattlePrep',
+  'endPlayerTurn1',
+  'playerTurn2Start',
+  'playTackleOnSnail',
+  'playAcidSpitOnTentacle',
+  'playMucusShotOnTentacle',
+  'playCorrosion',
+  'endPlayerTurn2',
+  'playerTurn3Start',
+  'playAcheOnFlurry',
+  'playFlurryOnOrc',
+  'playFlurryOnOrcDancer',
+  'victory',
+] as const
+
+type ScenarioStepKey = (typeof scenarioStepKeys)[number]
+export type ScenarioSteps = Record<ScenarioStepKey, number>
 
 export interface ScenarioReferences {
   masochisticAuraIds: [number, number]
@@ -54,6 +68,16 @@ export interface BattleScenario {
   replayer: ActionLogReplayer
   steps: ScenarioSteps
   references: ScenarioReferences
+  operationLog: OperationLog
+  turnDrawPlan: number[]
+}
+
+function finalizeScenarioSteps(partial: Partial<ScenarioSteps>): ScenarioSteps {
+  const missing = scenarioStepKeys.filter((key) => partial[key] === undefined)
+  if (missing.length > 0) {
+    throw new Error(`Scenario steps are missing indices for: ${missing.join(', ')}`)
+  }
+  return partial as ScenarioSteps
 }
 
 export function requireCardId(card: Card | undefined): number {
@@ -132,7 +156,8 @@ export function createBattleScenario(): BattleScenario {
   const createBattle = () => createBaseBattle()
   const sampleSnapshot = createBattle().getSnapshot()
   const references = collectScenarioReferences(sampleSnapshot)
-  const actionLog = new ActionLog()
+  const turnDrawPlan = [5, 2, 2, 2]
+  const operationLog = new OperationLog()
 
   const findMemoryCardId = (battle: Battle, title: string): number => {
     const inHand = battle.hand
@@ -186,67 +211,112 @@ export function createBattleScenario(): BattleScenario {
     return requireCardId(fallback)
   }
 
-  const steps: ScenarioSteps = {
-    battleStart: actionLog.push({ type: 'battle-start' }),
-    playerTurn1Start: actionLog.push({ type: 'start-player-turn', draw: 5 }),
-    playMasochisticAuraOnSnail: actionLog.push({
-      type: 'play-card',
-      card: references.masochisticAuraIds[0]!,
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
-    }),
-    playDailyRoutine: actionLog.push({
-      type: 'play-card',
-      card: references.dailyRoutineId,
-    }),
-    playBattlePrep: actionLog.push({
-      type: 'play-card',
-      card: references.battlePrepId,
-    }),
-    endPlayerTurn1: actionLog.push({ type: 'end-player-turn' }),
-    playerTurn2Start: actionLog.push({ type: 'start-player-turn', draw: 2 }),
-    playTackleOnSnail: actionLog.push({
-      type: 'play-card',
-      card: (battle) => findMemoryCardId(battle, 'たいあたり'),
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
-    }),
-    playAcidSpitOnTentacle: actionLog.push({
-      type: 'play-card',
-      card: (battle) => findMemoryCardId(battle, '酸を吐く'),
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
-    }),
-    playMucusShotOnTentacle: actionLog.push({
-      type: 'play-card',
-      card: (battle) => findMemoryCardId(battle, '粘液飛ばし'),
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
-    }),
-    playCorrosion: actionLog.push({
-      type: 'play-card',
-      card: (battle) => findStatusCardId(battle, '腐食'),
-    }),
-    endPlayerTurn2: actionLog.push({ type: 'end-player-turn' }),
-    playerTurn3Start: actionLog.push({ type: 'start-player-turn', draw: 2 }),
-    playAcheOnFlurry: actionLog.push({
-      type: 'play-card',
-      card: references.acheId,
-      operations: [
-        {
-          type: 'select-hand-card',
-          payload: (battle) => findMemoryCardId(battle, '乱れ突き'),
-        },
-      ],
-    }),
-    playFlurryOnOrc: actionLog.push({
-      type: 'play-card',
-      card: (battle) => findMemoryCardId(battle, '乱れ突き'),
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
-    }),
-    playFlurryOnOrcDancer: actionLog.push({
-      type: 'play-card',
-      card: (battle) => findMemoryCardId(battle, '乱れ突き'),
-      operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
-    }),
-    victory: actionLog.push({ type: 'victory' }),
+  const operationStepHints: Partial<Record<number, ScenarioStepKey>> = {}
+
+  const registerOperation = (
+    key: ScenarioStepKey | undefined,
+    entry: Parameters<OperationLog['push']>[0],
+  ) => {
+    const opIndex = operationLog.push(entry)
+    if (key) {
+      operationStepHints[opIndex] = key
+    }
   }
+
+  registerOperation('playMasochisticAuraOnSnail', {
+    type: 'play-card',
+    card: references.masochisticAuraIds[0]!,
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
+  })
+  registerOperation('playDailyRoutine', {
+    type: 'play-card',
+    card: references.dailyRoutineId,
+  })
+  registerOperation('playBattlePrep', {
+    type: 'play-card',
+    card: references.battlePrepId,
+  })
+  registerOperation('endPlayerTurn1', { type: 'end-player-turn' })
+  registerOperation('playTackleOnSnail', {
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, 'たいあたり'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
+  })
+  registerOperation('playAcidSpitOnTentacle', {
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '酸を吐く'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
+  })
+  registerOperation('playMucusShotOnTentacle', {
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '粘液飛ばし'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
+  })
+  registerOperation('playCorrosion', {
+    type: 'play-card',
+    card: (battle) => findStatusCardId(battle, '腐食'),
+  })
+  registerOperation('endPlayerTurn2', { type: 'end-player-turn' })
+  registerOperation('playAcheOnFlurry', {
+    type: 'play-card',
+    card: references.acheId,
+    operations: [
+      {
+        type: 'select-hand-card',
+        payload: (battle) => findMemoryCardId(battle, '乱れ突き'),
+      },
+    ],
+  })
+  registerOperation('playFlurryOnOrc', {
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
+  })
+  registerOperation('playFlurryOnOrcDancer', {
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
+  })
+
+  const recordedSteps: Partial<ScenarioSteps> = {}
+  const recordStep = (key: ScenarioStepKey, index: number): void => {
+    if (recordedSteps[key] === undefined) {
+      recordedSteps[key] = index
+    }
+  }
+
+  let startTurnCount = 0
+  const operationReplayer = new OperationLogReplayer({
+    createBattle,
+    operationLog,
+    turnDrawPlan,
+    defaultDrawCount: turnDrawPlan[turnDrawPlan.length - 1] ?? 2,
+    onEntryAppended: (entry, index) => {
+      if (entry.type === 'battle-start') {
+        recordStep('battleStart', index)
+      } else if (entry.type === 'start-player-turn') {
+        startTurnCount += 1
+        if (startTurnCount === 1) {
+          recordStep('playerTurn1Start', index)
+        } else if (startTurnCount === 2) {
+          recordStep('playerTurn2Start', index)
+        } else if (startTurnCount === 3) {
+          recordStep('playerTurn3Start', index)
+        }
+      } else if (entry.type === 'victory') {
+        recordStep('victory', index)
+      }
+    },
+    onOperationApplied: ({ operationIndex, actionLogIndex }) => {
+      const key = operationStepHints[operationIndex]
+      if (key) {
+        recordStep(key, actionLogIndex)
+      }
+    },
+  })
+  const { actionLog } = operationReplayer.buildActionLog()
+
+  const finalizedSteps = finalizeScenarioSteps(recordedSteps)
 
   return {
     createBattle,
@@ -254,8 +324,10 @@ export function createBattleScenario(): BattleScenario {
       createBattle,
       actionLog,
     }),
-    steps,
+    steps: finalizedSteps,
     references,
+    operationLog,
+    turnDrawPlan,
   }
 }
 

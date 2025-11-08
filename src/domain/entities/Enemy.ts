@@ -173,6 +173,12 @@ export class Enemy {
       message: `${this.name}は恐怖に駆られて逃走した。`,
       metadata: { enemyId: this.id, reason: 'flee' },
     })
+    battle.recordStateEvent({
+      subject: 'enemy',
+      subjectId: this.id,
+      stateId: 'trait-coward',
+      payload: { result: 'escape' },
+    })
     battle.onEnemyStatusChanged()
   }
 

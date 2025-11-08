@@ -5,7 +5,7 @@ export class ArcaneCardTag extends CardCategoryTag {
     super({
       id: 'tag-arcane',
       name: '魔',
-      description: '傷に惹かれる者たちの力',
+      description: '痛みと傷に惹かれるモノたちの力',
     })
   }
 }

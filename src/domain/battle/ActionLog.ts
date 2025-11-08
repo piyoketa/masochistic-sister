@@ -14,6 +14,24 @@ export type BattleActionLogEntry =
         payload?: ValueFactory<CardOperation['payload']>
       }>
     }
+  | {
+      type: 'player-event'
+      eventId: string
+      payload?: unknown
+    }
+  | {
+      type: 'enemy-act'
+      enemyId: number
+      actionId?: string
+      metadata?: Record<string, unknown>
+    }
+  | {
+      type: 'state-event'
+      subject: 'player' | 'enemy'
+      subjectId?: number
+      stateId: string
+      payload?: unknown
+    }
   | { type: 'end-player-turn' }
   | { type: 'victory' }
   | { type: 'gameover' }

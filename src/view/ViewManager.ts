@@ -569,7 +569,7 @@ export class ViewManager {
       case 'play-card':
         return this.resolvePlayCardEntry(entry, battle)
       case 'end-player-turn':
-        return this.resolveEndPlayerTurnEntry(battle)
+        return this.resolveEndPlayerTurnEntry()
       case 'victory':
       case 'gameover':
         return { type: entry.type }
@@ -646,12 +646,8 @@ export class ViewManager {
     }
   }
 
-  private resolveEndPlayerTurnEntry(battle: Battle): ResolvedBattleActionLogEntry {
-    const summary = battle.getLastEnemyTurnSummary()
-    return {
-      type: 'end-player-turn',
-      enemyActions: summary?.actions ?? [],
-    }
+  private resolveEndPlayerTurnEntry(): ResolvedBattleActionLogEntry {
+    return { type: 'end-player-turn' }
   }
 
   private extractEnemyId(payload: unknown): number {

@@ -71,10 +71,14 @@ export class ActionLogReplayer {
         return entry
       case 'start-player-turn':
         return { ...entry }
+      case 'player-event':
+      case 'enemy-act':
+      case 'state-event':
+        return entry
       case 'play-card':
         return this.resolvePlayCardEntry(entry, battle)
       case 'end-player-turn':
-        return this.resolveEndPlayerTurnEntry(battle)
+        return this.resolveEndPlayerTurnEntry()
       case 'victory':
       case 'gameover':
         return { type: entry.type }
@@ -148,12 +152,8 @@ export class ActionLogReplayer {
     }
   }
 
-  private resolveEndPlayerTurnEntry(battle: Battle): ResolvedBattleActionLogEntry {
-    const summary = battle.getLastEnemyTurnSummary()
-    return {
-      type: 'end-player-turn',
-      enemyActions: summary?.actions ?? [],
-    }
+  private resolveEndPlayerTurnEntry(): ResolvedBattleActionLogEntry {
+    return { type: 'end-player-turn' }
   }
 
   private extractEnemyId(payload: unknown): number {
@@ -194,6 +194,7 @@ export class ActionLogReplayer {
 export type ResolvedBattleActionLogEntry =
   | { type: 'battle-start' }
   | { type: 'start-player-turn'; draw?: number; handOverflow?: boolean }
+  | { type: 'player-event'; eventId: string; payload?: unknown }
   | {
       type: 'play-card'
       cardId: number
@@ -203,7 +204,15 @@ export type ResolvedBattleActionLogEntry =
       selectedHandCardId?: number
       selectedHandCard?: CardSummary
     }
-  | { type: 'end-player-turn'; enemyActions: EnemyTurnActionSummary[] }
+  | { type: 'enemy-act'; enemyId: number; actionId?: string; metadata?: Record<string, unknown> }
+  | {
+      type: 'state-event'
+      subject: 'player' | 'enemy'
+      subjectId?: number
+      stateId: string
+      payload?: unknown
+    }
+  | { type: 'end-player-turn'; enemyActions?: EnemyTurnActionSummary[] }
   | { type: 'victory' }
   | { type: 'gameover' }
 

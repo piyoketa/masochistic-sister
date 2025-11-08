@@ -13,10 +13,25 @@ import {
   createBattleSampleScenario,
   requireCardId,
 } from '../fixtures/battleSampleScenario'
+import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
 
 const battleSampleScenario = createBattleSampleScenario()
 const Steps = battleSampleScenario.steps as Record<string, number>
 const Refs = battleSampleScenario.references
+const actionLog = battleSampleScenario.replayer.getActionLog()
+
+const readEntryType = (index: number): string | undefined => {
+  const entry = actionLog.at(index)
+  return (entry as { type?: string })?.type
+}
+
+const readStepEntryType = (stepKey: keyof typeof Steps, offset = 0): string | undefined => {
+  const baseIndex = Steps[stepKey]
+  if (baseIndex === undefined) {
+    return undefined
+  }
+  return readEntryType(baseIndex + offset)
+}
 
 const isMemoryCard = (card: { cardTags?: Array<{ id: string }>; title: string }): boolean =>
   (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
@@ -35,7 +50,37 @@ function runScenario(stepKey: keyof typeof Steps) {
   return battleSampleScenario.replayer.run(index)
 }
 
+describe('OperationLogとActionLogの整合性', () => {
+  it('OperationLogから生成したActionLogがシナリオ定義と一致する', () => {
+    const opReplayer = new OperationLogReplayer({
+      createBattle: battleSampleScenario.createBattle,
+      operationLog: battleSampleScenario.operationLog,
+      turnDrawPlan: battleSampleScenario.turnDrawPlan,
+      defaultDrawCount:
+        battleSampleScenario.turnDrawPlan[battleSampleScenario.turnDrawPlan.length - 1] ?? 2,
+    })
+    const { actionLog } = opReplayer.buildActionLog()
+    expect(actionLog.toArray()).toEqual(battleSampleScenario.replayer.getActionLog().toArray())
+  })
+})
+
 describe('新戦闘シナリオ: 記憶を操る初期ターン', () => {
+  describe('ActionLogエントリ構造（計画ベース）', () => {
+
+    it('ターン1の敵行動は enemy-act 連鎖で管理される', () => {
+      const types = [1, 2, 3, 4].map((offset) => readStepEntryType('endPlayerTurn1', offset))
+      expect(types).toEqual(['enemy-act', 'enemy-act', 'enemy-act', 'enemy-act'])
+    })
+
+    it('ターン2開始イベントは player-event エントリで処理される', () => {
+      expect(readStepEntryType('playerTurn2Start', 1)).toBe('player-event')
+    })
+
+    it('ターン2の敵行動も enemy-act 連鎖で記録される', () => {
+      const types = [1, 2, 3, 4].map((offset) => readStepEntryType('endPlayerTurn2', offset))
+      expect(types).toEqual(['enemy-act', 'enemy-act', 'enemy-act', 'enemy-act'])
+    })
+  })
   it('バトル開始で盤面が初期化される', () => {
     const { snapshot, lastEntry } = runScenario('battleStart')
 
@@ -123,9 +168,9 @@ describe('新戦闘シナリオ: 記憶を操る初期ターン', () => {
   it('敵ターン1でログと手札・状態が期待通り変化する', () => {
     const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn1')
 
-    expect(lastEntry?.type).toBe('end-player-turn')
-    expect(lastEntry?.type === 'end-player-turn' ? lastEntry.enemyActions.map((a) => a.actionName) : [])
-      .toEqual(['たいあたり', '戦いの舞い', '粘液飛ばし', '行動済み'])
+    const resolved = lastEntry as { type?: string; enemyActions?: unknown }
+    expect(resolved?.type).toBe('end-player-turn')
+    expect(resolved?.enemyActions).toBeUndefined()
 
     expect(snapshot.player.currentHp).toBe(100)
     expect(snapshot.hand).toHaveLength(9)
@@ -145,6 +190,7 @@ describe('新戦闘シナリオ: 記憶を操る初期ターン', () => {
     expect(lastEntry?.handOverflow).toBe(true)
     expect(snapshot.hand).toHaveLength(10)
     expect(snapshot.player.currentMana).toBe(4)
+    expect(readStepEntryType('playerTurn2Start', 1)).toBe('player-event')
   })
 
   it('たいあたりでかたつむりを撃破し、手札と捨て札が更新される', () => {
@@ -183,9 +229,9 @@ describe('新戦闘シナリオ: 記憶を操る初期ターン', () => {
   it('敵ターン2で筋力と加速が付与され、乱れ突きの記憶を得る', () => {
     const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn2')
 
-    expect(lastEntry?.type).toBe('end-player-turn')
-    expect(lastEntry?.type === 'end-player-turn' ? lastEntry.enemyActions.map((a) => a.actionName) : [])
-      .toEqual(['ビルドアップ', '乱れ突き', '戦闘不能', '戦闘不能'])
+    const resolved = lastEntry as { type?: string; enemyActions?: unknown }
+    expect(resolved?.type).toBe('end-player-turn')
+    expect(resolved?.enemyActions).toBeUndefined()
 
     expect(snapshot.player.currentHp).toBe(60)
     expect(snapshot.hand).toHaveLength(7)
