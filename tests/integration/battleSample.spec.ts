@@ -14,11 +14,19 @@ import {
   requireCardId,
 } from '../fixtures/battleSampleScenario'
 import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
+import type { BattleActionLogEntry } from '@/domain/battle/ActionLog'
 
 const battleSampleScenario = createBattleSampleScenario()
 const Steps = battleSampleScenario.steps as Record<string, number>
 const Refs = battleSampleScenario.references
 const actionLog = battleSampleScenario.replayer.getActionLog()
+const stripAnimations = (entry: BattleActionLogEntry): BattleActionLogEntry => {
+  if (!entry.animations) {
+    return entry
+  }
+  const { animations: _ignored, ...rest } = entry
+  return rest as BattleActionLogEntry
+}
 
 const readEntryType = (index: number): string | undefined => {
   const entry = actionLog.at(index)
@@ -57,7 +65,9 @@ describe('OperationLogとActionLogの整合性', () => {
       operationLog: battleSampleScenario.operationLog,
     })
     const { actionLog } = opReplayer.buildActionLog()
-    expect(actionLog.toArray()).toEqual(battleSampleScenario.replayer.getActionLog().toArray())
+    const expected = battleSampleScenario.replayer.getActionLog().toArray().map(stripAnimations)
+    const actual = actionLog.toArray().map(stripAnimations)
+    expect(actual).toEqual(expected)
   })
 })
 

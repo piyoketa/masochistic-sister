@@ -1,40 +1,52 @@
 import type { CardOperation } from '../entities/operations'
-import type { Battle } from './Battle'
+import type { Battle, BattleSnapshot } from './Battle'
+import type { DamageOutcome } from '../entities/Damages'
 
 type ValueFactory<T> = T | ((battle: Battle) => T)
 
+export interface AnimationInstruction {
+  snapshot: BattleSnapshot
+  waitMs: number
+  metadata?: Record<string, unknown>
+  damageOutcomes?: readonly DamageOutcome[]
+}
+
+type BaseActionLogEntry = {
+  animations?: AnimationInstruction[]
+}
+
 export type BattleActionLogEntry =
-  | { type: 'battle-start' }
-  | { type: 'start-player-turn'; draw?: number; handOverflow?: boolean }
-  | {
+  | ({ type: 'battle-start' } & BaseActionLogEntry)
+  | ({ type: 'start-player-turn'; draw?: number; handOverflow?: boolean } & BaseActionLogEntry)
+  | ({
       type: 'play-card'
       card: ValueFactory<number>
       operations?: Array<{
         type: CardOperation['type']
         payload?: ValueFactory<CardOperation['payload']>
       }>
-    }
-  | {
+    } & BaseActionLogEntry)
+  | ({
       type: 'player-event'
       eventId: string
       payload?: unknown
-    }
-  | {
+    } & BaseActionLogEntry)
+  | ({
       type: 'enemy-act'
       enemyId: number
       actionId?: string
       metadata?: Record<string, unknown>
-    }
-  | {
+    } & BaseActionLogEntry)
+  | ({
       type: 'state-event'
       subject: 'player' | 'enemy'
       subjectId?: number
       stateId: string
       payload?: unknown
-    }
-  | { type: 'end-player-turn' }
-  | { type: 'victory' }
-  | { type: 'gameover' }
+    } & BaseActionLogEntry)
+  | ({ type: 'end-player-turn' } & BaseActionLogEntry)
+  | ({ type: 'victory' } & BaseActionLogEntry)
+  | ({ type: 'gameover' } & BaseActionLogEntry)
 
 export class ActionLog {
   private readonly entries: BattleActionLogEntry[] = []

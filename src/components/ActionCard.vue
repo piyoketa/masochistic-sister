@@ -39,6 +39,9 @@ const costClasses = computed(() => [
 const primaryTagList = computed(() => props.primaryTags ?? [])
 const effectTagList = computed(() => props.effectTags ?? [])
 const categoryTagList = computed(() => props.categoryTags ?? [])
+const primaryTagText = computed(() =>
+  primaryTagList.value.length > 0 ? primaryTagList.value.map((tag) => tag.label).join('/') : '',
+)
 
 const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
   useDescriptionOverlay()
@@ -114,16 +117,8 @@ function handleTagLeave(tag: CardTagInfo): void {
       <h4>{{ props.title }}</h4>
     </header>
 
-    <div v-if="primaryTagList.length" class="tag-list tag-list--primary">
-      <span
-        v-for="tag in primaryTagList"
-        :key="tag.id"
-        @mouseenter="(event) => handleTagEnter(event, tag)"
-        @mousemove="(event) => handleTagMove(event, tag)"
-        @mouseleave="() => handleTagLeave(tag)"
-      >
-        {{ tag.label }}
-      </span>
+    <div v-if="primaryTagText" class="primary-tag-text">
+      {{ primaryTagText }}
     </div>
 
     <section class="card-body">
@@ -153,7 +148,7 @@ function handleTagLeave(tag: CardTagInfo): void {
       </div>
     </section>
 
-    <footer v-if="categoryTagList.length" class="category-tag-list">
+    <div v-if="categoryTagList.length" class="category-tag-list">
       <span
         v-for="tag in categoryTagList"
         :key="tag.id"
@@ -163,7 +158,7 @@ function handleTagLeave(tag: CardTagInfo): void {
       >
         {{ tag.label }}
       </span>
-    </footer>
+    </div>
   </article>
 </template>
 
@@ -262,6 +257,16 @@ function handleTagLeave(tag: CardTagInfo): void {
   color: #f5f5f5;
 }
 
+.primary-tag-text {
+  margin-top: 4px;
+  margin-bottom: 4px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(245, 245, 245, 0.75);
+  text-align: center;
+  white-space: nowrap;
+}
+
 .tag-list {
   display: flex;
   justify-content: center;
@@ -285,24 +290,23 @@ function handleTagLeave(tag: CardTagInfo): void {
 
 .tag-list--effect {
   margin-top: 6px;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .category-tag-list {
   display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-  font-size: 9px;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: auto;
+  font-size: 8px;
   letter-spacing: 0.08em;
-  color: rgba(235, 235, 240, 0.7);
+  color: rgba(235, 235, 240, 0.6);
+  align-self: flex-end;
 }
 
 .category-tag-list span {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 0 6px;
-  border-radius: 12px;
+  background: none;
+  padding: 0;
 }
 
 .card-body {

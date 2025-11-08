@@ -1,7 +1,13 @@
-import type { Battle } from './Battle'
-import type { FullBattleSnapshot } from './Battle'
-import type { BattleActionLogEntry } from './ActionLog'
+import type {
+  Battle,
+  BattleSnapshot,
+  FullBattleSnapshot,
+  PlayCardAnimationContext,
+} from './Battle'
+import type { AnimationInstruction, BattleActionLogEntry } from './ActionLog'
 import { ActionLog } from './ActionLog'
+import type { Card } from '../entities/Card'
+import type { DamageOutcome } from '../entities/Damages'
 
 export interface EntryAppendContext {
   index: number
@@ -120,12 +126,22 @@ export class OperationRunner {
 
   private appendEntry(entry: BattleActionLogEntry, options?: AppendOptions): number {
     let index = -1
+    const shouldCaptureAnimations = entry.type === 'play-card'
+    const snapshotBefore = shouldCaptureAnimations ? this.battle.captureFullSnapshot() : undefined
     try {
       index = this.actionLog.push(entry)
       this.battle.executeActionLog(this.actionLog, index)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw new OperationRunnableError(message, { actionEntry: entry, cause: error })
+    }
+
+    if (shouldCaptureAnimations && snapshotBefore) {
+      const appendedEntry = this.actionLog.at(index)
+      if (appendedEntry && appendedEntry.type === 'play-card') {
+        const snapshotAfter = this.battle.captureFullSnapshot()
+        this.attachPlayCardAnimations(appendedEntry, snapshotBefore.snapshot, snapshotAfter.snapshot)
+      }
     }
 
     if (!options?.suppressFlush) {
@@ -232,6 +248,187 @@ export class OperationRunner {
       this.appendEntry({ type: status }, { suppressFlush: true })
       this.recordedOutcome = status
     }
+  }
+
+  private attachPlayCardAnimations(
+    entry: Extract<BattleActionLogEntry, { type: 'play-card' }>,
+    before: BattleSnapshot,
+    after: BattleSnapshot,
+  ): void {
+    const context = this.battle.consumeLastPlayCardAnimationContext()
+    entry.animations = this.buildPlayCardAnimations(before, after, context)
+  }
+
+  private buildPlayCardAnimations(
+    before: BattleSnapshot,
+    after: BattleSnapshot,
+    context?: PlayCardAnimationContext,
+  ): AnimationInstruction[] {
+    const animations: AnimationInstruction[] = []
+    const cardMoveSnapshot =
+      context?.cardId !== undefined
+        ? this.buildCardMoveSnapshot(before, after, context.cardId)
+        : this.cloneBattleSnapshot(after)
+
+    animations.push({
+      snapshot: cardMoveSnapshot,
+      waitMs: 0,
+      metadata: {
+        stage: 'card-move',
+        cardId: context?.cardId,
+      },
+    })
+
+    const damageSnapshot = this.buildDamageSnapshot(before, after, context)
+    animations.push({
+      snapshot: damageSnapshot,
+      waitMs: this.calculateDamageWait(context),
+      metadata: {
+        stage: 'damage',
+        cardId: context?.cardId,
+        defeatedEnemyIds: context?.defeatedEnemyIds ?? [],
+      },
+      damageOutcomes: this.extractDamageOutcomes(context),
+    })
+
+    if ((context?.defeatedEnemyIds?.length ?? 0) > 0) {
+      animations.push({
+        snapshot: this.cloneBattleSnapshot(after),
+        waitMs: 1000,
+        metadata: {
+          stage: 'defeat',
+          cardId: context?.cardId,
+          defeatedEnemyIds: context?.defeatedEnemyIds ?? [],
+        },
+      })
+    }
+
+    return animations
+  }
+
+  private buildCardMoveSnapshot(before: BattleSnapshot, after: BattleSnapshot, cardId: number): BattleSnapshot {
+    const snapshot = this.cloneBattleSnapshot(before)
+    const destination = this.determineCardDestination(after, cardId)
+    const cardInstance =
+      this.findCardById(after.hand, cardId) ??
+      this.findCardById(after.discardPile, cardId) ??
+      this.findCardById(after.exilePile, cardId)
+
+    this.removeCardFromAllZones(snapshot, cardId)
+
+    if (cardInstance) {
+      if (destination === 'discard') {
+        snapshot.discardPile = [...snapshot.discardPile, cardInstance]
+      } else if (destination === 'exile') {
+        snapshot.exilePile = [...snapshot.exilePile, cardInstance]
+      } else if (destination === 'hand') {
+        snapshot.hand = [...snapshot.hand, cardInstance]
+      }
+    }
+
+    return snapshot
+  }
+
+  private buildDamageSnapshot(
+    before: BattleSnapshot,
+    after: BattleSnapshot,
+    context?: PlayCardAnimationContext,
+  ): BattleSnapshot {
+    if (!context) {
+      return this.cloneBattleSnapshot(after)
+    }
+    const snapshot = this.cloneBattleSnapshot(after)
+    if (!context.defeatedEnemyIds?.length) {
+      return snapshot
+    }
+    const beforeMap = new Map(before.enemies.map((enemy) => [enemy.id, enemy]))
+    for (const enemyId of context.defeatedEnemyIds) {
+      const revert = beforeMap.get(enemyId)
+      const enemy = snapshot.enemies.find((candidate) => candidate.id === enemyId)
+      if (enemy && revert) {
+        enemy.status = revert.status
+      }
+    }
+    return snapshot
+  }
+
+  private determineCardDestination(after: BattleSnapshot, cardId: number): 'hand' | 'discard' | 'exile' | undefined {
+    if (this.findCardById(after.discardPile, cardId)) {
+      return 'discard'
+    }
+    if (this.findCardById(after.exilePile, cardId)) {
+      return 'exile'
+    }
+    if (this.findCardById(after.hand, cardId)) {
+      return 'hand'
+    }
+    return undefined
+  }
+
+  private calculateDamageWait(context?: PlayCardAnimationContext): number {
+    if (!context || context.damageEvents.length === 0) {
+      return 0
+    }
+    const firstEvent = context.damageEvents[0]
+    if (!firstEvent) {
+      return 0
+    }
+    const hits =
+      firstEvent.hitCount && firstEvent.hitCount > 0
+        ? firstEvent.hitCount
+        : firstEvent.outcomes.length
+    if (hits <= 1) {
+      return 0
+    }
+    return (hits - 1) * 200
+  }
+
+  private extractDamageOutcomes(context?: PlayCardAnimationContext): readonly DamageOutcome[] | undefined {
+    const firstEvent = context?.damageEvents[0]
+    if (!firstEvent) {
+      return undefined
+    }
+    return firstEvent.outcomes.map((outcome) => ({ ...outcome }))
+  }
+
+  private cloneBattleSnapshot(source: BattleSnapshot): BattleSnapshot {
+    return {
+      ...source,
+      player: { ...source.player },
+      enemies: source.enemies.map((enemy) => ({
+        ...enemy,
+        states: [...enemy.states],
+      })),
+      deck: [...source.deck],
+      hand: [...source.hand],
+      discardPile: [...source.discardPile],
+      exilePile: [...source.exilePile],
+      events: source.events.map((event) => ({ ...event, payload: event.payload })),
+      turn: { ...source.turn },
+      log: [...source.log],
+      status: source.status,
+    }
+  }
+
+  private findCardById(cards: Card[], cardId: number): Card | undefined {
+    return cards.find((card) => card.id === cardId)
+  }
+
+  private removeCardFromAllZones(snapshot: BattleSnapshot, cardId: number): void {
+    snapshot.hand = this.removeCardById(snapshot.hand, cardId)
+    snapshot.discardPile = this.removeCardById(snapshot.discardPile, cardId)
+    snapshot.exilePile = this.removeCardById(snapshot.exilePile, cardId)
+    snapshot.deck = this.removeCardById(snapshot.deck, cardId)
+  }
+
+  private removeCardById(zone: Card[], cardId: number): Card[] {
+    const index = zone.findIndex((card) => card.id === cardId)
+    if (index === -1) {
+      return zone
+    }
+    const copy = zone.slice()
+    copy.splice(index, 1)
+    return copy
   }
 
   private calculateTurnStartDraw(): number {

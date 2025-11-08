@@ -76,10 +76,17 @@ const handEntries = computed<HandEntry[]>(() => {
   }
 
   const currentMana = current.player.currentMana
-  return current.hand.map((card, index) => buildHandEntry(card, index, currentMana))
+  const entries = current.hand.map((card, index) => buildHandEntry(card, index, currentMana))
+  const regularCards = entries.filter((entry) => entry.card.type !== 'status')
+  const statusCards = entries.filter((entry) => entry.card.type === 'status')
+  return [...regularCards, ...statusCards]
 })
 
 const hasCards = computed(() => handEntries.value.length > 0)
+const handCount = computed(() => props.snapshot?.hand.length ?? 0)
+const handLimit = computed(() => props.viewManager.battle?.hand.maxSize() ?? 10)
+const deckCount = computed(() => props.snapshot?.deck.length ?? 0)
+const discardCount = computed(() => props.snapshot?.discardPile.length ?? 0)
 
 const hoveredCardIndex = computed(() =>
   hoveredCardKey.value
@@ -151,12 +158,12 @@ function buildCardPresentation(card: Card, index: number): {
   let descriptionSegments: Array<{ text: string; highlighted?: boolean }> | undefined
   let attackStyle: AttackStyle | undefined
 
-  addTagEntry(definition.type, primaryTags, seenTagIds)
+  addTagEntry(definition.type, primaryTags, seenTagIds, (tag) => tag.name)
   if ('target' in definition) {
-    addTagEntry(definition.target, primaryTags, seenTagIds)
+    addTagEntry(definition.target, primaryTags, seenTagIds, (tag) => tag.name)
   }
   addTagEntries(effectTags, card.effectTags)
-  addTagEntries(categoryTags, card.categoryTags)
+  addTagEntries(categoryTags, card.categoryTags, (tag) => tag.name)
 
   const action = card.action
   const battle = props.viewManager.battle
@@ -206,19 +213,28 @@ function buildCardPresentation(card: Card, index: number): {
   return { description, descriptionSegments, attackStyle, primaryTags, effectTags, categoryTags }
 }
 
-function addTagEntry(tag: CardTag | undefined, entries: CardTagInfo[], registry: Set<string>): void {
+function addTagEntry(
+  tag: CardTag | undefined,
+  entries: CardTagInfo[],
+  registry: Set<string>,
+  formatter: (tag: CardTag) => string = (candidate) => `[${candidate.name}]`,
+): void {
   if (!tag || registry.has(tag.id)) {
     return
   }
   registry.add(tag.id)
   entries.push({
     id: tag.id,
-    label: `[${tag.name}]`,
+    label: formatter(tag),
     description: tag.description,
   })
 }
 
-function addTagEntries(entries: CardTagInfo[], tags?: readonly CardTag[]): void {
+function addTagEntries(
+  entries: CardTagInfo[],
+  tags?: readonly CardTag[],
+  formatter: (tag: CardTag) => string = (candidate) => `[${candidate.name}]`,
+): void {
   if (!tags) {
     return
   }
@@ -228,7 +244,7 @@ function addTagEntries(entries: CardTagInfo[], tags?: readonly CardTag[]): void 
     }
     entries.push({
       id: tag.id,
-      label: `[${tag.name}]`,
+      label: formatter(tag),
       description: tag.description,
     })
   }
@@ -368,6 +384,19 @@ defineExpose({ resetSelection, cancelSelection })
 
 <template>
   <section class="hand-zone">
+    <div class="hand-piles">
+      <div class="hand-pile hand-pile--hand">
+        <span class="pile-label">手札 {{ handCount }} / {{ handLimit }}</span>
+      </div>
+      <div class="hand-pile hand-pile--deck">
+        <span class="pile-icon pile-icon--deck" aria-hidden="true"></span>
+        <span class="pile-label">山札 {{ deckCount }}</span>
+      </div>
+      <div class="hand-pile hand-pile--discard">
+        <span class="pile-icon pile-icon--discard" aria-hidden="true"></span>
+        <span class="pile-label">捨て札 {{ discardCount }}</span>
+      </div>
+    </div>
     <div v-if="errorMessage" class="zone-message zone-message--error">
       {{ errorMessage }}
     </div>
@@ -402,6 +431,63 @@ defineExpose({ resetSelection, cancelSelection })
   justify-content: center;
   padding: 30px 32px;
   min-height: 210px;
+}
+
+.hand-piles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  color: rgba(240, 235, 250, 0.85);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.hand-pile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hand-pile--hand .pile-label {
+  font-weight: 600;
+}
+
+.pile-icon {
+  position: relative;
+  width: 20px;
+  height: 26px;
+  border-radius: 4px;
+  background: rgba(90, 90, 110, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.pile-icon::after,
+.pile-icon::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 1px;
+}
+
+.pile-icon::after {
+  top: 8px;
+}
+
+.pile-icon::before {
+  bottom: 8px;
+}
+
+.pile-icon--deck {
+  background: rgba(70, 110, 220, 0.4);
+}
+
+.pile-icon--discard {
+  background: rgba(220, 90, 110, 0.35);
 }
 
 .hand-track {

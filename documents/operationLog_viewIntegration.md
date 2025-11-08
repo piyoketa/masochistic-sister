@@ -1,100 +1,96 @@
-# OperationLog を ViewManager/フロントへ統合するための設計メモ
+# OperationLog × View 統合メモ（2024-xx-xx）
 
-## 1. ゴール
-- View ↔ Battle 間の通信ペイロードを ActionLogEntry ベースから OperationLogEntry（`play-card` / `end-player-turn`）ベースへ変更し、**プレイヤー操作単位**で履歴管理できるようにする。
-- OperationRunner を UI 側でも利用し、敵行動や state-event、勝敗エントリを Battle が毎回演算して ActionLog に落とし込む流れを統一する。
-- `retry` / `undo`（一手戻す）がプレイヤー操作単位で確実に巻き戻せるようにし、敵行動の再計算や乱数差異が発生しない構造にする。
+最新の実装状況と残課題をまとめたドキュメント。フェーズごとに「完了/進行中/未着手」を明確にし、次に着手すべきタスクを洗い出す。
 
-## 2. 現状の課題整理
-1. **ActionLog 直書き構造**  
-   - `ViewManager` が `BattleActionLogEntry` を直接生成して push しており、敵行動ログや state-event がテスト用固定値になっている。
-2. **Undo/Redo の粒度不整合**  
-   - `playerActionHistory` は ActionLogIndex を記録しているため、複数エントリを生成する操作（例：`end-player-turn` → enemy-act 群）が「1 手」扱いにならない。
-3. **ドロー数の責務が曖昧**  
-   - UI 側がターン開始時 draw を推定し `start-player-turn` に `draw` 値を入れているが、今後は Model が一意に決めたい。
-4. **乱数・敵行動の巻き戻し不可**  
-   - `retry` や `undo` 時に敵行動キューや deck order が初期状態とズレる問題が残っている。
+---
 
-## 3. 目指す構造
-```
-UI (OperationLogEntry) ──> ViewManager OperationRunner ──> Battle / ActionLog
-                                         │
-                                         ├─ ActionLog (for replay / animation)
-                                         └─ Snapshot (BattleSnapshot + EnemyQueue)
-```
+## 1. 現状サマリ
+- **OperationRunner 駆動**  
+  - ViewManager は OperationLog を直接保持し、OperationRunner を通じて Battle/ActionLog を更新する構造に移行済み。
+  - Undo/Retry は OperationLogIndex で巻き戻す仕組みに置き換え済み。初期 Snapshot の差し替えも可能。
+- **Snapshot / Battle 初期化**  
+  - `Battle.captureFullSnapshot()` / `restoreFullSnapshot()` 実装済み。敵行動キューも含めて復元できる。  
+  - `Battle.initialize()` が初期手札3枚を配布し、ターン開始ドローは固定2枚に統一済み。
+- **Scenario / テスト**  
+  - `battleSampleScenario*.ts` は OperationLog 前提で再構築済み。  
+  - integration テスト・ViewManager/BattleView の単体テストも新フローに追随済み。
+- **UI**  
+  - BattleView では OperationLog に基づく操作（play-card/end-turn）が稼働中。  
+  - 手札表示（ActionCardタグ、山札/捨て札/手札カウンタ等）は最新UXへ更新済み。
 
-## 4. 実装方針
-### 4.1 OperationLog を UI が管理
-- `ViewManager` は `operationLog: OperationLog` を保持し、プレイヤー入力を OperationLogEntry として push。`OperationRunner` を通じて ActionLog を生成し、Battle を進行させる。
-- `PlayerInput` 型も `play-card` / `end-player-turn` に限定した構造へ整理し、OperationLogEntry と 1:1 対応させる。
+---
 
-### 4.2 Battle 側の責務
-- **初期盤面 Snapshot**  
-  - OperationLogReplayer の「1 行目」として初期 Snapshot を保存する。Snapshot には Deck/Discard/Hand だけでなく、Enemy action queue / RNG シード / イベントキューも含め、巻き戻し時に完全再現できるようにする。
-  - `Battle` に `captureInitialSnapshot()` / `restoreSnapshot(snapshot)` を追加し、ViewManager が `retry` 時に同じ状態を得られるようにする。
-- **ドロー処理**  
-  - バトル開始時に手札 3 枚で開始。これは `battle-start` の処理内でセットアップする。  
-  - ターン開始時のドローは常に 2 枚固定。Model 側が `start-player-turn` エントリ生成時に `draw: 2` をセットし、UI は draw 数に関与しない。
-- **OperationRunner の拡張**  
-  - `initializeIfNeeded` 時に「初期 Snapshot を ActionLog へ埋め込む」仕組みを追加（OperationLogReplayer で snapshot を引き回す）。  
-  - `endPlayerTurn()` が `enemy-act` / `player-event` / `state-event` を自動生成する現行仕様を踏襲しつつ、UI へ通知するための hook (`onEntryAppended`) を ViewManager へ渡す。
+## 2. 進捗ステータス
+| 項目 | 状況 | メモ |
+| --- | --- | --- |
+| OperationRunner を UI 側で利用 | ✅ 完了 | onEntryAppended hook で ViewManager 同期待ち |
+| Battle 初期化＋ドロー統一 | ✅ 完了 | 初手3枚＋ターン2枚に揃えた |
+| Scenario/Integration テスト更新 | ✅ 完了 | OperationLog前提の検証に刷新 |
+| ViewManager undo/retry 巻き戻し | ✅ 完了 | OperationRunner 差し替えで再レイ生成 |
+| Snapshot に敵行動キュー含む | ✅ 完了 | RNG シード保存は未実装 |
+| AnimationInstruction 設計 | ⚠️ 一部のみ | ドキュメント更新済だが実際の生成/再生は未着手 |
+| OperationLog `toJSON/fromJSON` | ⛔ 未着手 | セーブ/ロード実装予定に向けて保留 |
+| ViewManager/Front を OperationLog payload に統一 | ⚠️ 部分的 | BattleView は移行済、Title/他UIやOperationRunner直接呼び出す部分は未整理 |
+| アニメーション待機制御 | ⚠️ 着手中 | Runnerはwait情報を返すのみ。View側で活用未実装 |
+| RNG シリアライズ | ⛔ 未着手 | 巻き戻し後に乱数ズレが残る可能性あり |
 
-### 4.3 ViewManager の再設計
-1. **OperationRunner 埋め込み**  
-   - `ViewManager` 初期化時に `OperationRunner` を生成。`appendOperationEntry` で OperationLogEntry を push しつつ OperationRunner に反映、ActionLog 更新後の `BattleSnapshot` を保存する。
-2. **アニメーション/入力ロック**  
-   - `onEntryAppended`（OperationRunner）を通じて新 ActionLogEntry が生成されるたびにアニメーションキューへ積む。ActionLog を直接触る箇所（`appendActionLogEntry`）を全て OperationRunner 呼び出しに置換。
-3. **Undo/Redo / Retry**  
-   - Undo: OperationLog の末尾を truncate し、OperationRunner を新規 Battle へ再適用。ActionLogIndex ではなく OperationLogIndex で履歴管理。  
-   - Retry: 初期 Snapshot（OperationLogReplayer が持つ 0 行目）より前には戻せないよう ViewManager 側で制限。
-4. **テスト更新**  
-   - `src/view/__tests__/ViewManager.spec.ts` / `src/views/__tests__/BattleView.spec.ts` は OperationLogEntry を前提にしたモックを組み直す。ActionLog 直書きのスタブは廃止し、OperationRunner の hook を使った挙動を検証する。
+---
 
-### 4.4 OperationLogReplayer / Snapshot の仕様
-- `OperationLogReplayResult` に「初期 Snapshot（battle-start 前）」を含める。ViewManager Retry 時はこの Snapshot を使って Battle/OperationRunner を再初期化。
-- Snapshot には以下を含める：
-  - Player/Enemy/Deck/Hand/Discard/Exile
-  - Enemy 行動キューの状態（`queuedActions` や random seed）
-  - Event queue、pending state
-- Snapshot から復元する API (`Battle.restoreSnapshot`) を実装し、OperationRunner が初期化時に利用できるようにする。
+## 3. 残課題リスト
 
-## 5. 実装計画（大枠）
-1. **Battle / Snapshot 基盤拡張**  
-   - `FullBattleSnapshot`（Deck/Hand/Discard/Exile + `rngSeed` + `enemyQueues`）を定義。  
-   - `Battle.captureSnapshot()` / `restoreSnapshot()` を実装し、`ActionQueue` の serialize/deserialize API を整備。  
-   - `Battle.initialize()` で初期手札 3 枚を配り、この状態を OperationRunner/OperationLogReplayer が初期 Snapshot として扱えるようにする。
-2. **OperationRunner 強化**  
-   - `onEntryAppended(entry, { waitMs, groupId })`・`onOperationApplied` hook を導入し、敵行動単位で待機情報を ViewManager へ伝える。  
-   - Snapshot 初期化処理を取り込み、`battle-start` → `start-player-turn` 生成を自動化。  
-   - `OperationRunnableError` を追加し、無効 Operation を UI へ伝播。
-3. **ViewManager 再設計**  
-   - OperationLog と OperationRunner を保持し、`queuePlayerAction` で OperationLogEntry を push → OperationRunner 経由で ActionLog を進行。  
-   - Undo/Retry を OperationLogIndex & Snapshot ベースで実装し、初期 Snapshot 以前には戻れない制約を設ける。  
-   - アニメーションキューは OperationRunner の待機情報に従い再生。
-4. **BattleView / UI 改修**  
-   - 入力を OperationLogEntry 形式へ統一（`play-card` / `end-player-turn`）。  
-   - ActionLog 直接操作のコードを削除し、新しい ViewManager API に合わせる。  
-   - BattleView / TitleView / デモ画面のテストを OperationLog 前提に書き直す。
-5. **テスト & Fixture 更新**  
-   - `battleSampleScenario*` などの fixture に FullBattleSnapshot を追加し、OperationLog → ActionLog → Snapshot 復元の整合性テストを拡充。  
-   - ViewManager/BattleView の単体テストを OperationRunner モックで再構成。  
-   - OperationLogReplayer のテストと `toJSON/fromJSON` 下地 API を追加（セーブ対応時に利用）。 
+### 3.1 ロジック/モデル
+1. **RNG シリアライズ**  
+   - ActionQueue以外の乱数（ドロップ/敵行動で RNG 使用箇所があるなら）を保存し、Undo/Retry後も確 determinism を確保する。
+2. **State/Event 差分適用**  
+   - AnimationInstruction が差分パッチを持つ想定だが、現在は BattleSnapshot をフル更新。パフォーマンスと可視化に向け差分モデルを検討。
 
-## 6. 決定事項と残タスク
-1. **Snapshot フォーマット**  
-   - 敵行動キューや RNG シードまで含む *完全シリアライズ* 方式を採用。`ActionQueue` の状態・乱数シード・イベントキュー・Deck/Hand/Discard/Exile/States などを丸ごと保存し、リプレイ／巻き戻し時に忠実に復元する。
-2. **`battle-start` の責務**  
-   - `Battle.initialize()` が初期デッキから手札 3 枚をドローし盤面をセットアップ。OperationRunner はこの Snapshot をそのまま採用し、`battle-start` エントリ作成後から OperationLog を処理する。
-3. **アニメーション同期**  
-   - OperationRunner が敵 1 体の行動など「エントリまとまり」毎に待機情報をまとめて渡し、ViewManager はその単位で再生する。`onEntryAppended` には entry + wait 情報を添付し、既存 AnimationScript の流れを踏襲する。
-4. **OperationLog 永続化**  
-   - 当面はメモリ運用のみ。将来セーブ/ロードが必要になった際に `OperationLog.toJSON()` / `.fromJSON()` を実装できるよう API だけ先行で設計する。
-5. **OperationRunner のエラー伝播**  
-   - 無効な OperationLogEntry を検知したら `OperationRunnableError` を throw。ViewManager がキャッチして `emit({ type: 'error', ... })` で UI へ通知し、入力キューを停止させる。
+### 3.2 OperationRunner / ViewManager
+1. **AnimationInstruction 実装**  
+   - Runner がエントリごとに AnimationInstruction[] を組む仕様（enemy_turn_animation.md 参照）を実装。  
+   - ViewManager は instruction queue を解釈し、待機時間（waitMs）、snapshot差分、DamageOutcome animation などを再生する。
+2. **Runner wait情報の活用**  
+   - 現在は `wait` command を enqueue していない。`onEntryAppended` の waitMs 情報を AnimationScript に変換する。
+3. **OperationLog payload の一元化**  
+   - BattleView 以外で ActionLog ベースの操作が残っていれば排除する。  
+   - TitleView/プリセット選択UI も OperationLogEntry を通じて入力する形へ統一。
 
-現時点の不明点:
-- Snapshot に含める Enemy 行動キューの具体的なシリアライズ形式（ActionQueue の API 仕様）がまだ未定。実装前に `ActionQueue` 側の serialize/deserialize 仕様を決める必要がある。
-- OperationRunner が ViewManager へ渡す「待機情報」フォーマット（例: `waitMs`、`groupId`）を詳細設計する必要がある。
-- OperationLog の `toJSON` / `fromJSON` API 仕様（特にカード ID や operation payload の表現）を詰める必要があるが、これはセーブ機能着手時に再検討予定。
+### 3.3 UI/UX
+1. **AnimationInstruction 対応 UI**  
+   - BattleEnemyArea/BattleHandArea/HpGauge など、差分更新やアニメーション再生に必要なフックを追加。  
+   - 敵行動ごとのハイライト・待機時間（0.5s 等）をアニメーション再生で確認できる状態にする。
+2. **OperationLog Undo/Redo UI**  
+   - 現状は Undo のボタン制御のみ。将来的に OperationLog の履歴ビューや「何手戻すか」選択 UI が必要なら仕様策定。
 
-上記について、特に 1,2,3,5 は要素実装前に詳細を詰める必要があります。Snapshot の形式や `battle-start` の責務など、仕様決定後に ViewManager 実装へ着手するのが安全です。***
+### 3.4 テスト/ツール
+1. **AnimationInstruction 系テスト**  
+   - Runner が指示通りの instruction を生成しているか検証する単体テスト。  
+   - ViewManager が instruction queue を再生し、状態を期待どおり更新する結合テスト。
+2. **OperationLog serialization**  
+   - `OperationLog.toJSON()/fromJSON()` の仕様とテストを整備し、セーブ/ロード対応に備える。
+
+---
+
+## 4. 直近 TODO（優先順）
+1. **AnimationInstruction MVP**  
+   - Runner: entry→instruction 生成。  
+   - ViewManager: instruction queue を `enqueueAnimation` へ流し、BattleView で wait/snapshot 更新を視覚化。  
+   - 最低限 `play-card` / `enemy-act` / `victory` のフローを再生可能にする。
+2. **RNG シリアライズ**  
+   - Deck シャッフル・敵行動ランダム性を含む RNG の seed/state を Snapshot に保存。  
+   - Undo/Retry 後に行動順が変わらないことをテストで保証。
+3. **OperationLog serialization API**  
+   - JSON 形式で OperationLog を吐き出し/読み込む下準備。  
+   - CLI/デバッガで OperationLog を外部保存できるようにし、再現性テストを容易にする。
+
+---
+
+## 5. 参考リンク
+- `documents/enemy_turn_animation.md` … AnimationInstruction の詳細仕様。
+- `tests/fixtures/battleSampleScenario*.ts` … OperationLog/Scenario の最新参照実装。
+- `src/view/ViewManager.ts` … OperationRunner を組み込んだ最新 ViewManager 実装。
+- `src/domain/battle/OperationRunner.ts` … 現行 Runner のエントリ生成フロー。
+
+---
+
+## 6. まとめ
+OperationLog 駆動の基盤は概ね完成し、Undo/Retry やテスト群は新仕様に追随した。残タスクは「アニメーション指示の生成と再生」「RNG完全シリアライズ」「OperationLog 永続化API」の3本柱。これらを実装すれば、UI/モデル間の整合性と再現性が確保され、次フェーズ（シナリオ拡張や演出強化）へ進める。***

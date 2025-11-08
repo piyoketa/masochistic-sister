@@ -17,6 +17,7 @@ import { TurnManager, type TurnState } from './TurnManager'
 import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
+import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -100,6 +101,19 @@ export interface EnemyTurnSummary {
   actions: EnemyTurnActionSummary[]
 }
 
+export interface DamageAnimationEvent {
+  targetId?: number
+  outcomes: DamageOutcome[]
+  effectType?: DamageEffectType
+  hitCount?: number
+}
+
+export interface PlayCardAnimationContext {
+  cardId?: number
+  damageEvents: DamageAnimationEvent[]
+  defeatedEnemyIds: number[]
+}
+
 export class Battle {
   private readonly idValue: string
   private readonly playerValue: Player
@@ -119,6 +133,8 @@ export class Battle {
   private statusValue: BattleStatus = 'in-progress'
   private resolvedEventsBuffer: BattleEvent[] = []
   private stateEventBuffer: StateEventLogEntry[] = []
+  private pendingDamageAnimationEvents: DamageAnimationEvent[] = []
+  private lastPlayCardAnimationContext?: PlayCardAnimationContext
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -369,7 +385,31 @@ export class Battle {
     if (!card) {
       throw new Error(`Card ${cardId} not found in hand`)
     }
+    const enemiesBefore = this.enemyTeamValue.members.map((enemy) => ({
+      id: enemy.id,
+      status: enemy.status,
+    }))
+
     card.play(this, operations)
+
+    const damageEvents = this.consumeDamageAnimationEvents()
+    const defeatedEnemyIds = this.enemyTeamValue.members
+      .filter((enemy, index) => {
+        const before = enemiesBefore[index]
+        return (
+          enemy.status === 'defeated' &&
+          before &&
+          before.status !== 'defeated' &&
+          enemy.id !== undefined
+        )
+      })
+      .map((enemy) => enemy.id!)
+
+    this.lastPlayCardAnimationContext = {
+      cardId,
+      damageEvents,
+      defeatedEnemyIds,
+    }
   }
 
   endPlayerTurn(): void {
@@ -455,6 +495,25 @@ export class Battle {
     const summary: EnemyTurnSummary = { actions }
     this.lastEnemyTurnSummaryValue = summary
     return summary
+  }
+
+  recordDamageAnimation(event: DamageAnimationEvent): void {
+    this.pendingDamageAnimationEvents.push({
+      ...event,
+      outcomes: event.outcomes.map((outcome) => ({ ...outcome })),
+    })
+  }
+
+  consumeLastPlayCardAnimationContext(): PlayCardAnimationContext | undefined {
+    const context = this.lastPlayCardAnimationContext
+    this.lastPlayCardAnimationContext = undefined
+    return context
+  }
+
+  private consumeDamageAnimationEvents(): DamageAnimationEvent[] {
+    const events = this.pendingDamageAnimationEvents
+    this.pendingDamageAnimationEvents = []
+    return events
   }
 
   private extractNewHandCards(before: Card[], after: Card[]): EnemyTurnActionCardGain[] {
