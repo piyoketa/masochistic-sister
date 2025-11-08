@@ -1,308 +1,178 @@
 import { describe, it, expect } from 'vitest'
 
-import {
-  createBattleScenario2,
-  requireCardId,
-  FlurryAction,
-  MucusShotAction,
-  HeavenChainAction,
-  MasochisticAuraAction,
-  CorrosionState,
-  StickyState,
-} from '../fixtures/battleSampleScenario2'
-import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
-import { BarrierState } from '@/domain/entities/states/BarrierState'
+import { Battle } from '@/domain/battle/Battle'
+import { Deck } from '@/domain/battle/Deck'
+import { Hand } from '@/domain/battle/Hand'
+import { DiscardPile } from '@/domain/battle/DiscardPile'
+import { ExilePile } from '@/domain/battle/ExilePile'
+import { BattleEventQueue } from '@/domain/battle/BattleEvent'
+import { BattleLog } from '@/domain/battle/BattleLog'
+import { TurnManager } from '@/domain/battle/TurnManager'
 import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
-import type { BattleActionLogEntry } from '@/domain/battle/ActionLog'
+import { buildScenario2Deck } from '@/domain/entities/decks'
+import { IronBloomTeam } from '@/domain/entities/enemyTeams'
+import { ProtagonistPlayer } from '@/domain/entities/players'
+import { CardRepository } from '@/domain/repository/CardRepository'
+import { ACTION_LOG_SUMMARY_STAGE2 } from '../fixtures/battleSample2ExpectedActionLog'
+import {
+  buildOperationLog,
+  summarizeActionLogEntry,
+  type ActionLogEntrySummary,
+  type OperationLogEntryConfig,
+} from './utils/battleLogTestUtils'
+import {
+  collectCardIdsByTitle,
+  findMemoryCardId,
+  requireCardId,
+  requireEnemyId,
+} from './utils/scenarioEntityUtils'
 
-const battleSampleScenario = createBattleScenario2()
-const Steps = battleSampleScenario.steps
-const Refs = battleSampleScenario.references
-const actionLog = battleSampleScenario.replayer.getActionLog()
-const stripAnimations = (entry: BattleActionLogEntry): BattleActionLogEntry => {
-  if (!entry.animations) {
-    return entry
-  }
-  const { animations: _ignored, ...rest } = entry
-  return rest as BattleActionLogEntry
-}
+const EXPECTED_ACTION_LOG_SUMMARY_STAGE2: ActionLogEntrySummary[] = ACTION_LOG_SUMMARY_STAGE2
 
-const readEntryType = (index: number): string | undefined => {
-  const entry = actionLog.at(index)
-  return (entry as { type?: string })?.type
-}
-
-const readStepEntryType = (stepKey: keyof typeof Steps, offset = 0): string | undefined => {
-  const baseIndex = Steps[stepKey]
-  if (baseIndex === undefined) {
-    return undefined
-  }
-  return readEntryType(baseIndex + offset)
-}
-
-function runScenario(stepKey: keyof typeof Steps) {
-  const index = Steps[stepKey]
-  if (index === undefined) {
-    throw new Error(`Step ${String(stepKey)} is not defined in scenario 2`)
-  }
-
-  return battleSampleScenario.replayer.run(index)
-}
-
-describe('OperationLogとActionLogの整合性', () => {
-  it('シナリオ2のOperationLogからActionLogを再構築できる', () => {
-    const opReplayer = new OperationLogReplayer({
-      createBattle: battleSampleScenario.createBattle,
-      operationLog: battleSampleScenario.operationLog,
-    })
-    const { actionLog } = opReplayer.buildActionLog()
-    const expected = battleSampleScenario.replayer.getActionLog().toArray().map(stripAnimations)
-    const actual = actionLog.toArray().map(stripAnimations)
-    expect(actual).toEqual(expected)
+const battleFactory = () => {
+  const cardRepository = new CardRepository()
+  const scenarioDeck = buildScenario2Deck(cardRepository)
+  return new Battle({
+    id: 'battle-scenario-2',
+    cardRepository,
+    player: new ProtagonistPlayer(),
+    enemyTeam: new IronBloomTeam(),
+    deck: new Deck(scenarioDeck.deck),
+    hand: new Hand(),
+    discardPile: new DiscardPile(),
+    exilePile: new ExilePile(),
+    events: new BattleEventQueue(),
+    log: new BattleLog(),
+    turn: new TurnManager(),
   })
-})
+}
 
-describe('シナリオ2: 鉄花チームとの交戦', () => {
-  describe('ActionLogエントリ構造（計画ベース）', () => {
+const references = collectScenarioReferences(battleFactory().getSnapshot())
+const operationEntries = buildOperationEntries(references)
 
-    it('ターン2開始イベントは player-event で処理される', () => {
-      expect(readStepEntryType('playerTurn2Start', 1)).toBe('player-event')
+const OPERATION_EXPECTATIONS = [
+  { name: '被虐のオーラで鉄花の粘液飛ばしを誘発', lastActionIndex: 2 },
+  { name: '天の鎖でなめくじの行動を拘束', lastActionIndex: 3 },
+  { name: '戦いの準備で次ターンのマナを予約', lastActionIndex: 4 },
+  { name: 'ターン終了 → 敵行動と次ターン開始', lastActionIndex: 11 },
+  { name: '乱れ突き(記憶)で鉄花を攻撃', lastActionIndex: 12 },
+  { name: '被虐のオーラでオークランサーに追い風', lastActionIndex: 13 },
+  { name: '乱れ突きでオークランサーに連撃', lastActionIndex: 14 },
+  { name: '日課で手札補充', lastActionIndex: 15 },
+  { name: 'ターン終了2 → 敵行動第2セット', lastActionIndex: 21 },
+  { name: '再装填で手札を更新', lastActionIndex: 22 },
+  { name: '乱れ突きでかまいたち撃破＆臆病連鎖', lastActionIndex: 25 },
+] as const
+
+if (process.env.LOG_BATTLE_SAMPLE2_SUMMARY === '1') {
+  const fullOperationLog = buildOperationLog(operationEntries, operationEntries.length - 1)
+  const replayer = new OperationLogReplayer({
+    createBattle: battleFactory,
+    operationLog: fullOperationLog,
+  })
+  const { actionLog } = replayer.buildActionLog()
+  const summary = actionLog.toArray().map(summarizeActionLogEntry)
+  // eslint-disable-next-line no-console
+  console.log('BATTLE_SAMPLE2_ACTION_LOG_SUMMARY', JSON.stringify(summary, null, 2))
+  operationEntries.forEach((_, index) => {
+    const partialLog = buildOperationLog(operationEntries, index)
+    const partialReplayer = new OperationLogReplayer({
+      createBattle: battleFactory,
+      operationLog: partialLog,
     })
+    const { actionLog: partialActionLog } = partialReplayer.buildActionLog()
+    // eslint-disable-next-line no-console
+    console.log(
+      'BATTLE_SAMPLE2_OPERATION',
+      index + 1,
+      'lastActionIndex',
+      partialActionLog.toArray().length - 1,
+    )
+  })
+}
 
-    it('ターン2終了後も enemy-act が並び、最後はなめくじの行動で締める', () => {
-      const types = [1, 2, 3, 4].map((offset) =>
-        readStepEntryType('endPlayerTurn2', offset),
+describe('シナリオ2: OperationLog → ActionLog + AnimationInstruction', () => {
+  OPERATION_EXPECTATIONS.forEach(({ name, lastActionIndex }, operationIndex) => {
+    it(`${operationIndex + 1}. ${name}`, () => {
+      const operationLog = buildOperationLog(operationEntries, operationIndex)
+      const replayer = new OperationLogReplayer({
+        createBattle: battleFactory,
+        operationLog,
+      })
+      const { actionLog } = replayer.buildActionLog()
+      const actualSummary = actionLog.toArray().map(summarizeActionLogEntry)
+      expect(actualSummary.slice(0, lastActionIndex + 1)).toEqual(
+        EXPECTED_ACTION_LOG_SUMMARY_STAGE2.slice(0, lastActionIndex + 1),
       )
-      expect(types).toEqual(['enemy-act', 'enemy-act', 'enemy-act', 'enemy-act'])
     })
-
-    it('かまいたち撃破後の逃走は state-event になる', () => {
-      expect(readStepEntryType('playFlurryOnKamaitachi', 1)).toBe('state-event')
-    })
-  })
-  it('バトル開始で初期3枚の手札が配られる', () => {
-    const { snapshot, initialSnapshot, lastEntry } = runScenario('battleStart')
-
-    expect(lastEntry?.type).toBe('battle-start')
-    expect(snapshot.player.currentHp).toBe(150)
-    expect(snapshot.player.currentMana).toBe(3)
-    expect(snapshot.hand).toHaveLength(3)
-    expect(snapshot.deck).toHaveLength(initialSnapshot.deck.length - 3)
-    expect(snapshot.hand.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(0, 3).map(requireCardId),
-    )
-    expect(snapshot.deck.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(3).map(requireCardId),
-    )
-    expect(snapshot.status).toBe('in-progress')
-  })
-
-  it('バトル開始の初期3枚 + ターン開始の2枚で手札5枚が揃う', () => {
-    const { battle, snapshot, initialSnapshot, lastEntry } = runScenario('playerTurn1Start')
-
-    expect(lastEntry?.type).toBe('start-player-turn')
-    expect(lastEntry?.draw).toBe(2)
-    expect(snapshot.hand).toHaveLength(5)
-    expect(snapshot.hand.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(0, 5).map(requireCardId),
-    )
-    expect(snapshot.deck.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(5).map(requireCardId),
-    )
-
-    const ironBloomSnapshot = snapshot.enemies.find(
-      (enemy) => enemy.id === Refs.enemyIds.ironBloom,
-    )
-    expect(
-      ironBloomSnapshot?.states.some(
-        (state) => state instanceof BarrierState && (state.magnitude ?? 0) === 3,
-      ),
-    ).toBe(true)
-  })
-
-  it('被虐のオーラで鉄花が粘液飛ばしを即時発動し、状態カードを獲得する', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playMasochisticAuraOnIronBloom')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(2)
-    expect(snapshot.player.currentHp).toBe(145)
-    expect(battle.hand.hasCardOf(MasochisticAuraAction)).toBe(false)
-    expect(battle.hand.hasCardOf(MucusShotAction)).toBe(true)
-    expect(battle.hand.hasCardOf(StickyState)).toBe(true)
-    expect(battle.player.getStates().some((state) => state instanceof StickyState)).toBe(true)
-
-    const ironBloom = battle.enemyTeam.findEnemy(Refs.enemyIds.ironBloom)
-    expect(ironBloom?.hasActedThisTurn).toBe(true)
-  })
-
-  it('天の鎖でなめくじの行動を封じる', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playHeavenChainOnSlug')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(1)
-    expect(battle.hand.hasCardOf(HeavenChainAction)).toBe(true)
-    const slug = battle.enemyTeam.findEnemy(Refs.enemyIds.slug)
-    expect(slug?.hasActedThisTurn).toBe(false)
-    const nextAction = slug?.queuedActions[0]
-    expect(nextAction instanceof SkipTurnAction).toBe(true)
-  })
-
-  it('戦いの準備で次ターンのマナイベントを予約する', () => {
-    const { snapshot, lastEntry } = runScenario('playBattlePrep')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(0)
-    expect(snapshot.hand).toHaveLength(4)
-    expect(snapshot.discardPile.map((card) => card.title)).toContain('戦いの準備')
-    expect(snapshot.events).toEqual([
-      expect.objectContaining({
-        type: 'mana',
-        scheduledTurn: 2,
-        payload: expect.objectContaining({ amount: 1 }),
-      }),
-    ])
-  })
-
-  it('敵ターン1で想定通りの連撃と追加カードが発生する', () => {
-    const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn1')
-
-    const resolved = lastEntry as { type?: string; enemyActions?: unknown }
-    expect(resolved?.type).toBe('end-player-turn')
-    expect(resolved?.enemyActions).toBeUndefined()
-
-    expect(snapshot.player.currentHp).toBe(120)
-    expect(snapshot.hand).toHaveLength(5)
-    expect(battle.hand.hasCardOf(FlurryAction)).toBe(true)
-    expect(battle.hand.hasCardOf(MucusShotAction)).toBe(true)
-    expect(battle.player.getStates().some((state) => state instanceof StickyState)).toBe(true)
-    expect(battle.player.getStates().some((state) => state instanceof CorrosionState)).toBe(false)
-  })
-
-  it('ターン2開始時に2枚ドローしマナ+1される', () => {
-    const { snapshot, lastEntry } = runScenario('playerTurn2Start')
-
-    expect(lastEntry?.type).toBe('start-player-turn')
-    expect(lastEntry?.draw).toBe(2)
-    expect(snapshot.hand).toHaveLength(7)
-    expect(snapshot.player.currentMana).toBe(4)
-    expect(readStepEntryType('playerTurn2Start', 1)).toBe('player-event')
-    expect(snapshot.hand.map((card) => card.title)).toEqual([
-      '天の鎖',
-      '日課',
-      'ねばねば',
-      '粘液飛ばし',
-      '乱れ突き',
-      '天の鎖',
-      '被虐のオーラ',
-    ])
-  })
-
-  it('乱れ突き(5×5)で鉄花のバリアを削りつつ撃破する', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playFlurryOnIronBloom')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(3)
-    const ironBloom = battle.enemyTeam.findEnemy(Refs.enemyIds.ironBloom)
-    expect(ironBloom?.currentHp).toBe(0)
-    expect(ironBloom?.status).toBe('defeated')
-    expect(snapshot.discardPile.some((card) => card.title === '乱れ突き')).toBe(true)
-  })
-
-  it('被虐のオーラでオークランサーの乱れ突きを誘発し、記憶カードを得る', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playMasochisticAuraOnOrcLancer')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(2)
-    expect(snapshot.player.currentHp).toBe(80)
-    expect(battle.hand.hasCardOf(FlurryAction)).toBe(true)
-    const orcLancer = battle.enemyTeam.findEnemy(Refs.enemyIds.orcLancer)
-    expect(orcLancer?.hasActedThisTurn).toBe(true)
-  })
-
-  it('乱れ突き(10×4)でオークランサーを撃破する', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playFlurryOnOrcLancer')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(1)
-    const orcLancer = battle.enemyTeam.findEnemy(Refs.enemyIds.orcLancer)
-    expect(orcLancer?.currentHp).toBe(0)
-    expect(orcLancer?.status).toBe('defeated')
-  })
-
-  it('日課で再装填と天の鎖を引き込み、手札が整理される', () => {
-    const { snapshot, lastEntry } = runScenario('playDailyRoutine')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(0)
-    expect(snapshot.hand.map((card) => card.title)).toEqual([
-      '天の鎖',
-      'ねばねば',
-      '粘液飛ばし',
-      '天の鎖',
-      '再装填',
-      '天の鎖',
-    ])
-  })
-
-  it('敵ターン2で追い風は不発となり、なめくじの酸を吐くを受ける', () => {
-    const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn2')
-
-    const resolved = lastEntry as { type?: string; enemyActions?: unknown }
-    expect(resolved?.type).toBe('end-player-turn')
-    expect(resolved?.enemyActions).toBeUndefined()
-
-    expect(snapshot.player.currentHp).toBe(75)
-    expect(snapshot.hand).toHaveLength(8)
-    const states = battle.player.getStates()
-    expect(states.some((state) => state instanceof StickyState)).toBe(true)
-    expect(states.some((state) => state instanceof CorrosionState)).toBe(true)
-  })
-
-  it('ターン3開始で山札を再構築し、2枚ドローする', () => {
-    const { snapshot, lastEntry } = runScenario('playerTurn3Start')
-
-    expect(lastEntry?.type).toBe('start-player-turn')
-    expect(lastEntry?.draw).toBe(2)
-    expect(snapshot.hand).toHaveLength(10)
-    expect(snapshot.player.currentMana).toBe(3)
-  })
-
-  it('再装填で状態異常以外の手札を捨て、7枚引き直す', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playReload')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(2)
-    expect(snapshot.hand).toHaveLength(9)
-    const statusCards = battle.hand.list().filter((card) => card.definition.cardType === 'status')
-    expect(statusCards.map((card) => card.title)).toEqual(['ねばねば', '腐食'])
-  })
-
-  it('乱れ突き(5×5)でかまいたちを撃破すると、なめくじが逃走する', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playFlurryOnKamaitachi')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(1)
-    expect(readStepEntryType('playFlurryOnKamaitachi', 1)).toBe('state-event')
-
-    const kamaitachi = battle.enemyTeam.findEnemy(Refs.enemyIds.kamaitachi)
-    expect(kamaitachi?.status).toBe('defeated')
-
-    const slug = battle.enemyTeam.findEnemy(Refs.enemyIds.slug)
-    expect(slug?.status).toBe('escaped')
-  })
-
-  it('勝利エントリでバトルが終了し、最終盤面が期待通りになる', () => {
-    const { snapshot, lastEntry } = runScenario('victory')
-
-    expect(lastEntry?.type).toBe('victory')
-    expect(snapshot.status).toBe('victory')
-    expect(snapshot.player.currentHp).toBe(75)
-    expect(snapshot.player.currentMana).toBe(1)
-    expect(snapshot.enemies.map((enemy) => enemy.status)).toEqual([
-      'defeated',
-      'defeated',
-      'defeated',
-      'escaped',
-    ])
   })
 })
+
+function collectScenarioReferences(snapshot: Awaited<ReturnType<Battle['getSnapshot']>>) {
+  const heavenChainIds = collectCardIdsByTitle(snapshot.deck, '天の鎖')
+  const masochisticAuraIds = collectCardIdsByTitle(snapshot.deck, '被虐のオーラ')
+  return {
+    masochisticAuraIds: masochisticAuraIds.slice(0, 2) as [number, number],
+    heavenChainIds: heavenChainIds.slice(0, 4) as [number, number, number, number],
+    battlePrepId: requireCardId(snapshot.deck.find((card) => card.title === '戦いの準備')),
+    dailyRoutineId: requireCardId(snapshot.deck.find((card) => card.title === '日課')),
+    reloadId: requireCardId(snapshot.deck.find((card) => card.title === '再装填')),
+    enemyIds: {
+      ironBloom: requireEnemyId(snapshot.enemies, '鉄花'),
+      slug: requireEnemyId(snapshot.enemies, 'なめくじ'),
+      orcLancer: requireEnemyId(snapshot.enemies, 'オークランサー'),
+      kamaitachi: requireEnemyId(snapshot.enemies, 'かまいたち'),
+    },
+  }
+}
+
+function buildOperationEntries(
+  references: ReturnType<typeof collectScenarioReferences>,
+): OperationLogEntryConfig[] {
+  const entries: OperationLogEntryConfig[] = []
+  entries.push({
+    type: 'play-card',
+    card: references.masochisticAuraIds[0],
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.ironBloom }],
+  })
+  entries.push({
+    type: 'play-card',
+    card: references.heavenChainIds[0],
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.slug }],
+  })
+  entries.push({
+    type: 'play-card',
+    card: references.battlePrepId,
+  })
+  entries.push({ type: 'end-player-turn' })
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.ironBloom }],
+  })
+  entries.push({
+    type: 'play-card',
+    card: references.masochisticAuraIds[1],
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.orcLancer }],
+  })
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.orcLancer }],
+  })
+  entries.push({
+    type: 'play-card',
+    card: references.dailyRoutineId,
+  })
+  entries.push({ type: 'end-player-turn' })
+  entries.push({
+    type: 'play-card',
+    card: references.reloadId,
+  })
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.kamaitachi }],
+  })
+  return entries
+}

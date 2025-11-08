@@ -112,7 +112,7 @@ describe('OperationRunner ActionLog / wait metadata', () => {
       'damage',
       'defeat',
     ])
-    expect(animations?.map((instruction) => instruction.waitMs)).toEqual([0, 600, 1000])
+    expect(animations?.map((instruction) => instruction.waitMs)).toEqual([0, 800, 1000])
 
     const { battle } = scenario.replayer.run(entryIndex)
     const resolvedCardId = actionLog.resolveValue(

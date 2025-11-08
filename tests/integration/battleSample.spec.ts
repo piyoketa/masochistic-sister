@@ -1,290 +1,188 @@
 import { describe, it, expect } from 'vitest'
 
-import {
-  AccelerationState,
-  AcidSpitAction,
-  BattleDanceAction,
-  CorrosionState,
-  FlurryAction,
-  MucusShotAction,
-  StickyState,
-  StrengthState,
-  TackleAction,
-  createBattleSampleScenario,
-  requireCardId,
-} from '../fixtures/battleSampleScenario'
+import { Battle } from '@/domain/battle/Battle'
+import { Deck } from '@/domain/battle/Deck'
+import { Hand } from '@/domain/battle/Hand'
+import { DiscardPile } from '@/domain/battle/DiscardPile'
+import { ExilePile } from '@/domain/battle/ExilePile'
+import { BattleEventQueue } from '@/domain/battle/BattleEvent'
+import { BattleLog } from '@/domain/battle/BattleLog'
+import { TurnManager } from '@/domain/battle/TurnManager'
 import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
-import type { BattleActionLogEntry } from '@/domain/battle/ActionLog'
+import { buildTestDeck } from '@/domain/entities/decks'
+import { TestEnemyTeam } from '@/domain/entities/enemyTeams'
+import { ProtagonistPlayer } from '@/domain/entities/players'
+import { CardRepository } from '@/domain/repository/CardRepository'
+import { ACTION_LOG_SUMMARY } from '../fixtures/battleSampleExpectedActionLog'
+import {
+  buildOperationLog,
+  summarizeActionLogEntry,
+  type ActionLogEntrySummary,
+  type OperationLogEntryConfig,
+} from './utils/battleLogTestUtils'
+import {
+  collectCardIdsByTitle,
+  findMemoryCardId,
+  findStatusCardId,
+  requireCardId,
+  requireEnemyId,
+} from './utils/scenarioEntityUtils'
 
-const battleSampleScenario = createBattleSampleScenario()
-const Steps = battleSampleScenario.steps as Record<string, number>
-const Refs = battleSampleScenario.references
-const actionLog = battleSampleScenario.replayer.getActionLog()
-const stripAnimations = (entry: BattleActionLogEntry): BattleActionLogEntry => {
-  if (!entry.animations) {
-    return entry
-  }
-  const { animations: _ignored, ...rest } = entry
-  return rest as BattleActionLogEntry
+const EXPECTED_ACTION_LOG_SUMMARY: ActionLogEntrySummary[] = ACTION_LOG_SUMMARY
+
+const battleFactory = () => {
+  const cardRepository = new CardRepository()
+  const defaultDeck = buildTestDeck(cardRepository)
+  return new Battle({
+    id: 'battle-1',
+    cardRepository,
+    player: new ProtagonistPlayer(),
+    enemyTeam: new TestEnemyTeam(),
+    deck: new Deck(defaultDeck.deck),
+    hand: new Hand(),
+    discardPile: new DiscardPile(),
+    exilePile: new ExilePile(),
+    events: new BattleEventQueue(),
+    log: new BattleLog(),
+    turn: new TurnManager(),
+  })
 }
 
-const readEntryType = (index: number): string | undefined => {
-  const entry = actionLog.at(index)
-  return (entry as { type?: string })?.type
-}
+const references = collectScenarioReferences(battleFactory().getSnapshot())
+const operationEntries = buildOperationEntries(references)
 
-const readStepEntryType = (stepKey: keyof typeof Steps, offset = 0): string | undefined => {
-  const baseIndex = Steps[stepKey]
-  if (baseIndex === undefined) {
-    return undefined
-  }
-  return readEntryType(baseIndex + offset)
-}
+const OPERATION_EXPECTATIONS = [
+  { name: '被虐のオーラでかたつむりの攻撃を即時発生', lastActionIndex: 2 },
+  { name: '日課でデッキトップから2枚を補充', lastActionIndex: 3 },
+  { name: '戦いの準備で次ターンのマナを予約', lastActionIndex: 4 },
+  { name: 'ターン終了 → 敵行動と次ターン開始まで', lastActionIndex: 11 },
+  { name: 'たいあたり(記憶)でかたつむりへ反撃', lastActionIndex: 12 },
+  { name: '酸を吐く(記憶)で触手へ腐食付与', lastActionIndex: 13 },
+  { name: '粘液飛ばし(記憶)で触手を撃破', lastActionIndex: 14 },
+  { name: '腐食カードを使用', lastActionIndex: 15 },
+  { name: 'ターン終了 → 敵行動第2セット', lastActionIndex: 21 },
+  { name: '疼きで乱れ突き(5×5)を選択', lastActionIndex: 22 },
+  { name: '乱れ突き(10×4)でオークを撃破', lastActionIndex: 23 },
+  { name: '乱れ突き(被弾記憶)連打で勝利', lastActionIndex: 25 },
+] as const
 
-const isMemoryCard = (card: { cardTags?: Array<{ id: string }>; title: string }): boolean =>
-  (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
-
-const countMemoryCards = (
-  cards: Array<{ cardTags?: Array<{ id: string }>; title: string }>,
-  title: string,
-): number => cards.filter((card) => isMemoryCard(card) && card.title === title).length
-
-function runScenario(stepKey: keyof typeof Steps) {
-  const index = Steps[stepKey]
-  if (index === undefined) {
-    throw new Error(`Step ${String(stepKey)} is not defined`)
-  }
-
-  return battleSampleScenario.replayer.run(index)
-}
-
-describe('OperationLogとActionLogの整合性', () => {
-  it('OperationLogから生成したActionLogがシナリオ定義と一致する', () => {
-    const opReplayer = new OperationLogReplayer({
-      createBattle: battleSampleScenario.createBattle,
-      operationLog: battleSampleScenario.operationLog,
+if (process.env.LOG_BATTLE_SAMPLE1_SUMMARY === '1') {
+  const fullOperationLog = buildOperationLog(operationEntries, operationEntries.length - 1)
+  const replayer = new OperationLogReplayer({
+    createBattle: battleFactory,
+    operationLog: fullOperationLog,
+  })
+  const { actionLog } = replayer.buildActionLog()
+  const summary = actionLog.toArray().map(summarizeActionLogEntry)
+  // eslint-disable-next-line no-console
+  console.log('BATTLE_SAMPLE1_ACTION_LOG_SUMMARY', JSON.stringify(summary, null, 2))
+  operationEntries.forEach((_, index) => {
+    const partialLog = buildOperationLog(operationEntries, index)
+    const partialReplayer = new OperationLogReplayer({
+      createBattle: battleFactory,
+      operationLog: partialLog,
     })
-    const { actionLog } = opReplayer.buildActionLog()
-    const expected = battleSampleScenario.replayer.getActionLog().toArray().map(stripAnimations)
-    const actual = actionLog.toArray().map(stripAnimations)
-    expect(actual).toEqual(expected)
+    const { actionLog: partialActionLog } = partialReplayer.buildActionLog()
+    // eslint-disable-next-line no-console
+    console.log(
+      'BATTLE_SAMPLE1_OPERATION',
+      index + 1,
+      'lastActionIndex',
+      partialActionLog.toArray().length - 1,
+    )
+  })
+}
+
+describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () => {
+  OPERATION_EXPECTATIONS.forEach(({ name, lastActionIndex }, operationIndex) => {
+    it(`${operationIndex + 1}. ${name}`, () => {
+      const operationLog = buildOperationLog(operationEntries, operationIndex)
+      const replayer = new OperationLogReplayer({
+        createBattle: battleFactory,
+        operationLog,
+      })
+      const { actionLog } = replayer.buildActionLog()
+      const actualSummary = actionLog.toArray().map(summarizeActionLogEntry)
+      expect(actualSummary.slice(0, lastActionIndex + 1)).toEqual(
+        EXPECTED_ACTION_LOG_SUMMARY.slice(0, lastActionIndex + 1),
+      )
+    })
   })
 })
 
-describe('新戦闘シナリオ: 記憶を操る初期ターン', () => {
-  describe('ActionLogエントリ構造（計画ベース）', () => {
+function collectScenarioReferences(snapshot: Awaited<ReturnType<Battle['getSnapshot']>>) {
+  const heavenChainIds = collectCardIdsByTitle(snapshot.deck, '天の鎖')
+  const masochisticAuraIds = collectCardIdsByTitle(snapshot.deck, '被虐のオーラ')
+  return {
+    masochisticAuraIds: masochisticAuraIds.slice(0, 2) as [number, number],
+    heavenChainIds: heavenChainIds.slice(0, 4) as [number, number, number, number],
+    battlePrepId: requireCardId(snapshot.deck.find((card) => card.title === '戦いの準備')),
+    dailyRoutineId: requireCardId(snapshot.deck.find((card) => card.title === '日課')),
+    acheId: requireCardId(snapshot.deck.find((card) => card.title === '疼き')),
+    enemyIds: {
+      orc: requireEnemyId(snapshot.enemies, 'オーク'),
+      orcDancer: requireEnemyId(snapshot.enemies, 'オークダンサー'),
+      tentacle: requireEnemyId(snapshot.enemies, '触手'),
+      snail: requireEnemyId(snapshot.enemies, 'かたつむり'),
+    },
+  }
+}
 
-    it('ターン1の敵行動は enemy-act 連鎖で管理される', () => {
-      const types = [1, 2, 3, 4].map((offset) => readStepEntryType('endPlayerTurn1', offset))
-      expect(types).toEqual(['enemy-act', 'enemy-act', 'enemy-act', 'enemy-act'])
-    })
-
-    it('ターン2開始イベントは player-event エントリで処理される', () => {
-      expect(readStepEntryType('playerTurn2Start', 1)).toBe('player-event')
-    })
-
-    it('ターン2の敵行動も enemy-act 連鎖で記録される', () => {
-      const types = [1, 2, 3, 4].map((offset) => readStepEntryType('endPlayerTurn2', offset))
-      expect(types).toEqual(['enemy-act', 'enemy-act', 'enemy-act', 'enemy-act'])
-    })
+function buildOperationEntries(references: ReturnType<typeof collectScenarioReferences>) {
+  const entries: OperationLogEntryConfig[] = []
+  entries.push({
+    type: 'play-card',
+    card: references.masochisticAuraIds[0],
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
   })
-  it('バトル開始で初期3枚の手札が配られる', () => {
-    const { snapshot, initialSnapshot, lastEntry } = runScenario('battleStart')
-
-    expect(lastEntry?.type).toBe('battle-start')
-    expect(snapshot.player.currentHp).toBe(150)
-    expect(snapshot.player.currentMana).toBe(3)
-    expect(snapshot.hand).toHaveLength(3)
-    expect(snapshot.deck).toHaveLength(initialSnapshot.deck.length - 3)
-    expect(snapshot.hand.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(0, 3).map(requireCardId),
-    )
-    expect(snapshot.deck.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(3).map(requireCardId),
-    )
-    expect(snapshot.status).toBe('in-progress')
+  entries.push({
+    type: 'play-card',
+    card: references.dailyRoutineId,
   })
-
-  it('ターン開始時は追加で2枚ドローし、山札順序が維持される', () => {
-    const { snapshot, initialSnapshot, lastEntry } = runScenario('playerTurn1Start')
-
-    expect(lastEntry?.type).toBe('start-player-turn')
-    expect(lastEntry?.draw).toBe(2)
-    expect(snapshot.hand).toHaveLength(5)
-    expect(snapshot.hand.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(0, 5).map(requireCardId),
-    )
-    expect(snapshot.deck.map(requireCardId)).toEqual(
-      initialSnapshot.deck.slice(5).map(requireCardId),
-    )
+  entries.push({
+    type: 'play-card',
+    card: references.battlePrepId,
   })
-
-  it('被虐のオーラでかたつむりが即座に行動し記憶・腐食カードを得る', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playMasochisticAuraOnSnail')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(lastEntry?.type === 'play-card' ? lastEntry.cardId : undefined).toBe(
-      Refs.masochisticAuraIds[0],
-    )
-    expect(snapshot.player.currentMana).toBe(2)
-    expect(snapshot.player.currentHp).toBe(145)
-    expect(snapshot.hand).toHaveLength(6)
-    expect(snapshot.discardPile.map(requireCardId)).toEqual([Refs.masochisticAuraIds[0]])
-
-    expect(battle.hand.hasCardOf(AcidSpitAction)).toBe(true)
-    expect(battle.hand.hasCardOf(CorrosionState)).toBe(true)
-    expect(battle.player.getStates().some((state) => state instanceof CorrosionState)).toBe(true)
-
-    const snail = snapshot.enemies.find((enemy) => enemy.id === Refs.enemyIds.snail)
-    expect(snail?.hasActedThisTurn).toBe(true)
+  entries.push({ type: 'end-player-turn' })
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, 'たいあたり'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
   })
-
-  it('日課で追加2ドローし、天の鎖と疼きが手札に入る', () => {
-    const { snapshot, lastEntry } = runScenario('playDailyRoutine')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(lastEntry?.type === 'play-card' ? lastEntry.cardId : undefined).toBe(
-      Refs.dailyRoutineId,
-    )
-    expect(snapshot.player.currentMana).toBe(1)
-    expect(snapshot.hand.map((card) => card.title)).toEqual([
-      '天の鎖',
-      '天の鎖',
-      '戦いの準備',
-      '腐食',
-      '酸を吐く',
-      '天の鎖',
-      '疼き',
-    ])
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '酸を吐く'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
   })
-
-  it('戦いの準備でイベントが予約され、手札とマナが更新される', () => {
-    const { snapshot, lastEntry } = runScenario('playBattlePrep')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(0)
-    expect(snapshot.hand).toHaveLength(6)
-    expect(snapshot.discardPile.map((card) => card.title)).toEqual([
-      '被虐のオーラ',
-      '日課',
-      '戦いの準備',
-    ])
-    expect(snapshot.events).toEqual([
-      expect.objectContaining({
-        type: 'mana',
-        scheduledTurn: 2,
-        payload: expect.objectContaining({ amount: 1 }),
-      }),
-    ])
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '粘液飛ばし'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
   })
-
-  it('敵ターン1でログと手札・状態が期待通り変化する', () => {
-    const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn1')
-
-    const resolved = lastEntry as { type?: string; enemyActions?: unknown }
-    expect(resolved?.type).toBe('end-player-turn')
-    expect(resolved?.enemyActions).toBeUndefined()
-
-    expect(snapshot.player.currentHp).toBe(100)
-    expect(snapshot.hand).toHaveLength(9)
-    expect(battle.hand.hasCardOf(TackleAction)).toBe(true)
-    expect(battle.hand.hasCardOf(MucusShotAction)).toBe(true)
-    expect(battle.hand.hasCardOf(StickyState)).toBe(true)
-
-    const states = battle.player.getStates()
-    expect(states.some((state) => state instanceof CorrosionState)).toBe(true)
-    expect(states.some((state) => state instanceof StickyState)).toBe(true)
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findStatusCardId(battle, '腐食'),
   })
-
-  it('ターン2開始時、手札上限により1枚のみドローされマナ＋1される', () => {
-    const { snapshot, lastEntry } = runScenario('playerTurn2Start')
-
-    expect(lastEntry?.type).toBe('start-player-turn')
-    expect(lastEntry?.handOverflow).toBe(true)
-    expect(snapshot.hand).toHaveLength(10)
-    expect(snapshot.player.currentMana).toBe(4)
-    expect(readStepEntryType('playerTurn2Start', 1)).toBe('player-event')
+  entries.push({ type: 'end-player-turn' })
+  entries.push({
+    type: 'play-card',
+    card: references.acheId,
+    operations: [
+      {
+        type: 'select-hand-card',
+        payload: (battle) => findMemoryCardId(battle, '乱れ突き'),
+      },
+    ],
   })
-
-  it('たいあたりでかたつむりを撃破し、手札と捨て札が更新される', () => {
-    const { battle, snapshot, lastEntry } = runScenario('playTackleOnSnail')
-
-    expect(lastEntry?.type).toBe('play-card')
-    expect(snapshot.player.currentMana).toBe(3)
-    const snail = battle.enemyTeam.findEnemy(Refs.enemyIds.snail)
-    expect(snail?.currentHp).toBe(0)
-    expect(snapshot.hand).toHaveLength(9)
-    expect(snapshot.discardPile.some((card) => card.title === 'たいあたり')).toBe(true)
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
   })
-
-  it('酸を吐くと粘液飛ばしで触手を撃破し、腐食を手放す', () => {
-    const afterAcid = runScenario('playAcidSpitOnTentacle')
-    expect(afterAcid.snapshot.player.currentMana).toBe(2)
-    const tentacleAfterAcid = afterAcid.battle.enemyTeam.findEnemy(Refs.enemyIds.tentacle)
-    expect(tentacleAfterAcid?.currentHp).toBe(20)
-    expect(tentacleAfterAcid?.states.some((state) => state instanceof CorrosionState)).toBe(true)
-
-    const { battle, snapshot } = runScenario('playMucusShotOnTentacle')
-    expect(snapshot.player.currentMana).toBe(1)
-    const tentacle = battle.enemyTeam.findEnemy(Refs.enemyIds.tentacle)
-    expect(tentacle?.currentHp).toBe(0)
-    expect(snapshot.hand).toHaveLength(7)
-
-    const afterCorrosion = runScenario('playCorrosion')
-    expect(afterCorrosion.snapshot.player.currentMana).toBe(0)
-    expect(afterCorrosion.snapshot.hand).toHaveLength(6)
-    expect(afterCorrosion.snapshot.exilePile.map((card) => card.title)).toContain('腐食')
-    const remainingStates = afterCorrosion.battle.player.getStates()
-    expect(remainingStates.some((state) => state instanceof StickyState)).toBe(true)
-    expect(remainingStates.some((state) => state instanceof CorrosionState)).toBe(false)
+  entries.push({
+    type: 'play-card',
+    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
   })
-
-  it('敵ターン2で筋力と加速が付与され、乱れ突きの記憶を得る', () => {
-    const { battle, snapshot, lastEntry } = runScenario('endPlayerTurn2')
-
-    const resolved = lastEntry as { type?: string; enemyActions?: unknown }
-    expect(resolved?.type).toBe('end-player-turn')
-    expect(resolved?.enemyActions).toBeUndefined()
-
-    expect(snapshot.player.currentHp).toBe(60)
-    expect(snapshot.hand).toHaveLength(7)
-    expect(battle.hand.hasCardOf(FlurryAction)).toBe(true)
-
-    const orc = battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
-    expect(orc?.states.some((state) => state instanceof StrengthState)).toBe(true)
-    const dancer = battle.enemyTeam.findEnemy(Refs.enemyIds.orcDancer)
-    expect(dancer?.states.some((state) => state instanceof AccelerationState)).toBe(true)
-  })
-
-  it('ターン3開始時に山札リロードと2ドローが行われる', () => {
-    const { snapshot, lastEntry } = runScenario('playerTurn3Start')
-
-    expect(lastEntry?.type).toBe('start-player-turn')
-    expect(snapshot.hand).toHaveLength(9)
-    expect(snapshot.hand.filter((card) => card.title === '天の鎖')).toHaveLength(4)
-    expect(snapshot.hand.some((card) => card.title === '酸を吐く')).toBe(true)
-  })
-
-  it('疼きで乱れ突きを複製し、オークとオークダンサーを撃破して勝利する', () => {
-    const afterAche = runScenario('playAcheOnFlurry')
-    expect(afterAche.snapshot.player.currentMana).toBe(2)
-    const flurryCount = countMemoryCards(afterAche.snapshot.hand, '乱れ突き')
-    expect(flurryCount).toBe(2)
-    expect(afterAche.snapshot.exilePile.map((card) => card.title)).toContain('疼き')
-
-    const afterFirstFlurry = runScenario('playFlurryOnOrc')
-    const orc = afterFirstFlurry.battle.enemyTeam.findEnemy(Refs.enemyIds.orc)
-    expect(afterFirstFlurry.snapshot.player.currentMana).toBe(1)
-    expect(orc?.currentHp).toBe(0)
-
-    const afterSecondFlurry = runScenario('playFlurryOnOrcDancer')
-    const dancer = afterSecondFlurry.battle.enemyTeam.findEnemy(Refs.enemyIds.orcDancer)
-    expect(afterSecondFlurry.snapshot.player.currentMana).toBe(0)
-    expect(dancer?.currentHp).toBe(0)
-
-    const { snapshot, battle, lastEntry } = runScenario('victory')
-    expect(lastEntry?.type).toBe('victory')
-    expect(battle.status).toBe('victory')
-    expect(snapshot.enemies.every((enemy) => enemy.currentHp === 0)).toBe(true)
-  })
-})
+  return entries
+}

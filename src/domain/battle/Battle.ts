@@ -71,6 +71,12 @@ export interface EnemyTurnActionCardGain {
 
 export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated'
 
+export interface EnemyActAnimationContext {
+  damageEvents: DamageAnimationEvent[]
+  cardAdditions: EnemyTurnActionCardGain[]
+  playerDefeated: boolean
+}
+
 export interface EnemyTurnActionSummary {
   enemyId: number
   enemyName: string
@@ -80,6 +86,7 @@ export interface EnemyTurnActionSummary {
   skipReason?: EnemyTurnSkipReason
   damageToPlayer?: number
   cardsAddedToPlayerHand: EnemyTurnActionCardGain[]
+  animation?: EnemyActAnimationContext
 }
 
 export interface StateEventLogEntry {
@@ -438,6 +445,8 @@ export class Battle {
     const handAfter = this.handValue.list()
     const damageToPlayer = Math.max(0, playerHpBefore - this.playerValue.currentHp)
     const cardsAddedToHand = this.extractNewHandCards(handBefore, handAfter)
+    const damageAnimationEvents = this.consumeDamageAnimationEvents()
+    const playerDefeated = this.playerValue.currentHp <= 0
 
     if (actionLogLengthAfter > actionLogLengthBefore) {
       const executedAction = enemy.actionLog[actionLogLengthAfter - 1]
@@ -452,6 +461,11 @@ export class Battle {
         skipped: false,
         cardsAddedToPlayerHand: cardsAddedToHand,
         damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+        animation: {
+          damageEvents: damageAnimationEvents,
+          cardAdditions: cardsAddedToHand,
+          playerDefeated,
+        },
       }
     }
 
@@ -463,6 +477,11 @@ export class Battle {
       skipReason: hadActedBeforeCall ? 'already-acted' : 'no-action',
       cardsAddedToPlayerHand: cardsAddedToHand,
       damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+      animation: {
+        damageEvents: damageAnimationEvents,
+        cardAdditions: cardsAddedToHand,
+        playerDefeated,
+      },
     }
   }
 

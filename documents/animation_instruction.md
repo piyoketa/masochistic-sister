@@ -42,3 +42,27 @@ BattleActionLogEntry: `play-card`のアニメーションを、最大３つのAn
     - metadata として `stage: 'memory-card'`, `cardTitle`, `sourceEnemyId` などを付与する。手札への挿入アニメーションは CSS 側で 0.5s ほどかけて再生。
 「なめくじの臆病」による逃走は `state-event` エントリとして扱い、その `animations` で EnemyCard フェードアウトを行う（wait: 1s）。  
 この後、BattleActionLogEntry: `victory` の再生が開始し、結果オーバーレイが表示されます。
+
+### enemy-act の詳細（仮説）
+
+1. **[0] 行動開始ハイライト**  
+   - snapshot: 行動開始時点の盤面。敵カードを強調表示するため metadata に `stage: 'enemy-highlight'`, `enemyId`, `actionId` を付与。  
+   - wait: 0ms（ハイライト表示だけなので即座に次へ進む）。
+
+2. **[1] ダメージ演出（任意）**  
+   - `DamageEffects` と HP 変化を伴う instruction。`damageOutcomes` をそのまま受け渡し、metadata に `stage: 'damage'` + `enemyId` を設定。  
+   - 待機時間:  
+     * 手札追加（記憶カード生成）が存在しない場合 → `(ヒット数 - 1) * 0.2s`。  
+     * 手札追加がある場合 → 手札アニメーションを敵攻撃と同期したいので **0ms**。  
+     * プレイヤー敗北時（HP<=0） → ダメージ演出のみ再生し、手札追加はスキップして直後の `gameover` へ遷移。
+
+3. **[2] 手札カード追加（任意）**  
+   - 敵攻撃を記憶カードとして手札へ差し込む instruction。metadata に `stage: 'memory-card'`, `enemyId`, `cards`(タイトル一覧) を記録。  
+   - 待機時間: 0ms（カード移動アニメーションを敵攻撃と同時に開始）。アニメーション時間そのものは CSS 側で 0.5s 程度設定する。  
+   - プレイヤー敗北時や謝礼カード無しの場合はこの instruction は生成しない。
+
+### state-event での逃走演出（仮）
+
+- `state-event` の metadata 例: `{ stage: 'state-event', subject: 'enemy', subjectId: slugId, stateId: 'coward' }`。
+- `animations` にはフェードアウト演出を 1 instruction 追加し、`waitMs: 1000` で EnemyCard を透過させて退場させる。  
+- 「臆病」だけでなく、バリア消滅や状態解除に関する視覚演出も `state-event` 側で担う想定。

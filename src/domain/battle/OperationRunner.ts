@@ -3,6 +3,9 @@ import type {
   BattleSnapshot,
   FullBattleSnapshot,
   PlayCardAnimationContext,
+  EnemyTurnActionSummary,
+  EnemyActAnimationContext,
+  DamageAnimationEvent,
 } from './Battle'
 import type { AnimationInstruction, BattleActionLogEntry } from './ActionLog'
 import { ActionLog } from './ActionLog'
@@ -60,6 +63,7 @@ export class OperationRunner {
   private initialized = false
   private recordedOutcome?: Battle['status']
   private enemyActGroupCounter = 0
+  private pendingEnemyActSummaries: EnemyTurnActionSummary[] = []
 
   constructor(config: OperationRunnerConfig) {
     this.battle = config.battle
@@ -126,8 +130,8 @@ export class OperationRunner {
 
   private appendEntry(entry: BattleActionLogEntry, options?: AppendOptions): number {
     let index = -1
-    const shouldCaptureAnimations = entry.type === 'play-card'
-    const snapshotBefore = shouldCaptureAnimations ? this.battle.captureFullSnapshot() : undefined
+    const needsBeforeSnapshot = entry.type === 'play-card'
+    const snapshotBefore = needsBeforeSnapshot ? this.battle.captureFullSnapshot() : undefined
     try {
       index = this.actionLog.push(entry)
       this.battle.executeActionLog(this.actionLog, index)
@@ -136,11 +140,17 @@ export class OperationRunner {
       throw new OperationRunnableError(message, { actionEntry: entry, cause: error })
     }
 
-    if (shouldCaptureAnimations && snapshotBefore) {
-      const appendedEntry = this.actionLog.at(index)
-      if (appendedEntry && appendedEntry.type === 'play-card') {
-        const snapshotAfter = this.battle.captureFullSnapshot()
+    const appendedEntry = this.actionLog.at(index)
+    const snapshotAfter = this.battle.captureFullSnapshot()
+
+    if (appendedEntry) {
+      if (appendedEntry.type === 'play-card' && snapshotBefore) {
         this.attachPlayCardAnimations(appendedEntry, snapshotBefore.snapshot, snapshotAfter.snapshot)
+      } else if (appendedEntry.type === 'enemy-act') {
+        const summary = this.pendingEnemyActSummaries.shift()
+        this.attachEnemyActAnimations(appendedEntry, snapshotAfter.snapshot, summary)
+      } else {
+        this.attachSimpleEntryAnimation(appendedEntry, snapshotAfter.snapshot)
       }
     }
 
@@ -226,6 +236,7 @@ export class OperationRunner {
     }
 
     for (const action of summary.actions) {
+      this.pendingEnemyActSummaries.push(action)
       this.appendEntry(
         {
           type: 'enemy-act',
@@ -269,38 +280,30 @@ export class OperationRunner {
       context?.cardId !== undefined
         ? this.buildCardMoveSnapshot(before, after, context.cardId)
         : this.cloneBattleSnapshot(after)
-
-    animations.push({
-      snapshot: cardMoveSnapshot,
-      waitMs: 0,
-      metadata: {
+    animations.push(
+      this.createInstruction(cardMoveSnapshot, 0, {
         stage: 'card-move',
         cardId: context?.cardId,
-      },
-    })
+      }),
+    )
 
     const damageSnapshot = this.buildDamageSnapshot(before, after, context)
-    animations.push({
-      snapshot: damageSnapshot,
-      waitMs: this.calculateDamageWait(context),
-      metadata: {
+    animations.push(
+      this.createInstruction(damageSnapshot, this.calculateDamageWait(context), {
         stage: 'damage',
         cardId: context?.cardId,
         defeatedEnemyIds: context?.defeatedEnemyIds ?? [],
-      },
-      damageOutcomes: this.extractDamageOutcomes(context),
-    })
+      }, this.extractDamageOutcomesFromEvents(context?.damageEvents)),
+    )
 
     if ((context?.defeatedEnemyIds?.length ?? 0) > 0) {
-      animations.push({
-        snapshot: this.cloneBattleSnapshot(after),
-        waitMs: 1000,
-        metadata: {
+      animations.push(
+        this.createInstruction(this.cloneBattleSnapshot(after), 1000, {
           stage: 'defeat',
           cardId: context?.cardId,
           defeatedEnemyIds: context?.defeatedEnemyIds ?? [],
-        },
-      })
+        }),
+      )
     }
 
     return animations
@@ -384,11 +387,7 @@ export class OperationRunner {
   }
 
   private extractDamageOutcomes(context?: PlayCardAnimationContext): readonly DamageOutcome[] | undefined {
-    const firstEvent = context?.damageEvents[0]
-    if (!firstEvent) {
-      return undefined
-    }
-    return firstEvent.outcomes.map((outcome) => ({ ...outcome }))
+    return this.extractDamageOutcomesFromEvents(context?.damageEvents)
   }
 
   private cloneBattleSnapshot(source: BattleSnapshot): BattleSnapshot {
@@ -429,6 +428,139 @@ export class OperationRunner {
     const copy = zone.slice()
     copy.splice(index, 1)
     return copy
+  }
+
+  private attachSimpleEntryAnimation(entry: BattleActionLogEntry, snapshot: BattleSnapshot): void {
+    let metadata: Record<string, unknown> | undefined
+    let waitMs = 0
+    switch (entry.type) {
+      case 'battle-start':
+        metadata = { stage: 'battle-start' }
+        break
+      case 'start-player-turn':
+        metadata = { stage: 'turn-start', draw: entry.draw, handOverflow: entry.handOverflow }
+        break
+      case 'end-player-turn':
+        metadata = { stage: 'turn-end' }
+        break
+      case 'player-event':
+        metadata = { stage: 'player-event', eventId: entry.eventId, payload: entry.payload }
+        waitMs = 200
+        break
+      case 'state-event':
+        metadata = {
+          stage: 'state-event',
+          subject: entry.subject,
+          subjectId: entry.subjectId,
+          stateId: entry.stateId,
+          payload: entry.payload,
+        }
+        waitMs = 200
+        break
+      case 'victory':
+        metadata = { stage: 'victory' }
+        waitMs = 400
+        break
+      case 'gameover':
+        metadata = { stage: 'gameover' }
+        waitMs = 400
+        break
+      default:
+        entry.animations = entry.animations ?? []
+        return
+    }
+
+    entry.animations = [
+      this.createInstruction(snapshot, waitMs, metadata ?? { stage: 'default' }),
+    ]
+  }
+
+  private attachEnemyActAnimations(
+    entry: Extract<BattleActionLogEntry, { type: 'enemy-act' }>,
+    snapshot: BattleSnapshot,
+    summary?: EnemyTurnActionSummary,
+  ): void {
+    const animations: AnimationInstruction[] = []
+    animations.push(
+      this.createInstruction(snapshot, 0, {
+        stage: 'enemy-highlight',
+        enemyId: entry.enemyId,
+        actionId: entry.actionId,
+        skipped: summary?.skipped ?? false,
+      }),
+    )
+
+    const context = summary?.animation
+    if (context && context.damageEvents.length > 0) {
+      animations.push(
+        this.createInstruction(
+          snapshot,
+          this.calculateEnemyDamageWait(context),
+          {
+            stage: 'damage',
+            enemyId: entry.enemyId,
+            actionId: entry.actionId,
+          },
+          this.extractDamageOutcomesFromEvents(context.damageEvents),
+        ),
+      )
+    }
+
+    const shouldAddMemoryCards =
+      context && !context.playerDefeated && context.cardAdditions.length > 0
+    if (shouldAddMemoryCards) {
+      animations.push(
+        this.createInstruction(snapshot, 0, {
+          stage: 'memory-card',
+          enemyId: entry.enemyId,
+          cards: context!.cardAdditions.map((card) => card.title),
+        }),
+      )
+    }
+
+    entry.animations = animations
+  }
+
+  private createInstruction(
+    snapshot: BattleSnapshot,
+    waitMs: number,
+    metadata: Record<string, unknown>,
+    damageOutcomes?: readonly DamageOutcome[],
+  ): AnimationInstruction {
+    return {
+      snapshot: this.cloneBattleSnapshot(snapshot),
+      waitMs,
+      metadata,
+      damageOutcomes: damageOutcomes ? damageOutcomes.map((outcome) => ({ ...outcome })) : undefined,
+    }
+  }
+
+  private extractDamageOutcomesFromEvents(
+    events?: readonly DamageAnimationEvent[],
+  ): readonly DamageOutcome[] | undefined {
+    const firstEvent = events?.[0]
+    if (!firstEvent) {
+      return undefined
+    }
+    return firstEvent.outcomes.map((outcome) => ({ ...outcome }))
+  }
+
+  private calculateEnemyDamageWait(context: EnemyActAnimationContext): number {
+    if (context.cardAdditions.length > 0) {
+      return 0
+    }
+    const firstEvent = context.damageEvents[0]
+    if (!firstEvent) {
+      return 0
+    }
+    const hits =
+      firstEvent.hitCount && firstEvent.hitCount > 0
+        ? firstEvent.hitCount
+        : firstEvent.outcomes.length
+    if (hits <= 1) {
+      return 0
+    }
+    return (hits - 1) * 200
   }
 
   private calculateTurnStartDraw(): number {
