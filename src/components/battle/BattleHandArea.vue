@@ -384,19 +384,6 @@ defineExpose({ resetSelection, cancelSelection })
 
 <template>
   <section class="hand-zone">
-    <div class="hand-piles">
-      <div class="hand-pile hand-pile--hand">
-        <span class="pile-label">手札 {{ handCount }} / {{ handLimit }}</span>
-      </div>
-      <div class="hand-pile hand-pile--deck">
-        <span class="pile-icon pile-icon--deck" aria-hidden="true"></span>
-        <span class="pile-label">山札 {{ deckCount }}</span>
-      </div>
-      <div class="hand-pile hand-pile--discard">
-        <span class="pile-icon pile-icon--discard" aria-hidden="true"></span>
-        <span class="pile-label">捨て札 {{ discardCount }}</span>
-      </div>
-    </div>
     <div v-if="errorMessage" class="zone-message zone-message--error">
       {{ errorMessage }}
     </div>
@@ -421,6 +408,17 @@ defineExpose({ resetSelection, cancelSelection })
         />
       </div>
     </TransitionGroup>
+    <div class="hand-counter hand-counter--discard hand-pile">
+      <span class="pile-icon pile-icon--discard" aria-hidden="true"></span>
+      <span class="pile-label">捨て札 {{ discardCount }}</span>
+    </div>
+    <div class="hand-counter hand-counter--deck hand-pile">
+      <span class="pile-icon pile-icon--deck" aria-hidden="true"></span>
+      <span class="pile-label">山札 {{ deckCount }}</span>
+    </div>
+    <div class="hand-counter hand-counter--hand hand-pile hand-pile--hand">
+      <span class="pile-label">手札 {{ handCount }} / {{ handLimit }}</span>
+    </div>
   </section>
 </template>
 
@@ -429,19 +427,31 @@ defineExpose({ resetSelection, cancelSelection })
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 30px 32px;
+  padding: 30px 32px 72px;
   min-height: 210px;
+  position: relative;
 }
 
-.hand-piles {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 12px;
-  color: rgba(240, 235, 250, 0.85);
+.hand-counter {
+  position: absolute;
+  bottom: 20px;
+  color: rgba(240, 235, 250, 0.9);
   font-size: 12px;
   letter-spacing: 0.05em;
+  z-index: 4;
+}
+
+.hand-counter--discard {
+  left: 32px;
+}
+
+.hand-counter--deck {
+  right: 32px;
+}
+
+.hand-counter--hand {
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .hand-pile {

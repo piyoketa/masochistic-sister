@@ -135,8 +135,6 @@ const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
 }))
-const deckCount = computed(() => snapshot.value?.deck.length ?? 0)
-const discardCount = computed(() => snapshot.value?.discardPile.length ?? 0)
 // TODO: ドメイン層へ移し、ビュー側に条件判定を残さない
 const battleStatus = computed(() => snapshot.value?.status ?? 'in-progress')
 const isGameOver = computed(() => battleStatus.value === 'gameover')
@@ -149,8 +147,6 @@ const canUndo = computed(() => {
   void managerState.actionLogLength
   return viewManager.hasUndoableAction()
 })
-
-const handCardCount = computed(() => snapshot.value?.hand.length ?? 0)
 
 function requestEnemyTarget(): Promise<number> {
   if (enemySelectionRequest.value) {
@@ -381,7 +377,6 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
           </div>
           <div class="header-right">
             <span>{{ turnLabel }}</span>
-            <span>手札 {{ handCardCount }}</span>
           </div>
         </header>
 
@@ -436,14 +431,6 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
                   <div class="overlay-row" style="display: none;">
                     <span class="overlay-label">プレイヤー</span>
                     <span class="overlay-value">{{ playerName }}</span>
-                  </div>
-                  <div class="overlay-row">
-                    <span class="overlay-label">デッキ</span>
-                    <span class="overlay-value">{{ deckCount }}</span>
-                  </div>
-                  <div class="overlay-row">
-                    <span class="overlay-label">捨て札</span>
-                    <span class="overlay-value">{{ discardCount }}</span>
                   </div>
                   <div v-if="pendingInputCount > 0" class="overlay-row">
                     <span class="overlay-label">操作キュー</span>
