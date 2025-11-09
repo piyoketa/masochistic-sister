@@ -26,6 +26,8 @@ import { Damages } from '@/domain/entities/Damages'
 import { Attack, Action as BattleAction, AllyBuffSkill } from '@/domain/entities/Action'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import type { StageEventPayload } from '@/types/animation'
+import type { DamageOutcome } from '@/domain/entities/Damages'
+import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
 
 const props = defineProps<{
   snapshot: BattleSnapshot | undefined
@@ -53,6 +55,8 @@ interface EnemySlot {
 const actingEnemyId = ref<number | null>(null)
 const processedStageBatchIds = new Set<string>()
 let actingTimer: ReturnType<typeof window.setTimeout> | null = null
+type EnemyCardInstance = InstanceType<typeof EnemyCard>
+const enemyCardRefs = new Map<number, EnemyCardInstance>()
 
 const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
@@ -108,6 +112,8 @@ watch(
       const enemyId =
         typeof event.metadata?.enemyId === 'number' ? (event.metadata.enemyId as number) : null
       triggerEnemyHighlight(enemyId)
+    } else if (stage === 'damage') {
+      handleDamageStage(event)
     }
   },
 )
@@ -131,6 +137,57 @@ onBeforeUnmount(() => {
     actingTimer = null
   }
 })
+
+function handleDamageStage(event: StageEventPayload): void {
+  const enemyId = resolveEnemyIdFromStage(event)
+  if (enemyId === null) {
+    return
+  }
+  const outcomes =
+    (event.metadata?.damageOutcomes as DamageOutcome[] | undefined)?.map((outcome) => ({
+      ...outcome,
+    })) ?? []
+  const target = enemyCardRefs.get(enemyId)
+  target?.playDamage(outcomes)
+}
+
+function resolveEnemyIdFromStage(event: StageEventPayload): number | null {
+  const rawEnemyId = event.metadata?.enemyId
+  if (typeof rawEnemyId === 'number' && Number.isInteger(rawEnemyId)) {
+    return rawEnemyId
+  }
+  const resolved = event.resolvedEntry
+  return extractEnemyIdFromResolvedEntry(resolved)
+}
+
+function extractEnemyIdFromResolvedEntry(
+  resolvedEntry: ResolvedBattleActionLogEntry | undefined,
+): number | null {
+  if (!resolvedEntry) {
+    return null
+  }
+  if (resolvedEntry.type === 'play-card') {
+    if (typeof resolvedEntry.targetEnemyId === 'number') {
+      return resolvedEntry.targetEnemyId
+    }
+    const operation = resolvedEntry.operations.find((op) => op.type === 'target-enemy')
+    if (operation && 'enemyId' in operation && typeof operation.enemyId === 'number') {
+      return operation.enemyId
+    }
+  }
+  return null
+}
+
+function registerEnemyCardRef(enemyId: number | undefined, instance: EnemyCardInstance | null): void {
+  if (enemyId === undefined) {
+    return
+  }
+  if (instance) {
+    enemyCardRefs.set(enemyId, instance)
+  } else {
+    enemyCardRefs.delete(enemyId)
+  }
+}
 
 function handleContextMenu(enemy: EnemyInfo, event: MouseEvent): void {
   if (!props.isSelectingEnemy) {
@@ -277,6 +334,7 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
       >
         <EnemyCard
           v-if="slot.enemy"
+          :ref="(el) => registerEnemyCardRef(slot.enemy!.id, el)"
           :enemy="slot.enemy"
           :selectable="isSelectingEnemy"
           :hovered="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"

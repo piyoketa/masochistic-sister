@@ -217,7 +217,6 @@ function handleTagLeave(tag: CardTagInfo): void {
 }
 
 .action-card--disabled {
-  opacity: 0.45;
   cursor: not-allowed;
   pointer-events: none;
 }

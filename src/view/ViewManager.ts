@@ -72,6 +72,7 @@ export type AnimationCommand =
       batchId: string
       entryType: BattleActionLogEntry['type']
       metadata?: Record<string, unknown>
+      resolvedEntry?: ResolvedBattleActionLogEntry
     }
   | { type: 'custom'; name: string; payload?: unknown }
 
@@ -820,6 +821,7 @@ export class ViewManager {
         batchId: instruction.batchId,
         entryType: entry.type,
         metadata: this.buildStageMetadata(instruction),
+        resolvedEntry,
       })
       if (instruction.waitMs > 0) {
         commands.push({ type: 'wait', duration: instruction.waitMs })

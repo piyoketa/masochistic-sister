@@ -70,9 +70,7 @@ const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
-const enemyDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 const playerDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
-const enemyDamageOutcomes = ref<DamageOutcome[]>([])
 const playerDamageOutcomes = ref<DamageOutcome[]>([])
 const manaPulseKey = ref(0)
 const animationDebugLoggingEnabled =
@@ -161,12 +159,7 @@ watch(
       return
     }
     const stage = (event.metadata?.stage as string | undefined) ?? undefined
-    if (stage === 'damage') {
-      enemyDamageOutcomes.value =
-        ((event.metadata?.damageOutcomes as DamageOutcome[]) ?? []).map((outcome) => ({ ...outcome }))
-      await nextTick()
-      enemyDamageEffectsRef.value?.play()
-    } else if (stage === 'player-damage') {
+    if (stage === 'player-damage') {
       playerDamageOutcomes.value =
         ((event.metadata?.damageOutcomes as DamageOutcome[]) ?? []).map((outcome) => ({ ...outcome }))
       await nextTick()
@@ -321,6 +314,7 @@ async function executeCommand(command: AnimationCommand): Promise<void> {
         batchId: command.batchId,
         metadata: command.metadata,
         issuedAt: performance.now(),
+        resolvedEntry: command.resolvedEntry,
       }
       logAnimationStageEvent(command)
       break
@@ -460,26 +454,19 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
 
         <div class="battle-body">
           <main class="battle-main">
-            <div class="enemy-area-wrapper">
-              <BattleEnemyArea
-                :snapshot="snapshot"
-                :battle="viewManager.battle"
-                :is-initializing="isInitializing"
-                :error-message="errorMessage"
-                :stage-event="latestStageEvent"
-                :is-selecting-enemy="isSelectingEnemy"
-                :hovered-enemy-id="hoveredEnemyId"
-                @hover-start="handleEnemyHoverStart"
-                @hover-end="handleEnemyHoverEnd"
-                @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
-                @cancel-selection="handleEnemySelectionCanceled"
-              />
-              <DamageEffects
-                ref="enemyDamageEffectsRef"
-                class="damage-overlay damage-overlay--enemy"
-                :outcomes="enemyDamageOutcomes"
-              />
-            </div>
+            <BattleEnemyArea
+              :snapshot="snapshot"
+              :battle="viewManager.battle"
+              :is-initializing="isInitializing"
+              :error-message="errorMessage"
+              :stage-event="latestStageEvent"
+              :is-selecting-enemy="isSelectingEnemy"
+              :hovered-enemy-id="hoveredEnemyId"
+              @hover-start="handleEnemyHoverStart"
+              @hover-end="handleEnemyHoverEnd"
+              @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
+              @cancel-selection="handleEnemySelectionCanceled"
+            />
 
             <BattleHandArea
               ref="handAreaRef"
@@ -516,12 +503,12 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
               />
               <div class="sidebar-overlay-container">
                 <div class="sidebar-overlay">
+                  <HpGauge :current="playerHpGauge.current" :max="playerHpGauge.max" />
                   <div class="mana-pop" :key="manaPulseKey" aria-label="現在のマナ">
                     <span class="mana-pop__current">{{ playerMana.current }}</span>
                     <span class="mana-pop__slash" aria-hidden="true"></span>
                     <span class="mana-pop__max">{{ playerMana.max }}</span>
                   </div>
-                  <HpGauge :current="playerHpGauge.current" :max="playerHpGauge.max" />
                   <div class="overlay-row" style="display: none;">
                     <span class="overlay-label">プレイヤー</span>
                     <span class="overlay-value">{{ playerName }}</span>
@@ -829,14 +816,6 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
   width: 140px;
   height: 120px;
   inset: 12px 12px auto auto;
-}
-
-.damage-overlay--enemy {
-  inset: 0;
-}
-
-.damage-overlay--enemy {
-  inset: 0;
 }
 
 .sidebar-overlay-container {

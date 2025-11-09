@@ -8,11 +8,13 @@
  * - useDescriptionOverlay: ツールチップ用のグローバルオーバーレイと連携
  */
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { EnemyInfo, EnemySkill, EnemyTrait } from '@/types/battle'
 import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
+import DamageEffects from '@/components/DamageEffects.vue'
+import type { DamageOutcome } from '@/domain/entities/Damages'
 
 const props = defineProps<{
   enemy: EnemyInfo
@@ -31,6 +33,8 @@ const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updateP
   useDescriptionOverlay()
 
 let activeTooltip: { key: string; text: string } | null = null
+const damageOutcomes = ref<DamageOutcome[]>([])
+const damageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 
 interface ActionChipEntry {
   key: string
@@ -203,13 +207,31 @@ function formatStateChip(trait: EnemyTrait): { key: string; label: string; descr
     description: trait.detail,
   }
 }
+
+async function playDamage(outcomes: readonly DamageOutcome[]): Promise<void> {
+  if (!outcomes || outcomes.length === 0) {
+    return
+  }
+  damageOutcomes.value = outcomes.map((outcome) => ({ ...outcome }))
+  await nextTick()
+  damageEffectsRef.value?.play()
+}
+
+defineExpose({ playDamage })
 </script>
 
 <template>
   <article class="enemy-card" :class="classes" role="button" @mouseenter="handleEnter" @mouseleave="handleLeave">
     <header class="enemy-card__header">
       <div class="enemy-card__title">{{ displayName }}</div>
-      <HpGauge :current="props.enemy.hp.current" :max="props.enemy.hp.max" />
+      <div class="enemy-card__hp">
+        <HpGauge :current="props.enemy.hp.current" :max="props.enemy.hp.max" />
+        <DamageEffects
+          ref="damageEffectsRef"
+          class="enemy-card__damage-effects"
+          :outcomes="damageOutcomes"
+        />
+      </div>
     </header>
 
     <section v-if="formattedActions.length" class="enemy-card__section">
@@ -318,6 +340,19 @@ function formatStateChip(trait: EnemyTrait): { key: string; label: string; descr
   letter-spacing: 0.05em;
   color: rgba(255, 255, 255, 0.92);
   line-height: 1.2;
+}
+
+.enemy-card__hp {
+  position: relative;
+}
+
+.enemy-card__damage-effects {
+  position: absolute;
+  top: -12px;
+  right: -6px;
+  width: 80px;
+  height: 60px;
+  pointer-events: none;
 }
 
 .enemy-card__section {
