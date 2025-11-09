@@ -31,7 +31,16 @@ export class HeavenChainAction extends Skill {
   }
 
   protected override buildOperations(): Operation[] {
-    return [new TargetEnemyOperation()]
+    return [
+      new TargetEnemyOperation({
+        restrictions: [
+          {
+            reason: '大型の敵には天の鎖を使えません',
+            test: ({ enemy }) => !enemy.getStates().some((state) => state instanceof LargeState),
+          },
+        ],
+      }),
+    ]
   }
 
   protected override perform(context: ActionContext): void {

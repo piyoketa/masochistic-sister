@@ -17,6 +17,12 @@ SelectHandCardOperation.ts の責務:
 import type { Card } from '../Card'
 import { Operation, type OperationContext } from './OperationBase'
 
+export interface HandCardSelectionAvailabilityEntry {
+  cardId: number
+  selectable: boolean
+  reason?: string
+}
+
 export interface SelectHandCardOperationConfig {
   filter?: (card: Card, context: OperationContext) => boolean
   filterMessage?: string
@@ -41,9 +47,7 @@ export class SelectHandCardOperation extends Operation<Card> {
       throw new Error(`Card ${cardId} not found in hand`)
     }
 
-    if (this.filter && !this.filter(card, context)) {
-      throw new Error(this.filterMessage)
-    }
+    this.ensureSelectable(card, context)
 
     return card
   }
@@ -67,6 +71,21 @@ export class SelectHandCardOperation extends Operation<Card> {
     return this.resultValue
   }
 
+  describeAvailability(context: OperationContext): HandCardSelectionAvailabilityEntry[] {
+    const cards = context.battle.hand.list()
+    return cards
+      .filter((card) => card.id !== undefined)
+      .map((card) => {
+        const cardId = card.id as number
+        const selectable = this.filter ? this.filter(card, context) : true
+        return {
+          cardId,
+          selectable,
+          reason: selectable ? undefined : this.filterMessage,
+        }
+      })
+  }
+
   private extractCardId(payload: unknown): number {
     if (typeof payload === 'number' && Number.isInteger(payload) && payload >= 0) {
       return payload
@@ -82,5 +101,11 @@ export class SelectHandCardOperation extends Operation<Card> {
     }
 
     throw new Error('Operation requires a numeric hand card id')
+  }
+
+  private ensureSelectable(card: Card, context: OperationContext): void {
+    if (this.filter && !this.filter(card, context)) {
+      throw new Error(this.filterMessage)
+    }
   }
 }

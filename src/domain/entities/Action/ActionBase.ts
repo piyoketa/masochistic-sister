@@ -19,9 +19,12 @@ import type { Player } from '../Player'
 import type { State } from '../State'
 import {
   TargetEnemyOperation,
+  SelectHandCardOperation,
   type CardOperation,
   type Operation,
   type OperationContext,
+  type TargetEnemyAvailabilityEntry,
+  type HandCardSelectionAvailabilityEntry,
 } from '../operations'
 
 export type ActionType = 'attack' | 'skill'
@@ -149,6 +152,28 @@ export abstract class Action {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   canUse(_context: { battle: Battle; source: Player | Enemy }): boolean {
     return true
+  }
+
+  describeTargetEnemyAvailability(context: OperationContext): TargetEnemyAvailabilityEntry[] {
+    const operations = this.buildOperations()
+    const targetOperation = operations.find(
+      (operation) => operation.type === TargetEnemyOperation.TYPE,
+    ) as TargetEnemyOperation | undefined
+    if (!targetOperation) {
+      return []
+    }
+    return targetOperation.describeAvailability(context)
+  }
+
+  describeHandSelectionAvailability(context: OperationContext): HandCardSelectionAvailabilityEntry[] {
+    const operations = this.buildOperations()
+    const selectOperation = operations.find(
+      (operation) => operation.type === SelectHandCardOperation.TYPE,
+    ) as SelectHandCardOperation | undefined
+    if (!selectOperation) {
+      return []
+    }
+    return selectOperation.describeAvailability(context)
   }
 
   private resolveRequiredOperations(

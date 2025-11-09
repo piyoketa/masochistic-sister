@@ -22,18 +22,21 @@
 ## 3. カード移動系ステージ
 
 ### 3.1 deck-draw
-1. Snapshot 適用で手札/山札カウントを即更新。
-2. `BattleHandArea` にアニメーション専用メソッドを追加:
-   - ダミー `ActionCard` をデッキ座標 (右下カウンタ付近) に生成。
-   - CSS transition (0.3s) で挿入先カードの位置へ移動・拡大。
-   - 移動完了イベントでダミー削除 → 実カード DOM を表示。
+1. Snapshot 適用で手札/山札カウントを即更新（DOM構築は通常どおり）。
+2. 新しく追加される **実カード DOM** に `enter-from-deck` クラスを付与し、以下を CSS で制御する。
+   - 初期状態: デッキ座標（右下カウンタ位置）へ `transform: translate(...) scale(0.7)`、`opacity: 0`。
+   - 0.3s で `transform: translate(0,0) scale(1)` かつ `opacity: 1` まで遷移。
+   - 位置合わせには `BattleHandArea` が deck カウンタの絶対座標を `--deck-origin-x/y` CSS 変数として渡す。
 3. `metadata.handOverflow === true` の場合:
-   - 手札中央に overlay (`手札が満杯です！`) を 1.2s 表示。
+   - 手札中央に overlay (`手札が満杯です！`) を 1.2s 表示（既存仕様を継続）。
 
 ### 3.2 card-trash
-1. Snapshot 適用で手札/捨て札カウントを即更新。
-2. 対象カード DOM をダミー枠に差し替えてから `hand-track` を再レイアウト。
-3. ダミーを 0.3s で捨て札カウンタ座標へ移動＋縮小 → 終了後 DOM 破棄。
+1. Snapshot 適用で手札/捨て札カウントを即更新（削除対象カード DOM はまだ残す）。
+2. 対象カードに `leave-to-discard` クラスを付与し、以下の CSS アニメーションを与える。
+   - 0.3s で捨て札カウンタ座標へ `transform` 移動。
+   - `opacity: 1 → 0` のフェードアウト。
+   - スケールは 1 のまま（縮小しない）。
+3. アニメーション完了イベントで DOM を破棄し、`hand-track` を最終配置へ更新。
 
 ### 3-3. card-eliminate
 1. 手札の元の位置のまま、カードがワイプして消えるようなleave animationを付けてください。

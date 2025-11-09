@@ -5,6 +5,7 @@ import BattleHandArea from '@/components/battle/BattleHandArea.vue'
 import { Card } from '@/domain/entities/Card'
 import { BattlePrepAction } from '@/domain/entities/actions/BattlePrepAction'
 import { HeavenChainAction } from '@/domain/entities/actions/HeavenChainAction'
+import { HandSwapAction } from '@/domain/entities/actions/HandSwapAction'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { ViewManager } from '@/view/ViewManager'
 import type { CardOperation } from '@/domain/entities/operations'
@@ -63,9 +64,24 @@ function createSnapshot(hand: Card[]): BattleSnapshot {
   }
 }
 
-function createViewManagerStub(): ViewManager {
+function createBattleStub(hand: Card[]): {
+  player: { id: string; name: string }
+  hand: { list: () => Card[]; maxSize: () => number }
+  enemyTeam: { members: [] }
+} {
   return {
-    battle: undefined,
+    player: { id: 'player', name: 'プレイヤー' },
+    hand: {
+      list: () => [...hand],
+      maxSize: () => 10,
+    },
+    enemyTeam: { members: [] },
+  }
+}
+
+function createViewManagerStub(battle?: ReturnType<typeof createBattleStub>): ViewManager {
+  return {
+    battle,
   } as unknown as ViewManager
 }
 
@@ -79,7 +95,7 @@ describe('BattleHandArea コンポーネント', () => {
         errorMessage: null,
         isPlayerTurn: true,
         isInputLocked: false,
-        viewManager: createViewManagerStub(),
+        viewManager: createViewManagerStub(createBattleStub([])),
         requestEnemyTarget: vi.fn(),
         cancelEnemySelection: vi.fn(),
         stageEvent: null,
@@ -109,7 +125,7 @@ describe('BattleHandArea コンポーネント', () => {
         errorMessage: null,
         isPlayerTurn: true,
         isInputLocked: false,
-        viewManager: createViewManagerStub(),
+        viewManager: createViewManagerStub(createBattleStub([simpleCard])),
         requestEnemyTarget,
         cancelEnemySelection: vi.fn(),
         stageEvent: null,
@@ -146,7 +162,7 @@ describe('BattleHandArea コンポーネント', () => {
         errorMessage: null,
         isPlayerTurn: true,
         isInputLocked: false,
-        viewManager: createViewManagerStub(),
+        viewManager: createViewManagerStub(createBattleStub([targetCard])),
         requestEnemyTarget,
         cancelEnemySelection,
         stageEvent: null,
@@ -169,6 +185,50 @@ describe('BattleHandArea コンポーネント', () => {
     expect(payload.cardId).toBe(42)
     expect(payload.operations).toEqual([{ type: 'target-enemy', payload: 999 }])
     expect(cancelEnemySelection).not.toHaveBeenCalled()
+  })
+
+  it('select-hand-card オペレーションで候補カードを選択できる', async () => {
+    const selectorCard = new Card({ action: new HandSwapAction() })
+    selectorCard.assignId(101)
+    const targetCard = new Card({ action: new BattlePrepAction() })
+    targetCard.assignId(202)
+    const snapshot = createSnapshot([selectorCard, targetCard])
+    const battleStub = createBattleStub(snapshot.hand)
+
+    const wrapper = mount(BattleHandArea, {
+      props: {
+        snapshot,
+        hoveredEnemyId: null,
+        isInitializing: false,
+        errorMessage: null,
+        isPlayerTurn: true,
+        isInputLocked: false,
+        viewManager: createViewManagerStub(battleStub),
+        requestEnemyTarget: vi.fn(),
+        cancelEnemySelection: vi.fn(),
+        stageEvent: null,
+      },
+      global: {
+        stubs: {
+          ActionCard: actionCardStub,
+          TransitionGroup: false,
+        },
+      },
+    })
+
+    const cardButtons = wrapper.findAll('.action-card-stub')
+    await cardButtons[0].trigger('click')
+    await flushPromises()
+    expect(wrapper.emitted('play-card')).toBeUndefined()
+
+    await cardButtons[1].trigger('click')
+    await flushPromises()
+
+    const emitted = wrapper.emitted('play-card')
+    expect(emitted).toHaveLength(1)
+    const payload = emitted?.[0]?.[0] as { cardId: number; operations: CardOperation[] }
+    expect(payload.cardId).toBe(101)
+    expect(payload.operations).toEqual([{ type: 'select-hand-card', payload: 202 }])
   })
 
   it('deck-draw stage eventで手札満杯オーバーレイを表示する', async () => {

@@ -1,4 +1,4 @@
-import { Skill, type ActionContext } from '../Action'
+import { Skill, type ActionContext, Attack } from '../Action'
 import { ArcaneCardTag, EnemySingleTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import type { Enemy } from '../Enemy'
 import { TargetEnemyOperation } from '../operations'
@@ -24,7 +24,16 @@ export class MasochisticAuraAction extends Skill {
   }
 
   protected override buildOperations(): Operation[] {
-    return [new TargetEnemyOperation()]
+    return [
+      new TargetEnemyOperation({
+        restrictions: [
+          {
+            reason: '次の行動でプレイヤーを攻撃する敵のみ選択できます',
+            test: ({ enemy }) => this.isPlanningAttackAgainstPlayer(enemy),
+          },
+        ],
+      }),
+    ]
   }
 
   protected override perform(context: ActionContext): void {
@@ -43,4 +52,8 @@ export class MasochisticAuraAction extends Skill {
     context.battle.queueInterruptEnemyAction(targetId, { trigger: 'card' })
   }
 
+  private isPlanningAttackAgainstPlayer(enemy: Enemy): boolean {
+    const nextAction = enemy.queuedActions[0]
+    return nextAction instanceof Attack
+  }
 }

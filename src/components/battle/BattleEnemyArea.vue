@@ -29,6 +29,12 @@ import type { StageEventPayload } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
 
+interface EnemySelectionHint {
+  enemyId: number
+  selectable: boolean
+  reason?: string
+}
+
 const props = defineProps<{
   snapshot: BattleSnapshot | undefined
   battle: Battle | undefined
@@ -37,6 +43,7 @@ const props = defineProps<{
   isSelectingEnemy: boolean
   hoveredEnemyId: number | null
   stageEvent: StageEventPayload | null
+  selectionHints?: EnemySelectionHint[]
 }>()
 
 const emit = defineEmits<{
@@ -57,6 +64,15 @@ const processedStageBatchIds = new Set<string>()
 let actingTimer: ReturnType<typeof window.setTimeout> | null = null
 type EnemyCardInstance = InstanceType<typeof EnemyCard>
 const enemyCardRefs = new Map<number, EnemyCardInstance>()
+
+const selectionHintMap = computed<Map<number, EnemySelectionHint>>(() => {
+  const hints = props.selectionHints ?? []
+  const map = new Map<number, EnemySelectionHint>()
+  hints.forEach((hint) => {
+    map.set(hint.enemyId, hint)
+  })
+  return map
+})
 
 const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
@@ -95,6 +111,28 @@ const enemySlots = computed<EnemySlot[]>(() => {
 })
 
 const hasVisibleEnemies = computed(() => enemySlots.value.some((slot) => slot.isActive))
+
+function isEnemySelectable(enemyId: number | undefined): boolean {
+  if (!props.isSelectingEnemy || enemyId === undefined) {
+    return false
+  }
+  const hint = selectionHintMap.value.get(enemyId)
+  if (!hint) {
+    return true
+  }
+  return hint.selectable
+}
+
+function blockedReason(enemyId: number | undefined): string | undefined {
+  if (!props.isSelectingEnemy || enemyId === undefined) {
+    return undefined
+  }
+  const hint = selectionHintMap.value.get(enemyId)
+  if (hint && !hint.selectable) {
+    return hint.reason
+  }
+  return undefined
+}
 
 watch(
   () => props.stageEvent,
@@ -187,6 +225,13 @@ function registerEnemyCardRef(enemyId: number | undefined, instance: EnemyCardIn
   } else {
     enemyCardRefs.delete(enemyId)
   }
+}
+
+function handleEnemyClick(enemy: EnemyInfo): void {
+  if (!isEnemySelectable(enemy.id)) {
+    return
+  }
+  emit('enemy-click', enemy)
 }
 
 function handleContextMenu(enemy: EnemyInfo, event: MouseEvent): void {
@@ -336,13 +381,14 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
           v-if="slot.enemy"
           :ref="(el) => registerEnemyCardRef(slot.enemy!.id, el)"
           :enemy="slot.enemy"
-          :selectable="isSelectingEnemy"
+          :selectable="isEnemySelectable(slot.enemy.id)"
           :hovered="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
           :selected="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
           :acting="slot.enemy ? actingEnemyId === slot.enemy.id : false"
+          :blocked-reason="blockedReason(slot.enemy.id)"
           @mouseenter="() => emit('hover-start', slot.enemy!.id)"
           @mouseleave="() => emit('hover-end', slot.enemy!.id)"
-          @click="() => emit('enemy-click', slot.enemy!)"
+          @click="() => handleEnemyClick(slot.enemy!)"
           @contextmenu.prevent="handleContextMenu(slot.enemy!, $event)"
         />
       </div>

@@ -22,6 +22,7 @@ const props = defineProps<{
   selected?: boolean
   hovered?: boolean
   acting?: boolean
+  blockedReason?: string
 }>()
 
 const emit = defineEmits<{
@@ -275,6 +276,9 @@ defineExpose({ playDamage })
         </li>
       </TransitionGroup>
     </section>
+    <div v-if="props.blockedReason && !props.selectable && props.hovered" class="enemy-card__blocked-overlay">
+      {{ props.blockedReason }}
+    </div>
   </article>
 </template>
 
@@ -422,5 +426,22 @@ defineExpose({ playDamage })
 
 .value--boosted {
   color: #4cff9f;
+}
+
+.enemy-card__blocked-overlay {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(20, 8, 12, 0.85);
+  border: 1px solid rgba(255, 128, 149, 0.4);
+  color: #ffd6de;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 </style>

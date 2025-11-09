@@ -14,13 +14,31 @@ TargetEnemyOperation.ts の責務:
 - 類似する `SelectHandCardOperation`: いずれも入力バリデーションを担うが、こちらは敵、向こうはプレイヤー手札に対する操作という点で役割が異なる。
 */
 import type { Enemy } from '../Enemy'
+import type { Battle } from '../../battle/Battle'
 import { Operation, type OperationContext } from './OperationBase'
+
+export interface TargetEnemyAvailabilityEntry {
+  enemyId: number
+  selectable: boolean
+  reason?: string
+}
+
+export interface TargetEnemyRestriction {
+  reason: string
+  test: (params: { enemy: Enemy; context: OperationContext }) => boolean
+}
+
+export interface TargetEnemyOperationOptions {
+  restrictions?: TargetEnemyRestriction[]
+}
 
 export class TargetEnemyOperation extends Operation<Enemy> {
   static readonly TYPE = 'target-enemy'
+  private readonly restrictions: TargetEnemyRestriction[]
 
-  constructor() {
+  constructor(options: TargetEnemyOperationOptions = {}) {
     super(TargetEnemyOperation.TYPE)
+    this.restrictions = options.restrictions ? [...options.restrictions] : []
   }
 
   protected resolve(payload: unknown, context: OperationContext): Enemy {
@@ -29,6 +47,8 @@ export class TargetEnemyOperation extends Operation<Enemy> {
     if (!enemy) {
       throw new Error(`Enemy ${enemyId} not found`)
     }
+
+    this.ensureSelectable(enemy, context)
 
     return enemy
   }
@@ -51,6 +71,43 @@ export class TargetEnemyOperation extends Operation<Enemy> {
     return this.resultValue
   }
 
+  describeAvailability(context: OperationContext): TargetEnemyAvailabilityEntry[] {
+    const battle = context.battle
+    const enemies = getAllEnemies(battle)
+    return enemies
+      .filter((enemy) => enemy.id !== undefined)
+      .map((enemy) => {
+      const enemyId = enemy.id
+      // enemyId is defined thanks to filter
+      if (!enemy.isActive()) {
+        return {
+          enemyId,
+          selectable: false,
+          reason: '戦闘不能または逃走中の敵には使用できません',
+        }
+      }
+
+      for (const restriction of this.restrictions) {
+        if (!restriction.test({ enemy, context })) {
+          return { enemyId, selectable: false, reason: restriction.reason }
+        }
+      }
+      return { enemyId, selectable: true }
+    })
+  }
+
+  private ensureSelectable(enemy: Enemy, context: OperationContext): void {
+    const enemyId = enemy.id
+    if (enemyId === undefined) {
+      return
+    }
+    const entries = this.describeAvailability(context)
+    const entry = entries.find((candidate) => candidate.enemyId === enemyId)
+    if (entry && entry.selectable === false) {
+      throw new Error(entry.reason ?? '指定された敵には使用できません')
+    }
+  }
+
   private extractEnemyId(payload: unknown): number {
     if (typeof payload === 'number' && Number.isInteger(payload) && payload >= 0) {
       return payload
@@ -66,4 +123,8 @@ export class TargetEnemyOperation extends Operation<Enemy> {
 
     throw new Error('Operation requires a valid numeric enemy id')
   }
+}
+
+function getAllEnemies(battle: Battle): Enemy[] {
+  return battle.enemyTeam.members
 }

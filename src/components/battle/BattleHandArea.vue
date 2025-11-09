@@ -20,7 +20,14 @@ import type { Card } from '@/domain/entities/Card'
 import type { Enemy } from '@/domain/entities/Enemy'
 import ActionCard from '@/components/ActionCard.vue'
 import type { CardInfo, CardTagInfo, AttackStyle } from '@/types/battle'
-import { TargetEnemyOperation, type CardOperation } from '@/domain/entities/operations'
+import {
+  TargetEnemyOperation,
+  SelectHandCardOperation,
+  type CardOperation,
+  type TargetEnemyAvailabilityEntry,
+  type HandCardSelectionAvailabilityEntry,
+  type OperationContext,
+} from '@/domain/entities/operations'
 import { Attack } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
 import type { ViewManager } from '@/view/ViewManager'
@@ -29,7 +36,9 @@ import type { StageEventPayload } from '@/types/animation'
 
 interface FloatingCardAnimation {
   key: string
-  label: string
+  info: CardInfo
+  operations: string[]
+  affordable: boolean
   variant: 'draw' | 'trash' | 'eliminate'
   style: {
     left: string
@@ -48,6 +57,14 @@ interface HandEntry {
   id?: number
   operations: string[]
   affordable: boolean
+}
+
+interface HandSelectionRequest {
+  allowedIds: Set<number>
+  blockedReasons: Map<number, string>
+  message: string
+  resolve: (cardId: number) => void
+  reject: (error: Error) => void
 }
 
 const props = defineProps<{
@@ -69,6 +86,8 @@ const emit = defineEmits<{
   (event: 'reset-footer'): void
   (event: 'error', message: string): void
   (event: 'hide-overlay'): void
+  (event: 'show-enemy-selection-hints', hints: TargetEnemyAvailabilityEntry[]): void
+  (event: 'clear-enemy-selection-hints'): void
 }>()
 
 const interactionState = reactive<{
@@ -97,8 +116,12 @@ const previousHandIds = ref<Set<number>>(new Set())
 const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
 const cardElementRefs = new Map<number, HTMLElement>()
 const deckDrawRetryCounters = new Map<number, number>()
+const handSelectionRequest = ref<HandSelectionRequest | null>(null)
 
-const supportedOperations = new Set<string>([TargetEnemyOperation.TYPE])
+const supportedOperations = new Set<string>([
+  TargetEnemyOperation.TYPE,
+  SelectHandCardOperation.TYPE,
+])
 
 const handEntries = computed<HandEntry[]>(() => {
   const current = props.snapshot
@@ -133,6 +156,24 @@ const hoveredCardIndex = computed(() =>
     ? handEntries.value.findIndex((entry) => entry.key === hoveredCardKey.value)
     : -1,
 )
+
+function buildOperationContext(): OperationContext | null {
+  const battle = props.viewManager.battle
+  if (!battle) {
+    return null
+  }
+  return {
+    battle,
+    player: battle.player,
+  }
+}
+
+function findHandEntryByCardId(cardId: number | undefined): HandEntry | undefined {
+  if (cardId === undefined) {
+    return undefined
+  }
+  return handEntries.value.find((entry) => entry.id === cardId)
+}
 
 function cardWrapperClasses(index: number): Record<string, boolean> {
   const hoveredIndex = hoveredCardIndex.value
@@ -291,6 +332,13 @@ function addTagEntries(
 }
 
 function isCardDisabled(entry: HandEntry): boolean {
+  const handRequest = handSelectionRequest.value
+  if (handRequest) {
+    if (entry.id === undefined) {
+      return true
+    }
+    return !handRequest.allowedIds.has(entry.id)
+  }
   if (props.isInputLocked) {
     return true
   }
@@ -308,7 +356,7 @@ function isCardDisabled(entry: HandEntry): boolean {
 
 
 function handleCardHoverStart(entry: HandEntry): void {
-  if (interactionState.isAwaitingEnemy) {
+  if (interactionState.isAwaitingEnemy || handSelectionRequest.value) {
     return
   }
   hoveredCardKey.value = entry.key
@@ -316,7 +364,7 @@ function handleCardHoverStart(entry: HandEntry): void {
 }
 
 function handleCardHoverEnd(): void {
-  if (interactionState.isAwaitingEnemy) {
+  if (interactionState.isAwaitingEnemy || handSelectionRequest.value) {
     return
   }
   hoveredCardKey.value = null
@@ -324,6 +372,10 @@ function handleCardHoverEnd(): void {
 }
 
 async function handleCardClick(entry: HandEntry): Promise<void> {
+  if (handSelectionRequest.value) {
+    handleHandSelectionClick(entry)
+    return
+  }
   if (props.isInputLocked || !props.isPlayerTurn || !entry.affordable) {
     return
   }
@@ -369,12 +421,33 @@ async function handleCardClick(entry: HandEntry): Promise<void> {
   }
 }
 
+function handleHandSelectionClick(entry: HandEntry): void {
+  const request = handSelectionRequest.value
+  if (!request) {
+    return
+  }
+  if (entry.id === undefined) {
+    emit('error', 'カードにIDが割り当てられていません')
+    return
+  }
+  if (!request.allowedIds.has(entry.id)) {
+    const reason = request.blockedReasons.get(entry.id) ?? 'このカードは選択できません'
+    emit('error', reason)
+    return
+  }
+  request.resolve(entry.id)
+}
+
 async function executeOperations(entry: HandEntry): Promise<void> {
   const collectedOperations: CardOperation[] = []
 
   for (const operationType of entry.operations) {
     if (operationType === TargetEnemyOperation.TYPE) {
       interactionState.isAwaitingEnemy = true
+      const hints = gatherEnemySelectionHints(entry)
+      if (hints.length > 0) {
+        emit('show-enemy-selection-hints', hints)
+      }
       emit('update-footer', '対象の敵を選択：左クリックで決定　右クリックでキャンセル')
       try {
         const enemyId = await props.requestEnemyTarget()
@@ -385,7 +458,16 @@ async function executeOperations(entry: HandEntry): Promise<void> {
       } finally {
         interactionState.isAwaitingEnemy = false
         emit('reset-footer')
+        emit('clear-enemy-selection-hints')
       }
+      continue
+    }
+    if (operationType === SelectHandCardOperation.TYPE) {
+      const targetCardId = await requestHandCardSelection(entry)
+      collectedOperations.push({
+        type: SelectHandCardOperation.TYPE,
+        payload: targetCardId,
+      })
       continue
     }
 
@@ -410,6 +492,7 @@ function resetSelection(options?: { keepSelection?: boolean }): void {
   hoveredCardKey.value = null
   emit('reset-footer')
   emit('hide-overlay')
+  cancelHandSelectionRequest()
 }
 
 function cancelSelection(): void {
@@ -473,6 +556,7 @@ onBeforeUnmount(() => {
   }
   pendingRemovalTimers.forEach((timer) => window.clearTimeout(timer))
   pendingRemovalTimers.clear()
+  cancelHandSelectionRequest()
 })
 
 watch(
@@ -523,8 +607,9 @@ function handleCardTrashStage(event: StageEventPayload): void {
   const cardIds = extractCardIds(event.metadata)
   const titles = (event.metadata?.cardTitles as string[] | undefined) ?? []
   cardIds.forEach((id, index) => {
-    const title = titles[index] ?? cardTitleMap.value.get(id) ?? 'カード'
-    startCardRemovalAnimation(id, title, 'trash')
+    const fallbackTitle = titles[index] ?? cardTitleMap.value.get(id) ?? 'カード'
+    const entry = findHandEntryByCardId(id)
+    startCardRemovalAnimation(id, entry, 'trash', { fallbackTitle })
   })
 }
 
@@ -532,8 +617,9 @@ function handleCardEliminateStage(event: StageEventPayload): void {
   const cardIds = extractCardIds(event.metadata)
   const titles = (event.metadata?.cardTitles as string[] | undefined) ?? []
   cardIds.forEach((id, index) => {
-    const title = titles[index] ?? cardTitleMap.value.get(id) ?? 'カード'
-    startCardRemovalAnimation(id, title, 'eliminate')
+    const fallbackTitle = titles[index] ?? cardTitleMap.value.get(id) ?? 'カード'
+    const entry = findHandEntryByCardId(id)
+    startCardRemovalAnimation(id, entry, 'eliminate', { fallbackTitle })
   })
 }
 
@@ -547,11 +633,63 @@ function handleCardCreateStage(event: StageEventPayload): void {
   }
 }
 
+function gatherEnemySelectionHints(entry: HandEntry): TargetEnemyAvailabilityEntry[] {
+  const action = entry.card.action
+  const context = buildOperationContext()
+  if (!action || !context) {
+    return []
+  }
+  return action.describeTargetEnemyAvailability(context)
+}
+
+async function requestHandCardSelection(entry: HandEntry): Promise<number> {
+  const action = entry.card.action
+  const context = buildOperationContext()
+  if (!action || !context) {
+    throw new Error('カード選択を開始できませんでした')
+  }
+  const availability = action.describeHandSelectionAvailability(context)
+  if (availability.length === 0) {
+    throw new Error('選択可能なカードが見つかりません')
+  }
+  const selectable = availability.filter((item) => item.selectable)
+  if (selectable.length === 0) {
+    throw new Error('条件を満たすカードが手札に存在しません')
+  }
+  const allowedIds = new Set(selectable.map((item) => item.cardId))
+  const blockedReasons = new Map<number, string>()
+  availability.forEach((item) => {
+    if (!item.selectable && item.reason && typeof item.cardId === 'number') {
+      blockedReasons.set(item.cardId, item.reason)
+    }
+  })
+
+  return new Promise<number>((resolve, reject) => {
+    handSelectionRequest.value = {
+      allowedIds,
+      blockedReasons,
+      message: '対象カードを選択：左クリックで決定　右クリックでキャンセル',
+      resolve: (cardId: number) => {
+        handSelectionRequest.value = null
+        emit('reset-footer')
+        resolve(cardId)
+      },
+      reject: (error: Error) => {
+        handSelectionRequest.value = null
+        emit('reset-footer')
+        reject(error)
+      },
+    }
+    emit('update-footer', handSelectionRequest.value.message)
+  })
+}
+
 function startDeckDrawAnimation(cardId: number, attempt = 0): void {
   const cardElement = cardElementRefs.get(cardId)
   const deckElement = deckCounterRef.value
   const zoneElement = handZoneRef.value
-  if (!cardElement || !deckElement || !zoneElement) {
+  const entry = findHandEntryByCardId(cardId)
+  if (!cardElement || !deckElement || !zoneElement || !entry) {
     const retries = deckDrawRetryCounters.get(cardId) ?? attempt
     if (retries < 5) {
       deckDrawRetryCounters.set(cardId, retries + 1)
@@ -565,10 +703,11 @@ function startDeckDrawAnimation(cardId: number, attempt = 0): void {
   const deckRect = deckElement.getBoundingClientRect()
   const targetRect = cardElement.getBoundingClientRect()
   const zoneRect = zoneElement.getBoundingClientRect()
-  const label = cardTitleMap.value.get(cardId) ?? 'カード'
   hideCard(cardId)
   spawnFloatingCard({
-    label,
+    cardInfo: entry.info,
+    operations: entry.operations,
+    affordable: entry.affordable,
     fromRect: deckRect,
     toRect: targetRect,
     zoneRect,
@@ -579,8 +718,9 @@ function startDeckDrawAnimation(cardId: number, attempt = 0): void {
 
 function startCardRemovalAnimation(
   cardId: number,
-  label: string,
+  entry: HandEntry | undefined,
   variant: 'trash' | 'eliminate',
+  options: { fallbackTitle?: string } = {},
   attempt = 0,
 ): void {
   const cardElement = cardElementRefs.get(cardId)
@@ -589,7 +729,7 @@ function startCardRemovalAnimation(
   if (!cardElement || !zoneElement || !targetElement) {
     if (attempt < 5) {
       const timer = window.setTimeout(
-        () => startCardRemovalAnimation(cardId, label, variant, attempt + 1),
+        () => startCardRemovalAnimation(cardId, entry, variant, options, attempt + 1),
         50,
       )
       pendingRemovalTimers.set(cardId, timer)
@@ -609,7 +749,10 @@ function startCardRemovalAnimation(
         }
   hideCard(cardId)
   spawnFloatingCard({
-    label,
+    cardInfo:
+      entry?.info ?? buildFallbackCardInfo(cardId, options.fallbackTitle ?? 'カード'),
+    operations: entry?.operations ?? [],
+    affordable: entry?.affordable ?? true,
     fromRect: sourceRect,
     toRect: targetRect,
     zoneRect,
@@ -624,7 +767,9 @@ function startCardCreateHighlight(cardId: number): void {
 }
 
 function spawnFloatingCard(options: {
-  label: string
+  cardInfo: CardInfo
+  operations: string[]
+  affordable: boolean
   fromRect: DOMRect
   toRect: DOMRect
   zoneRect: DOMRect
@@ -633,24 +778,36 @@ function spawnFloatingCard(options: {
   onComplete?: () => void
 }): void {
   const duration = options.duration ?? 350
+  const fromCenterX = options.fromRect.left + options.fromRect.width / 2
+  const fromCenterY = options.fromRect.top + options.fromRect.height / 2
+  const toCenterX = options.toRect.left + options.toRect.width / 2
+  const toCenterY = options.toRect.top + options.toRect.height / 2
+  const referenceRect = options.variant === 'draw' ? options.toRect : options.fromRect
+  const width = referenceRect.width
+  const height = referenceRect.height
+  const startLeft = fromCenterX - width / 2 - options.zoneRect.left
+  const startTop = fromCenterY - height / 2 - options.zoneRect.top
+  const deltaX = toCenterX - fromCenterX
+  const deltaY = toCenterY - fromCenterY
+
   const card: FloatingCardAnimation = reactive({
     key: `floating-card-${Date.now()}-${Math.random()}`,
-    label: options.label,
+    info: options.cardInfo,
+    operations: options.operations,
+    affordable: options.affordable,
     variant: options.variant,
     style: {
-      width: `${options.fromRect.width}px`,
-      height: `${options.fromRect.height}px`,
-      left: `${options.fromRect.left - options.zoneRect.left}px`,
-      top: `${options.fromRect.top - options.zoneRect.top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      left: `${startLeft}px`,
+      top: `${startTop}px`,
       transform: 'translate(0, 0)',
     },
     active: false,
   })
   floatingCards.push(card)
   requestAnimationFrame(() => {
-    card.style.transform = `translate(${options.toRect.left - options.fromRect.left}px, ${
-      options.toRect.top - options.fromRect.top
-    }px)`
+    card.style.transform = `translate(${deltaX}px, ${deltaY}px)`
     card.active = true
   })
   window.setTimeout(() => {
@@ -660,6 +817,20 @@ function spawnFloatingCard(options: {
     }
     options.onComplete?.()
   }, duration + 100)
+}
+
+function buildFallbackCardInfo(cardId: number, title: string): CardInfo {
+  return {
+    id: `card-${cardId}`,
+    title,
+    type: 'skill',
+    cost: 0,
+    illustration: '🂠',
+    description: title,
+    primaryTags: [],
+    effectTags: [],
+    categoryTags: [],
+  }
 }
 
 function extractCardIds(metadata: StageEventPayload['metadata']): number[] {
@@ -713,14 +884,51 @@ function isCardRecentlyCreated(entry: HandEntry): boolean {
   return entry.id !== undefined && recentCardIds.value.has(entry.id)
 }
 
+function isHandSelectionCandidate(entry: HandEntry): boolean {
+  const request = handSelectionRequest.value
+  if (!request || entry.id === undefined) {
+    return false
+  }
+  return request.allowedIds.has(entry.id)
+}
+
+function handSelectionBlockedReason(entry: HandEntry): string | undefined {
+  const request = handSelectionRequest.value
+  if (!request || entry.id === undefined) {
+    return undefined
+  }
+  return request.blockedReasons.get(entry.id)
+}
+
+function selectionWrapperClass(entry: HandEntry): string | undefined {
+  const request = handSelectionRequest.value
+  if (!request || entry.id === undefined) {
+    return undefined
+  }
+  return request.allowedIds.has(entry.id)
+    ? 'hand-card-wrapper--selection-candidate'
+    : 'hand-card-wrapper--selection-blocked'
+}
+
+function cancelHandSelectionRequest(reason?: string): void {
+  const request = handSelectionRequest.value
+  if (!request) {
+    return
+  }
+  handSelectionRequest.value = null
+  request.reject(new Error(reason ?? 'カード選択がキャンセルされました'))
+}
+
 function registerCardElement(cardId: number | undefined, title: string, el: Element | null): void {
   if (cardId === undefined) {
     return
   }
   if (el) {
-    const element = el as HTMLElement
-    element.dataset.cardTitle = title
-    cardElementRefs.set(cardId, element)
+    const wrapper = el as HTMLElement
+    const actionCard = wrapper.querySelector<HTMLElement>('.action-card')
+    const target = actionCard ?? wrapper
+    target.dataset.cardTitle = title
+    cardElementRefs.set(cardId, target)
   } else {
     cardElementRefs.delete(cardId)
   }
@@ -728,13 +936,18 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
 </script>
 
 <template>
-  <section ref="handZoneRef" class="hand-zone">
+  <section ref="handZoneRef" class="hand-zone" @contextmenu="handleHandContextMenu">
     <div v-if="errorMessage" class="zone-message zone-message--error">
       {{ errorMessage }}
     </div>
     <div v-else-if="isInitializing" class="zone-message">カード情報を読み込み中...</div>
     <div v-else-if="!hasCards" class="zone-message">手札は空です</div>
-    <TransitionGroup v-else name="hand-card" tag="div" class="hand-track">
+    <transition name="hand-selection-banner">
+      <div v-if="handSelectionRequest" class="hand-selection-banner">
+        {{ handSelectionRequest.message }}
+      </div>
+    </transition>
+    <TransitionGroup name="hand-card" tag="div" class="hand-track">
       <div
         v-for="(entry, index) in handEntries"
         :key="entry.key"
@@ -743,6 +956,7 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
           cardWrapperClasses(index),
           isCardHidden(entry) ? 'hand-card-wrapper--hidden' : '',
           isCardRecentlyCreated(entry) ? 'hand-card-wrapper--recent' : '',
+          selectionWrapperClass(entry),
         ]"
         :ref="(el) => registerCardElement(entry.id, entry.info.title, el)"
       >
@@ -756,6 +970,12 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
           @mouseenter="() => handleCardHoverStart(entry)"
           @mouseleave="handleCardHoverEnd"
         />
+        <div
+          v-if="handSelectionRequest && !isHandSelectionCandidate(entry)"
+          class="hand-card-blocked-reason"
+        >
+          {{ handSelectionBlockedReason(entry) ?? '選択不可' }}
+        </div>
       </div>
     </TransitionGroup>
     <div class="hand-floating-layer" aria-hidden="true">
@@ -769,7 +989,12 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
         ]"
         :style="ghost.style"
       >
-        {{ ghost.label }}
+        <ActionCard
+          v-bind="ghost.info"
+          :operations="ghost.operations"
+          :affordable="ghost.affordable"
+          :disabled="true"
+        />
       </div>
     </div>
     <transition name="hand-overlay">
@@ -808,6 +1033,30 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   font-size: 12px;
   letter-spacing: 0.05em;
   z-index: 4;
+}
+
+.hand-selection-banner {
+  align-self: center;
+  margin-bottom: 12px;
+  padding: 8px 18px;
+  border-radius: 12px;
+  background: rgba(24, 16, 30, 0.92);
+  color: #ffeae3;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+}
+
+.hand-selection-banner-enter-active,
+.hand-selection-banner-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.hand-selection-banner-enter-from,
+.hand-selection-banner-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .hand-counter--discard {
@@ -941,6 +1190,31 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   animation: hand-card-recent 0.45s ease;
 }
 
+.hand-card-wrapper--selection-candidate {
+  z-index: 4;
+  filter: drop-shadow(0 0 12px rgba(255, 191, 134, 0.45));
+}
+
+.hand-card-wrapper--selection-blocked {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.hand-card-blocked-reason {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  padding: 4px 8px;
+  text-align: center;
+  font-size: 11px;
+  color: #ffd6de;
+  background: rgba(24, 10, 16, 0.8);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 128, 158, 0.35);
+  pointer-events: none;
+}
+
 @keyframes hand-card-recent {
   0% {
     transform: scale(0.9);
@@ -962,35 +1236,31 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
 
 .hand-floating-card {
   position: absolute;
-  border-radius: 12px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #1b1320;
-  background: #f2e4ff;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  pointer-events: none;
   opacity: 0;
   transform: translate3d(0, 0, 0);
-  transition: transform 0.35s ease, opacity 0.35s ease;
+  transition: transform 0.32s ease, opacity 0.32s ease;
 }
 
 .hand-floating-card--active {
   opacity: 1;
 }
 
-.hand-floating-card--trash {
-  background: #f8d1d1;
-}
-
+.hand-floating-card--trash,
 .hand-floating-card--eliminate {
-  background: #d1f3f8;
+  opacity: 1;
 }
 
+.hand-floating-card--trash.hand-floating-card--active,
 .hand-floating-card--eliminate.hand-floating-card--active {
   opacity: 0;
+}
+
+.hand-floating-card :deep(.action-card) {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .zone-message {
@@ -1011,3 +1281,10 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   color: #ff9fb3;
 }
 </style>
+function handleHandContextMenu(event: MouseEvent): void {
+  if (!handSelectionRequest.value) {
+    return
+  }
+  event.preventDefault()
+  cancelHandSelectionRequest('カード選択がキャンセルされました')
+}

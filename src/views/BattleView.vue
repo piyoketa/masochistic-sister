@@ -11,6 +11,7 @@ import {
   type ViewManagerEvent,
 } from '@/view/ViewManager'
 import type { CardOperation } from '@/domain/entities/operations'
+import type { TargetEnemyAvailabilityEntry } from '@/domain/entities/operations'
 import { OperationLog } from '@/domain/battle/OperationLog'
 import type { Battle } from '@/domain/battle/Battle'
 import {
@@ -73,6 +74,7 @@ const latestStageEvent = ref<StageEventPayload | null>(null)
 const playerDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 const playerDamageOutcomes = ref<DamageOutcome[]>([])
 const manaPulseKey = ref(0)
+const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
@@ -209,6 +211,8 @@ function resolveEnemySelection(enemyId: number): void {
     return
   }
   pending.resolve(enemyId)
+  enemySelectionRequest.value = null
+  enemySelectionHints.value = []
 }
 
 function cancelEnemySelection(reason?: string): void {
@@ -218,6 +222,7 @@ function cancelEnemySelection(reason?: string): void {
   }
   pending.reject(new Error(reason ?? '敵選択がキャンセルされました'))
   enemySelectionRequest.value = null
+  enemySelectionHints.value = []
 }
 
 function handleEnemyHoverStart(enemyId: number): void {
@@ -271,6 +276,14 @@ function handleHandError(message: string): void {
 
 function handleHandHideOverlay(): void {
   hideDescriptionOverlay()
+}
+
+function handleEnemySelectionHints(hints: TargetEnemyAvailabilityEntry[]): void {
+  enemySelectionHints.value = hints
+}
+
+function handleClearEnemySelectionHints(): void {
+  enemySelectionHints.value = []
 }
 
 async function runAnimation(script: AnimationScript): Promise<void> {
@@ -462,6 +475,7 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
               :stage-event="latestStageEvent"
               :is-selecting-enemy="isSelectingEnemy"
               :hovered-enemy-id="hoveredEnemyId"
+              :selection-hints="enemySelectionHints"
               @hover-start="handleEnemyHoverStart"
               @hover-end="handleEnemyHoverEnd"
               @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
@@ -485,6 +499,8 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
               @reset-footer="handleHandFooterReset"
               @error="handleHandError"
               @hide-overlay="handleHandHideOverlay"
+              @show-enemy-selection-hints="handleEnemySelectionHints"
+              @clear-enemy-selection-hints="handleClearEnemySelectionHints"
             />
           </main>
 
