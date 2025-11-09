@@ -2,6 +2,9 @@
 import { onBeforeUnmount, ref } from 'vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 
+const HIT_SOUND_URL = new URL('../../materials/sounds/振り回す1.mp3', import.meta.url).href
+const AUDIO_SUPPORTED = typeof window !== 'undefined' && typeof window.Audio === 'function'
+
 const props = defineProps<{
   outcomes: DamageOutcome[]
   interval?: number
@@ -24,6 +27,7 @@ type DamageEntry = {
 const entries = ref<DamageEntry[]>([])
 const timers: number[] = []
 let displayedCount = 0
+const activeSounds = new Set<HTMLAudioElement>()
 
 function reset(): void {
   while (timers.length > 0) {
@@ -34,6 +38,54 @@ function reset(): void {
   }
   entries.value = []
   displayedCount = 0
+  activeSounds.forEach((audio) => {
+    if (typeof audio.pause === 'function') {
+      try {
+        audio.pause()
+      } catch {
+        // ignore
+      }
+    }
+    audio.currentTime = 0
+  })
+  activeSounds.clear()
+}
+
+function playHitSound(): void {
+  if (!AUDIO_SUPPORTED) {
+    return
+  }
+  const audio = new Audio(HIT_SOUND_URL)
+  audio.volume = 0.8
+  audio.addEventListener(
+    'ended',
+    () => {
+      activeSounds.delete(audio)
+    },
+    { once: true },
+  )
+  audio.addEventListener(
+    'pause',
+    () => {
+      activeSounds.delete(audio)
+    },
+    { once: true },
+  )
+  activeSounds.add(audio)
+  if (typeof audio.play === 'function') {
+    try {
+      const playResult = audio.play()
+      if (playResult && typeof playResult.catch === 'function') {
+        playResult.catch(() => {
+          activeSounds.delete(audio)
+        })
+      }
+    } catch {
+      activeSounds.delete(audio)
+    }
+  } else {
+    activeSounds.delete(audio)
+  }
 }
 
 function scheduleRemoval(entryId: number, delay: number, totalEntries: number): void {
@@ -66,6 +118,7 @@ function play(): void {
       entries.value = [...entries.value, entry]
       displayedCount += 1
       emit('damage-step', { amount: outcome.damage, index })
+      playHitSound()
       scheduleRemoval(entry.id, props.duration ?? 800, props.outcomes.length)
     }, appearDelay)
     timers.push(timer)

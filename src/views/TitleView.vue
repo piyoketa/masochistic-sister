@@ -40,6 +40,14 @@ const enemyTeamLinks: LinkEntry[] = [
     to: '/battle/orc-hero-elite',
   },
 ]
+
+const demoLinks: LinkEntry[] = [
+  {
+    label: 'Damage Effects Demo',
+    description: '被ダメージ演出 + 効果音のプレビュー',
+    to: '/demo/damage-effects',
+  },
+]
 </script>
 
 <template>
@@ -53,6 +61,18 @@ const enemyTeamLinks: LinkEntry[] = [
       <h2>固定ログ / Testcase</h2>
       <ul class="link-grid">
         <li v-for="link in testcaseLinks" :key="link.label">
+          <RouterLink class="link-card" :to="link.to">
+            <span class="link-label">{{ link.label }}</span>
+            <span class="link-description">{{ link.description }}</span>
+          </RouterLink>
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>デモ / Animation Playground</h2>
+      <ul class="link-grid">
+        <li v-for="link in demoLinks" :key="link.label">
           <RouterLink class="link-card" :to="link.to">
             <span class="link-label">{{ link.label }}</span>
             <span class="link-description">{{ link.description }}</span>
