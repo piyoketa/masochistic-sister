@@ -12,6 +12,10 @@ describe('App', () => {
             name: 'RouterView',
             template: '<div class="router-view-stub" />',
           },
+          RouterLink: {
+            name: 'RouterLink',
+            template: '<a class="router-link-stub"><slot /></a>',
+          },
         },
       },
     })
