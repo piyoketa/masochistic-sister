@@ -6,6 +6,8 @@
 - `export const ACTION_LOG_ENTRY_SEQUENCE = [...]` には、定義済みエントリ変数を順番に並べるだけとし、人間が読むべき詳細は各エントリの定義側に集約します。
 
 ## 2. フィクスチャ再生成手順
+重要：この処理は非常に重いので、本当に必要な時以外は実行しないようにしてください。
+
 1. まず、対象シナリオのIntegrationテストを `LOG_BATTLE_SAMPLE*_SUMMARY=1` で実行し、`/tmp/battleSample*.log` を生成します。
    ```bash
    LOG_BATTLE_SAMPLE1_SUMMARY=1 npx vitest tests/integration/battleSample.spec.ts > /tmp/battleSample1.log 2>&1

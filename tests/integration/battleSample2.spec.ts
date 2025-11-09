@@ -66,13 +66,16 @@ const OPERATION_EXPECTATIONS = [
   { name: '乱れ突きでかまいたち撃破＆臆病連鎖', lastActionIndex: 25 },
 ] as const
 
-if (process.env.LOG_BATTLE_SAMPLE2_SUMMARY === '1') {
+function warmupActionLog(logDetails: boolean): void {
   const fullOperationLog = buildOperationLog(operationEntries, operationEntries.length - 1)
   const replayer = new OperationLogReplayer({
     createBattle: battleFactory,
     operationLog: fullOperationLog,
   })
   const { actionLog } = replayer.buildActionLog()
+  if (!logDetails) {
+    return
+  }
   const summary = actionLog.toArray().map(summarizeActionLogEntry)
   // eslint-disable-next-line no-console
   console.log('BATTLE_SAMPLE2_ACTION_LOG_SUMMARY', JSON.stringify(summary, null, 2))
@@ -92,6 +95,8 @@ if (process.env.LOG_BATTLE_SAMPLE2_SUMMARY === '1') {
     )
   })
 }
+
+warmupActionLog(process.env.LOG_BATTLE_SAMPLE2_SUMMARY === '1')
 
 describe('シナリオ2: OperationLog → ActionLog + AnimationInstruction', () => {
   OPERATION_EXPECTATIONS.forEach(({ name, lastActionIndex }, operationIndex) => {

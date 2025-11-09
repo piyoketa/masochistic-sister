@@ -127,10 +127,10 @@ const phaseLabel = computed(() => {
   }
   return 'Turn -'
 })
-const manaLabel = computed(() => {
-  const player = snapshot.value?.player
-  return player ? `${player.currentMana} / ${player.maxMana}` : '- / -'
-})
+const playerMana = computed(() => ({
+  current: snapshot.value?.player.currentMana ?? 0,
+  max: snapshot.value?.player.maxMana ?? 0,
+}))
 const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
@@ -424,8 +424,10 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
               />
               <div class="sidebar-overlay-container">
                 <div class="sidebar-overlay">
-                  <div class="mana-pop">
-                    <span class="mana-pop__value">{{ manaLabel }}</span>
+                  <div class="mana-pop" aria-label="現在のマナ">
+                    <span class="mana-pop__current">{{ playerMana.current }}</span>
+                    <span class="mana-pop__slash" aria-hidden="true"></span>
+                    <span class="mana-pop__max">{{ playerMana.max }}</span>
                   </div>
                   <HpGauge :current="playerHpGauge.current" :max="playerHpGauge.max" />
                   <div class="overlay-row" style="display: none;">
@@ -739,20 +741,43 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
 }
 
 .mana-pop {
+  position: relative;
+  width: 120px;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #ffeeb1, #ffd44a 70%);
+  color: #2a1803;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4), inset 0 -6px 10px rgba(0, 0, 0, 0.15);
   display: flex;
-  justify-content: center;
   align-items: center;
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: rgba(255, 227, 115, 0.92);
-  color: #402510;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  justify-content: center;
+  font-weight: 700;
 }
 
-.mana-pop__value {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.mana-pop__current {
+  font-size: 48px;
+  position: absolute;
+  left: 30px;
+  top: 10px;
+}
+
+.mana-pop__max {
+  position: absolute;
+  right: 28px;
+  bottom: 22px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mana-pop__slash {
+  position: absolute;
+  width: 68px;
+  height: 2px;
+  background: currentColor;
+  transform: rotate(-52deg);
+  opacity: 0.9;
+  right: 20px;
+  bottom: 50px;
 }
 
 .battle-gameover-overlay,

@@ -109,7 +109,8 @@ describe('BattleView', () => {
     await flushPromises()
     await flushPromises()
 
-    expect(wrapper.get('.mana-pop').text()).toBe('2 / 3')
+    expect(wrapper.get('.mana-pop__current').text()).toBe('2')
+    expect(wrapper.get('.mana-pop__max').text()).toBe('3')
     expect(wrapper.html()).toContain('ターン')
   })
 
