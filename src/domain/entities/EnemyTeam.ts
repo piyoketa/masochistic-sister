@@ -89,7 +89,7 @@ export class EnemyTeam {
           continue
         }
 
-        const targetId = this.selectAllyTargetFor(upcoming, enemy)
+        const targetId = this.selectAllyTargetId(upcoming, enemy)
         if (targetId === undefined) {
           enemy.discardNextScheduledAction()
           continue
@@ -108,10 +108,10 @@ export class EnemyTeam {
     }
   }
 
-  private selectAllyTargetFor(skill: AllyBuffSkill, source: Enemy): number | undefined {
+  private selectAllyTargetId(skill: AllyBuffSkill, source: Enemy): number | undefined {
     const candidates = this.membersValue.filter((ally) => ally.isActive())
-    const filtered = candidates.filter((ally) =>
-      skill.requiredAllyTags.every((tag) => ally.hasAllyTag(tag)),
+    const filtered = candidates.filter(
+      (ally) => ally !== source && skill.requiredAllyTags.every((tag) => ally.hasAllyTag(tag)),
     )
 
     if (filtered.length === 0) {
@@ -127,7 +127,8 @@ export class EnemyTeam {
     }
 
     const total = weighted.reduce((sum, entry) => sum + entry.weight, 0)
-    let threshold = Math.random() * total
+    const roll = source.sampleRng()
+    let threshold = roll * total
     for (const entry of weighted) {
       threshold -= entry.weight
       if (threshold <= 0) {

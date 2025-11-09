@@ -102,6 +102,7 @@ const playerDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(nu
 const playerDamageOutcomes = ref<DamageOutcome[]>([])
 const manaPulseKey = ref(0)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
+const viewResetToken = ref(0)
 const playerRelics = DEFAULT_PLAYER_RELICS
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
@@ -443,17 +444,27 @@ function logAnimationStageEvent(command: Extract<AnimationCommand, { type: 'stag
   })
 }
 
+function resetUiStateAfterTimelineChange(): void {
+  cancelEnemySelectionInternal('敵選択がキャンセルされました')
+  handAreaRef.value?.resetSelection()
+  hideDescriptionOverlay()
+  hoveredEnemyId.value = null
+  enemySelectionHints.value = []
+  latestStageEvent.value = null
+  playerDamageOutcomes.value = []
+  currentAnimationId.value = null
+  errorMessage.value = null
+  footerMessage.value = defaultFooterMessage
+  viewResetToken.value += 1
+}
+
 function handleEndTurnClick(): void {
   viewManager.queuePlayerAction({ type: 'end-player-turn' })
 }
 
 function handleRetryClick(): void {
   viewManager.resetToInitialState()
-  cancelEnemySelectionInternal('敵選択がキャンセルされました')
-  handAreaRef.value?.resetSelection()
-  hideDescriptionOverlay()
-  errorMessage.value = null
-  footerMessage.value = defaultFooterMessage
+  resetUiStateAfterTimelineChange()
 }
 
 function handleUndoClick(): void {
@@ -461,11 +472,7 @@ function handleUndoClick(): void {
   if (!undone) {
     return
   }
-  cancelEnemySelectionInternal('敵選択がキャンセルされました')
-  handAreaRef.value?.resetSelection()
-  hideDescriptionOverlay()
-  errorMessage.value = null
-  footerMessage.value = defaultFooterMessage
+  resetUiStateAfterTimelineChange()
 }
 
 function handleContextMenu(): void {
@@ -599,6 +606,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
         <div class="battle-body">
           <main class="battle-main">
             <BattleEnemyArea
+              :key="`enemy-area-${viewResetToken}`"
               :snapshot="snapshot"
               :battle="viewManager.battle"
               :is-initializing="isInitializing"
@@ -614,6 +622,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
             />
 
             <BattleHandArea
+              :key="`hand-area-${viewResetToken}`"
               ref="handAreaRef"
               :snapshot="snapshot"
               :hovered-enemy-id="hoveredEnemyId"
@@ -644,6 +653,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
                 decoding="async"
               />
               <DamageEffects
+                :key="`player-damage-${viewResetToken}`"
                 ref="playerDamageEffectsRef"
                 class="damage-overlay damage-overlay--player"
                 :outcomes="playerDamageOutcomes"

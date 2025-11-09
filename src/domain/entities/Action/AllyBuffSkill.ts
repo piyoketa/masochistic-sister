@@ -1,7 +1,7 @@
 /*
 AllyBuffSkill.ts の責務:
 - 味方（Enemy/Player側の味方）にバフを付与するスキルアクション共通の基底クラスを提供し、対象選定や付与処理の土台を整える。
-- 事前に決定した対象IDを受け取り、実行時に該当ユニットへStateを付与する共通フローを実装する。
+- 事前に決定した対象IDを受け取り、該当ユニットへStateを付与する共通フローを実装する。「計画済みターゲットが不在/戦闘不能なら行動は不発（skipped）として扱う」という仕様をここで保証する。
 
 責務ではないこと:
 - 個別スキル固有の付加演出や追加効果。必要に応じて派生クラスが `afterBuffApplied` をオーバーライドする。
@@ -93,6 +93,11 @@ export abstract class AllyBuffSkill extends Skill {
   protected override perform(context: ActionContext): void {
     const target = this.resolveAllyTarget(context)
     if (!target || !target.isActive()) {
+      context.metadata = {
+        ...(context.metadata ?? {}),
+        skipped: true,
+        skipReason: 'ally-target-missing',
+      }
       return
     }
 

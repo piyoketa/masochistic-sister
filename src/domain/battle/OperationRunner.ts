@@ -78,8 +78,8 @@ export class OperationRunner {
     this.actionLog = config.actionLog ?? new ActionLog()
     this.onEntryAppended = config.onEntryAppended
     if (config.initialSnapshot) {
-      this.initialSnapshot = config.initialSnapshot
-      this.battle.restoreFullSnapshot(config.initialSnapshot)
+      this.initialSnapshot = this.cloneFullSnapshot(config.initialSnapshot)
+      this.battle.restoreFullSnapshot(this.initialSnapshot)
     } else {
       this.initialSnapshot = this.battle.captureFullSnapshot()
     }
@@ -90,7 +90,7 @@ export class OperationRunner {
   }
 
   getInitialSnapshot(): FullBattleSnapshot {
-    return this.initialSnapshot
+    return this.cloneFullSnapshot(this.initialSnapshot)
   }
 
   captureSnapshot(): FullBattleSnapshot {
@@ -512,6 +512,25 @@ export class OperationRunner {
       turn: { ...source.turn },
       log: [...source.log],
       status: source.status,
+    }
+  }
+
+  private cloneFullSnapshot(source: FullBattleSnapshot): FullBattleSnapshot {
+    return {
+      snapshot: this.cloneBattleSnapshot(source.snapshot),
+      enemyQueues: source.enemyQueues.map((entry) => ({
+        enemyId: entry.enemyId,
+        queue: {
+          queueState: {
+            pending: [...entry.queue.queueState.pending],
+            actions: [...entry.queue.queueState.actions],
+            metadata: entry.queue.queueState.metadata
+              ? { ...entry.queue.queueState.metadata }
+              : undefined,
+          },
+          actionHistory: [...entry.queue.actionHistory],
+        },
+      })),
     }
   }
 

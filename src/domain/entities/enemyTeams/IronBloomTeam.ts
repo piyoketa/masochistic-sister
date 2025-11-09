@@ -43,6 +43,7 @@ export class IronBloomTeam extends EnemyTeam {
             ? {
                 actionQueueFactory: () =>
                   new DefaultEnemyActionQueue({ initialActionType: FlurryAction }),
+                rng: () => 0,
               }
             : undefined,
         ),

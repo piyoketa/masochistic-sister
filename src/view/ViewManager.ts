@@ -26,7 +26,7 @@ import {
   type EnemySummary,
   type CardSummary,
 } from '@/domain/battle/ActionLogReplayer'
-import type { Battle, BattleSnapshot } from '@/domain/battle/Battle'
+import type { Battle, BattleSnapshot, FullBattleSnapshot } from '@/domain/battle/Battle'
 
 declare global {
   interface Window {
@@ -126,6 +126,7 @@ export class ViewManager {
   private readonly operationLog: OperationLog
   private readonly stateValue: BattleViewState
   private readonly stateProxy: Readonly<BattleViewState>
+  private initialBattleSnapshot?: FullBattleSnapshot
   private readonly listeners = new Set<ViewManagerEventListener>()
   private readonly initialOperationIndex: number
   private animationSequence = 0
@@ -304,11 +305,11 @@ export class ViewManager {
   }
 
   canRetry(): boolean {
-    return true
+    return this.executedOperationIndex > this.initialOperationIndex
   }
 
   hasUndoableAction(): boolean {
-    return this.operationLog.length - 1 > this.initialOperationIndex
+    return this.executedOperationIndex > this.initialOperationIndex
   }
 
   resetToInitialState(): void {
@@ -507,8 +508,13 @@ export class ViewManager {
       const runner = new OperationRunner({
         battle,
         actionLog,
+        initialSnapshot: this.initialBattleSnapshot,
         onEntryAppended: (entry, context) => this.handleRunnerEntryAppended(entry, context),
       })
+
+      if (!this.initialBattleSnapshot) {
+        this.initialBattleSnapshot = runner.getInitialSnapshot()
+      }
 
       this.battleInstance = battle
       this.actionLog = actionLog

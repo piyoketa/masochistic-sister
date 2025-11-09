@@ -69,7 +69,7 @@ export interface EnemyTurnActionCardGain {
   title: string
 }
 
-export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated'
+export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated' | 'no-target'
 
 export interface EnemyStateDiff {
   enemyId: number
@@ -94,6 +94,7 @@ export interface EnemyTurnActionSummary {
   cardsAddedToPlayerHand: EnemyTurnActionCardGain[]
   animation?: EnemyActAnimationContext
   snapshotAfter: BattleSnapshot
+  metadata?: Record<string, unknown>
 }
 
 export interface StateEventLogEntry {
@@ -507,8 +508,30 @@ export class Battle {
     const stateDiffs = this.diffEnemyStates(enemyStatesBefore)
     const playerDefeated = this.playerValue.currentHp <= 0
     const snapshotAfter = this.cloneBattleSnapshot(this.captureFullSnapshot().snapshot)
+    const lastActionMetadata = enemy.consumeLastActionMetadata()
+    const forcedSkip = Boolean(lastActionMetadata?.skipped)
     let summary: EnemyTurnActionSummary
-    if (actionLogLengthAfter > actionLogLengthBefore) {
+    if (forcedSkip) {
+      const executedAction = enemy.actionLog[actionLogLengthAfter - 1]
+      summary = {
+        enemyId,
+        enemyName: enemy.name,
+        actionName: executedAction?.name ?? '行動不能',
+        actionType: executedAction?.type,
+        skipped: true,
+        skipReason: (lastActionMetadata?.skipReason as EnemyTurnSkipReason | undefined) ?? 'no-target',
+        cardsAddedToPlayerHand: cardsAddedToHand,
+        damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+        animation: {
+          damageEvents: [],
+          cardAdditions: [],
+          playerDefeated,
+          stateDiffs: [],
+        },
+        snapshotAfter,
+        metadata: lastActionMetadata ? { ...lastActionMetadata } : undefined,
+      }
+    } else if (actionLogLengthAfter > actionLogLengthBefore) {
       const executedAction = enemy.actionLog[actionLogLengthAfter - 1]
       if (!executedAction) {
         throw new Error('Enemy action log entry missing after execution')
@@ -528,6 +551,7 @@ export class Battle {
           stateDiffs,
         },
         snapshotAfter,
+        metadata: lastActionMetadata ? { ...lastActionMetadata } : undefined,
       }
     } else {
       summary = {
@@ -545,6 +569,7 @@ export class Battle {
           stateDiffs,
         },
         snapshotAfter,
+        metadata: lastActionMetadata ? { ...lastActionMetadata } : undefined,
       }
     }
 

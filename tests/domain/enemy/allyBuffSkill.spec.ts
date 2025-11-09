@@ -75,10 +75,8 @@ describe('AllyBuffSkill / TailwindAction', () => {
 
     const battle = createBattleWithEnemies([kamaitachi, lancer, snail])
 
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
-    const rngSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
     battle.enemyTeam.planUpcomingActions(battle)
-    rngSpy.mockRestore()
     randomSpy.mockRestore()
 
     expect(tailwind.getPlannedTarget()).toBe(lancer.id)
@@ -129,5 +127,32 @@ describe('AllyBuffSkill / TailwindAction', () => {
     kamaitachi.act(battle)
 
     expect(lancer.states.some((state) => state instanceof AccelerationState)).toBe(true)
+  })
+
+  it('計画済みターゲットが不在なら行動は不発になり metadata に skipped が記録される', () => {
+    const tailwind = new TailwindAction()
+    const kamaitachi = createKamaitachi([tailwind], 10)
+    const lancer = new Enemy({
+      name: 'オークランサー',
+      maxHp: 40,
+      currentHp: 40,
+      actions: [new BattlePrepAction()],
+      image: 'lancer.png',
+      allyTags: ['acceleratable', 'multi-attack'],
+      allyBuffWeights: { tailwind: 50 },
+    })
+
+    const battle = createBattleWithEnemies([kamaitachi, lancer])
+    battle.enemyTeam.planUpcomingActions(battle)
+
+    expect(tailwind.getPlannedTarget()).toBe(lancer.id)
+
+    lancer.setStatus('defeated')
+    kamaitachi.act(battle)
+
+    const metadata = kamaitachi.consumeLastActionMetadata()
+    expect(metadata?.skipped).toBe(true)
+    expect(metadata?.skipReason).toBe('ally-target-missing')
+    expect(lancer.states.some((state) => state instanceof AccelerationState)).toBe(false)
   })
 })

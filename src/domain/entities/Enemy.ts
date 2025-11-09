@@ -41,6 +41,7 @@ export class Enemy {
   private actedThisTurn = false
   private idValue?: number
   private statusValue: EnemyStatus = 'active'
+  private lastActionContextMetadata?: Record<string, unknown>
 
   constructor(props: EnemyProps) {
     this.nameValue = props.name
@@ -105,6 +106,10 @@ export class Enemy {
     return this.statusValue
   }
 
+  sampleRng(): number {
+    return this.rng()
+  }
+
   assignId(id: number): void {
     if (this.idValue !== undefined && this.idValue !== id) {
       throw new Error(`Enemy already assigned to repository id ${this.idValue}`)
@@ -118,6 +123,7 @@ export class Enemy {
   }
 
   act(battle: Battle): void {
+    this.lastActionContextMetadata = undefined
     if (!this.isActive()) {
       battle.addLogEntry({
         message: `${this.name}は戦線から離脱しているため、行動できない。`,
@@ -152,6 +158,7 @@ export class Enemy {
     action.execute(preparedContext)
     this.actionHistory.push(action)
     this.actedThisTurn = true
+    this.lastActionContextMetadata = preparedContext.metadata ? { ...preparedContext.metadata } : undefined
   }
 
   takeDamage(
@@ -225,6 +232,15 @@ export class Enemy {
   resetTurn(): void {
     this.actedThisTurn = false
     this.actionQueue.resetTurn()
+  }
+
+  consumeLastActionMetadata(): Record<string, unknown> | undefined {
+    if (!this.lastActionContextMetadata) {
+      return undefined
+    }
+    const metadata = { ...this.lastActionContextMetadata }
+    this.lastActionContextMetadata = undefined
+    return metadata
   }
 
   getStates(): State[] {
