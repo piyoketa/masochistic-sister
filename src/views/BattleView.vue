@@ -43,6 +43,7 @@ import type { StageEventPayload } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
+import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
 
 declare global {
   interface Window {
@@ -80,7 +81,11 @@ interface EnemySelectionRequest {
 }
 
 const layoutRef = ref<HTMLDivElement | null>(null)
-const { state: descriptionOverlay, hide: hideDescriptionOverlay } = useDescriptionOverlay()
+const {
+  state: descriptionOverlay,
+  hide: hideDescriptionOverlay,
+  show: showDescriptionOverlay,
+} = useDescriptionOverlay()
 
 const snapshot = computed(() => managerState.snapshot)
 const isInitializing = computed(() => managerState.playback.status === 'initializing')
@@ -97,6 +102,7 @@ const playerDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(nu
 const playerDamageOutcomes = ref<DamageOutcome[]>([])
 const manaPulseKey = ref(0)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
+const playerRelics = DEFAULT_PLAYER_RELICS
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
@@ -146,11 +152,16 @@ onMounted(() => {
 
 onUnmounted(() => {
   subscriptions.forEach((dispose) => dispose())
+  if (relicFooterTimer) {
+    window.clearTimeout(relicFooterTimer)
+    relicFooterTimer = null
+  }
 })
 
 const portraitSrc = '/assets/characters/sister.jpg'
 const defaultFooterMessage = '対象にカーソルを合わせて操作を確認'
 const footerMessage = ref(defaultFooterMessage)
+let relicFooterTimer: number | null = null
 
 const playerName = computed(() => snapshot.value?.player.name ?? '？？？')
 const turnLabel = computed(() => {
@@ -298,6 +309,43 @@ function handleHandError(message: string): void {
 
 function handleHandHideOverlay(): void {
   hideDescriptionOverlay()
+}
+
+function setTemporaryFooterMessage(message: string, duration = 1600): void {
+  footerMessage.value = message
+  if (relicFooterTimer) {
+    window.clearTimeout(relicFooterTimer)
+  }
+  relicFooterTimer = window.setTimeout(() => {
+    footerMessage.value = defaultFooterMessage
+    relicFooterTimer = null
+  }, duration)
+}
+
+function handleRelicHover(event: MouseEvent | FocusEvent, relic: Relic): void {
+  let x = 0
+  let y = 0
+  if ('clientX' in event) {
+    x = event.clientX
+    y = event.clientY
+  } else if (event.target instanceof HTMLElement) {
+    const rect = event.target.getBoundingClientRect()
+    x = rect.left + rect.width / 2
+    y = rect.top
+  }
+  showDescriptionOverlay(`${relic.name}\n${relic.description()}`, { x, y })
+}
+
+function handleRelicLeave(): void {
+  hideDescriptionOverlay()
+}
+
+function handleRelicClick(relic: Relic): void {
+  if (relic.usageType !== 'active') {
+    setTemporaryFooterMessage(`${relic.name}：永続効果のレリックです`, 1400)
+    return
+  }
+  setTemporaryFooterMessage(`${relic.name} の起動効果は今後実装されます`, 1800)
 }
 
 function handleEnemySelectionHints(hints: TargetEnemyAvailabilityEntry[]): void {
@@ -502,6 +550,27 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
         <header class="battle-header">
           <div class="header-relics">
             <span class="relic-label">レリック</span>
+            <div class="relic-icon-list">
+              <button
+                v-for="relic in playerRelics"
+                :key="relic.id"
+                type="button"
+                class="relic-icon"
+                :class="{
+                  'relic-icon--active': relic.usageType === 'active',
+                  'relic-icon--passive': relic.usageType !== 'active',
+                }"
+                :aria-label="relic.name"
+                :aria-disabled="relic.usageType !== 'active' ? 'true' : undefined"
+                @mouseenter="(event) => handleRelicHover(event, relic)"
+                @focusin="(event) => handleRelicHover(event, relic)"
+                @mouseleave="handleRelicLeave"
+                @focusout="handleRelicLeave"
+                @click="handleRelicClick(relic)"
+              >
+                {{ relic.icon }}
+              </button>
+            </div>
           </div>
           <div class="header-status">
             <span class="phase-label">{{ phaseLabel }}</span>
@@ -677,6 +746,44 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   letter-spacing: 0.08em;
 }
 
+.relic-icon-list {
+  display: flex;
+  gap: 4px;
+}
+
+.relic-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 18, 34, 0.6);
+  color: #ffe9b5;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  padding: 4px;
+}
+
+.relic-icon--active {
+  cursor: pointer;
+  border-color: rgba(255, 214, 140, 0.7);
+  background: rgba(255, 214, 140, 0.18);
+}
+
+.relic-icon--active:hover,
+.relic-icon--active:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.relic-icon--passive {
+  opacity: 0.85;
+}
+
 .relic-label {
   opacity: 0.65;
 }
@@ -759,6 +866,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   transform: translate(0, 0);
   z-index: 20;
   backdrop-filter: blur(6px);
+  white-space: pre-line;
 }
 
 .battle-main {
