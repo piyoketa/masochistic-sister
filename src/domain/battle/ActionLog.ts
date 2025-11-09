@@ -7,6 +7,7 @@ type ValueFactory<T> = T | ((battle: Battle) => T)
 export interface AnimationInstruction {
   snapshot: BattleSnapshot
   waitMs: number
+  batchId: string
   metadata?: Record<string, unknown>
   damageOutcomes?: readonly DamageOutcome[]
 }

@@ -233,6 +233,9 @@ function formatScenario({ logPath, marker, output, enemyNames }) {
       lines.push(`    // ${animComment}`)
       lines.push('    {')
       lines.push(`      waitMs: ${animation.waitMs},`)
+      if (animation.batchId) {
+        lines.push(`      batchId: '${animation.batchId}',`)
+      }
       if (animation.metadata) {
         lines.push(`      metadata: ${toInlineObject(animation.metadata)},`)
       }

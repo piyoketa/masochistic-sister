@@ -217,7 +217,7 @@ function addTagEntry(
   tag: CardTag | undefined,
   entries: CardTagInfo[],
   registry: Set<string>,
-  formatter: (tag: CardTag) => string = (candidate) => `[${candidate.name}]`,
+  formatter: (tag: CardTag) => string = (candidate) => candidate.name,
 ): void {
   if (!tag || registry.has(tag.id)) {
     return
@@ -233,7 +233,7 @@ function addTagEntry(
 function addTagEntries(
   entries: CardTagInfo[],
   tags?: readonly CardTag[],
-  formatter: (tag: CardTag) => string = (candidate) => `[${candidate.name}]`,
+  formatter: (tag: CardTag) => string = (candidate) => candidate.name,
 ): void {
   if (!tags) {
     return

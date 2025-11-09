@@ -47,8 +47,8 @@ export class ReloadAction extends Skill {
 
     for (const card of recyclable) {
       hand.remove(card)
-      context.battle.discardPile.add(card)
     }
+    context.battle.discardPile.addMany(recyclable)
 
     const trashedIds = recyclable
       .map((card) => card.id)

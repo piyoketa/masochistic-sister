@@ -5,6 +5,7 @@ export type OperationLogEntryConfig = Parameters<OperationLog['push']>[0]
 
 export interface AnimationInstructionSummary {
   waitMs: number
+  batchId: string
   metadata?: Record<string, unknown>
   snapshot: {
     player: { hp: number; mana: number }
@@ -42,6 +43,7 @@ export function summarizeActionLogEntry(entry: BattleActionLogEntry): ActionLogE
     summary.animations = entry.animations.map((instruction) => {
       const animationSummary: AnimationInstructionSummary = {
         waitMs: instruction.waitMs,
+        batchId: instruction.batchId,
         snapshot: {
           player: {
             hp: instruction.snapshot.player.currentHp,

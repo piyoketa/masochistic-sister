@@ -61,9 +61,9 @@ const OPERATION_EXPECTATIONS = [
   { name: '被虐のオーラでオークランサーに追い風', lastActionIndex: 13 },
   { name: '乱れ突きでオークランサーに連撃', lastActionIndex: 14 },
   { name: '日課で手札補充', lastActionIndex: 15 },
-  { name: 'ターン終了2 → 敵行動第2セット', lastActionIndex: 21 },
-  { name: '再装填で手札を更新', lastActionIndex: 22 },
-  { name: '乱れ突きでかまいたち撃破＆臆病連鎖', lastActionIndex: 25 },
+  { name: 'ターン終了2 → 敵行動第2セット', lastActionIndex: 23 },
+  { name: '再装填で手札を更新', lastActionIndex: 24 },
+  { name: '乱れ突きでかまいたち撃破＆臆病連鎖', lastActionIndex: 27 },
 ] as const
 
 function warmupActionLog(logDetails: boolean): void {
