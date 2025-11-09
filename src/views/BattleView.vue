@@ -13,7 +13,7 @@ import {
 import type { CardOperation } from '@/domain/entities/operations'
 import type { TargetEnemyAvailabilityEntry } from '@/domain/entities/operations'
 import { OperationLog } from '@/domain/battle/OperationLog'
-import type { Battle } from '@/domain/battle/Battle'
+import { Battle } from '@/domain/battle/Battle'
 import {
   createDefaultSnailBattle,
   createTestCaseBattle,
@@ -22,10 +22,27 @@ import {
   createStage3Battle,
   createStage4Battle,
 } from '@/domain/battle/battlePresets'
+import { Deck } from '@/domain/battle/Deck'
+import { Hand } from '@/domain/battle/Hand'
+import { DiscardPile } from '@/domain/battle/DiscardPile'
+import { ExilePile } from '@/domain/battle/ExilePile'
+import { BattleEventQueue } from '@/domain/battle/BattleEvent'
+import { BattleLog } from '@/domain/battle/BattleLog'
+import { TurnManager } from '@/domain/battle/TurnManager'
+import { CardRepository } from '@/domain/repository/CardRepository'
+import { ProtagonistPlayer } from '@/domain/entities/players'
+import {
+  SnailTeam,
+  IronBloomTeam,
+  HummingbirdScorpionTeam,
+  OrcHeroEliteTeam,
+} from '@/domain/entities/enemyTeams'
+import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import type { StageEventPayload } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
+import { usePlayerStore } from '@/stores/playerStore'
 
 declare global {
   interface Window {
@@ -42,8 +59,13 @@ type BattlePresetKey =
   | 'stage3'
   | 'stage4'
 
-const props = defineProps<{ viewManager?: ViewManager; preset?: BattlePresetKey }>()
-const battleFactory = resolveBattleFactory(props.preset)
+type BattleViewProps = { viewManager?: ViewManager; preset?: BattlePresetKey; teamId?: string }
+
+const props = defineProps<BattleViewProps>()
+const playerStore = usePlayerStore()
+playerStore.ensureInitialized()
+
+const battleFactory = resolveBattleFactory(props, playerStore)
 const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
 
 const managerState = viewManager.state
@@ -414,8 +436,11 @@ function createDefaultViewManager(createBattle: () => Battle): ViewManager {
   })
 }
 
-function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle {
-  switch (preset) {
+function resolveBattleFactory(
+  props: BattleViewProps,
+  playerStore: ReturnType<typeof usePlayerStore>,
+): () => Battle {
+  switch (props.preset) {
     case 'testcase1':
       return createTestCaseBattle
     case 'testcase2':
@@ -429,8 +454,44 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
     case 'stage1':
     case 'default':
     default:
-      return createDefaultSnailBattle
+      return () => createBattleFromPlayerStore(props.teamId ?? 'snail', playerStore)
   }
+}
+
+function createBattleFromPlayerStore(
+  teamId: string,
+  playerStore: ReturnType<typeof usePlayerStore>,
+): Battle {
+  const teamFactory = ENEMY_TEAM_FACTORIES[teamId] ?? ENEMY_TEAM_FACTORIES.snail
+  playerStore.ensureInitialized()
+  const cardRepository = new CardRepository()
+  const deckCards = playerStore.buildDeck(cardRepository)
+  const player = new ProtagonistPlayer({
+    maxHp: playerStore.maxHp,
+    currentHp: Math.min(playerStore.hp, playerStore.maxHp),
+  })
+
+  return new Battle({
+    id: `battle-${teamId}`,
+    cardRepository,
+    player,
+    enemyTeam: teamFactory(),
+    deck: new Deck(deckCards),
+    hand: new Hand(),
+    discardPile: new DiscardPile(),
+    exilePile: new ExilePile(),
+    events: new BattleEventQueue(),
+    log: new BattleLog(),
+    turn: new TurnManager(),
+  })
+}
+
+const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
+  snail: () => new SnailTeam(),
+  'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
+  'iron-bloom-scripted': () => new IronBloomTeam({ mode: 'scripted' }),
+  'hummingbird-scorpion': () => new HummingbirdScorpionTeam(),
+  'orc-hero-elite': () => new OrcHeroEliteTeam(),
 }
 </script>
 

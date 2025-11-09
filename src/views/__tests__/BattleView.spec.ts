@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import BattleView from '../BattleView.vue'
 import { ViewManager } from '@/view/ViewManager'
 import { createBattleSampleScenario } from '../../../tests/fixtures/battleSampleScenario'
@@ -48,6 +49,22 @@ function createGlobalStubs() {
 }
 
 describe('BattleView', () => {
+  let pinia: ReturnType<typeof createPinia>
+
+  beforeEach(() => {
+    pinia = createPinia()
+    setActivePinia(pinia)
+  })
+
+  const mountWithManager = (viewManager: ViewManager) =>
+    mount(BattleView, {
+      props: { viewManager },
+      global: {
+        stubs: createGlobalStubs(),
+        plugins: [pinia],
+      },
+    })
+
   it('ViewManager 初期化後に敵と手札を描画する', async () => {
     const scenario = createBattleSampleScenario()
     const viewManager = new ViewManager({
@@ -56,14 +73,7 @@ describe('BattleView', () => {
       initialOperationIndex: -1,
     })
 
-    const wrapper = mount(BattleView, {
-      props: {
-        viewManager,
-      },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
 
@@ -84,12 +94,7 @@ describe('BattleView', () => {
       initialOperationIndex: -1,
     })
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
 
@@ -124,12 +129,7 @@ describe('BattleView', () => {
       initialOperationIndex: -1,
     })
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
 
@@ -160,12 +160,7 @@ describe('BattleView', () => {
       initialOperationIndex: -1,
     })
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
 
@@ -187,12 +182,7 @@ describe('BattleView', () => {
       initialOperationIndex: -1,
     })
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
 
@@ -212,12 +202,7 @@ describe('BattleView', () => {
       initialOperationIndex: -1,
     })
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
     const initialIndex = viewManager.state.executedIndex
@@ -245,12 +230,7 @@ describe('BattleView', () => {
       initialOperationIndex: -1,
     })
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
     const initialIndex = viewManager.state.executedIndex
@@ -277,12 +257,7 @@ describe('BattleView', () => {
       initialOperationIndex: -1,
     })
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
 
@@ -322,12 +297,7 @@ describe('BattleView', () => {
 
     const queueSpy = vi.spyOn(viewManager, 'queuePlayerAction')
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
 
@@ -371,12 +341,7 @@ describe('BattleView', () => {
 
     const queueSpy = vi.spyOn(viewManager, 'queuePlayerAction')
 
-    const wrapper = mount(BattleView, {
-      props: { viewManager },
-      global: {
-        stubs: createGlobalStubs(),
-      },
-    })
+    const wrapper = mountWithManager(viewManager)
 
     await flushPromises()
 

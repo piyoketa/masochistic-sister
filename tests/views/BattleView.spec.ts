@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, reactive } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import BattleView from '@/views/BattleView.vue'
 import type { ViewManager, AnimationCommand, AnimationScript } from '@/view/ViewManager'
 import type { Battle } from '@/domain/battle/Battle'
@@ -92,8 +93,11 @@ function createBattleStub(): Battle {
 describe('BattleView コンポーネント', () => {
   let queuePlayerAction: ReturnType<typeof vi.fn>
   let viewManagerStub: ViewManager
+  let pinia: ReturnType<typeof createPinia>
 
   beforeEach(() => {
+    pinia = createPinia()
+    setActivePinia(pinia)
     queuePlayerAction = vi.fn()
     const state = reactive({
       snapshot: createSnapshot(),
@@ -143,6 +147,7 @@ describe('BattleView コンポーネント', () => {
           HpGauge: HpGaugeStub,
           TransitionGroup: false,
         },
+        plugins: [pinia],
       },
     })
 

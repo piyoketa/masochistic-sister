@@ -15,12 +15,6 @@ const router = createRouter({
       component: () => import('@/views/BattleView.vue'),
     },
     {
-      path: '/battle/stage1',
-      name: 'battle-stage1',
-      component: () => import('@/views/BattleView.vue'),
-      props: { preset: 'stage1' },
-    },
-    {
       path: '/battle/testcase1',
       name: 'battle-testcase1',
       component: () => import('@/views/BattleView.vue'),
@@ -33,27 +27,20 @@ const router = createRouter({
       props: { preset: 'testcase2' },
     },
     {
-      path: '/battle/stage2',
-      name: 'battle-stage2',
+      path: '/battle/:teamId',
+      name: 'battle-team',
       component: () => import('@/views/BattleView.vue'),
-      props: { preset: 'stage2' },
-    },
-    {
-      path: '/battle/stage3',
-      name: 'battle-stage3',
-      component: () => import('@/views/BattleView.vue'),
-      props: { preset: 'stage3' },
-    },
-    {
-      path: '/battle/stage4',
-      name: 'battle-stage4',
-      component: () => import('@/views/BattleView.vue'),
-      props: { preset: 'stage4' },
+      props: (route) => ({ teamId: route.params.teamId as string }),
     },
     {
       path: '/demo/damage-effects',
       name: 'damage-effects-demo',
       component: () => import('@/views/DamageEffectsDemoView.vue'),
+    },
+    {
+      path: '/deck',
+      name: 'deck-view',
+      component: () => import('@/views/DeckView.vue'),
     },
   ],
 })
