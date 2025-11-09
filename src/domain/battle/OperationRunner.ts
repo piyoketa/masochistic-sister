@@ -4,7 +4,6 @@ import type {
   FullBattleSnapshot,
   PlayCardAnimationContext,
   EnemyTurnActionSummary,
-  EnemyActAnimationContext,
   DamageAnimationEvent,
 } from './Battle'
 import type { AnimationInstruction, BattleActionLogEntry } from './ActionLog'
@@ -27,6 +26,14 @@ export interface OperationRunnerConfig {
 
 interface AppendOptions {
   suppressFlush?: boolean
+}
+
+interface DrainedAnimationEvents {
+  drawEvents: Array<{ cardIds: number[] }>
+  manaEvents: Array<{ amount: number }>
+  damageEvents: DamageAnimationEvent[]
+  defeatEvents: number[]
+  cardTrashEvents: Array<{ cardIds: number[] }>
 }
 
 export interface OperationRunnableErrorOptions {
@@ -143,16 +150,21 @@ export class OperationRunner {
     const appendedEntry = this.actionLog.at(index)
     const snapshotAfter = this.battle.captureFullSnapshot()
 
+    const drainedEvents =
+      entry.type === 'enemy-act' ? this.emptyDrainedEvents() : this.drainAnimationEvents()
+
     if (appendedEntry) {
       if (appendedEntry.type === 'play-card' && snapshotBefore) {
-        this.attachPlayCardAnimations(appendedEntry, snapshotBefore.snapshot, snapshotAfter.snapshot)
+        this.attachPlayCardAnimations(appendedEntry, snapshotBefore.snapshot, snapshotAfter.snapshot, drainedEvents)
       } else if (appendedEntry.type === 'enemy-act') {
         const summary = this.pendingEnemyActSummaries.shift()
         this.attachEnemyActAnimations(appendedEntry, snapshotAfter.snapshot, summary)
       } else {
-        this.attachSimpleEntryAnimation(appendedEntry, snapshotAfter.snapshot)
+        this.attachSimpleEntryAnimation(appendedEntry, snapshotAfter.snapshot, drainedEvents)
       }
     }
+
+    this.appendImmediateEnemyActEntries()
 
     if (!options?.suppressFlush) {
       this.flushResolvedEvents()
@@ -162,6 +174,26 @@ export class OperationRunner {
 
     this.emitEntryAppended(entry, index)
     return index
+  }
+
+  private drainAnimationEvents(): DrainedAnimationEvents {
+    return {
+      drawEvents: this.battle.consumeDrawAnimationEvents(),
+      manaEvents: this.battle.consumeManaAnimationEvents(),
+      damageEvents: this.battle.consumeDamageAnimationEvents(),
+      defeatEvents: this.battle.consumeDefeatAnimationEvents(),
+      cardTrashEvents: this.battle.consumeCardTrashAnimationEvents(),
+    }
+  }
+
+  private emptyDrainedEvents(): DrainedAnimationEvents {
+    return {
+      drawEvents: [],
+      manaEvents: [],
+      damageEvents: [],
+      defeatEvents: [],
+      cardTrashEvents: [],
+    }
   }
 
   private emitEntryAppended(entry: BattleActionLogEntry, index: number): void {
@@ -249,6 +281,25 @@ export class OperationRunner {
     }
   }
 
+  private appendImmediateEnemyActEntries(): void {
+    const immediateActions = this.battle.consumeImmediateEnemyActions()
+    if (immediateActions.length === 0) {
+      return
+    }
+    for (const action of immediateActions) {
+      this.pendingEnemyActSummaries.push(action)
+      this.appendEntry(
+        {
+          type: 'enemy-act',
+          enemyId: action.enemyId,
+          actionId: action.actionName,
+          metadata: action,
+        },
+        { suppressFlush: true },
+      )
+    }
+  }
+
   private appendBattleOutcomeIfNeeded(): void {
     const status = this.battle.status
     if (status === 'in-progress' || this.recordedOutcome === status) {
@@ -265,43 +316,79 @@ export class OperationRunner {
     entry: Extract<BattleActionLogEntry, { type: 'play-card' }>,
     before: BattleSnapshot,
     after: BattleSnapshot,
+    drainedEvents: DrainedAnimationEvents,
   ): void {
     const context = this.battle.consumeLastPlayCardAnimationContext()
-    entry.animations = this.buildPlayCardAnimations(before, after, context)
+    entry.animations = this.buildPlayCardAnimations(before, after, context?.cardId, drainedEvents)
   }
 
   private buildPlayCardAnimations(
     before: BattleSnapshot,
     after: BattleSnapshot,
-    context?: PlayCardAnimationContext,
+    cardId: number | undefined,
+    drainedEvents: DrainedAnimationEvents,
   ): AnimationInstruction[] {
     const animations: AnimationInstruction[] = []
-    const cardMoveSnapshot =
-      context?.cardId !== undefined
-        ? this.buildCardMoveSnapshot(before, after, context.cardId)
-        : this.cloneBattleSnapshot(after)
+    const damageEvents = drainedEvents.damageEvents
+    const defeatIds = drainedEvents.defeatEvents
+    const drawEvents = drainedEvents.drawEvents
+    const manaEvents = drainedEvents.manaEvents
+    const cardTrashEvents = drainedEvents.cardTrashEvents
+    const { snapshot: cardMoveSnapshot, destination } =
+      cardId !== undefined
+        ? this.buildCardMoveSnapshot(before, after, cardId)
+        : { snapshot: this.cloneBattleSnapshot(after), destination: undefined }
+    const cardMoveStage = destination === 'discard' ? 'card-trash' : 'card-move'
+    const cardTitle = this.findCardTitle(before, cardId)
     animations.push(
       this.createInstruction(cardMoveSnapshot, 0, {
-        stage: 'card-move',
-        cardId: context?.cardId,
+        stage: cardMoveStage,
+        cardId,
+        cardTitle,
       }),
     )
 
-    const damageSnapshot = this.buildDamageSnapshot(before, after, context)
-    animations.push(
-      this.createInstruction(damageSnapshot, this.calculateDamageWait(context), {
-        stage: 'damage',
-        cardId: context?.cardId,
-        defeatedEnemyIds: context?.defeatedEnemyIds ?? [],
-      }, this.extractDamageOutcomesFromEvents(context?.damageEvents)),
-    )
+    const drawInstructions = this.buildDeckDrawInstructions(drawEvents, after)
+    animations.push(...drawInstructions)
 
-    if ((context?.defeatedEnemyIds?.length ?? 0) > 0) {
+    const manaInstructions = this.buildManaInstructions(manaEvents, after)
+    animations.push(...manaInstructions)
+    const trashInstructions = this.buildCardTrashInstructions(cardTrashEvents, after)
+    animations.push(...trashInstructions)
+
+    const hasDamage = damageEvents.length > 0
+    if (hasDamage) {
+      const damageSnapshot = this.buildDamageSnapshot(before, after, defeatIds)
+      const damageStage = this.resolveDamageStage(damageEvents, 'damage')
       animations.push(
-        this.createInstruction(this.cloneBattleSnapshot(after), 1000, {
-          stage: 'defeat',
-          cardId: context?.cardId,
-          defeatedEnemyIds: context?.defeatedEnemyIds ?? [],
+        this.createInstruction(
+          damageSnapshot,
+          this.calculateDamageWaitFromEvents(damageEvents),
+          {
+            stage: damageStage,
+            cardId,
+            cardTitle,
+          },
+          this.extractDamageOutcomesFromEvents(damageEvents),
+        ),
+      )
+    }
+
+    const defeatInstructions = this.buildDefeatInstructions(defeatIds, after, { cardId, cardTitle })
+    animations.push(...defeatInstructions)
+
+    const needsStateUpdate =
+      !hasDamage &&
+      drawInstructions.length === 0 &&
+      manaInstructions.length === 0 &&
+      defeatInstructions.length === 0 &&
+      trashInstructions.length === 0
+    if (needsStateUpdate) {
+      animations.push(
+        this.createInstruction(this.cloneBattleSnapshot(after), 0, {
+          stage: 'state-update',
+          cardId,
+          cardTitle,
         }),
       )
     }
@@ -309,7 +396,11 @@ export class OperationRunner {
     return animations
   }
 
-  private buildCardMoveSnapshot(before: BattleSnapshot, after: BattleSnapshot, cardId: number): BattleSnapshot {
+  private buildCardMoveSnapshot(
+    before: BattleSnapshot,
+    after: BattleSnapshot,
+    cardId: number,
+  ): { snapshot: BattleSnapshot; destination?: 'hand' | 'discard' | 'exile' } {
     const snapshot = this.cloneBattleSnapshot(before)
     const destination = this.determineCardDestination(after, cardId)
     const cardInstance =
@@ -329,23 +420,20 @@ export class OperationRunner {
       }
     }
 
-    return snapshot
+    return { snapshot, destination }
   }
 
   private buildDamageSnapshot(
     before: BattleSnapshot,
     after: BattleSnapshot,
-    context?: PlayCardAnimationContext,
+    defeatedEnemyIds: number[],
   ): BattleSnapshot {
-    if (!context) {
+    if (!defeatedEnemyIds.length) {
       return this.cloneBattleSnapshot(after)
     }
     const snapshot = this.cloneBattleSnapshot(after)
-    if (!context.defeatedEnemyIds?.length) {
-      return snapshot
-    }
     const beforeMap = new Map(before.enemies.map((enemy) => [enemy.id, enemy]))
-    for (const enemyId of context.defeatedEnemyIds) {
+    for (const enemyId of defeatedEnemyIds) {
       const revert = beforeMap.get(enemyId)
       const enemy = snapshot.enemies.find((candidate) => candidate.id === enemyId)
       if (enemy && revert) {
@@ -368,11 +456,11 @@ export class OperationRunner {
     return undefined
   }
 
-  private calculateDamageWait(context?: PlayCardAnimationContext): number {
-    if (!context || context.damageEvents.length === 0) {
+  private calculateDamageWaitFromEvents(events: DamageAnimationEvent[]): number {
+    if (!events.length) {
       return 0
     }
-    const firstEvent = context.damageEvents[0]
+    const firstEvent = events[0]
     if (!firstEvent) {
       return 0
     }
@@ -384,10 +472,6 @@ export class OperationRunner {
       return 0
     }
     return (hits - 1) * 200
-  }
-
-  private extractDamageOutcomes(context?: PlayCardAnimationContext): readonly DamageOutcome[] | undefined {
-    return this.extractDamageOutcomesFromEvents(context?.damageEvents)
   }
 
   private cloneBattleSnapshot(source: BattleSnapshot): BattleSnapshot {
@@ -430,9 +514,14 @@ export class OperationRunner {
     return copy
   }
 
-  private attachSimpleEntryAnimation(entry: BattleActionLogEntry, snapshot: BattleSnapshot): void {
+  private attachSimpleEntryAnimation(
+    entry: BattleActionLogEntry,
+    snapshot: BattleSnapshot,
+    drainedEvents: DrainedAnimationEvents,
+  ): void {
     let metadata: Record<string, unknown> | undefined
     let waitMs = 0
+    const instructions: AnimationInstruction[] = []
     switch (entry.type) {
       case 'battle-start':
         metadata = { stage: 'battle-start' }
@@ -443,20 +532,52 @@ export class OperationRunner {
       case 'end-player-turn':
         metadata = { stage: 'turn-end' }
         break
-      case 'player-event':
-        metadata = { stage: 'player-event', eventId: entry.eventId, payload: entry.payload }
+      case 'player-event': {
         waitMs = 200
-        break
-      case 'state-event':
-        metadata = {
-          stage: 'state-event',
-          subject: entry.subject,
-          subjectId: entry.subjectId,
-          stateId: entry.stateId,
-          payload: entry.payload,
+        const payload = entry.payload as { type?: string; payload?: unknown } | undefined
+        if (payload?.type === 'mana') {
+          const amount =
+            typeof (payload.payload as { amount?: unknown })?.amount === 'number'
+              ? (payload.payload as { amount?: number }).amount
+              : undefined
+          metadata = {
+            stage: 'mana',
+            eventId: entry.eventId,
+            amount,
+          }
+        } else {
+          metadata = {
+            stage: 'state-update',
+            eventId: entry.eventId,
+            payload: entry.payload,
+          }
         }
-        waitMs = 200
         break
+      }
+      case 'state-event': {
+        const payload = entry.payload as { result?: string } | undefined
+        const isEscape = entry.subject === 'enemy' && payload?.result === 'escape'
+        if (isEscape) {
+          metadata = {
+            stage: 'escape',
+            subject: entry.subject,
+            subjectId: entry.subjectId,
+            stateId: entry.stateId,
+            payload: entry.payload,
+          }
+          waitMs = 1000
+        } else {
+          metadata = {
+            stage: 'state-update',
+            subject: entry.subject,
+            subjectId: entry.subjectId,
+            stateId: entry.stateId,
+            payload: entry.payload,
+          }
+          waitMs = 0
+        }
+        break
+      }
       case 'victory':
         metadata = { stage: 'victory' }
         waitMs = 400
@@ -470,9 +591,33 @@ export class OperationRunner {
         return
     }
 
-    entry.animations = [
-      this.createInstruction(snapshot, waitMs, metadata ?? { stage: 'default' }),
-    ]
+    if (metadata) {
+      instructions.push(this.createInstruction(snapshot, waitMs, metadata))
+    }
+
+    const damageEvents = drainedEvents.damageEvents
+    if (damageEvents.length > 0) {
+      const damageStage = this.resolveDamageStage(damageEvents, 'damage')
+      instructions.push(
+        this.createInstruction(
+          snapshot,
+          this.calculateDamageWaitFromEvents(damageEvents),
+          {
+            stage: damageStage,
+          },
+          this.extractDamageOutcomesFromEvents(damageEvents),
+        ),
+      )
+    }
+
+    instructions.push(...this.buildDeckDrawInstructions(drainedEvents.drawEvents, snapshot))
+    instructions.push(...this.buildManaInstructions(drainedEvents.manaEvents, snapshot))
+    instructions.push(...this.buildDefeatInstructions(drainedEvents.defeatEvents, snapshot))
+    instructions.push(...this.buildCardTrashInstructions(drainedEvents.cardTrashEvents, snapshot))
+
+    if (instructions.length > 0) {
+      entry.animations = instructions
+    }
   }
 
   private attachEnemyActAnimations(
@@ -480,6 +625,10 @@ export class OperationRunner {
     snapshot: BattleSnapshot,
     summary?: EnemyTurnActionSummary,
   ): void {
+    if (summary?.skipped) {
+      entry.animations = []
+      return
+    }
     const animations: AnimationInstruction[] = []
     animations.push(
       this.createInstruction(snapshot, 0, {
@@ -491,34 +640,140 @@ export class OperationRunner {
     )
 
     const context = summary?.animation
-    if (context && context.damageEvents.length > 0) {
+    const damageEvents = context?.damageEvents ?? []
+    if (damageEvents.length > 0) {
+      const damageStage = this.resolveDamageStage(damageEvents, 'player-damage')
       animations.push(
         this.createInstruction(
           snapshot,
-          this.calculateEnemyDamageWait(context),
+          this.calculateEnemyDamageWait(damageEvents, Boolean(summary?.cardsAddedToPlayerHand.length)),
           {
-            stage: 'damage',
+            stage: damageStage,
             enemyId: entry.enemyId,
             actionId: entry.actionId,
           },
-          this.extractDamageOutcomesFromEvents(context.damageEvents),
+          this.extractDamageOutcomesFromEvents(damageEvents),
         ),
       )
     }
 
     const shouldAddMemoryCards =
-      context && !context.playerDefeated && context.cardAdditions.length > 0
+      summary && !(context?.playerDefeated ?? false) && summary.cardsAddedToPlayerHand.length > 0
     if (shouldAddMemoryCards) {
       animations.push(
         this.createInstruction(snapshot, 0, {
-          stage: 'memory-card',
+          stage: 'card-create',
           enemyId: entry.enemyId,
-          cards: context!.cardAdditions.map((card) => card.title),
+          cards: summary!.cardsAddedToPlayerHand.map((card) => card.title),
+        }),
+      )
+    }
+
+    const stateDiffs = context?.stateDiffs ?? []
+    if (stateDiffs.length > 0) {
+      animations.push(
+        this.createInstruction(this.cloneBattleSnapshot(snapshot), 0, {
+          stage: 'state-update',
+          enemyStates: stateDiffs,
         }),
       )
     }
 
     entry.animations = animations
+  }
+
+  private buildDeckDrawInstructions(
+    drawEvents: Array<{ cardIds: number[] }>,
+    snapshot: BattleSnapshot,
+  ): AnimationInstruction[] {
+    if (!drawEvents || drawEvents.length === 0) {
+      return []
+    }
+    return drawEvents
+      .filter((event) => (event.cardIds?.length ?? 0) > 0)
+      .map((event) =>
+        this.createInstruction(this.cloneBattleSnapshot(snapshot), 0, {
+          stage: 'deck-draw',
+          cardIds: event.cardIds,
+        }),
+      )
+  }
+
+  private buildManaInstructions(
+    manaEvents: Array<{ amount: number }>,
+    snapshot: BattleSnapshot,
+  ): AnimationInstruction[] {
+    if (!manaEvents || manaEvents.length === 0) {
+      return []
+    }
+    return manaEvents
+      .filter((event) => event.amount !== 0)
+      .map((event) =>
+        this.createInstruction(this.cloneBattleSnapshot(snapshot), 0, {
+          stage: 'mana',
+          amount: event.amount,
+        }),
+      )
+  }
+
+  private buildCardTrashInstructions(
+    trashEvents: Array<{ cardIds: number[] }>,
+    snapshot: BattleSnapshot,
+  ): AnimationInstruction[] {
+    if (!trashEvents || trashEvents.length === 0) {
+      return []
+    }
+    return trashEvents.map((event) =>
+      this.createInstruction(this.cloneBattleSnapshot(snapshot), 0, {
+        stage: 'card-trash',
+        cardIds: event.cardIds,
+        cardTitles: event.cardIds
+          .map((id) => this.findCardTitle(snapshot, id))
+          .filter((title): title is string => Boolean(title)),
+      }),
+    )
+  }
+
+  private resolveDamageStage(
+    events: DamageAnimationEvent[],
+    defaultStage: 'damage' | 'player-damage',
+  ): 'damage' | 'player-damage' {
+    if (events.some((event) => event.targetId === undefined)) {
+      return 'player-damage'
+    }
+    return defaultStage
+  }
+
+  private findCardTitle(snapshot: BattleSnapshot, cardId: number | undefined): string | undefined {
+    if (cardId === undefined) {
+      return undefined
+    }
+    const zones = [snapshot.hand, snapshot.discardPile, snapshot.exilePile, snapshot.deck]
+    for (const zone of zones) {
+      const card = zone.find((candidate) => candidate.id === cardId)
+      if (card) {
+        return card.title
+      }
+    }
+    return undefined
+  }
+
+  private buildDefeatInstructions(
+    defeatEnemyIds: number[],
+    snapshot: BattleSnapshot,
+    metadataOverrides?: Record<string, unknown>,
+  ): AnimationInstruction[] {
+    if (!defeatEnemyIds || defeatEnemyIds.length === 0) {
+      return []
+    }
+    const uniqueIds = Array.from(new Set(defeatEnemyIds))
+    return [
+      this.createInstruction(this.cloneBattleSnapshot(snapshot), 1000, {
+        stage: 'defeat',
+        defeatedEnemyIds: uniqueIds,
+        ...(metadataOverrides ?? {}),
+      }),
+    ]
   }
 
   private createInstruction(
@@ -545,11 +800,11 @@ export class OperationRunner {
     return firstEvent.outcomes.map((outcome) => ({ ...outcome }))
   }
 
-  private calculateEnemyDamageWait(context: EnemyActAnimationContext): number {
-    if (context.cardAdditions.length > 0) {
+  private calculateEnemyDamageWait(events: DamageAnimationEvent[], hasCardAdditions: boolean): number {
+    if (hasCardAdditions || events.length === 0) {
       return 0
     }
-    const firstEvent = context.damageEvents[0]
+    const firstEvent = events[0]
     if (!firstEvent) {
       return 0
     }

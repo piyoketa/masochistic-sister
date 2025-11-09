@@ -6,10 +6,10 @@ export class StrengthState extends State {
   constructor(magnitude = 0) {
     super({
       id: 'state-strength',
-      name: '筋力上昇',
+      name: '打点上昇',
       magnitude,
       cardDefinition: {
-        title: '筋力上昇',
+        title: '打点上昇',
         cardType: 'status',
         type: new StatusTypeCardTag(),
         target: undefined,

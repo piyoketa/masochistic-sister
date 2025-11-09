@@ -6,63 +6,131 @@
     - 手札の「乱れ突き」を捨て札に移動する
     - オークに10×4ダメージ。HPが0になる。
     - オークが撃破される。
-    - なめくじの臆病により、なめくじが逃走する。
+- BattleActionLogEntry: `event`
+    - なめくじの臆病により、なめくじが逃走する
 - BattleActionLogEntry: `victory`
     - 結果オーバーレイが表示される。
+
+## AnimationInstructionステージの指針
+
+ステージは「何のアニメーションを描画するか」を表します。原因（イベント種別）ではなく、描画対象にフォーカスした命名とし、同じ効果ならどこから発生したかに関わらず同ステージを再利用します。
+
+| stage | 表示内容 | 典型的な発生元 |
+| --- | --- | --- |
+| `battle-start` | 初期手札と盤面反映 | `battle-start` |
+| `turn-start` | ターン開始状態（マナリセット、手札情報） | `start-player-turn` |
+| `deck-draw` | 山札から手札にカードを加える | ターン開始ドロー、日課などのドロー効果 |
+| `card-move` | カードのゾーン移動（手札→除外など） | `play-card` |
+| `card-trash` | 手札のカードを捨て札に送る | `play-card`, 再装填などのカード効果 |
+| `card-eliminate` | カードを除外する | [消費]カードの`play-card` |
+| `card-create` | カードが生成され、手札に追加される | `enemy-act` |
+| `damage` | 敵に対するダメージ演出 | `play-card` |
+| `player-damage` | プレイヤーに対するダメージ演出 | `enemy-act` |
+| `defeat` | 敵カードのフェードアウト（撃破） | `play-card` |
+| `escape` | 敵カードのフェードアウト（逃走） | `event`（例: trait-coward） |
+| `state-update` | 数値更新のみで演出が不要な状況 | ステータス調整、汎用プレイヤーイベント |
+| `enemy-highlight` | 行動中の敵カードを強調 | `enemy-act` |
+| `mana` | マナ加算エフェクト | `player-event` (mana) |
+| `turn-end` | プレイヤーターン終了状態 | `end-player-turn` |
+| `victory` / `gameover` | リザルトオーバーレイ | それぞれの終端エントリ |
 
 ## AnimationInstruction生成ルール（エントリ種別ごと）
 
 | Entry type | Instruction ラフ | 待機時間 | 備考 |
 | --- | --- | --- | --- |
-| `battle-start` | [0] バトル初期状態 snapshot | 0ms | 手札3枚配布後の盤面を即時反映 |
-| `start-player-turn` | [0] プレイヤーターン開始 snapshot | 0ms | ドロー後の手札/山札枚数を反映。`handOverflow` が true の場合でも追加指示なし |
-| `play-card` | [0] カード移動、[1] ダメージ演出、[2] 撃破/逃走演出（存在する場合のみ） | 0ms / (ヒット数-1)*0.2s / 1s | 詳細後述。敵撃破がなければ [2] は省略 |
-| `player-event` | [0] イベント適用後 snapshot | 200ms | 例: 戦いの準備 → マナ+1。metadata に eventId を含む |
-| `state-event` | [0] State 追加/削除後 snapshot | 200ms | `subject` と `stateId` を metadata に含める |
-| `enemy-act` | [0] 行動開始ハイライト, [1] ダメージ (任意), [2] 手札カード追加 (任意) | 0ms / 条件付き / 0ms | ダメージ待機: ヒット数>1 かつ手札追加なしなら (hits-1)*0.2s。手札追加あり (記憶カード生成) の場合は 0ms。主人公が敗北した場合は攻撃演出のみで終了し、手札追加はスキップして直後の `gameover` へ遷移。撃破/逃走は別途 `state-event` で表現。 |
-| `end-player-turn` | [0] ターン終了 snapshot | 0ms | 自ターン終了時点の手札/マナを反映。敵行動は `enemy-act` に分離 |
-| `victory` / `gameover` | [0] リザルトオーバーレイ表示 snapshot | 400ms | overlay表示を1段階で表現 |
+| `battle-start` | [0] バトル初期状態 snapshot | 0ms | 初期3枚の配布後を描画 |
+| `start-player-turn` | [0] `turn-start`, [1] `mana`, [2] `deck-draw` | 0ms | 手札上限超過時は `deck-draw` の metadata に `handOverflow: true` を載せる |
+| `play-card` | 行動による | 行動による | 詳細は後述 |
+| `enemy-act` | 行動による | 行動による | 攻撃時は `player-damage`、バフ時は `state-update` を挿入。行動不能ならアニメーション無し |
+| `end-player-turn` | [0] `turn-end` | 0ms | 敵行動再生は個別の `enemy-act` |
+| `victory` / `gameover` | [0] `victory` or `gameover` | 400ms | リザルト表示 |
+| `event` | 状況による | 状況による | 戦いの準備によるマナ追加や、なめくじの臆病による逃走など、なんらかのタイミングトリガーで発生したイベント。 |
 
 ### play-card の AnimationInstruction 詳細
+play-card時のAnimationInstructionの生成例を示します。
 
-BattleActionLogEntry: `play-card`のアニメーションを、最大３つのAnimationInstructionsで表現します。
+「1コスト 10ダメージ×3回の乱れ突き」を使用した場合
 
-- AnimationInstruction[0]：使用カードの移動
-    - 手札の「乱れ突き」が「捨て札」に移動した状態のBattleSnapshotを持ちます。このBattleSnapshotでフロント側を更新します。
-        - この時、カードの移動にはCSSのアニメーションが付きます。
-    - 待ち時間:0s
-        - CSSのアニメーションが終わるのを待たず、次のAnimationInstructionに進みます。
-- AnimationInstruction[1]：ダメージ演出
-    - DamageEffectsやHpGaugeのアニメーションを用いて、オークに10×4ダメージが入り、HPが0になった様子を示します。
-    - オークのHPやStatesなどが更新された状態のBattleSnapshotを持ちます。このBattleSnapshotでフロント側を更新します。また、DamageOutcome[]によってダメージ演出を伝達します。
-    - 待ち時間:0.6s
-        - DamageEffectsは攻撃回数によって演出時間が異なります。今回は2回で、攻撃間隔ごとに0.2sの待ちが発生するので、全体では(4-1) * 0.2s = 0.6sのアニメーションが入ります。
-- AnimationInstruction[2]：記憶カード追加
-    - 敵の攻撃を記憶したカードがプレイヤーの手札に追加された状態を表す snapshot を持ちます。待機時間は 0ms（敵攻撃と同時に開始）。
-    - metadata として `stage: 'memory-card'`, `cardTitle`, `sourceEnemyId` などを付与する。手札への挿入アニメーションは CSS 側で 0.5s ほどかけて再生。
-「なめくじの臆病」による逃走は `state-event` エントリとして扱い、その `animations` で EnemyCard フェードアウトを行う（wait: 1s）。  
-この後、BattleActionLogEntry: `victory` の再生が開始し、結果オーバーレイが表示されます。
+1. **[0] `mana`**
+   - マナを消費（マイナス）または獲得（プラス）した値を示す。
+2. **[1] `card-move` / `card-trash`**  
+   - 使用カードが移動した直後の snapshot。手札→捨て札の場合は `card-trash`、除外などは `card-move`。
+3. **[2] `damage`**  
+   - ダメージを伴う場合のみ生成。`damageOutcomes` を含み、待機時間は (ヒット数-1)*0.2s。
+4. **[3] `defeat`**  
+   - 撃破された敵がいる場合のみ追加。1sかけて EnemyCard を透過させる。
+5. **[4] `state-update`**  
+   - ダメージもカード生成も起きなかった場合のフォールバック。HPやStateだけが変化したときに使用。
 
-### enemy-act の詳細（仮説）
+### enemy-act の詳細
+enemy-act時のAnimationInstructionの生成例を示します。
 
-1. **[0] 行動開始ハイライト**  
-   - snapshot: 行動開始時点の盤面。敵カードを強調表示するため metadata に `stage: 'enemy-highlight'`, `enemyId`, `actionId` を付与。  
-   - wait: 0ms（ハイライト表示だけなので即座に次へ進む）。
+- **行動がスキップされた場合**: AnimationInstructionは生成されない（`enemy-highlight` も表示しない）
+- **攻撃行動**:  
+  1. `enemy-highlight`  
+  2. `player-damage`（ヒット数に応じて `(hits-1)*0.2s` 待機。ただし記憶カード追加がある場合は 0ms）  
+  3. `card-create`（記憶カード・状態異常カードをまとめて1 instruction に格納）
+- **バフ/デバフ行動**:  
+  1. `enemy-highlight`  
+  2. `state-update`（`metadata.enemyStates` に付与後のState一覧を入れる）
 
-2. **[1] ダメージ演出（任意）**  
-   - `DamageEffects` と HP 変化を伴う instruction。`damageOutcomes` をそのまま受け渡し、metadata に `stage: 'damage'` + `enemyId` を設定。  
-   - 待機時間:  
-     * 手札追加（記憶カード生成）が存在しない場合 → `(ヒット数 - 1) * 0.2s`。  
-     * 手札追加がある場合 → 手札アニメーションを敵攻撃と同期したいので **0ms**。  
-     * プレイヤー敗北時（HP<=0） → ダメージ演出のみ再生し、手札追加はスキップして直後の `gameover` へ遷移。
+## BattleActionLogEntry生成リファクタ計画
 
-3. **[2] 手札カード追加（任意）**  
-   - 敵攻撃を記憶カードとして手札へ差し込む instruction。metadata に `stage: 'memory-card'`, `enemyId`, `cards`(タイトル一覧) を記録。  
-   - 待機時間: 0ms（カード移動アニメーションを敵攻撃と同時に開始）。アニメーション時間そのものは CSS 側で 0.5s 程度設定する。  
-   - プレイヤー敗北時や謝礼カード無しの場合はこの instruction は生成しない。
+1. **Battle側のイベント収集**  
+   - `drawForPlayer` が全てのドロー発生源（初期手札・日課・敵攻撃など）で呼ばれるよう保証し、引いたカードIDを `pendingDrawAnimationEvents` に積む。  
+   - `performEnemyAction(recordImmediate: true)` 呼び出し時に `EnemyTurnActionSummary` を即時キューへ追加し、OperationRunner が `enemy-act` を挿入できるようにする。  
+   - `stateEventBuffer` / `resolvedEventsBuffer` で扱う payload を型定義し、trait-coward や mana などステージ判定に必要な情報を取得しやすくする。
 
-### state-event での逃走演出（仮）
+2. **OperationRunnerでのInstruction生成**  
+   - `attachPlayCardAnimations`: `card-move → deck-draw* → mana* → damage* → defeat* → state-update*` の順に命令を構築し、ダメージの無いカードでは `damage` を出さない。`mana` インストラクションは `Player.spendMana` で積まれたイベントを取り出して配置する。  
+   - `attachEnemyActAnimations`: 手札追加がある場合のダメージ待機を 0ms に固定し、記憶カード追加は stage=`card-create` で出力。ダメージや撃破は各エンティティの `takeDamage` が直接キューに積んだ情報を利用する。  
+   - `attachSimpleEntryAnimation`: `start-player-turn` に `deck-draw` を差し込み、`player-event` (mana) → stage=`mana`、それ以外 → `state-update`。`state-event` も `escape` or `state-update` にマッピングする。
 
-- `state-event` の metadata 例: `{ stage: 'state-event', subject: 'enemy', subjectId: slugId, stateId: 'coward' }`。
-- `animations` にはフェードアウト演出を 1 instruction 追加し、`waitMs: 1000` で EnemyCard を透過させて退場させる。  
-- 「臆病」だけでなく、バリア消滅や状態解除に関する視覚演出も `state-event` 側で担う想定。
+3. **ActionLogエントリ列の整合性**  
+   - `appendImmediateEnemyActEntries` を導入して被虐のオーラ直後にも `enemy-act` を挿入。  
+   - `flushResolvedEvents` / `flushStateEvents` の呼び出し順を見直し、`play-card` 後のイベントでも漏れがないようにする。  
+   - `OperationRunner.getWaitInfo` や `appendBattleOutcomeIfNeeded` といった補助メソッドが新stageの待機仕様と矛盾しないか確認。
+
+4. **テスト & フィクスチャ更新**  
+   - `LOG_BATTLE_SAMPLE*_SUMMARY=1` ＋ `scripts/updateActionLogFixtures.mjs` で期待ActionLogを再生成し、`tests/integration/battleSample*.spec.ts` で全ケースが緑になるまで更新。  
+   - `tests/domain/battle/operationRunnerInstructions.spec.ts` 等に `deck-draw`・`state-update`・`escape` の単体テストを追加し、View未実装でも挙動がわかるようにする。  
+   - 付随ドキュメント（`enemy_turn_animation.md`, `INTEGRATION_TEST_FORMAT.md`）も新stageと生成手順で同期させ、将来の実装者が迷わないようにする。
+
+## 実装TODOリスト
+
+1. **Battle / Player / Enemyのイベントキュー化**
+   - `Player.spendMana` で `Battle.recordManaAnimation({ amount: -cost })` を呼ぶ。
+   - `Player.takeDamage` および `Enemy.takeDamage` で `recordDamageAnimation` を呼び、敵側では撃破判定時に `recordDefeatAnimation(enemyId)` も積む。
+   - 逃走や特殊ステートによる退場イベントを `stateEventBuffer` に構造化して格納し、`escape` ステージへ繋げる。
+
+2. **Battle API 拡張**
+   - `recordManaAnimation`, `recordDefeatAnimation`, `consumeManaAnimationEvents`, `consumeDefeatAnimationEvents` を追加し、OperationRunnerから取得できるようにする。
+   - `performEnemyAction(recordImmediate: true)` の結果を `consumeImmediateEnemyActions` で取り出せるよう既存キュー処理を再確認。
+
+3. **OperationRunner調整**
+   - `attachPlayCardAnimations` に `mana` ステージを差し込み、ダメージ無しスキルで `damage` が生成されないよう分岐を明確化。
+   - `attachEnemyActAnimations` を `card-create` 前提に更新し、手札追加時の待機時間0msを徹底。
+   - `attachSimpleEntryAnimation` で `state-event` → `escape`/`state-update`、`player-event` → `mana`/`state-update` へ振り分ける。
+
+4. **ActionLog生成フロー**
+   - `appendImmediateEnemyActEntries` を `play-card` 実行後に呼び出し、被虐のオーラ直後でも敵行動がActionLogに挿入されるようにする。
+   - `flushResolvedEvents` / `flushStateEvents` の順序を確認し、演出イベントが欠落しないよう調整。
+
+5. **テスト・フィクスチャ**
+   - unit: `Player`/`Enemy`/`Battle` の新APIに対する単体テストを追加し、イベントキューの挙動を確認。
+   - integration: battleSample1/2 の期待ActionLog再生成＋比較テスト更新。
+   - ドキュメント: `enemy_turn_animation.md` と `INTEGRATION_TEST_FORMAT.md` を新stage仕様で更新。
+
+## Damage / Defeat / Mana イベントの発火タイミング
+
+1. **プレイヤー被ダメージ**  
+   - `Player.takeDamage` 内で `Battle.recordDamageAnimation` を呼び出し、`DamageAnimationEvent` をペイロード付きで積む。OperationRunner はこのバッファを `damage` ステージに変換するだけに留め、発生源を意識しない。
+
+2. **敵被ダメージ・撃破**  
+   - `Enemy.takeDamage` でHP下降を処理したタイミングで、撃破が確定した場合は `Battle.recordDefeatAnimation(enemyId)` のようなAPI（新規）を呼び出し、`defeat` ステージ用のフラグを積む。OperationRunnerは `consumeDefeatAnimationEvents`（新設）で取得して `defeat` 指示を生成する。
+
+3. **マナ消費 / 増加**  
+   - `Player.spendMana` が呼ばれたタイミングで `Battle.recordManaAnimation({ amount: -cost })` を積み、`mana` ステージとして再生する。既存のプレイヤーイベント（戦いの準備など）によるマナ増加も `Battle.recordManaAnimation({ amount: +1 })` を通して共通化。OperationRunner側は `consumeManaAnimationEvents` を `attachPlayCardAnimations` や `attachSimpleEntryAnimation` から呼び出す。
+
+4. **キュー化の基本方針**  
+   - 「演出に関するメタ情報は、発火元のエンティティ/処理で積む」→「OperationRunnerは積まれたイベントを順番にAnimationInstructionへ変換する」構造を徹底し、将来的にView側で必要な粒度（example: プレイヤー被ダメージなのか敵被ダメージなのか）を判別しやすくする。

@@ -101,20 +101,20 @@ export abstract class Attack extends Action {
     damages.setOutcomes(resolvedOutcomes)
     const totalDamage = damages.totalPostHitDamage
     const shouldDrain = this.hasDrainEffect(context)
-    if (resolvedOutcomes.length > 0) {
-      const defenderId = this.isPlayer(defender) ? undefined : defender.id
-      context.battle.recordDamageAnimation({
-        targetId: defenderId,
-        outcomes: resolvedOutcomes.map((outcome) => ({ ...outcome })),
-        effectType: this.effectType,
-        hitCount: this.baseProfile.count,
-      })
-    }
+    const animationEvent =
+      resolvedOutcomes.length > 0
+        ? {
+            targetId: this.isPlayer(defender) ? undefined : defender.id,
+            outcomes: resolvedOutcomes.map((outcome) => ({ ...outcome })),
+            effectType: this.effectType,
+            hitCount: this.baseProfile.count,
+          }
+        : undefined
 
     if (this.isPlayer(defender)) {
-      context.battle.damagePlayer(totalDamage)
+      context.battle.damagePlayer(totalDamage, { animation: animationEvent })
     } else {
-      context.battle.damageEnemy(defender, totalDamage)
+      context.battle.damageEnemy(defender, totalDamage, { animation: animationEvent })
     }
     if (shouldDrain) {
       this.applyDrainHeal({

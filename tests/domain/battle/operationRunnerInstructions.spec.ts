@@ -106,13 +106,14 @@ describe('OperationRunner ActionLog / wait metadata', () => {
     expect(entry?.type).toBe('play-card')
     const animations = entry?.animations
     expect(animations).toBeDefined()
-    expect(animations).toHaveLength(3)
+    expect(animations).toHaveLength(4)
     expect(animations?.map((instruction) => instruction.metadata?.stage)).toEqual([
-      'card-move',
+      'card-trash',
+      'mana',
       'damage',
       'defeat',
     ])
-    expect(animations?.map((instruction) => instruction.waitMs)).toEqual([0, 800, 1000])
+    expect(animations?.map((instruction) => instruction.waitMs)).toEqual([0, 0, 800, 1000])
 
     const { battle } = scenario.replayer.run(entryIndex)
     const resolvedCardId = actionLog.resolveValue(
@@ -126,12 +127,12 @@ describe('OperationRunner ActionLog / wait metadata', () => {
     expect(cardInDiscard).toBe(true)
 
     const ironBloomId = scenario.references.enemyIds.ironBloom
-    const damageStageEnemy = animations?.[1].snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
-    const defeatStageEnemy = animations?.[2].snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
+    const damageStageEnemy = animations?.[2].snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
+    const defeatStageEnemy = animations?.[3].snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
     expect(damageStageEnemy?.status).not.toBe('defeated')
     expect(defeatStageEnemy?.status).toBe('defeated')
 
-    const damageOutcomes = animations?.[1].damageOutcomes ?? []
+    const damageOutcomes = animations?.[2].damageOutcomes ?? []
     expect(damageOutcomes.length).toBe(5)
   })
 })

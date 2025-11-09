@@ -179,7 +179,7 @@ export class Card {
         throw new Error('Card cannot be played without an action')
       }
 
-      battle.player.spendMana(this.cost)
+      battle.player.spendMana(this.cost, { battle })
       battle.player.removeState(state.id)
       battle.exilePile.add(this)
       return
@@ -198,7 +198,7 @@ export class Card {
     }
     context.metadata.cardTags = (this.cardTags ?? []).map((tag) => tag.id)
 
-    battle.player.spendMana(this.cost)
+    battle.player.spendMana(this.cost, { battle })
     battle.hand.remove(this)
 
     action.execute(context)

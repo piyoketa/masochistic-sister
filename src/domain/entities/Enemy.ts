@@ -1,6 +1,6 @@
 import type { Action } from './Action'
 import type { State } from './State'
-import type { Battle } from '../battle/Battle'
+import type { Battle, DamageAnimationEvent } from '../battle/Battle'
 import type { EnemyActionQueue, EnemyActionQueueStateSnapshot } from './enemy/actionQueues'
 import { DefaultEnemyActionQueue } from './enemy/actionQueues'
 import type { Player } from './Player'
@@ -154,10 +154,28 @@ export class Enemy {
     this.actedThisTurn = true
   }
 
-  takeDamage(amount: number): void {
-    this.currentHpValue = Math.max(0, this.currentHpValue - Math.max(0, Math.floor(amount)))
-    if (this.currentHpValue <= 0) {
+  takeDamage(
+    amount: number,
+    options?: { battle?: Battle; animation?: DamageAnimationEvent },
+  ): void {
+    const damage = Math.max(0, Math.floor(amount))
+    if (damage <= 0) {
+      return
+    }
+    const previousHp = this.currentHpValue
+    this.currentHpValue = Math.max(0, this.currentHpValue - damage)
+    if (options?.battle && options.animation) {
+      const event: DamageAnimationEvent = {
+        ...options.animation,
+        targetId: options.animation.targetId ?? this.id,
+      }
+      options.battle.recordDamageAnimation(event)
+    }
+    if (this.currentHpValue <= 0 && previousHp > 0) {
       this.statusValue = 'defeated'
+      if (options?.battle && this.id !== undefined) {
+        options.battle.recordDefeatAnimation(this.id)
+      }
     }
   }
 

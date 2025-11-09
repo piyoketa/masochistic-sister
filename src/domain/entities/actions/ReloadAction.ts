@@ -50,6 +50,11 @@ export class ReloadAction extends Skill {
       context.battle.discardPile.add(card)
     }
 
+    const trashedIds = recyclable
+      .map((card) => card.id)
+      .filter((id): id is number => id !== undefined)
+    context.battle.recordCardTrashAnimation({ cardIds: trashedIds })
+
     context.battle.drawForPlayer(discardCount)
   }
 }

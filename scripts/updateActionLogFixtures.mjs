@@ -60,6 +60,31 @@ function toInlineObject(obj) {
     .replace(/"/g, "'")
 }
 
+function describeCardFromMetadata(metadata) {
+  if (!metadata) {
+    return 'カード'
+  }
+  if (metadata.cardTitle) {
+    return metadata.cardTitle
+  }
+  if (metadata.cardId !== undefined) {
+    return `cardId=${metadata.cardId}`
+  }
+  return 'カード'
+}
+
+function describeCardList(metadata) {
+  const titles = metadata?.cardTitles ?? metadata?.cards
+  if (Array.isArray(titles) && titles.length > 0) {
+    return titles.join('・')
+  }
+  const ids = metadata?.cardIds
+  if (Array.isArray(ids) && ids.length > 0) {
+    return ids.map((id) => `cardId=${id}`).join('・')
+  }
+  return ''
+}
+
 function buildCardNameMap(summary) {
   const map = new Map()
   summary.forEach((entry) => {
@@ -136,26 +161,36 @@ function stageComment(stage, metadata) {
     case 'turn-start':
       return '[ターン開始] ドロー後の手札/山札を反映'
     case 'card-move':
-      return `[カード移動] cardId=${metadata?.cardId ?? 'unknown'} の移動`
+      return `[カード移動] ${describeCardFromMetadata(metadata)} の移動`
+    case 'card-trash':
+      return `[カード廃棄] ${(describeCardList(metadata) || describeCardFromMetadata(metadata))} を捨て札へ移動`
     case 'damage':
-      if (metadata?.enemyId !== undefined) {
-        return `[ダメージ演出] ${metadata.enemyId}番目の敵 (${metadata.actionId ?? '攻撃'})`
-      }
-      return `[ダメージ演出] cardId=${metadata?.cardId ?? 'unknown'} の攻撃結果`
+      return `[ダメージ演出] ${describeCardFromMetadata(metadata)} の攻撃結果`
+    case 'player-damage':
+      return `[被ダメージ] プレイヤーへの攻撃結果`
     case 'enemy-highlight':
       return '[敵行動ハイライト] 敵の行動を強調'
-    case 'memory-card':
-      return '[手札追加] 敵攻撃の記憶カードを手札へ'
+    case 'card-create':
+      return `[手札追加] 敵攻撃の記憶カード (${describeCardList(metadata) || '不明'}) を手札へ`
+    case 'deck-draw':
+      return '[ドロー] 山札から手札にカードを追加'
     case 'turn-end':
       return '[ターン終了] 敵ターン移行直前'
-    case 'player-event':
-      return '[プレイヤーイベント] 予約効果を解決'
+    case 'mana':
+      return '[マナ] マナゲージを変化'
     case 'state-event':
       return '[ステートイベント] 状態効果を反映'
     case 'defeat':
       return '[撃破演出] 撃破された敵を退場'
+    case 'escape':
+      return '[逃走] 敵カードを退場'
     case 'victory':
       return '[勝利] リザルトオーバーレイを表示'
+    case 'state-update':
+      if (metadata?.enemyStates) {
+        return '[状態更新] 敵ステータスを反映'
+      }
+      return '[状態更新] アニメーションなしで盤面を更新'
     default:
       return `[${stage ?? '不明'}] アニメーション`
   }
@@ -172,7 +207,7 @@ function formatScenario({ logPath, marker, output, enemyNames }) {
   const cardNameMap = buildCardNameMap(summary)
   const lines = []
   lines.push('// 自動生成: do not edit manually. Update via LOG_BATTLE_SAMPLE*_SUMMARY pipeline.')
-  lines.push(\"import type { ActionLogEntrySummary } from '../integration/utils/battleLogTestUtils'\")
+  lines.push('import type { ActionLogEntrySummary } from \'../integration/utils/battleLogTestUtils\'')
   lines.push('')
   const constNames = []
   const context = { turn: 0 }
@@ -220,7 +255,7 @@ function formatScenario({ logPath, marker, output, enemyNames }) {
     lines.push(`  ${name}${idx === constNames.length - 1 ? '' : ','}`)
   })
   lines.push('] as const')
-  fs.writeFileSync(path.join(process.cwd(), output), lines.join('\\n'))
+  fs.writeFileSync(path.join(process.cwd(), output), `${lines.join('\n')}\n`)
 }
 
 scenarios.forEach(formatScenario)

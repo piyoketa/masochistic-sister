@@ -52,7 +52,7 @@ export class NonViolencePrayerAction extends Skill {
 
     context.battle.hand.remove(selectedCard)
     context.battle.discardPile.add(selectedCard)
-    context.battle.player.gainMana(1)
+    context.battle.player.gainMana(1, { battle: context.battle })
   }
 
   private getSelectOperation(context: ActionContext): SelectHandCardOperation {

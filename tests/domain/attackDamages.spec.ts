@@ -153,7 +153,7 @@ describe('Attack#calcDamagesの挙動', () => {
     expect(damages.defenderStates).toHaveLength(0)
   })
 
-  it('攻撃側に筋力上昇(10)があるとダメージが20に増える', () => {
+  it('攻撃側に打点上昇(10)があるとダメージが20に増える', () => {
     const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defender = createEnemyWithStates()
@@ -170,7 +170,7 @@ describe('Attack#calcDamagesの挙動', () => {
     ).toBe(true)
   })
 
-  it('攻撃側の筋力上昇と防御側の腐食が重なるとダメージが30になる', () => {
+  it('攻撃側の打点上昇と防御側の腐食が重なるとダメージが30になる', () => {
     const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defenderEnemy = createEnemyWithStates()
@@ -190,7 +190,7 @@ describe('Attack#calcDamagesの挙動', () => {
     expect(damages.defenderStates).toContain(corrosion)
   })
 
-  it('筋力上昇と加速、腐食が揃うとダメージ30の4回攻撃になる', () => {
+  it('打点上昇と加速、腐食が揃うとダメージ30の4回攻撃になる', () => {
     const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defenderEnemy = createEnemyWithStates()

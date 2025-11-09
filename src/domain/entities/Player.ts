@@ -1,5 +1,5 @@
 import type { State } from './State'
-import type { Battle } from '../battle/Battle'
+import type { Battle, DamageAnimationEvent } from '../battle/Battle'
 import type { Hand } from '../battle/Hand'
 import { MemoryManager } from './players/MemoryManager'
 import type { Attack } from './Action'
@@ -58,30 +58,55 @@ export class Player {
     return this.currentManaValue
   }
 
-  takeDamage(amount: number): void {
-    this.currentHpValue = Math.max(0, this.currentHpValue - Math.max(0, Math.floor(amount)))
+  takeDamage(amount: number, options?: { battle?: Battle; animation?: DamageAnimationEvent }): void {
+    const damage = Math.max(0, Math.floor(amount))
+    if (damage <= 0) {
+      return
+    }
+    this.currentHpValue = Math.max(0, this.currentHpValue - damage)
+    if (options?.battle && options.animation) {
+      options.battle.recordDamageAnimation(options.animation)
+    }
   }
 
   heal(amount: number): void {
     this.currentHpValue = Math.min(this.maxHpValue, this.currentHpValue + Math.max(0, Math.floor(amount)))
   }
 
-  spendMana(cost: number): void {
+  spendMana(cost: number, options?: { battle?: Battle }): void {
     if (cost > this.currentManaValue) {
       throw new Error('Not enough mana')
     }
-    this.currentManaValue -= cost
+    const normalizedCost = Math.max(0, Math.floor(cost))
+    if (normalizedCost === 0) {
+      return
+    }
+    this.currentManaValue -= normalizedCost
+    if (options?.battle) {
+      options.battle.recordManaAnimation({ amount: -normalizedCost })
+    }
   }
 
-  gainMana(amount: number): void {
-    this.currentManaValue = Math.min(this.maxManaValue, this.currentManaValue + Math.max(0, Math.floor(amount)))
+  gainMana(amount: number, options?: { battle?: Battle; trackAnimation?: boolean }): void {
+    const gain = Math.max(0, Math.floor(amount))
+    if (gain <= 0) {
+      return
+    }
+    this.currentManaValue = Math.min(this.maxManaValue, this.currentManaValue + gain)
+    if (options?.battle && options.trackAnimation !== false) {
+      options.battle.recordManaAnimation({ amount: gain })
+    }
   }
 
-  gainTemporaryMana(amount: number): void {
+  gainTemporaryMana(amount: number, options?: { battle?: Battle; trackAnimation?: boolean }): void {
     if (amount <= 0) {
       return
     }
-    this.currentManaValue += Math.floor(amount)
+    const gain = Math.floor(amount)
+    this.currentManaValue += gain
+    if (options?.battle && options.trackAnimation !== false) {
+      options.battle.recordManaAnimation({ amount: gain })
+    }
   }
 
   resetMana(): void {

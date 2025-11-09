@@ -22,7 +22,7 @@ export class FuryAwakeningState extends State {
   }
 
   override description(): string {
-    return 'ダメージを受ける度に筋力上昇(10)を得る'
+    return 'ダメージを受ける度に打点上昇(10)を得る'
   }
 
   override isPostHitModifier(): boolean {

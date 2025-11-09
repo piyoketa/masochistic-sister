@@ -71,10 +71,16 @@ export interface EnemyTurnActionCardGain {
 
 export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated'
 
+export interface EnemyStateDiff {
+  enemyId: number
+  states: Array<{ id: string; magnitude?: number }>
+}
+
 export interface EnemyActAnimationContext {
   damageEvents: DamageAnimationEvent[]
   cardAdditions: EnemyTurnActionCardGain[]
   playerDefeated: boolean
+  stateDiffs: EnemyStateDiff[]
 }
 
 export interface EnemyTurnActionSummary {
@@ -117,8 +123,6 @@ export interface DamageAnimationEvent {
 
 export interface PlayCardAnimationContext {
   cardId?: number
-  damageEvents: DamageAnimationEvent[]
-  defeatedEnemyIds: number[]
 }
 
 export class Battle {
@@ -141,6 +145,11 @@ export class Battle {
   private resolvedEventsBuffer: BattleEvent[] = []
   private stateEventBuffer: StateEventLogEntry[] = []
   private pendingDamageAnimationEvents: DamageAnimationEvent[] = []
+  private pendingCardTrashAnimationEvents: Array<{ cardIds: number[] }> = []
+  private pendingManaAnimationEvents: Array<{ amount: number }> = []
+  private pendingDefeatAnimationEvents: number[] = []
+  private pendingDrawAnimationEvents: Array<{ cardIds: number[] }> = []
+  private immediateEnemyActionQueue: EnemyTurnActionSummary[] = []
   private lastPlayCardAnimationContext?: PlayCardAnimationContext
 
   constructor(config: BattleConfig) {
@@ -345,6 +354,7 @@ export class Battle {
     })
     this.playerValue.resetMana()
     this.drawForPlayer(3)
+    this.pendingDrawAnimationEvents = []
   }
 
   startPlayerTurn(): void {
@@ -357,6 +367,7 @@ export class Battle {
   drawForPlayer(count: number): { drawn: number; skippedDueToHandLimit: boolean } {
     let drawn = 0
     let skippedDueToHandLimit = false
+    const drawnCardIds: number[] = []
 
     for (let i = 0; i < count; i += 1) {
       if (this.hand.isAtLimit()) {
@@ -378,6 +389,13 @@ export class Battle {
       }
 
       drawn += 1
+      if (card.id !== undefined) {
+        drawnCardIds.push(card.id)
+      }
+    }
+
+    if (drawnCardIds.length > 0) {
+      this.pendingDrawAnimationEvents.push({ cardIds: drawnCardIds })
     }
 
     return { drawn, skippedDueToHandLimit }
@@ -392,30 +410,9 @@ export class Battle {
     if (!card) {
       throw new Error(`Card ${cardId} not found in hand`)
     }
-    const enemiesBefore = this.enemyTeamValue.members.map((enemy) => ({
-      id: enemy.id,
-      status: enemy.status,
-    }))
-
     card.play(this, operations)
-
-    const damageEvents = this.consumeDamageAnimationEvents()
-    const defeatedEnemyIds = this.enemyTeamValue.members
-      .filter((enemy, index) => {
-        const before = enemiesBefore[index]
-        return (
-          enemy.status === 'defeated' &&
-          before &&
-          before.status !== 'defeated' &&
-          enemy.id !== undefined
-        )
-      })
-      .map((enemy) => enemy.id!)
-
     this.lastPlayCardAnimationContext = {
       cardId,
-      damageEvents,
-      defeatedEnemyIds,
     }
   }
 
@@ -428,7 +425,7 @@ export class Battle {
     this.enemyTeam.startTurn(this)
   }
 
-  performEnemyAction(enemyId: number): EnemyTurnActionSummary {
+  performEnemyAction(enemyId: number, options?: { recordImmediate?: boolean }): EnemyTurnActionSummary {
     const enemy = this.enemyTeam.findEnemy(enemyId)
     if (!enemy) {
       throw new Error(`Enemy ${enemyId} not found`)
@@ -438,6 +435,7 @@ export class Battle {
     const handBefore = this.handValue.list()
     const actionLogLengthBefore = enemy.actionLog.length
     const hadActedBeforeCall = enemy.hasActedThisTurn
+    const enemyStatesBefore = this.captureEnemyStates()
 
     enemy.act(this)
 
@@ -446,14 +444,15 @@ export class Battle {
     const damageToPlayer = Math.max(0, playerHpBefore - this.playerValue.currentHp)
     const cardsAddedToHand = this.extractNewHandCards(handBefore, handAfter)
     const damageAnimationEvents = this.consumeDamageAnimationEvents()
+    const stateDiffs = this.diffEnemyStates(enemyStatesBefore)
     const playerDefeated = this.playerValue.currentHp <= 0
-
+    let summary: EnemyTurnActionSummary
     if (actionLogLengthAfter > actionLogLengthBefore) {
       const executedAction = enemy.actionLog[actionLogLengthAfter - 1]
       if (!executedAction) {
         throw new Error('Enemy action log entry missing after execution')
       }
-      return {
+      summary = {
         enemyId,
         enemyName: enemy.name,
         actionName: executedAction.name,
@@ -465,24 +464,32 @@ export class Battle {
           damageEvents: damageAnimationEvents,
           cardAdditions: cardsAddedToHand,
           playerDefeated,
+          stateDiffs,
+        },
+      }
+    } else {
+      summary = {
+        enemyId,
+        enemyName: enemy.name,
+        actionName: hadActedBeforeCall ? '行動済み' : '行動不能',
+        skipped: true,
+        skipReason: hadActedBeforeCall ? 'already-acted' : 'no-action',
+        cardsAddedToPlayerHand: cardsAddedToHand,
+        damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+        animation: {
+          damageEvents: damageAnimationEvents,
+          cardAdditions: cardsAddedToHand,
+          playerDefeated,
+          stateDiffs,
         },
       }
     }
 
-    return {
-      enemyId,
-      enemyName: enemy.name,
-      actionName: hadActedBeforeCall ? '行動済み' : '行動不能',
-      skipped: true,
-      skipReason: hadActedBeforeCall ? 'already-acted' : 'no-action',
-      cardsAddedToPlayerHand: cardsAddedToHand,
-      damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
-      animation: {
-        damageEvents: damageAnimationEvents,
-        cardAdditions: cardsAddedToHand,
-        playerDefeated,
-      },
+    if (options?.recordImmediate) {
+      this.immediateEnemyActionQueue.push(summary)
     }
+
+    return summary
   }
 
   private executeEnemyTurn(): EnemyTurnSummary {
@@ -523,15 +530,64 @@ export class Battle {
     })
   }
 
+  recordCardTrashAnimation(event: { cardIds: number[] }): void {
+    if (!event.cardIds || event.cardIds.length === 0) {
+      return
+    }
+    const uniqueIds = Array.from(new Set(event.cardIds))
+    this.pendingCardTrashAnimationEvents.push({ cardIds: uniqueIds })
+  }
+
+  recordManaAnimation(event: { amount: number }): void {
+    if (!Number.isFinite(event.amount) || event.amount === 0) {
+      return
+    }
+    this.pendingManaAnimationEvents.push({ amount: Math.trunc(event.amount) })
+  }
+
+  recordDefeatAnimation(enemyId: number): void {
+    this.pendingDefeatAnimationEvents.push(enemyId)
+  }
+
   consumeLastPlayCardAnimationContext(): PlayCardAnimationContext | undefined {
     const context = this.lastPlayCardAnimationContext
     this.lastPlayCardAnimationContext = undefined
     return context
   }
 
+  consumeImmediateEnemyActions(): EnemyTurnActionSummary[] {
+    const actions = this.immediateEnemyActionQueue
+    this.immediateEnemyActionQueue = []
+    return actions
+  }
+
   private consumeDamageAnimationEvents(): DamageAnimationEvent[] {
     const events = this.pendingDamageAnimationEvents
     this.pendingDamageAnimationEvents = []
+    return events
+  }
+
+  consumeManaAnimationEvents(): Array<{ amount: number }> {
+    const events = this.pendingManaAnimationEvents
+    this.pendingManaAnimationEvents = []
+    return events
+  }
+
+  consumeDefeatAnimationEvents(): number[] {
+    const events = this.pendingDefeatAnimationEvents
+    this.pendingDefeatAnimationEvents = []
+    return events
+  }
+
+  consumeCardTrashAnimationEvents(): Array<{ cardIds: number[] }> {
+    const events = this.pendingCardTrashAnimationEvents
+    this.pendingCardTrashAnimationEvents = []
+    return events
+  }
+
+  consumeDrawAnimationEvents(): Array<{ cardIds: number[] }> {
+    const events = this.pendingDrawAnimationEvents
+    this.pendingDrawAnimationEvents = []
     return events
   }
 
@@ -583,13 +639,13 @@ export class Battle {
     this.logSequence += 1
   }
 
-  damagePlayer(amount: number): void {
-    this.player.takeDamage(amount)
+  damagePlayer(amount: number, options?: { animation?: DamageAnimationEvent }): void {
+    this.player.takeDamage(amount, { battle: this, animation: options?.animation })
     this.checkPlayerDefeat()
   }
 
-  damageEnemy(enemy: Enemy, amount: number): void {
-    enemy.takeDamage(amount)
+  damageEnemy(enemy: Enemy, amount: number, options?: { animation?: DamageAnimationEvent }): void {
+    enemy.takeDamage(amount, { battle: this, animation: options?.animation })
     this.checkEnemyTeamDefeat()
   }
 
@@ -599,6 +655,65 @@ export class Battle {
 
   onEnemyStatusChanged(): void {
     this.checkEnemyTeamDefeat()
+  }
+
+  private captureEnemyStates(): Map<number, EnemyStateDiff['states']> {
+    const map = new Map<number, EnemyStateDiff['states']>()
+    for (const enemy of this.enemyTeamValue.members) {
+      if (enemy.id === undefined) {
+        continue
+      }
+      map.set(enemy.id, this.extractEnemyStateSummary(enemy))
+    }
+    return map
+  }
+
+  private extractEnemyStateSummary(enemy: Enemy): EnemyStateDiff['states'] {
+    return enemy.getStates().map((state) => ({
+      id: state.id,
+      magnitude: this.getStateMagnitude(state),
+    }))
+  }
+
+  private getStateMagnitude(state: State): number | undefined {
+    const direct = (state as unknown as { magnitude?: number }).magnitude
+    if (typeof direct === 'number') {
+      return direct
+    }
+    const props = (state as unknown as { props?: { magnitude?: number } }).props
+    return props?.magnitude
+  }
+
+  private diffEnemyStates(before: Map<number, EnemyStateDiff['states']>): EnemyStateDiff[] {
+    const diffs: EnemyStateDiff[] = []
+    for (const enemy of this.enemyTeamValue.members) {
+      const id = enemy.id
+      if (id === undefined) {
+        continue
+      }
+      const previous = before.get(id) ?? []
+      const current = this.extractEnemyStateSummary(enemy)
+      if (!this.areStateSummariesEqual(previous, current)) {
+        diffs.push({ enemyId: id, states: current })
+      }
+    }
+    return diffs
+  }
+
+  private areStateSummariesEqual(
+    previous: EnemyStateDiff['states'],
+    current: EnemyStateDiff['states'],
+  ): boolean {
+    if (previous.length !== current.length) {
+      return false
+    }
+    const normalize = (states: EnemyStateDiff['states']) =>
+      [...states]
+        .map(({ id, magnitude }) => `${id}:${magnitude ?? 0}`)
+        .sort()
+    const prevKey = normalize(previous)
+    const currKey = normalize(current)
+    return prevKey.every((value, index) => value === currKey[index])
   }
 
   addCardToPlayerHand(card: Card): void {
@@ -691,7 +806,7 @@ export class Battle {
         const rawAmount = (event.payload as { amount?: unknown }).amount
         const amount = typeof rawAmount === 'number' ? rawAmount : Number(rawAmount ?? 0)
         if (Number.isFinite(amount) && amount !== 0) {
-          this.player.gainTemporaryMana(amount)
+          this.player.gainTemporaryMana(amount, { battle: this, trackAnimation: false })
         }
         break
       }
