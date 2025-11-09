@@ -207,6 +207,11 @@ export class Enemy {
   }
 
   addState(state: State, _options?: { battle?: Battle }): void {
+    const existing = this.stateList.find((entry) => entry.id === state.id)
+    if (existing) {
+      existing.stackWith(state)
+      return
+    }
     this.stateList.push(state)
   }
 

@@ -35,6 +35,10 @@ export class State {
     return this.props.cardDefinition
   }
 
+  get priority(): number {
+    return 10
+  }
+
   description(): string {
     return ''
   }

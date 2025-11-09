@@ -81,7 +81,7 @@ export class Damages {
     let currentCount = init.baseCount
 
     const appliedAttacker: State[] = []
-    for (const state of init.attackerStates ?? []) {
+    for (const state of sortStatesByPriority(init.attackerStates)) {
       const beforeAmount = currentAmount
       const beforeCount = currentCount
       const result = state.modifyPreHit({
@@ -101,7 +101,7 @@ export class Damages {
     }
 
     const appliedDefender: State[] = []
-    for (const state of init.defenderStates ?? []) {
+    for (const state of sortStatesByPriority(init.defenderStates)) {
       const beforeAmount = currentAmount
       const beforeCount = currentCount
       const result = state.modifyPreHit({
@@ -173,4 +173,11 @@ export class Damages {
     }
     return this.outcomesValue.reduce((sum, outcome) => sum + outcome.damage, 0)
   }
+}
+
+function sortStatesByPriority(states?: State[]): State[] {
+  if (!states || states.length === 0) {
+    return []
+  }
+  return [...states].sort((a, b) => a.priority - b.priority)
 }

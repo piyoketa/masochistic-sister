@@ -13,7 +13,8 @@ import { TurnManager } from '@/domain/battle/TurnManager'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { Enemy } from '@/domain/entities/Enemy'
 import { EnemyTeam } from '@/domain/entities/EnemyTeam'
-import { CowardTrait, BleedState } from '@/domain/entities/states'
+import { CowardTrait, BleedState, GuardianPetalState, BarrierState } from '@/domain/entities/states'
+import { Damages, type DamageOutcome } from '@/domain/entities/Damages'
 import { BattlePrepAction } from '@/domain/entities/actions/BattlePrepAction'
 import { TackleAction } from '@/domain/entities/actions/TackleAction'
 
@@ -88,5 +89,42 @@ describe('臆病と出血ステート', () => {
     bleedEnemy.act(battle)
 
     expect(bleedEnemy.currentHp).toBe(25)
+  })
+
+  it('守りの花びらはターン開始時にバリア値を3へ戻す', () => {
+    const guardian = new GuardianPetalState(3)
+    const barrier = new BarrierState(3)
+    const enemy = new Enemy({
+      name: '守りの花びら持ち',
+      maxHp: 40,
+      currentHp: 40,
+      actions: [new TackleAction()],
+      states: [guardian, barrier],
+      image: 'guardian.png',
+    })
+
+    const battle = createBattleWithEnemies([enemy])
+    const attacker = battle.player
+    const attack = new TackleAction()
+
+    const createContext = (): Parameters<BarrierState['onHitResolved']>[0] => ({
+      battle,
+      attack,
+      attacker,
+      defender: enemy,
+      damages: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
+      index: 0,
+      outcome: { damage: 10, effectType: 'slash' } as DamageOutcome,
+      role: 'defender',
+    })
+
+    barrier.onHitResolved(createContext())
+    barrier.onHitResolved(createContext())
+
+    expect(barrier.magnitude).toBe(1)
+
+    battle.startPlayerTurn()
+
+    expect(barrier.magnitude).toBe(3)
   })
 })

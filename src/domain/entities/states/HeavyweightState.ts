@@ -36,6 +36,10 @@ export class HeavyweightState extends State {
     return `攻撃ダメージを${50 * stacks}%増加し、攻撃回数-${stacks}`
   }
 
+  override get priority(): number {
+    return 1
+  }
+
   override affectsAttacker(): boolean {
     return true
   }

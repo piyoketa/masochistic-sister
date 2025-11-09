@@ -19,4 +19,11 @@ export class LargeState extends State {
   override description(): string {
     return '天の鎖などの足止め効果を受けない'
   }
+
+  override stackWith(state: State): void {
+    if (state.id !== this.id) {
+      super.stackWith(state)
+    }
+    // 同じ大型は複数付与されても効果が変わらない
+  }
 }

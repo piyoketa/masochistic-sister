@@ -35,6 +35,10 @@ export class FlightState extends State {
     return '攻撃によるダメージは常に1になる'
   }
 
+  override get priority(): number {
+    return 100
+  }
+
   override affectsDefender(): boolean {
     return true
   }

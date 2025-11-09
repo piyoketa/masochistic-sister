@@ -36,6 +36,10 @@ export class LightweightState extends State {
     return `攻撃ダメージを(2/3)^${stacks}倍、攻撃回数+${stacks}`
   }
 
+  override get priority(): number {
+    return 1
+  }
+
   override affectsAttacker(): boolean {
     return true
   }
