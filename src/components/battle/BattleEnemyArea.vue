@@ -317,6 +317,16 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
   border: 1px dashed rgba(255, 255, 255, 0.1);
 }
 
+:deep(.enemy-card-enter-active),
+:deep(.enemy-card-leave-active) {
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+:deep(.enemy-card-leave-to) {
+  opacity: 0;
+  transform: translateY(20px) scale(0.9);
+}
+
 .zone-message {
   display: flex;
   align-items: center;

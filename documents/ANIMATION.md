@@ -35,8 +35,14 @@
 2. 対象カード DOM をダミー枠に差し替えてから `hand-track` を再レイアウト。
 3. ダミーを 0.3s で捨て札カウンタ座標へ移動＋縮小 → 終了後 DOM 破棄。
 
+### 3-3. card-eliminate
+1. 手札の元の位置のまま、カードがワイプして消えるようなleave animationを付けてください。
+
+### 3-4. card-create
+1. Handが更新され、手札の再配置が動き出します。同時に、新規追加されるカードがワイプでenterします。
+
 ## 4. マナ更新 (stage: `mana`)
-- `playerMana` の値変化時に CSS 変数でサイズ/太さを制御。
+- `playerMana` の値変化時に CSS 変数でサイズ/太さを制御。フォントの大きさが一瞬最終的な値よりも大きくなり、元に戻る（Popする）ような挙動を付けてください。
 - 例: `<=0` 細字, `1-3` 標準, `>=4` 太字。transition 0.2s。
 - `ViewManager` が `mana` stage を受け取ったら `BattleView` へイベント送信し、`mana-pop` に `--mana-level` を設定。
 

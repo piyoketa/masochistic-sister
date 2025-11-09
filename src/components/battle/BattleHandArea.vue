@@ -14,7 +14,7 @@ BattleHandArea の責務:
 - ActionCard: 各カードのレンダリングを担当する既存コンポーネント。`CardInfo` と操作情報を渡し、クリックイベントで選択を検知する。
 -->
 <script setup lang="ts">
-import { computed, reactive, ref, watch, onBeforeUnmount } from 'vue'
+import { computed, reactive, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Card } from '@/domain/entities/Card'
 import type { Enemy } from '@/domain/entities/Enemy'
@@ -26,6 +26,20 @@ import { Damages } from '@/domain/entities/Damages'
 import type { ViewManager } from '@/view/ViewManager'
 import type { CardTag } from '@/domain/entities/CardTag'
 import type { StageEventPayload } from '@/types/animation'
+
+interface FloatingCardAnimation {
+  key: string
+  label: string
+  variant: 'draw' | 'trash' | 'eliminate'
+  style: {
+    left: string
+    top: string
+    width: string
+    height: string
+    transform: string
+  }
+  active: boolean
+}
 
 interface HandEntry {
   key: string
@@ -68,9 +82,21 @@ const interactionState = reactive<{
 })
 
 const hoveredCardKey = ref<string | null>(null)
+const handZoneRef = ref<HTMLElement | null>(null)
+const deckCounterRef = ref<HTMLElement | null>(null)
+const discardCounterRef = ref<HTMLElement | null>(null)
 const processedStageBatchIds = new Set<string>()
 const handOverflowOverlayMessage = ref<string | null>(null)
 let handOverflowTimer: ReturnType<typeof window.setTimeout> | null = null
+const hiddenCardIds = ref<Set<number>>(new Set())
+const recentCardIds = ref<Set<number>>(new Set())
+const floatingCards = reactive<FloatingCardAnimation[]>([])
+const pendingDrawCardIds = ref<Set<number>>(new Set())
+const pendingCreateQueue: Array<{ batchId: string; count: number }> = []
+const previousHandIds = ref<Set<number>>(new Set())
+const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
+const cardElementRefs = new Map<number, HTMLElement>()
+const deckDrawRetryCounters = new Map<number, number>()
 
 const supportedOperations = new Set<string>([TargetEnemyOperation.TYPE])
 
@@ -92,6 +118,15 @@ const handCount = computed(() => props.snapshot?.hand.length ?? 0)
 const handLimit = computed(() => props.viewManager.battle?.hand.maxSize() ?? 10)
 const deckCount = computed(() => props.snapshot?.deck.length ?? 0)
 const discardCount = computed(() => props.snapshot?.discardPile.length ?? 0)
+const cardTitleMap = computed(() => {
+  const map = new Map<number, string>()
+  handEntries.value.forEach((entry) => {
+    if (entry.id !== undefined) {
+      map.set(entry.id, entry.info.title)
+    }
+  })
+  return map
+})
 
 const hoveredCardIndex = computed(() =>
   hoveredCardKey.value
@@ -401,17 +436,24 @@ watch(
     if (!stage) {
       return
     }
-    if (stage === 'deck-draw') {
-      handleDeckDrawStage(event)
+    switch (stage) {
+      case 'deck-draw':
+        handleDeckDrawStage(event)
+        break
+      case 'card-trash':
+        handleCardTrashStage(event)
+        break
+      case 'card-eliminate':
+        handleCardEliminateStage(event)
+        break
+      case 'card-create':
+        handleCardCreateStage(event)
+        break
+      default:
+        break
     }
   },
 )
-
-function handleDeckDrawStage(event: StageEventPayload): void {
-  if (event.metadata?.handOverflow) {
-    showHandOverflowOverlay()
-  }
-}
 
 function showHandOverflowOverlay(): void {
   handOverflowOverlayMessage.value = '手札が満杯です！'
@@ -429,11 +471,264 @@ onBeforeUnmount(() => {
     window.clearTimeout(handOverflowTimer)
     handOverflowTimer = null
   }
+  pendingRemovalTimers.forEach((timer) => window.clearTimeout(timer))
+  pendingRemovalTimers.clear()
 })
+
+watch(
+  () => props.snapshot?.hand.map((card) => card.id).filter((id): id is number => typeof id === 'number'),
+  async (handIds = []) => {
+    await nextTick()
+    const currentSet = new Set(handIds)
+    const prevSet = previousHandIds.value
+    const newlyAdded = handIds.filter((id) => !prevSet.has(id))
+    processNewHandCards(newlyAdded)
+    previousHandIds.value = currentSet
+  },
+  { immediate: true },
+)
+
+function processNewHandCards(newlyAdded: number[]): void {
+  if (newlyAdded.length === 0) {
+    return
+  }
+  for (const cardId of newlyAdded) {
+    if (pendingDrawCardIds.value.has(cardId)) {
+      removeFromSet(pendingDrawCardIds, cardId)
+      startDeckDrawAnimation(cardId)
+      continue
+    }
+    if (pendingCreateQueue.length > 0) {
+      const request = pendingCreateQueue[0]
+      request.count -= 1
+      startCardCreateHighlight(cardId)
+      if (request.count <= 0) {
+        pendingCreateQueue.shift()
+      }
+    }
+  }
+}
+
+function handleDeckDrawStage(event: StageEventPayload): void {
+  const cardIds = extractCardIds(event.metadata)
+  if (cardIds.length > 0) {
+    cardIds.forEach((id) => addToSet(pendingDrawCardIds, id))
+  }
+  if (event.metadata?.handOverflow) {
+    showHandOverflowOverlay()
+  }
+}
+
+function handleCardTrashStage(event: StageEventPayload): void {
+  const cardIds = extractCardIds(event.metadata)
+  const titles = (event.metadata?.cardTitles as string[] | undefined) ?? []
+  cardIds.forEach((id, index) => {
+    const title = titles[index] ?? cardTitleMap.value.get(id) ?? 'カード'
+    startCardRemovalAnimation(id, title, 'trash')
+  })
+}
+
+function handleCardEliminateStage(event: StageEventPayload): void {
+  const cardIds = extractCardIds(event.metadata)
+  const titles = (event.metadata?.cardTitles as string[] | undefined) ?? []
+  cardIds.forEach((id, index) => {
+    const title = titles[index] ?? cardTitleMap.value.get(id) ?? 'カード'
+    startCardRemovalAnimation(id, title, 'eliminate')
+  })
+}
+
+function handleCardCreateStage(event: StageEventPayload): void {
+  const count =
+    (Array.isArray(event.metadata?.cards) ? event.metadata.cards.length : undefined) ??
+    (Array.isArray(event.metadata?.cardIds) ? event.metadata.cardIds.length : undefined) ??
+    0
+  if (count > 0) {
+    pendingCreateQueue.push({ batchId: event.batchId, count })
+  }
+}
+
+function startDeckDrawAnimation(cardId: number, attempt = 0): void {
+  const cardElement = cardElementRefs.get(cardId)
+  const deckElement = deckCounterRef.value
+  const zoneElement = handZoneRef.value
+  if (!cardElement || !deckElement || !zoneElement) {
+    const retries = deckDrawRetryCounters.get(cardId) ?? attempt
+    if (retries < 5) {
+      deckDrawRetryCounters.set(cardId, retries + 1)
+      window.setTimeout(() => startDeckDrawAnimation(cardId, retries + 1), 50)
+    } else {
+      deckDrawRetryCounters.delete(cardId)
+    }
+    return
+  }
+  deckDrawRetryCounters.delete(cardId)
+  const deckRect = deckElement.getBoundingClientRect()
+  const targetRect = cardElement.getBoundingClientRect()
+  const zoneRect = zoneElement.getBoundingClientRect()
+  const label = cardTitleMap.value.get(cardId) ?? 'カード'
+  hideCard(cardId)
+  spawnFloatingCard({
+    label,
+    fromRect: deckRect,
+    toRect: targetRect,
+    zoneRect,
+    variant: 'draw',
+    onComplete: () => showCard(cardId),
+  })
+}
+
+function startCardRemovalAnimation(
+  cardId: number,
+  label: string,
+  variant: 'trash' | 'eliminate',
+  attempt = 0,
+): void {
+  const cardElement = cardElementRefs.get(cardId)
+  const zoneElement = handZoneRef.value
+  const targetElement = variant === 'trash' ? discardCounterRef.value : handZoneRef.value
+  if (!cardElement || !zoneElement || !targetElement) {
+    if (attempt < 5) {
+      const timer = window.setTimeout(
+        () => startCardRemovalAnimation(cardId, label, variant, attempt + 1),
+        50,
+      )
+      pendingRemovalTimers.set(cardId, timer)
+    }
+    return
+  }
+  const sourceRect = cardElement.getBoundingClientRect()
+  const zoneRect = zoneElement.getBoundingClientRect()
+  const targetRect =
+    variant === 'trash'
+      ? targetElement.getBoundingClientRect()
+      : {
+          left: sourceRect.left,
+          top: sourceRect.top - 40,
+          width: sourceRect.width,
+          height: sourceRect.height,
+        }
+  hideCard(cardId)
+  spawnFloatingCard({
+    label,
+    fromRect: sourceRect,
+    toRect: targetRect,
+    zoneRect,
+    variant,
+    onComplete: () => showCard(cardId),
+  })
+}
+
+function startCardCreateHighlight(cardId: number): void {
+  addToSet(recentCardIds, cardId)
+  window.setTimeout(() => removeFromSet(recentCardIds, cardId), 550)
+}
+
+function spawnFloatingCard(options: {
+  label: string
+  fromRect: DOMRect
+  toRect: DOMRect
+  zoneRect: DOMRect
+  variant: FloatingCardAnimation['variant']
+  duration?: number
+  onComplete?: () => void
+}): void {
+  const duration = options.duration ?? 350
+  const card: FloatingCardAnimation = reactive({
+    key: `floating-card-${Date.now()}-${Math.random()}`,
+    label: options.label,
+    variant: options.variant,
+    style: {
+      width: `${options.fromRect.width}px`,
+      height: `${options.fromRect.height}px`,
+      left: `${options.fromRect.left - options.zoneRect.left}px`,
+      top: `${options.fromRect.top - options.zoneRect.top}px`,
+      transform: 'translate(0, 0)',
+    },
+    active: false,
+  })
+  floatingCards.push(card)
+  requestAnimationFrame(() => {
+    card.style.transform = `translate(${options.toRect.left - options.fromRect.left}px, ${
+      options.toRect.top - options.fromRect.top
+    }px)`
+    card.active = true
+  })
+  window.setTimeout(() => {
+    const index = floatingCards.indexOf(card)
+    if (index >= 0) {
+      floatingCards.splice(index, 1)
+    }
+    options.onComplete?.()
+  }, duration + 100)
+}
+
+function extractCardIds(metadata: StageEventPayload['metadata']): number[] {
+  if (!metadata) {
+    return []
+  }
+  if (Array.isArray(metadata.cardIds)) {
+    return metadata.cardIds.filter((id): id is number => typeof id === 'number')
+  }
+  if (typeof metadata.cardId === 'number') {
+    return [metadata.cardId]
+  }
+  return []
+}
+
+function addToSet(target: typeof pendingDrawCardIds, value: number): void {
+  const clone = new Set(target.value)
+  clone.add(value)
+  target.value = clone
+}
+
+function removeFromSet(target: typeof pendingDrawCardIds | typeof recentCardIds, value: number): void {
+  const clone = new Set(target.value)
+  clone.delete(value)
+  target.value = clone
+}
+
+function hideCard(cardId: number): void {
+  if (cardId === undefined) {
+    return
+  }
+  const next = new Set(hiddenCardIds.value)
+  next.add(cardId)
+  hiddenCardIds.value = next
+}
+
+function showCard(cardId: number): void {
+  if (cardId === undefined) {
+    return
+  }
+  const next = new Set(hiddenCardIds.value)
+  next.delete(cardId)
+  hiddenCardIds.value = next
+}
+
+function isCardHidden(entry: HandEntry): boolean {
+  return entry.id !== undefined && hiddenCardIds.value.has(entry.id)
+}
+
+function isCardRecentlyCreated(entry: HandEntry): boolean {
+  return entry.id !== undefined && recentCardIds.value.has(entry.id)
+}
+
+function registerCardElement(cardId: number | undefined, title: string, el: Element | null): void {
+  if (cardId === undefined) {
+    return
+  }
+  if (el) {
+    const element = el as HTMLElement
+    element.dataset.cardTitle = title
+    cardElementRefs.set(cardId, element)
+  } else {
+    cardElementRefs.delete(cardId)
+  }
+}
 </script>
 
 <template>
-  <section class="hand-zone">
+  <section ref="handZoneRef" class="hand-zone">
     <div v-if="errorMessage" class="zone-message zone-message--error">
       {{ errorMessage }}
     </div>
@@ -444,7 +739,12 @@ onBeforeUnmount(() => {
         v-for="(entry, index) in handEntries"
         :key="entry.key"
         class="hand-card-wrapper"
-        :class="cardWrapperClasses(index)"
+        :class="[
+          cardWrapperClasses(index),
+          isCardHidden(entry) ? 'hand-card-wrapper--hidden' : '',
+          isCardRecentlyCreated(entry) ? 'hand-card-wrapper--recent' : '',
+        ]"
+        :ref="(el) => registerCardElement(entry.id, entry.info.title, el)"
       >
         <ActionCard
           v-bind="entry.info"
@@ -458,16 +758,30 @@ onBeforeUnmount(() => {
         />
       </div>
     </TransitionGroup>
+    <div class="hand-floating-layer" aria-hidden="true">
+      <div
+        v-for="ghost in floatingCards"
+        :key="ghost.key"
+        class="hand-floating-card"
+        :class="[
+          `hand-floating-card--${ghost.variant}`,
+          ghost.active ? 'hand-floating-card--active' : '',
+        ]"
+        :style="ghost.style"
+      >
+        {{ ghost.label }}
+      </div>
+    </div>
     <transition name="hand-overlay">
       <div v-if="handOverflowOverlayMessage" class="hand-overlay">
         {{ handOverflowOverlayMessage }}
       </div>
     </transition>
-    <div class="hand-counter hand-counter--discard hand-pile">
+    <div ref="discardCounterRef" class="hand-counter hand-counter--discard hand-pile">
       <span class="pile-icon pile-icon--discard" aria-hidden="true"></span>
       <span class="pile-label">捨て札 {{ discardCount }}</span>
     </div>
-    <div class="hand-counter hand-counter--deck hand-pile">
+    <div ref="deckCounterRef" class="hand-counter hand-counter--deck hand-pile">
       <span class="pile-icon pile-icon--deck" aria-hidden="true"></span>
       <span class="pile-label">山札 {{ deckCount }}</span>
     </div>
@@ -617,6 +931,66 @@ onBeforeUnmount(() => {
 .hand-card-wrapper--adjacent-right {
   z-index: 1;
   transform: translateX(27px);
+}
+
+.hand-card-wrapper--hidden {
+  visibility: hidden;
+}
+
+.hand-card-wrapper--recent {
+  animation: hand-card-recent 0.45s ease;
+}
+
+@keyframes hand-card-recent {
+  0% {
+    transform: scale(0.9);
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.hand-floating-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.hand-floating-card {
+  position: absolute;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1b1320;
+  background: #f2e4ff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.hand-floating-card--active {
+  opacity: 1;
+}
+
+.hand-floating-card--trash {
+  background: #f8d1d1;
+}
+
+.hand-floating-card--eliminate {
+  background: #d1f3f8;
+}
+
+.hand-floating-card--eliminate.hand-floating-card--active {
+  opacity: 0;
 }
 
 .zone-message {

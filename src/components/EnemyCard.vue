@@ -240,7 +240,7 @@ function formatStateChip(trait: EnemyTrait): { key: string; label: string; descr
 
     <section v-if="stateChips.length" class="enemy-card__section">
       <h5 class="enemy-card__label">States</h5>
-      <ul class="enemy-card__list enemy-card__list--chips">
+      <TransitionGroup tag="ul" name="enemy-state" class="enemy-card__list enemy-card__list--chips">
         <li
           v-for="state in stateChips"
           :key="state.key"
@@ -251,7 +251,7 @@ function formatStateChip(trait: EnemyTrait): { key: string; label: string; descr
         >
           {{ state.label }}
         </li>
-      </ul>
+      </TransitionGroup>
     </section>
   </article>
 </template>
@@ -363,6 +363,17 @@ function formatStateChip(trait: EnemyTrait): { key: string; label: string; descr
 
 .enemy-card__chip--plain {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.enemy-card :deep(.enemy-state-enter-active),
+.enemy-card :deep(.enemy-state-leave-active) {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.enemy-card :deep(.enemy-state-enter-from),
+.enemy-card :deep(.enemy-state-leave-to) {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .enemy-card__chip-icon {

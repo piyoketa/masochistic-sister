@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import GameLayout from '@/components/GameLayout.vue'
 import HpGauge from '@/components/HpGauge.vue'
 import BattleEnemyArea from '@/components/battle/BattleEnemyArea.vue'
@@ -23,6 +23,8 @@ import {
 } from '@/domain/battle/battlePresets'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import type { StageEventPayload } from '@/types/animation'
+import DamageEffects from '@/components/DamageEffects.vue'
+import type { DamageOutcome } from '@/domain/entities/Damages'
 
 declare global {
   interface Window {
@@ -68,6 +70,11 @@ const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
+const enemyDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
+const playerDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
+const enemyDamageOutcomes = ref<DamageOutcome[]>([])
+const playerDamageOutcomes = ref<DamageOutcome[]>([])
+const manaPulseKey = ref(0)
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
@@ -146,6 +153,29 @@ const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
 }))
+
+watch(
+  () => latestStageEvent.value,
+  async (event) => {
+    if (!event) {
+      return
+    }
+    const stage = (event.metadata?.stage as string | undefined) ?? undefined
+    if (stage === 'damage') {
+      enemyDamageOutcomes.value =
+        ((event.metadata?.damageOutcomes as DamageOutcome[]) ?? []).map((outcome) => ({ ...outcome }))
+      await nextTick()
+      enemyDamageEffectsRef.value?.play()
+    } else if (stage === 'player-damage') {
+      playerDamageOutcomes.value =
+        ((event.metadata?.damageOutcomes as DamageOutcome[]) ?? []).map((outcome) => ({ ...outcome }))
+      await nextTick()
+      playerDamageEffectsRef.value?.play()
+    } else if (stage === 'mana') {
+      manaPulseKey.value += 1
+    }
+  },
+)
 // TODO: ドメイン層へ移し、ビュー側に条件判定を残さない
 const battleStatus = computed(() => snapshot.value?.status ?? 'in-progress')
 const isGameOver = computed(() => battleStatus.value === 'gameover')
@@ -430,19 +460,26 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
 
         <div class="battle-body">
           <main class="battle-main">
-            <BattleEnemyArea
-              :snapshot="snapshot"
-              :battle="viewManager.battle"
-              :is-initializing="isInitializing"
-              :error-message="errorMessage"
-              :stage-event="latestStageEvent"
-              :is-selecting-enemy="isSelectingEnemy"
-              :hovered-enemy-id="hoveredEnemyId"
-              @hover-start="handleEnemyHoverStart"
-              @hover-end="handleEnemyHoverEnd"
-              @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
-              @cancel-selection="handleEnemySelectionCanceled"
-            />
+            <div class="enemy-area-wrapper">
+              <BattleEnemyArea
+                :snapshot="snapshot"
+                :battle="viewManager.battle"
+                :is-initializing="isInitializing"
+                :error-message="errorMessage"
+                :stage-event="latestStageEvent"
+                :is-selecting-enemy="isSelectingEnemy"
+                :hovered-enemy-id="hoveredEnemyId"
+                @hover-start="handleEnemyHoverStart"
+                @hover-end="handleEnemyHoverEnd"
+                @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
+                @cancel-selection="handleEnemySelectionCanceled"
+              />
+              <DamageEffects
+                ref="enemyDamageEffectsRef"
+                class="damage-overlay damage-overlay--enemy"
+                :outcomes="enemyDamageOutcomes"
+              />
+            </div>
 
             <BattleHandArea
               ref="handAreaRef"
@@ -472,9 +509,14 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
                 class="portrait-image"
                 decoding="async"
               />
+              <DamageEffects
+                ref="playerDamageEffectsRef"
+                class="damage-overlay damage-overlay--player"
+                :outcomes="playerDamageOutcomes"
+              />
               <div class="sidebar-overlay-container">
                 <div class="sidebar-overlay">
-                  <div class="mana-pop" aria-label="現在のマナ">
+                  <div class="mana-pop" :key="manaPulseKey" aria-label="現在のマナ">
                     <span class="mana-pop__current">{{ playerMana.current }}</span>
                     <span class="mana-pop__slash" aria-hidden="true"></span>
                     <span class="mana-pop__max">{{ playerMana.max }}</span>
@@ -500,12 +542,16 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
               </div>
             </div>
           </aside>
-          <div v-if="isGameOver" class="battle-gameover-overlay">
-            <div class="gameover-text">GAME OVER</div>
-          </div>
-          <div v-else-if="isVictory" class="battle-victory-overlay">
-            <div class="victory-text">VICTORY!</div>
-          </div>
+          <transition name="result-overlay">
+            <div v-if="isGameOver" class="battle-gameover-overlay">
+              <div class="gameover-text">GAME OVER</div>
+            </div>
+          </transition>
+          <transition name="result-overlay">
+            <div v-if="!isGameOver && isVictory" class="battle-victory-overlay">
+              <div class="victory-text">VICTORY!</div>
+            </div>
+          </transition>
         </div>
         <div
           class="description-overlay"
@@ -643,6 +689,10 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
   min-height: 0;
 }
 
+.enemy-area-wrapper {
+  position: relative;
+}
+
 :deep(.enemy-zone),
 :deep(.hand-zone) {
   flex: 1;
@@ -768,6 +818,27 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
   object-position: center;
 }
 
+.damage-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.damage-overlay--player {
+  width: 140px;
+  height: 120px;
+  inset: 12px 12px auto auto;
+}
+
+.damage-overlay--enemy {
+  inset: 0;
+}
+
+.damage-overlay--enemy {
+  inset: 0;
+}
+
 .sidebar-overlay-container {
   position: absolute;
   inset: auto 0 0 0;
@@ -802,6 +873,7 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
   align-items: center;
   justify-content: center;
   font-weight: 700;
+  animation: mana-pop-bounce 0.4s ease;
 }
 
 .mana-pop__current {
@@ -828,6 +900,18 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
   opacity: 0.9;
   right: 20px;
   bottom: 50px;
+}
+
+@keyframes mana-pop-bounce {
+  0% {
+    transform: scale(0.85);
+  }
+  55% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .battle-gameover-overlay,
@@ -858,6 +942,17 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
   letter-spacing: 0.24em;
   color: rgba(255, 227, 115, 0.92);
   text-transform: uppercase;
+}
+
+.result-overlay-enter-active,
+.result-overlay-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.result-overlay-enter-from,
+.result-overlay-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 
 .overlay-row {
