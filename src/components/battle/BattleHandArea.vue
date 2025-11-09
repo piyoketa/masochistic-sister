@@ -116,6 +116,8 @@ const previousHandIds = ref<Set<number>>(new Set())
 const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
 const cardElementRefs = new Map<number, HTMLElement>()
 const deckDrawRetryCounters = new Map<number, number>()
+const ACTION_CARD_WIDTH = 94
+const ACTION_CARD_HEIGHT = 140
 const handSelectionRequest = ref<HandSelectionRequest | null>(null)
 
 const supportedOperations = new Set<string>([
@@ -197,6 +199,8 @@ function buildHandEntry(card: Card, index: number, currentMana: number): HandEnt
     primaryTags,
     effectTags,
     categoryTags,
+    damageAmount,
+    damageCount,
   } = buildCardPresentation(card, index)
 
   return {
@@ -213,6 +217,8 @@ function buildHandEntry(card: Card, index: number, currentMana: number): HandEnt
       primaryTags,
       effectTags,
       categoryTags,
+      damageAmount,
+      damageCount,
     },
     card,
     id: card.id,
@@ -228,6 +234,8 @@ function buildCardPresentation(card: Card, index: number): {
   primaryTags: CardTagInfo[]
   effectTags: CardTagInfo[]
   categoryTags: CardTagInfo[]
+  damageAmount?: number
+  damageCount?: number
 } {
   const definition = card.definition
   const primaryTags: CardTagInfo[] = []
@@ -238,6 +246,8 @@ function buildCardPresentation(card: Card, index: number): {
   let description = card.description
   let descriptionSegments: Array<{ text: string; highlighted?: boolean }> | undefined
   let attackStyle: AttackStyle | undefined
+  let damageAmount: number | undefined
+  let damageCount: number | undefined
 
   addTagEntry(definition.type, primaryTags, seenTagIds, (tag) => tag.name)
   if ('target' in definition) {
@@ -251,6 +261,8 @@ function buildCardPresentation(card: Card, index: number): {
 
   if (action instanceof Attack) {
     const damages = action.baseDamages
+    damageAmount = damages.baseAmount
+    damageCount = damages.baseCount
     const formatted = action.describeForPlayerCard({
       baseDamages: damages,
       displayDamages: damages,
@@ -291,7 +303,16 @@ function buildCardPresentation(card: Card, index: number): {
     }
   }
 
-  return { description, descriptionSegments, attackStyle, primaryTags, effectTags, categoryTags }
+  return {
+    description,
+    descriptionSegments,
+    attackStyle,
+    primaryTags,
+    effectTags,
+    categoryTags,
+    damageAmount,
+    damageCount,
+  }
 }
 
 function addTagEntry(
@@ -777,14 +798,15 @@ function spawnFloatingCard(options: {
   duration?: number
   onComplete?: () => void
 }): void {
-  const duration = options.duration ?? 350
+  const duration = options.duration ?? 300
+  const revealDelay = Math.max(0, duration - 80)
+  const cleanupDelay = duration + 80
   const fromCenterX = options.fromRect.left + options.fromRect.width / 2
   const fromCenterY = options.fromRect.top + options.fromRect.height / 2
   const toCenterX = options.toRect.left + options.toRect.width / 2
   const toCenterY = options.toRect.top + options.toRect.height / 2
-  const referenceRect = options.variant === 'draw' ? options.toRect : options.fromRect
-  const width = referenceRect.width
-  const height = referenceRect.height
+  const width = ACTION_CARD_WIDTH
+  const height = ACTION_CARD_HEIGHT
   const startLeft = fromCenterX - width / 2 - options.zoneRect.left
   const startTop = fromCenterY - height / 2 - options.zoneRect.top
   const deltaX = toCenterX - fromCenterX
@@ -806,17 +828,26 @@ function spawnFloatingCard(options: {
     active: false,
   })
   floatingCards.push(card)
+  let revealed = false
+  const reveal = () => {
+    if (revealed) {
+      return
+    }
+    revealed = true
+    options.onComplete?.()
+  }
   requestAnimationFrame(() => {
     card.style.transform = `translate(${deltaX}px, ${deltaY}px)`
     card.active = true
   })
+  window.setTimeout(reveal, revealDelay)
   window.setTimeout(() => {
     const index = floatingCards.indexOf(card)
     if (index >= 0) {
       floatingCards.splice(index, 1)
     }
-    options.onComplete?.()
-  }, duration + 100)
+    reveal()
+  }, cleanupDelay)
 }
 
 function buildFallbackCardInfo(cardId: number, title: string): CardInfo {
@@ -846,14 +877,25 @@ function extractCardIds(metadata: StageEventPayload['metadata']): number[] {
   return []
 }
 
-function addToSet(target: typeof pendingDrawCardIds, value: number): void {
-  const clone = new Set(target.value)
+function addToSet(
+  target: typeof pendingDrawCardIds | typeof recentCardIds,
+  value: number,
+): void {
+  const current = target.value
+  if (current.has(value)) {
+    return
+  }
+  const clone = new Set(current)
   clone.add(value)
   target.value = clone
 }
 
 function removeFromSet(target: typeof pendingDrawCardIds | typeof recentCardIds, value: number): void {
-  const clone = new Set(target.value)
+  const current = target.value
+  if (!current.has(value)) {
+    return
+  }
+  const clone = new Set(current)
   clone.delete(value)
   target.value = clone
 }
@@ -994,6 +1036,7 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
           :operations="ghost.operations"
           :affordable="ghost.affordable"
           :disabled="true"
+          variant="frame"
         />
       </div>
     </div>
@@ -1190,6 +1233,25 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   animation: hand-card-recent 0.45s ease;
 }
 
+.hand-card-wrapper--recent::before,
+.hand-card-wrapper--recent::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.45), rgba(255, 248, 235, 0.1));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hand-card-wrapper--recent::before {
+  animation: hand-card-wipe-forward 0.2s ease forwards;
+}
+
+.hand-card-wrapper--recent::after {
+  animation: hand-card-wipe-backward 0.2s ease forwards;
+}
+
 .hand-card-wrapper--selection-candidate {
   z-index: 4;
   filter: drop-shadow(0 0 12px rgba(255, 191, 134, 0.45));
@@ -1227,6 +1289,36 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   }
 }
 
+@keyframes hand-card-wipe-forward {
+  0% {
+    opacity: 0;
+    transform: translate(40%, -40%) rotate(14deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(0, 0) rotate(14deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-40%, 40%) rotate(14deg);
+  }
+}
+
+@keyframes hand-card-wipe-backward {
+  0% {
+    opacity: 0;
+    transform: translate(-40%, 40%) rotate(-14deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(0, 0) rotate(-14deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(40%, -40%) rotate(-14deg);
+  }
+}
+
 .hand-floating-layer {
   position: absolute;
   inset: 0;
@@ -1240,7 +1332,9 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   pointer-events: none;
   opacity: 0;
   transform: translate3d(0, 0, 0);
-  transition: transform 0.32s ease, opacity 0.32s ease;
+  transition: transform 0.3s ease-out, opacity 0.25s ease-out;
+  width: 94px;
+  height: 140px;
 }
 
 .hand-floating-card--active {
@@ -1257,9 +1351,28 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   opacity: 0;
 }
 
+.hand-floating-card--eliminate::before,
+.hand-floating-card--eliminate::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.45), rgba(255, 210, 210, 0.1));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hand-floating-card--eliminate::before {
+  animation: hand-card-wipe-forward 0.2s ease forwards;
+}
+
+.hand-floating-card--eliminate::after {
+  animation: hand-card-wipe-backward 0.2s ease forwards;
+}
+
 .hand-floating-card :deep(.action-card) {
-  width: 100%;
-  height: 100%;
+  width: 94px;
+  height: 140px;
   pointer-events: none;
 }
 

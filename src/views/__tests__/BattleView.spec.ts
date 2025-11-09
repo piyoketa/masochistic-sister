@@ -27,7 +27,7 @@ function createGlobalStubs() {
       `,
     },
     ActionCard: {
-      props: ['title', 'selected', 'disabled', 'affordable'],
+      props: ['title', 'selected', 'disabled', 'affordable', 'damageAmount', 'damageCount', 'variant'],
       emits: ['hover-start', 'hover-end'],
       template: `
         <div

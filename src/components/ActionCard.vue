@@ -3,6 +3,38 @@ import { computed } from 'vue'
 import type { CardType, AttackStyle, CardTagInfo } from '@/types/battle'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
+const CARD_TYPE_THEMES: Record<
+  CardType,
+  { bgStart: string; bgEnd: string; text: string; accent: string; muted: string }
+> = {
+  attack: {
+    bgStart: '#fff3d0',
+    bgEnd: '#f4d8a0',
+    text: '#2f1506',
+    muted: 'rgba(60, 33, 12, 0.7)',
+    accent: '#f5c46b',
+  },
+  skill: {
+    bgStart: '#fff3d0',
+    bgEnd: '#f0d09b',
+    text: '#2f1506',
+    muted: 'rgba(60, 33, 12, 0.7)',
+    accent: '#f5c46b',
+  },
+  status: {
+    bgStart: '#5c0f12',
+    bgEnd: '#2b0609',
+    text: '#ffe5e5',
+    muted: 'rgba(255, 226, 226, 0.75)',
+    accent: '#ff7b7b',
+  },
+}
+
+const BORDER_COLORS = {
+  playable: '#ffe27a',
+  blocked: '#6e6a72',
+}
+
 const props = defineProps<{
   title: string
   type: CardType
@@ -18,6 +50,9 @@ const props = defineProps<{
   selected?: boolean
   disabled?: boolean
   affordable?: boolean
+  damageAmount?: number
+  damageCount?: number
+  variant?: 'default' | 'frame'
 }>()
 
 const emit = defineEmits<{
@@ -26,15 +61,39 @@ const emit = defineEmits<{
 }>()
 
 const typeClass = computed(() => `action-card--${props.type}`)
+const variant = computed(() => props.variant ?? 'default')
+const isFrameVariant = computed(() => variant.value === 'frame')
+const isPlayable = computed(() => {
+  if (isFrameVariant.value) {
+    return props.affordable !== false
+  }
+  return !props.disabled && props.affordable !== false
+})
 const stateClasses = computed(() => ({
   'action-card--selected': props.selected ?? false,
   'action-card--disabled': props.disabled ?? false,
+  'action-card--frame': isFrameVariant.value,
 }))
-const tabIndex = computed(() => (props.disabled ? -1 : 0))
+const tabIndex = computed(() => (props.disabled || isFrameVariant.value ? -1 : 0))
+const cardRole = computed(() => (isFrameVariant.value ? undefined : 'button'))
 const costClasses = computed(() => [
   'card-cost',
   { 'card-cost--unavailable': props.affordable === false },
 ])
+const cardStyleVars = computed(() => {
+  const theme = CARD_TYPE_THEMES[props.type] ?? CARD_TYPE_THEMES.skill
+  const tagBg =
+    props.type === 'status' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'
+  return {
+    '--card-bg-start': theme.bgStart,
+    '--card-bg-end': theme.bgEnd,
+    '--card-text-color': theme.text,
+    '--card-muted-color': theme.muted,
+    '--card-accent-color': theme.accent,
+    '--card-border-color': isPlayable.value ? BORDER_COLORS.playable : BORDER_COLORS.blocked,
+    '--card-tag-bg': tagBg,
+  }
+})
 
 const primaryTagList = computed(() => props.primaryTags ?? [])
 const effectTagList = computed(() => props.effectTags ?? [])
@@ -46,10 +105,48 @@ const primaryTagText = computed(() =>
 const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
   useDescriptionOverlay()
 
+const showDamagePanel = computed(() => typeof props.damageAmount === 'number' && props.damageAmount > 0)
+const damageAmountClass = computed(() => {
+  if (!showDamagePanel.value || typeof props.damageAmount !== 'number') {
+    return null
+  }
+  const amount = props.damageAmount
+  if (amount > 40) {
+    return 'damage-amount--150'
+  }
+  if (amount > 30) {
+    return 'damage-amount--130'
+  }
+  if (amount > 20) {
+    return 'damage-amount--120'
+  }
+  if (amount > 10) {
+    return 'damage-amount--110'
+  }
+  return 'damage-amount--100'
+})
+
+const damageCountClass = computed(() => {
+  if (typeof props.damageCount !== 'number' || props.damageCount <= 1) {
+    return null
+  }
+  const count = props.damageCount
+  if (count >= 5) {
+    return 'damage-count--130'
+  }
+  if (count === 4) {
+    return 'damage-count--120'
+  }
+  if (count === 3) {
+    return 'damage-count--110'
+  }
+  return 'damage-count--100'
+})
+
 let activeTag: { id: string; description: string } | null = null
 
 const handleEnter = () => {
-  if (props.disabled) {
+  if (props.disabled || isFrameVariant.value) {
     return
   }
   emit('hover-start')
@@ -64,6 +161,9 @@ const handleLeave = () => {
 }
 
 function handleTagEnter(event: MouseEvent, tag: CardTagInfo): void {
+  if (isFrameVariant.value) {
+    return
+  }
   if (!tag.description) {
     activeTag = null
     return
@@ -73,6 +173,9 @@ function handleTagEnter(event: MouseEvent, tag: CardTagInfo): void {
 }
 
 function handleTagMove(event: MouseEvent, tag: CardTagInfo): void {
+  if (isFrameVariant.value) {
+    return
+  }
   if (!tag.description) {
     return
   }
@@ -88,6 +191,9 @@ function handleTagMove(event: MouseEvent, tag: CardTagInfo): void {
 }
 
 function handleTagLeave(tag: CardTagInfo): void {
+  if (isFrameVariant.value) {
+    return
+  }
   if (!tag.description) {
     return
   }
@@ -103,41 +209,66 @@ function handleTagLeave(tag: CardTagInfo): void {
   <article
     class="action-card"
     :class="[typeClass, stateClasses]"
+    :style="cardStyleVars"
     :tabindex="tabIndex"
-    role="button"
-    :aria-disabled="props.disabled ? 'true' : 'false'"
+    :role="cardRole"
+    :aria-disabled="props.disabled || isFrameVariant ? 'true' : 'false'"
     @mouseenter="handleEnter"
     @mouseleave="handleLeave"
     @focusin="handleEnter"
     @focusout="handleLeave"
   >
-    <span :class="costClasses">{{ props.cost }}</span>
+    <template v-if="!isFrameVariant">
+      <span :class="costClasses">{{ props.cost }}</span>
 
-    <header class="card-header">
-      <h4>{{ props.title }}</h4>
-    </header>
+      <header class="card-header">
+        <h4>{{ props.title }}</h4>
+      </header>
 
-    <div v-if="primaryTagText" class="primary-tag-text">
-      {{ primaryTagText }}
-    </div>
+      <div v-if="primaryTagText" class="primary-tag-text">
+        {{ primaryTagText }}
+      </div>
 
-    <section class="card-body">
-      <p class="card-description">
-        <template v-if="props.descriptionSegments && props.descriptionSegments.length">
-          <template v-for="(segment, index) in props.descriptionSegments" :key="index">
-            <br v-if="segment.text === '\n'" />
-            <span v-else :class="{ 'value--boosted': segment.highlighted }">
-              {{ segment.text }}
-            </span>
+      <section class="card-body">
+        <div v-if="showDamagePanel" class="damage-panel">
+          <span class="damage-amount" :class="damageAmountClass">{{ props.damageAmount }}</span>
+          <span
+            v-if="props.damageCount && props.damageCount > 1"
+            class="damage-count"
+            :class="damageCountClass"
+          >
+            ×{{ props.damageCount }}
+          </span>
+        </div>
+        <p class="card-description">
+          <template v-if="props.descriptionSegments && props.descriptionSegments.length">
+            <template v-for="(segment, index) in props.descriptionSegments" :key="index">
+              <br v-if="segment.text === '\n'" />
+              <span v-else :class="{ 'value--boosted': segment.highlighted }">
+                {{ segment.text }}
+              </span>
+            </template>
           </template>
-        </template>
-        <template v-else>
-          {{ props.description }}
-        </template>
-      </p>
-      <div v-if="effectTagList.length" class="tag-list tag-list--effect">
+          <template v-else>
+            {{ props.description }}
+          </template>
+        </p>
+        <div v-if="effectTagList.length" class="tag-list tag-list--effect">
+          <span
+            v-for="tag in effectTagList"
+            :key="tag.id"
+            @mouseenter="(event) => handleTagEnter(event, tag)"
+            @mousemove="(event) => handleTagMove(event, tag)"
+            @mouseleave="() => handleTagLeave(tag)"
+          >
+            {{ tag.label }}
+          </span>
+        </div>
+      </section>
+
+      <div v-if="categoryTagList.length" class="category-tag-list">
         <span
-          v-for="tag in effectTagList"
+          v-for="tag in categoryTagList"
           :key="tag.id"
           @mouseenter="(event) => handleTagEnter(event, tag)"
           @mousemove="(event) => handleTagMove(event, tag)"
@@ -146,19 +277,7 @@ function handleTagLeave(tag: CardTagInfo): void {
           {{ tag.label }}
         </span>
       </div>
-    </section>
-
-    <div v-if="categoryTagList.length" class="category-tag-list">
-      <span
-        v-for="tag in categoryTagList"
-        :key="tag.id"
-        @mouseenter="(event) => handleTagEnter(event, tag)"
-        @mousemove="(event) => handleTagMove(event, tag)"
-        @mouseleave="() => handleTagLeave(tag)"
-      >
-        {{ tag.label }}
-      </span>
-    </div>
+    </template>
   </article>
 </template>
 
@@ -169,16 +288,21 @@ function handleTagLeave(tag: CardTagInfo): void {
   flex-direction: column;
   justify-content: flex-start;
   width: 94px;
-  min-height: 140px;
+  height: 140px;
   padding: 12px;
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(31, 29, 44, 1), rgba(18, 18, 24, 1));
-  border: 5px solid transparent;
+  background: linear-gradient(
+    180deg,
+    var(--card-bg-start, rgba(31, 29, 44, 1)),
+    var(--card-bg-end, rgba(18, 18, 24, 1))
+  );
+  border: 5px solid var(--card-border-color, #ffe27a);
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.45);
   transition: transform 140ms ease, box-shadow 140ms ease;
   cursor: pointer;
   outline: none;
   z-index: 1;
+  color: var(--card-text-color, #f5f5f5);
 }
 
 .action-card:hover,
@@ -192,21 +316,6 @@ function handleTagLeave(tag: CardTagInfo): void {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25), 0 24px 36px rgba(0, 0, 0, 0.55);
 }
 
-.action-card--attack {
-  border-color: #d3333f;
-  background: linear-gradient(180deg, rgba(211, 51, 63, 1), rgba(18, 18, 24, 1));
-}
-
-.action-card--skill {
-  border-color: #2c6fe1;
-  background: linear-gradient(180deg, rgba(44, 111, 225, 1), rgba(18, 18, 24, 1));
-}
-
-.action-card--status {
-  border-color: #29292d;
-  background: linear-gradient(180deg, rgba(90, 90, 98, 1), rgba(34, 34, 42, 1));
-}
-
 .action-card--selected {
   box-shadow: 0 18px 36px rgba(255, 74, 109, 0.5);
   border-color: #ff4d6d;
@@ -218,6 +327,11 @@ function handleTagLeave(tag: CardTagInfo): void {
 
 .action-card--disabled {
   cursor: not-allowed;
+  pointer-events: none;
+}
+
+.action-card--frame {
+  cursor: default;
   pointer-events: none;
 }
 
@@ -253,7 +367,7 @@ function handleTagLeave(tag: CardTagInfo): void {
   margin: 0;
   font-size: 12px;
   letter-spacing: 0.06em;
-  color: #f5f5f5;
+  color: var(--card-text-color, #f5f5f5);
 }
 
 .primary-tag-text {
@@ -261,7 +375,7 @@ function handleTagLeave(tag: CardTagInfo): void {
   margin-bottom: 4px;
   font-size: 9px;
   letter-spacing: 0.08em;
-  color: rgba(245, 245, 245, 0.75);
+  color: var(--card-muted-color, rgba(245, 245, 245, 0.75));
   text-align: center;
   white-space: nowrap;
 }
@@ -274,17 +388,14 @@ function handleTagLeave(tag: CardTagInfo): void {
   padding: 4px 0 6px;
   font-size: 9px;
   letter-spacing: 0.08em;
-  color: rgba(245, 245, 245, 0.75);
+  color: var(--card-muted-color, rgba(245, 245, 245, 0.75));
 }
 
 .tag-list span {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--card-tag-bg, rgba(0, 0, 0, 0.08));
   padding: 0 6px;
   border-radius: 10px;
-}
-
-.tag-list--primary {
-  margin-top: 4px;
+  color: var(--card-text-color, inherit);
 }
 
 .tag-list--effect {
@@ -299,7 +410,7 @@ function handleTagLeave(tag: CardTagInfo): void {
   margin-top: auto;
   font-size: 8px;
   letter-spacing: 0.08em;
-  color: rgba(235, 235, 240, 0.6);
+  color: var(--card-muted-color, rgba(235, 235, 240, 0.6));
   align-self: flex-end;
 }
 
@@ -313,17 +424,74 @@ function handleTagLeave(tag: CardTagInfo): void {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  color: rgba(245, 245, 245, 0.92);
+  color: var(--card-text-color, rgba(245, 245, 245, 0.92));
 }
 
 .card-description {
   margin: 0;
   font-size: 10px;
   line-height: 1.4;
+  color: var(--card-text-color, rgba(245, 245, 245, 0.92));
 }
 
 .card-description .value--boosted {
   color: #4cff9f;
 }
 
+.damage-panel {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--card-text-color, #2f1b08);
+}
+
+.damage-amount {
+  font-weight: 800;
+  color: var(--card-text-color, #2f1b08);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.damage-amount--100 {
+  font-size: 22px;
+}
+
+.damage-amount--110 {
+  font-size: 24px;
+}
+
+.damage-amount--120 {
+  font-size: 26px;
+}
+
+.damage-amount--130 {
+  font-size: 28px;
+}
+
+.damage-amount--150 {
+  font-size: 30px;
+}
+
+.damage-count {
+  font-weight: 700;
+  color: var(--card-text-color, #2f1b08);
+  opacity: 0.85;
+}
+
+.damage-count--100 {
+  font-size: 14px;
+}
+
+.damage-count--110 {
+  font-size: 15px;
+}
+
+.damage-count--120 {
+  font-size: 16px;
+}
+
+.damage-count--130 {
+  font-size: 17px;
+}
 </style>

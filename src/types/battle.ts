@@ -72,4 +72,6 @@ export type CardInfo = {
   primaryTags?: CardTagInfo[]
   effectTags?: CardTagInfo[]
   categoryTags?: CardTagInfo[]
+  damageAmount?: number
+  damageCount?: number
 }

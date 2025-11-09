@@ -28,6 +28,9 @@ const actionCardStub = defineComponent({
     'affordable',
     'selected',
     'disabled',
+    'damageAmount',
+    'damageCount',
+    'variant',
   ],
   emits: ['click'],
   template: `
