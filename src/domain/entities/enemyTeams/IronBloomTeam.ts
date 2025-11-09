@@ -14,6 +14,11 @@ import {
   IronBloomEnemy,
   SlugEnemy,
 } from '../enemies'
+import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
+import { BattleDanceAction } from '../actions/BattleDanceAction'
+import { FlurryAction } from '../actions/FlurryAction'
+import { MucusShotAction } from '../actions/MucusShotAction'
+import { TackleAction } from '../actions/TackleAction'
 
 export interface IronBloomTeamOptions {
   mode?: 'scripted' | 'random'
@@ -25,10 +30,38 @@ export class IronBloomTeam extends EnemyTeam {
     super({
       id: 'enemy-team-iron-bloom',
       members: [
-        new OrcLancerEnemy(scripted ? undefined : { actionQueueFactory: undefined }),
-        new KamaitachiEnemy(scripted ? undefined : { actionQueueFactory: undefined }),
-        new IronBloomEnemy(scripted ? undefined : { actionQueueFactory: undefined }),
-        new SlugEnemy(scripted ? undefined : { actionQueueFactory: undefined }),
+        new OrcLancerEnemy(
+          scripted
+            ? {
+                actionQueueFactory: () =>
+                  new DefaultEnemyActionQueue({ initialActionType: BattleDanceAction }),
+              }
+            : undefined,
+        ),
+        new KamaitachiEnemy(
+          scripted
+            ? {
+                actionQueueFactory: () =>
+                  new DefaultEnemyActionQueue({ initialActionType: FlurryAction }),
+              }
+            : undefined,
+        ),
+        new IronBloomEnemy(
+          scripted
+            ? {
+                actionQueueFactory: () =>
+                  new DefaultEnemyActionQueue({ initialActionType: MucusShotAction }),
+              }
+            : undefined,
+        ),
+        new SlugEnemy(
+          scripted
+            ? {
+                actionQueueFactory: () =>
+                  new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
+              }
+            : undefined,
+        ),
       ],
     })
   }

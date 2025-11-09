@@ -10,7 +10,6 @@ OrcLancerEnemy.ts の責務:
 import { Enemy, type EnemyProps } from '../Enemy'
 import { BattleDanceAction } from '../actions/BattleDanceAction'
 import { FlurryAction } from '../actions/FlurryAction'
-import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
 
 export class OrcLancerEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
@@ -25,8 +24,6 @@ export class OrcLancerEnemy extends Enemy {
       image: '/assets/enemies/orc-lancer.jpg',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 50 },
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: BattleDanceAction }),
       ...overrides,
     })
   }

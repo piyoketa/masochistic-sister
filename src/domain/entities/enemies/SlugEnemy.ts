@@ -11,7 +11,6 @@ import { Enemy, type EnemyProps } from '../Enemy'
 import { TackleAction } from '../actions/TackleAction'
 import { AcidSpitAction } from '../actions/AcidSpitAction'
 import { CowardTrait } from '../states/CowardTrait'
-import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
 
 export class SlugEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
@@ -22,8 +21,6 @@ export class SlugEnemy extends Enemy {
       actions: [new TackleAction(), new AcidSpitAction()],
       states: [new CowardTrait()],
       image: '/assets/enemies/slug.jpg',
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
       ...overrides,
     })
   }

@@ -11,7 +11,6 @@ import { Enemy, type EnemyProps } from '../Enemy'
 import { MucusShotAction } from '../actions/MucusShotAction'
 import { FlurryAction } from '../actions/FlurryAction'
 import { GuardianPetalState } from '../states/GuardianPetalState'
-import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
 
 export class IronBloomEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
@@ -24,8 +23,6 @@ export class IronBloomEnemy extends Enemy {
       image: '/assets/enemies/iron-bloom.jpg',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 30 },
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: MucusShotAction }),
       ...overrides,
     })
   }

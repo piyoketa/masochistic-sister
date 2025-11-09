@@ -11,7 +11,6 @@ import { Enemy, type EnemyProps } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { TailwindAction } from '../actions/TailwindAction'
 import { Damages } from '../Damages'
-import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
 
 export class KamaitachiEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
@@ -27,7 +26,6 @@ export class KamaitachiEnemy extends Enemy {
       image: '/assets/enemies/kamaitachi.jpg',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 20 },
-      actionQueueFactory: () => new DefaultEnemyActionQueue({ initialActionType: FlurryAction }),
       ...overrides,
     })
   }
