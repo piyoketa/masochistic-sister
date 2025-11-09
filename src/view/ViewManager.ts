@@ -19,7 +19,7 @@ import {
   OperationRunnableError,
   type EntryAppendContext,
 } from '@/domain/battle/OperationRunner'
-import { ActionLog, type BattleActionLogEntry } from '@/domain/battle/ActionLog'
+import { ActionLog, type AnimationInstruction, type BattleActionLogEntry } from '@/domain/battle/ActionLog'
 import {
   type ResolvedBattleActionLogEntry,
   type ResolvedPlayCardOperation,
@@ -52,6 +52,12 @@ export type AnimationCommand =
     }
   | { type: 'wait'; duration: number }
   | { type: 'set-input-lock'; locked: boolean }
+  | {
+      type: 'stage-event'
+      batchId: string
+      entryType: BattleActionLogEntry['type']
+      metadata?: Record<string, unknown>
+    }
   | { type: 'custom'; name: string; payload?: unknown }
 
 export interface AnimationScript {
@@ -689,8 +695,14 @@ export class ViewManager {
       return
     }
 
-    this.stateValue.lastResolvedEntry = this.resolveActionLogEntry(entry, battle) ?? this.stateValue.lastResolvedEntry
+    const resolvedEntry = this.resolveActionLogEntry(entry, battle)
+    this.stateValue.lastResolvedEntry = resolvedEntry ?? this.stateValue.lastResolvedEntry
     this.stateValue.actionLogLength = this.actionLog.length
+
+    const script = this.buildAnimationScriptFromEntry(entry, resolvedEntry)
+    if (script) {
+      this.enqueueAnimation(script)
+    }
   }
 
   private startNextAnimation(): void {
@@ -737,5 +749,54 @@ export class ViewManager {
     for (const listener of this.listeners) {
       listener(event)
     }
+  }
+
+  private buildAnimationScriptFromEntry(
+    entry: BattleActionLogEntry,
+    resolvedEntry?: ResolvedBattleActionLogEntry,
+  ): AnimationScriptInput | null {
+    const animations = entry.animations ?? []
+    if (animations.length === 0) {
+      return null
+    }
+
+    const commands: AnimationCommand[] = []
+    const entryIndex = Math.max(0, this.actionLog.length - 1)
+    const totalDuration = entry.getAnimationTotalWaitMs ? entry.getAnimationTotalWaitMs() : 0
+
+    animations.forEach((instruction, index) => {
+      const isLastInstruction = index === animations.length - 1
+      commands.push({
+        type: 'update-snapshot',
+        snapshot: instruction.snapshot,
+        resolvedEntry: isLastInstruction ? resolvedEntry : undefined,
+      })
+      commands.push({
+        type: 'stage-event',
+        batchId: instruction.batchId,
+        entryType: entry.type,
+        metadata: this.buildStageMetadata(instruction),
+      })
+      if (instruction.waitMs > 0) {
+        commands.push({ type: 'wait', duration: instruction.waitMs })
+      }
+    })
+
+    return {
+      entryIndex,
+      commands,
+      resolvedEntry,
+      metadata: {
+        estimatedDuration: totalDuration,
+      },
+    }
+  }
+
+  private buildStageMetadata(instruction: AnimationInstruction): Record<string, unknown> | undefined {
+    const metadata = instruction.metadata ? { ...instruction.metadata } : {}
+    if (instruction.damageOutcomes && instruction.damageOutcomes.length > 0) {
+      metadata.damageOutcomes = instruction.damageOutcomes.map((outcome) => ({ ...outcome }))
+    }
+    return Object.keys(metadata).length > 0 ? metadata : undefined
   }
 }

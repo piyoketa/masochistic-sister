@@ -1,16 +1,17 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import BattleEnemyArea from '@/components/battle/BattleEnemyArea.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Battle } from '@/domain/battle/Battle'
 
 const enemyCardStub = defineComponent({
-  props: ['enemy', 'selectable', 'hovered', 'selected'],
+  props: ['enemy', 'selectable', 'hovered', 'selected', 'acting'],
   emits: ['hover-start', 'hover-end', 'click', 'contextmenu'],
   template: `
     <div
       class="enemy-card-stub"
+      :data-acting="acting ? 'true' : 'false'"
       @mouseenter="$emit('hover-start', enemy.id)"
       @mouseleave="$emit('hover-end', enemy.id)"
       @click="$emit('click', enemy)"
@@ -93,6 +94,7 @@ describe('BattleEnemyArea コンポーネント', () => {
         errorMessage: null,
         isSelectingEnemy: false,
         hoveredEnemyId: null,
+        stageEvent: null,
       },
       global: {
         stubs: {
@@ -114,6 +116,7 @@ describe('BattleEnemyArea コンポーネント', () => {
         errorMessage: null,
         isSelectingEnemy: true,
         hoveredEnemyId: null,
+        stageEvent: null,
       },
       global: {
         stubs: {
@@ -138,5 +141,42 @@ describe('BattleEnemyArea コンポーネント', () => {
     expect(hoverEnd?.[0]).toEqual([1])
     expect(enemyClick?.[0]?.[0]).toMatchObject({ id: 1, name: 'オーク' })
     expect(cancelSelection).toHaveLength(1)
+  })
+
+  it('enemy-highlight stage でacting状態を付与する', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(BattleEnemyArea, {
+      props: {
+        snapshot: createSnapshot(true),
+        battle: createBattleStub(),
+        isInitializing: false,
+        errorMessage: null,
+        isSelectingEnemy: false,
+        hoveredEnemyId: null,
+        stageEvent: null,
+      },
+      global: {
+        stubs: {
+          EnemyCard: enemyCardStub,
+          TransitionGroup: false,
+        },
+      },
+    })
+
+    await wrapper.setProps({
+      stageEvent: {
+        entryType: 'enemy-act',
+        batchId: 'enemy-highlight:test',
+        metadata: { stage: 'enemy-highlight', enemyId: 1 },
+        issuedAt: Date.now(),
+      },
+    })
+    await flushPromises()
+    expect(wrapper.get('.enemy-card-stub').attributes('data-acting')).toBe('true')
+
+    await vi.advanceTimersByTimeAsync(800)
+    await flushPromises()
+    expect(wrapper.get('.enemy-card-stub').attributes('data-acting')).toBe('false')
+    vi.useRealTimers()
   })
 })

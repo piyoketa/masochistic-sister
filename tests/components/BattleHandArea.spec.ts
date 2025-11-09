@@ -82,6 +82,7 @@ describe('BattleHandArea コンポーネント', () => {
         viewManager: createViewManagerStub(),
         requestEnemyTarget: vi.fn(),
         cancelEnemySelection: vi.fn(),
+        stageEvent: null,
       },
       global: {
         stubs: {
@@ -111,6 +112,7 @@ describe('BattleHandArea コンポーネント', () => {
         viewManager: createViewManagerStub(),
         requestEnemyTarget,
         cancelEnemySelection: vi.fn(),
+        stageEvent: null,
       },
       global: {
         stubs: {
@@ -147,6 +149,7 @@ describe('BattleHandArea コンポーネント', () => {
         viewManager: createViewManagerStub(),
         requestEnemyTarget,
         cancelEnemySelection,
+        stageEvent: null,
       },
       global: {
         stubs: {
@@ -166,5 +169,47 @@ describe('BattleHandArea コンポーネント', () => {
     expect(payload.cardId).toBe(42)
     expect(payload.operations).toEqual([{ type: 'target-enemy', payload: 999 }])
     expect(cancelEnemySelection).not.toHaveBeenCalled()
+  })
+
+  it('deck-draw stage eventで手札満杯オーバーレイを表示する', async () => {
+    vi.useFakeTimers()
+    const card = new Card({ action: new BattlePrepAction() })
+    card.assignId(5)
+    const wrapper = mount(BattleHandArea, {
+      props: {
+        snapshot: createSnapshot([card]),
+        hoveredEnemyId: null,
+        isInitializing: false,
+        errorMessage: null,
+        isPlayerTurn: true,
+        isInputLocked: false,
+        viewManager: createViewManagerStub(),
+        requestEnemyTarget: vi.fn(),
+        cancelEnemySelection: vi.fn(),
+        stageEvent: null,
+      },
+      global: {
+        stubs: {
+          ActionCard: actionCardStub,
+          TransitionGroup: false,
+        },
+      },
+    })
+
+    await wrapper.setProps({
+      stageEvent: {
+        entryType: 'start-player-turn',
+        batchId: 'card-move:test',
+        metadata: { stage: 'deck-draw', handOverflow: true },
+        issuedAt: Date.now(),
+      },
+    })
+    await flushPromises()
+    expect(wrapper.find('.hand-overlay').exists()).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(1500)
+    await flushPromises()
+    expect(wrapper.find('.hand-overlay').exists()).toBe(false)
+    vi.useRealTimers()
   })
 })

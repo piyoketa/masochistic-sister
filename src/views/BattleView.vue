@@ -22,6 +22,7 @@ import {
   createStage4Battle,
 } from '@/domain/battle/battlePresets'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
+import type { StageEventPayload } from '@/types/animation'
 
 type BattlePresetKey =
   | 'default'
@@ -60,6 +61,7 @@ const enemySelectionRequest = ref<EnemySelectionRequest | null>(null)
 const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
+const latestStageEvent = ref<StageEventPayload | null>(null)
 
 const descriptionOverlayStyle = computed(() => {
   const layout = layoutRef.value
@@ -240,10 +242,12 @@ function handleHandHideOverlay(): void {
 }
 
 async function runAnimation(script: AnimationScript): Promise<void> {
+  const startedAt = performance.now()
   try {
     for (const command of script.commands) {
       await executeCommand(command)
     }
+    await ensureEntryDuration(script, startedAt)
   } catch (unknownError) {
     const error = unknownError instanceof Error ? unknownError : new Error(String(unknownError))
     errorMessage.value = error.message
@@ -257,8 +261,29 @@ async function runAnimation(script: AnimationScript): Promise<void> {
   }
 }
 
+async function ensureEntryDuration(script: AnimationScript, startedAt: number): Promise<void> {
+  const estimated = script.metadata?.estimatedDuration ?? 0
+  if (estimated <= 0) {
+    return
+  }
+  const speed = Math.max(0.001, playbackSpeed.value)
+  const elapsed = performance.now() - startedAt
+  const expected = estimated / speed
+  if (expected > elapsed) {
+    await waitFor(expected - elapsed)
+  }
+}
+
 async function executeCommand(command: AnimationCommand): Promise<void> {
   switch (command.type) {
+    case 'stage-event':
+      latestStageEvent.value = {
+        entryType: command.entryType,
+        batchId: command.batchId,
+        metadata: command.metadata,
+        issuedAt: performance.now(),
+      }
+      break
     case 'wait': {
       const normalized = Math.max(0, command.duration)
       const speed = Math.max(0.001, playbackSpeed.value)
@@ -387,6 +412,7 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
               :battle="viewManager.battle"
               :is-initializing="isInitializing"
               :error-message="errorMessage"
+              :stage-event="latestStageEvent"
               :is-selecting-enemy="isSelectingEnemy"
               :hovered-enemy-id="hoveredEnemyId"
               @hover-start="handleEnemyHoverStart"
@@ -401,6 +427,7 @@ function resolveBattleFactory(preset: BattlePresetKey | undefined): () => Battle
               :hovered-enemy-id="hoveredEnemyId"
               :is-initializing="isInitializing"
               :error-message="errorMessage"
+              :stage-event="latestStageEvent"
               :is-player-turn="isPlayerTurn"
               :is-input-locked="isInputLocked"
               :view-manager="viewManager"

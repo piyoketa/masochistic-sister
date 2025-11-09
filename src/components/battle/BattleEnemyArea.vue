@@ -15,7 +15,7 @@ BattleEnemyArea の責務:
   EnemyInfo はビュー描画向けに nextActions や states の整形済み情報を持つ点が異なる。
 -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Battle } from '@/domain/battle/Battle'
@@ -25,6 +25,7 @@ import type { Enemy } from '@/domain/entities/Enemy'
 import { Damages } from '@/domain/entities/Damages'
 import { Attack, Action as BattleAction, AllyBuffSkill } from '@/domain/entities/Action'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
+import type { StageEventPayload } from '@/types/animation'
 
 const props = defineProps<{
   snapshot: BattleSnapshot | undefined
@@ -33,6 +34,7 @@ const props = defineProps<{
   errorMessage: string | null
   isSelectingEnemy: boolean
   hoveredEnemyId: number | null
+  stageEvent: StageEventPayload | null
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +49,10 @@ interface EnemySlot {
   isActive: boolean
   enemy?: EnemyInfo
 }
+
+const actingEnemyId = ref<number | null>(null)
+const processedStageBatchIds = new Set<string>()
+let actingTimer: ReturnType<typeof window.setTimeout> | null = null
 
 const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
@@ -85,6 +91,46 @@ const enemySlots = computed<EnemySlot[]>(() => {
 })
 
 const hasVisibleEnemies = computed(() => enemySlots.value.some((slot) => slot.isActive))
+
+watch(
+  () => props.stageEvent,
+  (event) => {
+    if (!event || !event.batchId || processedStageBatchIds.has(event.batchId)) {
+      return
+    }
+    processedStageBatchIds.add(event.batchId)
+    if (processedStageBatchIds.size > 500) {
+      processedStageBatchIds.clear()
+      processedStageBatchIds.add(event.batchId)
+    }
+    const stage = event.metadata?.stage as string | undefined
+    if (stage === 'enemy-highlight') {
+      const enemyId =
+        typeof event.metadata?.enemyId === 'number' ? (event.metadata.enemyId as number) : null
+      triggerEnemyHighlight(enemyId)
+    }
+  },
+)
+
+function triggerEnemyHighlight(enemyId: number | null): void {
+  actingEnemyId.value = enemyId
+  if (actingTimer) {
+    window.clearTimeout(actingTimer)
+  }
+  actingTimer = window.setTimeout(() => {
+    if (actingEnemyId.value === enemyId) {
+      actingEnemyId.value = null
+    }
+    actingTimer = null
+  }, 600)
+}
+
+onBeforeUnmount(() => {
+  if (actingTimer) {
+    window.clearTimeout(actingTimer)
+    actingTimer = null
+  }
+})
 
 function handleContextMenu(enemy: EnemyInfo, event: MouseEvent): void {
   if (!props.isSelectingEnemy) {
@@ -235,6 +281,7 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
           :selectable="isSelectingEnemy"
           :hovered="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
           :selected="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
+          :acting="slot.enemy ? actingEnemyId === slot.enemy.id : false"
           @mouseenter="() => emit('hover-start', slot.enemy!.id)"
           @mouseleave="() => emit('hover-end', slot.enemy!.id)"
           @click="() => emit('enemy-click', slot.enemy!)"

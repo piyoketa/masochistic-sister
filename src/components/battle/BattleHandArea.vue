@@ -14,7 +14,7 @@ BattleHandArea の責務:
 - ActionCard: 各カードのレンダリングを担当する既存コンポーネント。`CardInfo` と操作情報を渡し、クリックイベントで選択を検知する。
 -->
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch, onBeforeUnmount } from 'vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Card } from '@/domain/entities/Card'
 import type { Enemy } from '@/domain/entities/Enemy'
@@ -25,6 +25,7 @@ import { Attack } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
 import type { ViewManager } from '@/view/ViewManager'
 import type { CardTag } from '@/domain/entities/CardTag'
+import type { StageEventPayload } from '@/types/animation'
 
 interface HandEntry {
   key: string
@@ -45,6 +46,7 @@ const props = defineProps<{
   viewManager: ViewManager
   requestEnemyTarget: () => Promise<number>
   cancelEnemySelection: () => void
+  stageEvent: StageEventPayload | null
 }>()
 
 const emit = defineEmits<{
@@ -66,6 +68,9 @@ const interactionState = reactive<{
 })
 
 const hoveredCardKey = ref<string | null>(null)
+const processedStageBatchIds = new Set<string>()
+const handOverflowOverlayMessage = ref<string | null>(null)
+let handOverflowTimer: ReturnType<typeof window.setTimeout> | null = null
 
 const supportedOperations = new Set<string>([TargetEnemyOperation.TYPE])
 
@@ -380,6 +385,51 @@ function cancelSelection(): void {
 }
 
 defineExpose({ resetSelection, cancelSelection })
+
+watch(
+  () => props.stageEvent,
+  (event) => {
+    if (!event || !event.batchId || processedStageBatchIds.has(event.batchId)) {
+      return
+    }
+    processedStageBatchIds.add(event.batchId)
+    if (processedStageBatchIds.size > 500) {
+      processedStageBatchIds.clear()
+      processedStageBatchIds.add(event.batchId)
+    }
+    const stage = (event.metadata?.stage as string | undefined) ?? undefined
+    if (!stage) {
+      return
+    }
+    if (stage === 'deck-draw') {
+      handleDeckDrawStage(event)
+    }
+  },
+)
+
+function handleDeckDrawStage(event: StageEventPayload): void {
+  if (event.metadata?.handOverflow) {
+    showHandOverflowOverlay()
+  }
+}
+
+function showHandOverflowOverlay(): void {
+  handOverflowOverlayMessage.value = '手札が満杯です！'
+  if (handOverflowTimer) {
+    window.clearTimeout(handOverflowTimer)
+  }
+  handOverflowTimer = window.setTimeout(() => {
+    handOverflowOverlayMessage.value = null
+    handOverflowTimer = null
+  }, 1200)
+}
+
+onBeforeUnmount(() => {
+  if (handOverflowTimer) {
+    window.clearTimeout(handOverflowTimer)
+    handOverflowTimer = null
+  }
+})
 </script>
 
 <template>
@@ -408,6 +458,11 @@ defineExpose({ resetSelection, cancelSelection })
         />
       </div>
     </TransitionGroup>
+    <transition name="hand-overlay">
+      <div v-if="handOverflowOverlayMessage" class="hand-overlay">
+        {{ handOverflowOverlayMessage }}
+      </div>
+    </transition>
     <div class="hand-counter hand-counter--discard hand-pile">
       <span class="pile-icon pile-icon--discard" aria-hidden="true"></span>
       <span class="pile-label">捨て札 {{ discardCount }}</span>
@@ -462,6 +517,32 @@ defineExpose({ resetSelection, cancelSelection })
 
 .hand-pile--hand .pile-label {
   font-weight: 600;
+}
+
+.hand-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 16px 32px;
+  border-radius: 18px;
+  background: rgba(16, 16, 26, 0.86);
+  color: #fff7ea;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.hand-overlay-enter-active,
+.hand-overlay-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.hand-overlay-enter-from,
+.hand-overlay-leave-to {
+  opacity: 0;
 }
 
 .pile-icon {
