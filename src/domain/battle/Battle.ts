@@ -93,6 +93,7 @@ export interface EnemyTurnActionSummary {
   damageToPlayer?: number
   cardsAddedToPlayerHand: EnemyTurnActionCardGain[]
   animation?: EnemyActAnimationContext
+  snapshotAfter: BattleSnapshot
 }
 
 export interface StateEventLogEntry {
@@ -112,6 +113,14 @@ export interface FullBattleSnapshot {
 
 export interface EnemyTurnSummary {
   actions: EnemyTurnActionSummary[]
+}
+
+export type InterruptEnemyActionTrigger = 'card' | 'state' | 'trap' | string
+
+interface QueuedInterruptEnemyAction {
+  enemyId: number
+  trigger?: InterruptEnemyActionTrigger
+  metadata?: Record<string, unknown>
 }
 
 export interface DamageAnimationEvent {
@@ -149,8 +158,9 @@ export class Battle {
   private pendingManaAnimationEvents: Array<{ amount: number }> = []
   private pendingDefeatAnimationEvents: number[] = []
   private pendingDrawAnimationEvents: Array<{ cardIds: number[] }> = []
-  private immediateEnemyActionQueue: EnemyTurnActionSummary[] = []
+  private interruptEnemyActionQueue: QueuedInterruptEnemyAction[] = []
   private lastPlayCardAnimationContext?: PlayCardAnimationContext
+  private pendingEntrySnapshotOverride?: BattleSnapshot
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -221,6 +231,59 @@ export class Battle {
     return this.statusValue
   }
 
+  queueInterruptEnemyAction(enemyId: number, options?: {
+    trigger?: InterruptEnemyActionTrigger
+    metadata?: Record<string, unknown>
+  }): void {
+    this.interruptEnemyActionQueue.push({
+      enemyId,
+      trigger: options?.trigger,
+      metadata: options?.metadata ? { ...options.metadata } : undefined,
+    })
+  }
+
+  executeInterruptEnemyActions(): Array<{
+    summary: EnemyTurnActionSummary
+    trigger?: InterruptEnemyActionTrigger
+    metadata?: Record<string, unknown>
+  }> {
+    if (this.interruptEnemyActionQueue.length === 0) {
+      return []
+    }
+
+    const executions: Array<{
+      summary: EnemyTurnActionSummary
+      trigger?: InterruptEnemyActionTrigger
+      metadata?: Record<string, unknown>
+    }> = []
+
+    while (this.interruptEnemyActionQueue.length > 0) {
+      const request = this.interruptEnemyActionQueue.shift()
+      if (!request) {
+        break
+      }
+      const summary = this.performEnemyAction(request.enemyId)
+      executions.push({
+        summary: this.cloneEnemyActionSummary(summary),
+        trigger: request.trigger,
+        metadata: request.metadata ? { ...request.metadata } : undefined,
+      })
+    }
+
+    return executions
+  }
+
+  markEntrySnapshotBoundary(snapshot?: BattleSnapshot): void {
+    const source = snapshot ?? this.getSnapshot()
+    this.pendingEntrySnapshotOverride = this.cloneBattleSnapshot(source)
+  }
+
+  consumeEntrySnapshotOverride(): BattleSnapshot | undefined {
+    const snapshot = this.pendingEntrySnapshotOverride
+    this.pendingEntrySnapshotOverride = undefined
+    return snapshot ? this.cloneBattleSnapshot(snapshot) : undefined
+  }
+
   getLastEnemyTurnSummary(): EnemyTurnSummary | undefined {
     if (!this.lastEnemyTurnSummaryValue) {
       return undefined
@@ -228,10 +291,7 @@ export class Battle {
 
     // summaryは履歴参照用なので、参照渡しによる外部改変を避けるために浅いコピーを返す
     return {
-      actions: this.lastEnemyTurnSummaryValue.actions.map((action) => ({
-        ...action,
-        cardsAddedToPlayerHand: action.cardsAddedToPlayerHand.map((card) => ({ ...card })),
-      })),
+      actions: this.lastEnemyTurnSummaryValue.actions.map((action) => this.cloneEnemyActionSummary(action)),
     }
   }
 
@@ -425,7 +485,7 @@ export class Battle {
     this.enemyTeam.startTurn(this)
   }
 
-  performEnemyAction(enemyId: number, options?: { recordImmediate?: boolean }): EnemyTurnActionSummary {
+  performEnemyAction(enemyId: number): EnemyTurnActionSummary {
     const enemy = this.enemyTeam.findEnemy(enemyId)
     if (!enemy) {
       throw new Error(`Enemy ${enemyId} not found`)
@@ -446,6 +506,7 @@ export class Battle {
     const damageAnimationEvents = this.consumeDamageAnimationEvents()
     const stateDiffs = this.diffEnemyStates(enemyStatesBefore)
     const playerDefeated = this.playerValue.currentHp <= 0
+    const snapshotAfter = this.cloneBattleSnapshot(this.captureFullSnapshot().snapshot)
     let summary: EnemyTurnActionSummary
     if (actionLogLengthAfter > actionLogLengthBefore) {
       const executedAction = enemy.actionLog[actionLogLengthAfter - 1]
@@ -466,6 +527,7 @@ export class Battle {
           playerDefeated,
           stateDiffs,
         },
+        snapshotAfter,
       }
     } else {
       summary = {
@@ -482,11 +544,8 @@ export class Battle {
           playerDefeated,
           stateDiffs,
         },
+        snapshotAfter,
       }
-    }
-
-    if (options?.recordImmediate) {
-      this.immediateEnemyActionQueue.push(summary)
     }
 
     return summary
@@ -511,6 +570,7 @@ export class Battle {
           skipped: true,
           skipReason: 'defeated',
           cardsAddedToPlayerHand: [],
+          snapshotAfter: this.cloneBattleSnapshot(this.captureFullSnapshot().snapshot),
         })
         continue
       }
@@ -518,7 +578,9 @@ export class Battle {
       actions.push(this.performEnemyAction(enemyId))
     }
 
-    const summary: EnemyTurnSummary = { actions }
+    const summary: EnemyTurnSummary = {
+      actions,
+    }
     this.lastEnemyTurnSummaryValue = summary
     return summary
   }
@@ -555,10 +617,26 @@ export class Battle {
     return context
   }
 
-  consumeImmediateEnemyActions(): EnemyTurnActionSummary[] {
-    const actions = this.immediateEnemyActionQueue
-    this.immediateEnemyActionQueue = []
-    return actions
+  private cloneEnemyActionSummary(action: EnemyTurnActionSummary): EnemyTurnActionSummary {
+    return {
+      ...action,
+      cardsAddedToPlayerHand: action.cardsAddedToPlayerHand.map((card) => ({ ...card })),
+      animation: action.animation
+        ? {
+            damageEvents: action.animation.damageEvents.map((event) => ({
+              ...event,
+              outcomes: event.outcomes.map((outcome) => ({ ...outcome })),
+            })),
+            cardAdditions: action.animation.cardAdditions.map((card) => ({ ...card })),
+            playerDefeated: action.animation.playerDefeated,
+            stateDiffs: action.animation.stateDiffs.map((diff) => ({
+              enemyId: diff.enemyId,
+              states: diff.states.map((state) => ({ ...state })),
+            })),
+          }
+        : undefined,
+      snapshotAfter: this.cloneBattleSnapshot(action.snapshotAfter),
+    }
   }
 
   private consumeDamageAnimationEvents(): DamageAnimationEvent[] {
@@ -786,6 +864,7 @@ export class Battle {
         break
       case 'end-player-turn': {
         this.endPlayerTurn()
+        this.markEntrySnapshotBoundary()
         this.executeEnemyTurn()
         break
       }
@@ -868,6 +947,31 @@ export class Battle {
 
   private isMemoryCard(card: Card): boolean {
     return (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
+  }
+
+  private cloneBattleSnapshot(source: BattleSnapshot): BattleSnapshot {
+    return {
+      ...source,
+      player: { ...source.player },
+      enemies: source.enemies.map((enemy) => ({
+        ...enemy,
+        states: [...enemy.states],
+      })),
+      deck: [...source.deck],
+      hand: [...source.hand],
+      discardPile: [...source.discardPile],
+      exilePile: [...source.exilePile],
+      events: source.events.map((event) => ({
+        ...event,
+        payload:
+          event.payload && typeof event.payload === 'object'
+            ? { ...(event.payload as Record<string, unknown>) }
+            : event.payload,
+      })),
+      turn: { ...source.turn },
+      log: source.log.map((entry) => ({ ...entry })),
+      status: source.status,
+    }
   }
 
   private recordOutcome(outcome: BattleStatus): void {

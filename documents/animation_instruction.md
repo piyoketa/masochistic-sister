@@ -78,7 +78,7 @@ enemy-act時のAnimationInstructionの生成例を示します。
 
 1. **Battle側のイベント収集**  
    - `drawForPlayer` が全てのドロー発生源（初期手札・日課・敵攻撃など）で呼ばれるよう保証し、引いたカードIDを `pendingDrawAnimationEvents` に積む。  
-   - `performEnemyAction(recordImmediate: true)` 呼び出し時に `EnemyTurnActionSummary` を即時キューへ追加し、OperationRunner が `enemy-act` を挿入できるようにする。  
+   - 割り込み敵行動は `queueInterruptEnemyAction` で予約し、OperationRunner が `executeInterruptEnemyActions` を通じて `enemy-act` を挿入できるようにする。  
    - `stateEventBuffer` / `resolvedEventsBuffer` で扱う payload を型定義し、trait-coward や mana などステージ判定に必要な情報を取得しやすくする。
 
 2. **OperationRunnerでのInstruction生成**  
@@ -87,7 +87,7 @@ enemy-act時のAnimationInstructionの生成例を示します。
    - `attachSimpleEntryAnimation`: `start-player-turn` に `deck-draw` を差し込み、`player-event` (mana) → stage=`mana`、それ以外 → `state-update`。`state-event` も `escape` or `state-update` にマッピングする。
 
 3. **ActionLogエントリ列の整合性**  
-   - `appendImmediateEnemyActEntries` を導入して被虐のオーラ直後にも `enemy-act` を挿入。  
+   - `appendImmediateEnemyActEntries` で `executeInterruptEnemyActions` を呼び出し、被虐のオーラ直後にも `enemy-act` を挿入。  
    - `flushResolvedEvents` / `flushStateEvents` の呼び出し順を見直し、`play-card` 後のイベントでも漏れがないようにする。  
    - `OperationRunner.getWaitInfo` や `appendBattleOutcomeIfNeeded` といった補助メソッドが新stageの待機仕様と矛盾しないか確認。
 
@@ -105,7 +105,7 @@ enemy-act時のAnimationInstructionの生成例を示します。
 
 2. **Battle API 拡張**
    - `recordManaAnimation`, `recordDefeatAnimation`, `consumeManaAnimationEvents`, `consumeDefeatAnimationEvents` を追加し、OperationRunnerから取得できるようにする。
-   - `performEnemyAction(recordImmediate: true)` の結果を `consumeImmediateEnemyActions` で取り出せるよう既存キュー処理を再確認。
+   - `queueInterruptEnemyAction` / `executeInterruptEnemyActions` でプレイヤーターン中の敵行動をActionLogに変換する。
 
 3. **OperationRunner調整**
    - `attachPlayCardAnimations` に `mana` ステージを差し込み、ダメージ無しスキルで `damage` が生成されないよう分岐を明確化。
@@ -113,7 +113,7 @@ enemy-act時のAnimationInstructionの生成例を示します。
    - `attachSimpleEntryAnimation` で `state-event` → `escape`/`state-update`、`player-event` → `mana`/`state-update` へ振り分ける。
 
 4. **ActionLog生成フロー**
-   - `appendImmediateEnemyActEntries` を `play-card` 実行後に呼び出し、被虐のオーラ直後でも敵行動がActionLogに挿入されるようにする。
+   - `appendImmediateEnemyActEntries` を `play-card` 実行後に呼び出し、`executeInterruptEnemyActions` から割り込み行動をActionLogへ追加する。
    - `flushResolvedEvents` / `flushStateEvents` の順序を確認し、演出イベントが欠落しないよう調整。
 
 5. **テスト・フィクスチャ**

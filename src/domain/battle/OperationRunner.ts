@@ -150,20 +150,31 @@ export class OperationRunner {
 
     const appendedEntry = this.actionLog.at(index)
     const snapshotAfter = this.battle.captureFullSnapshot()
+    const entrySnapshotOverride = this.battle.consumeEntrySnapshotOverride()
 
     const drainedEvents =
       entry.type === 'enemy-act' ? this.emptyDrainedEvents() : this.drainAnimationEvents()
 
     if (appendedEntry) {
-      if (appendedEntry.type === 'play-card' && snapshotBefore) {
-        this.attachPlayCardAnimations(appendedEntry, snapshotBefore.snapshot, snapshotAfter.snapshot, drainedEvents)
-      } else if (appendedEntry.type === 'enemy-act') {
+      if (appendedEntry.type === 'enemy-act') {
         const summary = this.pendingEnemyActSummaries.shift()
-        this.attachEnemyActAnimations(appendedEntry, snapshotAfter.snapshot, summary)
+        const summarySnapshot = summary?.snapshotAfter ?? entrySnapshotOverride ?? snapshotAfter.snapshot
+        const clonedSnapshot = this.cloneBattleSnapshot(summarySnapshot)
+        appendedEntry.postEntrySnapshot = clonedSnapshot
+        this.attachEnemyActAnimations(appendedEntry, clonedSnapshot, summary)
       } else {
-        this.attachSimpleEntryAnimation(appendedEntry, snapshotAfter.snapshot, drainedEvents)
+        const baseSnapshot = entrySnapshotOverride ?? snapshotAfter.snapshot
+        const clonedSnapshot = this.cloneBattleSnapshot(baseSnapshot)
+        appendedEntry.postEntrySnapshot = clonedSnapshot
+        if (appendedEntry.type === 'play-card' && snapshotBefore) {
+          this.attachPlayCardAnimations(appendedEntry, snapshotBefore.snapshot, clonedSnapshot, drainedEvents)
+        } else {
+          this.attachSimpleEntryAnimation(appendedEntry, clonedSnapshot, drainedEvents)
+        }
       }
     }
+
+    this.emitEntryAppended(entry, index)
 
     this.appendImmediateEnemyActEntries()
 
@@ -173,7 +184,6 @@ export class OperationRunner {
       this.appendBattleOutcomeIfNeeded()
     }
 
-    this.emitEntryAppended(entry, index)
     return index
   }
 
@@ -283,18 +293,26 @@ export class OperationRunner {
   }
 
   private appendImmediateEnemyActEntries(): void {
-    const immediateActions = this.battle.consumeImmediateEnemyActions()
+    const immediateActions = this.battle.executeInterruptEnemyActions()
     if (immediateActions.length === 0) {
       return
     }
     for (const action of immediateActions) {
-      this.pendingEnemyActSummaries.push(action)
+      const summary = action.summary
+      this.pendingEnemyActSummaries.push(summary)
+      const metadataPayload: Record<string, unknown> = { ...summary }
+      if (action.trigger) {
+        metadataPayload.interruptTrigger = action.trigger
+      }
+      if (action.metadata) {
+        metadataPayload.interruptMetadata = { ...action.metadata }
+      }
       this.appendEntry(
         {
           type: 'enemy-act',
-          enemyId: action.enemyId,
-          actionId: action.actionName,
-          metadata: action,
+          enemyId: summary.enemyId,
+          actionId: summary.actionName,
+          metadata: metadataPayload,
         },
         { suppressFlush: true },
       )

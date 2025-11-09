@@ -19,6 +19,7 @@ const props = defineProps<{
   selectable?: boolean
   selected?: boolean
   hovered?: boolean
+  acting?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -45,6 +46,7 @@ const classes = computed(() => ({
   'enemy-card--selectable': props.selectable ?? false,
   'enemy-card--selected': props.selected ?? false,
   'enemy-card--hovered': props.hovered ?? false,
+  'enemy-card--acting': props.acting ?? false,
 }))
 
 const displayName = computed(() => props.enemy.name.replace('（短剣）', '')) // TODO: 削除
@@ -283,6 +285,24 @@ function formatStateChip(trait: EnemyTrait): { key: string; label: string; descr
 .enemy-card--selected {
   border-color: rgba(255, 116, 116, 0.9);
   box-shadow: 0 20px 42px rgba(255, 116, 116, 0.5);
+}
+
+.enemy-card--acting {
+  border-color: rgba(255, 214, 111, 0.85);
+  box-shadow: 0 0 24px rgba(255, 214, 111, 0.55);
+  animation: enemy-card-acting 0.6s ease;
+}
+
+@keyframes enemy-card-acting {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .enemy-card__header {

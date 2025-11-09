@@ -443,6 +443,13 @@ export const ACTION_LOG_ENTRY_21_ENEMY_ACT: ActionLogEntrySummary = {
       metadata: {stage:'enemy-highlight',enemyId:1,actionId:'追い風',skipped:false},
       snapshot: {player:{hp:75,mana:0},hand:[{id:1,title:'天の鎖'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'},{id:8,title:'再装填'},{id:3,title:'天の鎖'},{id:13,title:'腐食'},{id:14,title:'酸を吐く'}],discardCount:6,exileCount:1,deckCount:0,enemies:[{id:0,hp:0,status:'defeated'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP75/MP0, 手札[天の鎖・ねばねば・粘液飛ばし・天の鎖・再装填・天の鎖・腐食・酸を吐く], 敵HP[オークランサー=0, かまいたち=20, 鉄花=0, なめくじ=30]
     },
+    // [状態更新] 敵ステータスを反映
+    {
+      waitMs: 0,
+      batchId: 'state-update:40',
+      metadata: {stage:'state-update',enemyStates:[{enemyId:1,states:[{id:'state-acceleration',magnitude:1}]}]},
+      snapshot: {player:{hp:75,mana:0},hand:[{id:1,title:'天の鎖'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'},{id:8,title:'再装填'},{id:3,title:'天の鎖'},{id:13,title:'腐食'},{id:14,title:'酸を吐く'}],discardCount:6,exileCount:1,deckCount:0,enemies:[{id:0,hp:0,status:'defeated'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP75/MP0, 手札[天の鎖・ねばねば・粘液飛ばし・天の鎖・再装填・天の鎖・腐食・酸を吐く], 敵HP[オークランサー=0, かまいたち=20, 鉄花=0, なめくじ=30]
+    },
   ],
 }
 

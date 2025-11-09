@@ -14,6 +14,8 @@ export interface AnimationInstruction {
 
 type BaseActionLogEntry = {
   animations?: AnimationInstruction[]
+  postEntrySnapshot?: BattleSnapshot
+  getAnimationTotalWaitMs?: () => number
 }
 
 export type BattleActionLogEntry =
@@ -59,7 +61,7 @@ export class ActionLog {
   }
 
   push(entry: BattleActionLogEntry): number {
-    this.entries.push(entry)
+    this.entries.push(this.enhanceEntry(entry))
     return this.entries.length - 1
   }
 
@@ -95,6 +97,22 @@ export class ActionLog {
 
   get length(): number {
     return this.entries.length
+  }
+
+  private enhanceEntry<T extends BattleActionLogEntry>(entry: T): T {
+    const enhanced = entry
+    enhanced.getAnimationTotalWaitMs = () => {
+      const instructions = enhanced.animations ?? []
+      const total = instructions.reduce(
+        (sum, instruction) => sum + Math.max(0, instruction.waitMs ?? 0),
+        0,
+      )
+      if (enhanced.type === 'enemy-act') {
+        return Math.max(total, 500)
+      }
+      return total
+    }
+    return enhanced
   }
 
   resolveValue<T>(value: ValueFactory<T>, battle: Battle): T {

@@ -39,7 +39,8 @@ export class MasochisticAuraAction extends Skill {
       throw new Error('Target enemy has no repository id')
     }
 
-    context.battle.performEnemyAction(targetId, { recordImmediate: true })
+    context.battle.markEntrySnapshotBoundary()
+    context.battle.queueInterruptEnemyAction(targetId, { trigger: 'card' })
   }
 
 }

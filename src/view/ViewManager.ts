@@ -28,6 +28,21 @@ import {
 } from '@/domain/battle/ActionLogReplayer'
 import type { Battle, BattleSnapshot } from '@/domain/battle/Battle'
 
+declare global {
+  interface Window {
+    __MASO_ANIMATION_DEBUG__?: boolean
+  }
+}
+
+const isBrowserEnv = typeof window !== 'undefined'
+const globalAnimationDebugFlag =
+  isBrowserEnv && typeof window.__MASO_ANIMATION_DEBUG__ === 'boolean' ? Boolean(window.__MASO_ANIMATION_DEBUG__) : false
+const envAnimationDebugFlag =
+  typeof import.meta !== 'undefined' &&
+  typeof import.meta.env !== 'undefined' &&
+  import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
+const DEFAULT_ANIMATION_DEBUG_LOGGING = globalAnimationDebugFlag || envAnimationDebugFlag
+
 export interface ViewManagerConfig {
   createBattle: () => Battle
   operationLog?: OperationLog
@@ -200,10 +215,14 @@ export class ViewManager {
 
   private syncStateFromBattle(): void {
     const battle = this.battleInstance
-    this.stateValue.previousSnapshot = this.stateValue.snapshot
+    const shouldApplySnapshotImmediately =
+      this.stateValue.playback.queue.length === 0 && !this.stateValue.playback.current
 
     if (!battle) {
-      this.stateValue.snapshot = undefined
+      if (shouldApplySnapshotImmediately) {
+        this.stateValue.snapshot = undefined
+        this.stateValue.previousSnapshot = undefined
+      }
       this.stateValue.lastResolvedEntry = undefined
       this.stateValue.actionLogLength = this.actionLog.length
       this.stateValue.executedIndex = this.actionLog.length - 1
@@ -211,7 +230,10 @@ export class ViewManager {
       return
     }
 
-    this.stateValue.snapshot = battle.getSnapshot()
+    if (shouldApplySnapshotImmediately) {
+      this.stateValue.previousSnapshot = this.stateValue.snapshot
+      this.stateValue.snapshot = battle.getSnapshot()
+    }
     const lastEntry = this.actionLog.at(this.actionLog.length - 1)
     this.stateValue.lastResolvedEntry = lastEntry ? this.resolveActionLogEntry(lastEntry, battle) : undefined
     this.stateValue.actionLogLength = this.actionLog.length
@@ -377,6 +399,10 @@ export class ViewManager {
     if (completedScript.resolvedEntry) {
       this.stateValue.lastResolvedEntry = completedScript.resolvedEntry
     }
+    this.logAnimationDebug('エントリ再生完了', {
+      entryIndex: completedScript.entryIndex,
+      entryType: completedScript.metadata?.entryType ?? 'unknown',
+    })
 
     this.stateValue.playback.current = undefined
 
@@ -727,6 +753,11 @@ export class ViewManager {
     this.stateValue.playback.status = 'playing'
     this.setInputLock(true)
     this.notifyState()
+    this.logAnimationDebug('エントリ再生開始', {
+      entryIndex: next.entryIndex,
+      entryType: next.metadata?.entryType ?? 'unknown',
+      commandCount: next.commands.length,
+    })
     this.emit({ type: 'animation-start', script: next })
   }
 
@@ -756,21 +787,34 @@ export class ViewManager {
     resolvedEntry?: ResolvedBattleActionLogEntry,
   ): AnimationScriptInput | null {
     const animations = entry.animations ?? []
-    if (animations.length === 0) {
-      return null
-    }
-
     const commands: AnimationCommand[] = []
     const entryIndex = Math.max(0, this.actionLog.length - 1)
     const totalDuration = entry.getAnimationTotalWaitMs ? entry.getAnimationTotalWaitMs() : 0
 
-    animations.forEach((instruction, index) => {
-      const isLastInstruction = index === animations.length - 1
+    if (animations.length === 0) {
+      if (!entry.postEntrySnapshot) {
+        return null
+      }
+      if (totalDuration > 0) {
+        commands.push({ type: 'wait', duration: totalDuration })
+      }
       commands.push({
         type: 'update-snapshot',
-        snapshot: instruction.snapshot,
-        resolvedEntry: isLastInstruction ? resolvedEntry : undefined,
+        snapshot: entry.postEntrySnapshot,
+        resolvedEntry,
       })
+      return {
+        entryIndex,
+        commands,
+        resolvedEntry,
+        metadata: {
+          estimatedDuration: totalDuration,
+          entryType: entry.type,
+        },
+      }
+    }
+
+    animations.forEach((instruction) => {
       commands.push({
         type: 'stage-event',
         batchId: instruction.batchId,
@@ -780,7 +824,26 @@ export class ViewManager {
       if (instruction.waitMs > 0) {
         commands.push({ type: 'wait', duration: instruction.waitMs })
       }
+      commands.push({
+        type: 'update-snapshot',
+        snapshot: instruction.snapshot,
+      })
     })
+
+    if (entry.postEntrySnapshot) {
+      commands.push({
+        type: 'update-snapshot',
+        snapshot: entry.postEntrySnapshot,
+      })
+    }
+
+    for (let index = commands.length - 1; index >= 0; index -= 1) {
+      const command = commands[index]
+      if (command.type === 'update-snapshot') {
+        command.resolvedEntry = resolvedEntry
+        break
+      }
+    }
 
     return {
       entryIndex,
@@ -798,5 +861,13 @@ export class ViewManager {
       metadata.damageOutcomes = instruction.damageOutcomes.map((outcome) => ({ ...outcome }))
     }
     return Object.keys(metadata).length > 0 ? metadata : undefined
+  }
+
+  private logAnimationDebug(message: string, payload?: Record<string, unknown>): void {
+    if (!this.animationDebugLoggingEnabled || typeof console === 'undefined') {
+      return
+    }
+    // eslint-disable-next-line no-console
+    console.info(`[AnimationDebug] ${message}`, payload ?? '')
   }
 }

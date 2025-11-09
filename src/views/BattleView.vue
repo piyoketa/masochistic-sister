@@ -24,6 +24,12 @@ import {
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import type { StageEventPayload } from '@/types/animation'
 
+declare global {
+  interface Window {
+    __MASO_ANIMATION_DEBUG__?: boolean
+  }
+}
+
 type BattlePresetKey =
   | 'default'
   | 'stage1'
@@ -62,6 +68,9 @@ const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
+const animationDebugLoggingEnabled =
+  (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
+  import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
 
 const descriptionOverlayStyle = computed(() => {
   const layout = layoutRef.value
@@ -283,6 +292,7 @@ async function executeCommand(command: AnimationCommand): Promise<void> {
         metadata: command.metadata,
         issuedAt: performance.now(),
       }
+      logAnimationStageEvent(command)
       break
     case 'wait': {
       const normalized = Math.max(0, command.duration)
@@ -310,6 +320,19 @@ async function executeCommand(command: AnimationCommand): Promise<void> {
 function waitFor(durationMs: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, durationMs)
+  })
+}
+
+function logAnimationStageEvent(command: Extract<AnimationCommand, { type: 'stage-event' }>): void {
+  if (!animationDebugLoggingEnabled || typeof console === 'undefined') {
+    return
+  }
+  const stage = (command.metadata as { stage?: unknown } | undefined)?.stage
+  // eslint-disable-next-line no-console
+  console.info('[AnimationDebug] アニメーション指示開始', {
+    entryType: command.entryType,
+    stage,
+    batchId: command.batchId,
   })
 }
 
