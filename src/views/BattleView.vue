@@ -500,8 +500,12 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
     <template #window>
       <div ref="layoutRef" class="battle-layout" @contextmenu.prevent="handleContextMenu">
         <header class="battle-header">
-          <div class="header-left">
+          <div class="header-relics">
+            <span class="relic-label">レリック</span>
+          </div>
+          <div class="header-status">
             <span class="phase-label">{{ phaseLabel }}</span>
+            <span class="turn-label">{{ turnLabel }}</span>
           </div>
           <div class="header-actions">
             <button
@@ -510,7 +514,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
               :disabled="!canRetry"
               @click="handleRetryClick"
             >
-              Retry
+              戦闘開始からやり直す
             </button>
             <button
               type="button"
@@ -520,9 +524,6 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
             >
               一手戻す
             </button>
-          </div>
-          <div class="header-right">
-            <span>{{ turnLabel }}</span>
           </div>
         </header>
 
@@ -658,6 +659,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 24px;
   padding: 0 24px;
   height: 56px;
   background: linear-gradient(90deg, rgba(120, 97, 190, 0.22), rgba(70, 69, 122, 0.35));
@@ -665,9 +667,26 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   box-sizing: border-box;
 }
 
-.header-left {
+.header-relics {
+  min-width: 160px;
   display: flex;
   align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.relic-label {
+  opacity: 0.65;
+}
+
+.header-status {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .header-actions {
@@ -710,11 +729,9 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   color: rgba(255, 255, 255, 0.92);
 }
 
-.header-right {
-  display: flex;
-  gap: 16px;
+.turn-label {
   font-size: 14px;
-  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .battle-body {
