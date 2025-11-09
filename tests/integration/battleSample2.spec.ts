@@ -13,7 +13,7 @@ import { buildScenario2Deck } from '@/domain/entities/decks'
 import { IronBloomTeam } from '@/domain/entities/enemyTeams'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { CardRepository } from '@/domain/repository/CardRepository'
-import { ACTION_LOG_SUMMARY_STAGE2 } from '../fixtures/battleSample2ExpectedActionLog'
+import { ACTION_LOG_ENTRY_SEQUENCE as ACTION_LOG_EXPECTED_SEQUENCE_STAGE2 } from '../fixtures/battleSample2ExpectedActionLog'
 import {
   buildOperationLog,
   summarizeActionLogEntry,
@@ -27,7 +27,9 @@ import {
   requireEnemyId,
 } from './utils/scenarioEntityUtils'
 
-const EXPECTED_ACTION_LOG_SUMMARY_STAGE2: ActionLogEntrySummary[] = ACTION_LOG_SUMMARY_STAGE2
+const EXPECTED_ACTION_LOG_SUMMARY_STAGE2: ActionLogEntrySummary[] = [
+  ...ACTION_LOG_EXPECTED_SEQUENCE_STAGE2,
+]
 
 const battleFactory = () => {
   const cardRepository = new CardRepository()

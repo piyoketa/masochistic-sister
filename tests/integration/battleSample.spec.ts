@@ -13,7 +13,7 @@ import { buildTestDeck } from '@/domain/entities/decks'
 import { TestEnemyTeam } from '@/domain/entities/enemyTeams'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { CardRepository } from '@/domain/repository/CardRepository'
-import { ACTION_LOG_SUMMARY } from '../fixtures/battleSampleExpectedActionLog'
+import { ACTION_LOG_ENTRY_SEQUENCE as ACTION_LOG_EXPECTED_SEQUENCE_SCENARIO1 } from '../fixtures/battleSampleExpectedActionLog'
 import {
   buildOperationLog,
   summarizeActionLogEntry,
@@ -28,7 +28,9 @@ import {
   requireEnemyId,
 } from './utils/scenarioEntityUtils'
 
-const EXPECTED_ACTION_LOG_SUMMARY: ActionLogEntrySummary[] = ACTION_LOG_SUMMARY
+const EXPECTED_ACTION_LOG_SUMMARY: ActionLogEntrySummary[] = [
+  ...ACTION_LOG_EXPECTED_SEQUENCE_SCENARIO1,
+]
 
 const battleFactory = () => {
   const cardRepository = new CardRepository()
