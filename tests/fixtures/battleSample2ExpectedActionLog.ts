@@ -42,19 +42,19 @@ export const ACTION_LOG_ENTRY_03_PLAY_CARD: ActionLogEntrySummary = {
   card: 4,
   operations: [{type:'target-enemy',payload:2}],
   animations: [
-    // [カード廃棄] 被虐のオーラ を捨て札へ移動
+    // [カード移動] 被虐のオーラ の移動
     {
       waitMs: 0,
-      batchId: 'card-trash:3',
-      metadata: {stage:'card-trash',cardId:4,cardTitle:'被虐のオーラ'},
-      snapshot: {player:{hp:150,mana:3},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'}],discardCount:1,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP150/MP3, 手札[天の鎖・天の鎖・戦いの準備・日課], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
+      batchId: 'card-move:3',
+      metadata: {stage:'card-move',cardId:4,cardTitle:'被虐のオーラ'},
+      snapshot: {player:{hp:150,mana:3},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'}],discardCount:0,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP150/MP3, 手札[天の鎖・天の鎖・戦いの準備・日課], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
     },
     // [マナ] マナゲージを変化
     {
       waitMs: 0,
       batchId: 'mana:4',
       metadata: {stage:'mana',amount:-1},
-      snapshot: {player:{hp:145,mana:2},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'}],discardCount:1,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP145/MP2, 手札[天の鎖・天の鎖・戦いの準備・日課・ねばねば・粘液飛ばし], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
+      snapshot: {player:{hp:150,mana:2},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'}],discardCount:0,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP150/MP2, 手札[天の鎖・天の鎖・戦いの準備・日課], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
     },
   ],
 }
@@ -142,7 +142,7 @@ export const ACTION_LOG_ENTRY_07_END_PLAYER_TURN: ActionLogEntrySummary = {
       waitMs: 0,
       batchId: 'turn-end:12',
       metadata: {stage:'turn-end'},
-      snapshot: {player:{hp:120,mana:0},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:11,title:'乱れ突き'}],discardCount:2,exileCount:1,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP120/MP0, 手札[天の鎖・日課・ねばねば・粘液飛ばし・乱れ突き], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
+      snapshot: {player:{hp:145,mana:0},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'}],discardCount:2,exileCount:1,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP145/MP0, 手札[天の鎖・日課・ねばねば・粘液飛ばし], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
     },
   ],
 }
@@ -156,14 +156,14 @@ export const ACTION_LOG_ENTRY_08_ENEMY_ACT: ActionLogEntrySummary = {
       waitMs: 0,
       batchId: 'enemy-highlight:13',
       metadata: {stage:'enemy-highlight',enemyId:0,actionId:'戦いの舞い',skipped:false},
-      snapshot: {player:{hp:120,mana:0},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:11,title:'乱れ突き'}],discardCount:2,exileCount:1,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP120/MP0, 手札[天の鎖・日課・ねばねば・粘液飛ばし・乱れ突き], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
+      snapshot: {player:{hp:145,mana:0},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'}],discardCount:2,exileCount:1,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP145/MP0, 手札[天の鎖・日課・ねばねば・粘液飛ばし], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
     },
     // [状態更新] 敵ステータスを反映
     {
       waitMs: 0,
       batchId: 'state-update:14',
       metadata: {stage:'state-update',enemyStates:[{enemyId:0,states:[{id:'state-acceleration',magnitude:1}]}]},
-      snapshot: {player:{hp:120,mana:0},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:11,title:'乱れ突き'}],discardCount:2,exileCount:1,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP120/MP0, 手札[天の鎖・日課・ねばねば・粘液飛ばし・乱れ突き], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
+      snapshot: {player:{hp:145,mana:0},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'}],discardCount:2,exileCount:1,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:10,status:'active'},{id:3,hp:30,status:'active'}]}, // 確認: HP145/MP0, 手札[天の鎖・日課・ねばねば・粘液飛ばし], 敵HP[オークランサー=40, かまいたち=20, 鉄花=10, なめくじ=30]
     },
   ],
 }
@@ -298,19 +298,19 @@ export const ACTION_LOG_ENTRY_15_PLAY_CARD: ActionLogEntrySummary = {
   card: 5,
   operations: [{type:'target-enemy',payload:0}],
   animations: [
-    // [カード廃棄] 被虐のオーラ を捨て札へ移動
+    // [カード移動] 被虐のオーラ の移動
     {
       waitMs: 0,
-      batchId: 'card-trash:26',
-      metadata: {stage:'card-trash',cardId:5,cardTitle:'被虐のオーラ'},
-      snapshot: {player:{hp:120,mana:3},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'}],discardCount:4,exileCount:1,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP120/MP3, 手札[天の鎖・日課・ねばねば・粘液飛ばし・天の鎖], 敵HP[オークランサー=40, かまいたち=20, 鉄花=0, なめくじ=30]
+      batchId: 'card-move:26',
+      metadata: {stage:'card-move',cardId:5,cardTitle:'被虐のオーラ'},
+      snapshot: {player:{hp:120,mana:3},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'}],discardCount:3,exileCount:1,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP120/MP3, 手札[天の鎖・日課・ねばねば・粘液飛ばし・天の鎖], 敵HP[オークランサー=40, かまいたち=20, 鉄花=0, なめくじ=30]
     },
     // [マナ] マナゲージを変化
     {
       waitMs: 0,
       batchId: 'mana:27',
       metadata: {stage:'mana',amount:-1},
-      snapshot: {player:{hp:80,mana:2},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'},{id:12,title:'乱れ突き'}],discardCount:4,exileCount:1,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP80/MP2, 手札[天の鎖・日課・ねばねば・粘液飛ばし・天の鎖・乱れ突き], 敵HP[オークランサー=40, かまいたち=20, 鉄花=0, なめくじ=30]
+      snapshot: {player:{hp:120,mana:2},hand:[{id:1,title:'天の鎖'},{id:7,title:'日課'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'}],discardCount:3,exileCount:1,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP120/MP2, 手札[天の鎖・日課・ねばねば・粘液飛ばし・天の鎖], 敵HP[オークランサー=40, かまいたち=20, 鉄花=0, なめくじ=30]
     },
   ],
 }
@@ -420,7 +420,7 @@ export const ACTION_LOG_ENTRY_19_END_PLAYER_TURN: ActionLogEntrySummary = {
       waitMs: 0,
       batchId: 'turn-end:38',
       metadata: {stage:'turn-end'},
-      snapshot: {player:{hp:75,mana:0},hand:[{id:1,title:'天の鎖'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'},{id:8,title:'再装填'},{id:3,title:'天の鎖'},{id:13,title:'腐食'},{id:14,title:'酸を吐く'}],discardCount:6,exileCount:1,deckCount:0,enemies:[{id:0,hp:0,status:'defeated'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP75/MP0, 手札[天の鎖・ねばねば・粘液飛ばし・天の鎖・再装填・天の鎖・腐食・酸を吐く], 敵HP[オークランサー=0, かまいたち=20, 鉄花=0, なめくじ=30]
+      snapshot: {player:{hp:80,mana:0},hand:[{id:1,title:'天の鎖'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'},{id:8,title:'再装填'},{id:3,title:'天の鎖'}],discardCount:6,exileCount:1,deckCount:0,enemies:[{id:0,hp:0,status:'defeated'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP80/MP0, 手札[天の鎖・ねばねば・粘液飛ばし・天の鎖・再装填・天の鎖], 敵HP[オークランサー=0, かまいたち=20, 鉄花=0, なめくじ=30]
     },
   ],
 }
@@ -441,14 +441,7 @@ export const ACTION_LOG_ENTRY_21_ENEMY_ACT: ActionLogEntrySummary = {
       waitMs: 0,
       batchId: 'enemy-highlight:39',
       metadata: {stage:'enemy-highlight',enemyId:1,actionId:'追い風',skipped:false},
-      snapshot: {player:{hp:75,mana:0},hand:[{id:1,title:'天の鎖'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'},{id:8,title:'再装填'},{id:3,title:'天の鎖'},{id:13,title:'腐食'},{id:14,title:'酸を吐く'}],discardCount:6,exileCount:1,deckCount:0,enemies:[{id:0,hp:0,status:'defeated'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP75/MP0, 手札[天の鎖・ねばねば・粘液飛ばし・天の鎖・再装填・天の鎖・腐食・酸を吐く], 敵HP[オークランサー=0, かまいたち=20, 鉄花=0, なめくじ=30]
-    },
-    // [状態更新] 敵ステータスを反映
-    {
-      waitMs: 0,
-      batchId: 'state-update:40',
-      metadata: {stage:'state-update',enemyStates:[{enemyId:1,states:[{id:'state-acceleration',magnitude:1}]}]},
-      snapshot: {player:{hp:75,mana:0},hand:[{id:1,title:'天の鎖'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'},{id:8,title:'再装填'},{id:3,title:'天の鎖'},{id:13,title:'腐食'},{id:14,title:'酸を吐く'}],discardCount:6,exileCount:1,deckCount:0,enemies:[{id:0,hp:0,status:'defeated'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP75/MP0, 手札[天の鎖・ねばねば・粘液飛ばし・天の鎖・再装填・天の鎖・腐食・酸を吐く], 敵HP[オークランサー=0, かまいたち=20, 鉄花=0, なめくじ=30]
+      snapshot: {player:{hp:80,mana:0},hand:[{id:1,title:'天の鎖'},{id:9,title:'ねばねば'},{id:10,title:'粘液飛ばし'},{id:2,title:'天の鎖'},{id:8,title:'再装填'},{id:3,title:'天の鎖'}],discardCount:6,exileCount:1,deckCount:0,enemies:[{id:0,hp:0,status:'defeated'},{id:1,hp:20,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:30,status:'active'}]}, // 確認: HP80/MP0, 手札[天の鎖・ねばねば・粘液飛ばし・天の鎖・再装填・天の鎖], 敵HP[オークランサー=0, かまいたち=20, 鉄花=0, なめくじ=30]
     },
   ],
 }
