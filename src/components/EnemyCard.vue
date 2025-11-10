@@ -45,6 +45,7 @@ interface ActionChipEntry {
   description: string
   tooltips: Partial<Record<number, string>>
   tooltipKey: string
+  disabled: boolean
 }
 
 const classes = computed(() => ({
@@ -80,6 +81,7 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
         description: descriptionText,
         tooltips,
         tooltipKey: `enemy-action-${props.enemy.id}-${index}`,
+        disabled: Boolean(action.acted),
       }
     })
   }
@@ -93,6 +95,7 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
       description: '',
       tooltips: {},
       tooltipKey: `enemy-action-placeholder-${props.enemy.id}`,
+      disabled: false,
     },
   ]
 })
@@ -243,7 +246,7 @@ defineExpose({ playDamage })
         <li
           v-for="action in formattedActions"
           :key="action.key"
-          class="enemy-card__chip"
+          :class="['enemy-card__chip', { 'enemy-card__chip--disabled': action.disabled }]"
           @mouseleave="() => hideTooltip(action.tooltipKey)"
         >
           <span v-if="action.icon" class="enemy-card__chip-icon">{{ action.icon }}</span>
@@ -400,10 +403,16 @@ defineExpose({ playDamage })
   letter-spacing: 0.04em;
   color: rgba(255, 255, 255, 0.88);
   position: relative;
+  transition: opacity 0.5s ease, filter 0.5s ease;
 }
 
 .enemy-card__chip--plain {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.enemy-card__chip--disabled {
+  opacity: 0.45;
+  filter: grayscale(0.5);
 }
 
 .enemy-card :deep(.enemy-state-enter-active),

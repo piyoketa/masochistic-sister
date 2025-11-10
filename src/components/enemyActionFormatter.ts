@@ -23,11 +23,6 @@ export function formatEnemyActionLabel(
     segments.push({ text: `→ ${action.targetName}` })
   }
 
-  if (action.acted) {
-    const text = '💤行動済み'
-    return { label: text, segments: [{ text }] }
-  }
-
   if (action.type === 'skip') {
     const text = '⛓行動不可'
     return { label: text, segments: [{ text }] }

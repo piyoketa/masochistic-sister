@@ -58,7 +58,6 @@ const processedStageBatchIds = new Set<string>()
 let actingTimer: ReturnType<typeof window.setTimeout> | null = null
 type EnemyCardInstance = InstanceType<typeof EnemyCard>
 const enemyCardRefs = new Map<number, EnemyCardInstance>()
-const actingEnemyActionHints = ref<Map<number, EnemyActionHint[]>>(new Map())
 
 const selectionHintMap = computed<Map<number, EnemySelectionHint>>(() => {
   const hints = props.selectionHints ?? []
@@ -77,12 +76,7 @@ const enemySlots = computed<EnemySlot[]>(() => {
 
   return current.enemies.map((enemySnapshot) => {
     const isActive = enemySnapshot.status === 'active' && enemySnapshot.currentHp > 0
-    const overrideNextActions = actingEnemyActionHints.value.get(enemySnapshot.id)
-    const baseNextActions: EnemyActionHint[] =
-      enemySnapshot.hasActedThisTurn || !enemySnapshot.nextActions
-        ? []
-        : enemySnapshot.nextActions
-    const nextActions = overrideNextActions ?? baseNextActions
+    const baseNextActions: EnemyActionHint[] = enemySnapshot.nextActions ?? []
     const enemyInfo = isActive
       ? {
           id: enemySnapshot.id,
@@ -92,7 +86,7 @@ const enemySlots = computed<EnemySlot[]>(() => {
             current: enemySnapshot.currentHp,
             max: enemySnapshot.maxHp,
           },
-          nextActions,
+          nextActions: baseNextActions,
           skills: enemySnapshot.skills ?? [],
           states: mapStatesToEntries(enemySnapshot.states) ?? [],
         }
@@ -156,7 +150,6 @@ function triggerEnemyHighlight(enemyId: number | null): void {
   if (enemyId !== null && props.snapshot) {
     const enemySnapshot = props.snapshot.enemies.find((enemy) => enemy.id === enemyId)
     if (enemySnapshot) {
-      actingEnemyActionHints.value.set(enemyId, enemySnapshot.nextActions ?? [])
     }
   }
   if (actingTimer) {
@@ -165,9 +158,6 @@ function triggerEnemyHighlight(enemyId: number | null): void {
   actingTimer = window.setTimeout(() => {
     if (actingEnemyId.value === enemyId) {
       actingEnemyId.value = null
-      if (enemyId !== null) {
-        actingEnemyActionHints.value.delete(enemyId)
-      }
     }
     actingTimer = null
   }, 600)

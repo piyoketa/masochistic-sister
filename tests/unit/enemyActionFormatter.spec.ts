@@ -17,14 +17,6 @@ const baseHint = (overrides: Partial<EnemyActionHint>): EnemyActionHint => ({
 })
 
 describe('formatEnemyActionLabel', () => {
-  it('returns acted label when enemy already acted', () => {
-    const { label, segments } = formatEnemyActionLabel(
-      baseHint({ title: '行動済み', type: 'skill', acted: true }),
-    )
-    expect(label).toBe('💤行動済み')
-    expect(segments).toEqual([{ text: '💤行動済み' }])
-  })
-
   it('formats single damage attack', () => {
     const { label, segments } = formatEnemyActionLabel(
       baseHint({
