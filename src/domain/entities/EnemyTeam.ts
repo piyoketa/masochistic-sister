@@ -61,7 +61,10 @@ export class EnemyTeam {
   }
 
   handlePlayerTurnStart(battle: Battle): void {
-    this.membersValue.forEach((enemy) => enemy.handlePlayerTurnStart(battle))
+    this.membersValue.forEach((enemy) => {
+      enemy.handlePlayerTurnStart(battle)
+      enemy.clearPlannedActionsForDisplay()
+    })
   }
 
   endTurn(): void {
@@ -75,6 +78,7 @@ export class EnemyTeam {
   planUpcomingActions(battle: Battle): void {
     for (const enemy of this.membersValue) {
       if (!enemy.isActive()) {
+        enemy.clearPlannedActionsForDisplay()
         continue
       }
       // 複数回の破棄に耐えられるよう、先頭がAllyBuffSkillである限りループする
@@ -105,6 +109,7 @@ export class EnemyTeam {
         }
         break
       }
+      enemy.refreshPlannedActionsForDisplay()
     }
   }
 

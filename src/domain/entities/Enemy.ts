@@ -106,6 +106,18 @@ export class Enemy {
     return this.statusValue
   }
 
+  get plannedActionsForDisplay(): Action[] {
+    return this.actionQueue.getDisplayPlan()
+  }
+
+  refreshPlannedActionsForDisplay(): void {
+    this.actionQueue.snapshotDisplayPlan()
+  }
+
+  clearPlannedActionsForDisplay(): void {
+    this.actionQueue.clearDisplayPlan()
+  }
+
   sampleRng(): number {
     return this.rng()
   }
@@ -248,19 +260,26 @@ export class Enemy {
   }
 
   discardNextScheduledAction(): Action | undefined {
-    return this.actionQueue.discardNext()
+    const discarded = this.actionQueue.discardNext()
+    if (discarded) {
+      this.refreshPlannedActionsForDisplay()
+    }
+    return discarded
   }
 
   queueImmediateAction(action: Action): void {
     this.actionQueue.prepend(action)
+    this.refreshPlannedActionsForDisplay()
   }
 
   enqueueAction(action: Action): void {
     this.actionQueue.append(action)
+    this.refreshPlannedActionsForDisplay()
   }
 
   prependAction(action: Action): void {
     this.actionQueue.prepend(action)
+    this.refreshPlannedActionsForDisplay()
   }
 
   hasAllyTag(tag: string): boolean {

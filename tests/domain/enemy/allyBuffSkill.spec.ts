@@ -50,6 +50,11 @@ const createKamaitachi = (
     allyBuffWeights: { tailwind: tailwindWeight },
   })
 
+function planNextActions(battle: Battle): void {
+  battle.enemyTeam.handlePlayerTurnStart(battle)
+  battle.enemyTeam.planUpcomingActions(battle)
+}
+
 describe('AllyBuffSkill / TailwindAction', () => {
   it('計画段階で対象が選択される', () => {
     const tailwind = new TailwindAction()
@@ -76,7 +81,7 @@ describe('AllyBuffSkill / TailwindAction', () => {
     const battle = createBattleWithEnemies([kamaitachi, lancer, snail])
 
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
-    battle.enemyTeam.planUpcomingActions(battle)
+    planNextActions(battle)
     randomSpy.mockRestore()
 
     expect(tailwind.getPlannedTarget()).toBe(lancer.id)
@@ -97,7 +102,7 @@ describe('AllyBuffSkill / TailwindAction', () => {
 
     const battle = createBattleWithEnemies([kamaitachi, snail])
 
-    battle.enemyTeam.planUpcomingActions(battle)
+    planNextActions(battle)
 
     const remainingActions = kamaitachi.queuedActions
     expect(remainingActions[0]).not.toBeInstanceOf(TailwindAction)
@@ -119,7 +124,7 @@ describe('AllyBuffSkill / TailwindAction', () => {
     const battle = createBattleWithEnemies([kamaitachi, lancer])
 
     const rngSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
-    battle.enemyTeam.planUpcomingActions(battle)
+    planNextActions(battle)
     rngSpy.mockRestore()
 
     expect(tailwind.getPlannedTarget()).toBe(lancer.id)
@@ -143,7 +148,7 @@ describe('AllyBuffSkill / TailwindAction', () => {
     })
 
     const battle = createBattleWithEnemies([kamaitachi, lancer])
-    battle.enemyTeam.planUpcomingActions(battle)
+    planNextActions(battle)
 
     expect(tailwind.getPlannedTarget()).toBe(lancer.id)
 

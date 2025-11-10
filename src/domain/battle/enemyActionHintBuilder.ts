@@ -6,18 +6,23 @@ import { Damages } from '../entities/Damages'
 import { SkipTurnAction } from '../entities/actions/SkipTurnAction'
 
 export function buildEnemyActionHints(battle: Battle, enemy: Enemy): EnemyActionHint[] {
-  if (enemy.hasActedThisTurn) {
+  const planned = enemy.plannedActionsForDisplay
+  if (!planned || planned.length === 0) {
     return []
   }
-  const queued = enemy.queuedActions
-  if (!queued || queued.length === 0) {
-    return []
-  }
-  const [nextAction] = queued
+
+  const [nextAction] = planned
   if (!nextAction) {
     return []
   }
-  return [summarizeEnemyAction(battle, enemy, nextAction)]
+
+  const hint = summarizeEnemyAction(battle, enemy, nextAction)
+  return [
+    {
+      ...hint,
+      acted: enemy.hasActedThisTurn,
+    },
+  ]
 }
 
 function summarizeEnemyAction(battle: Battle, enemy: Enemy, action: BattleAction): EnemyActionHint {

@@ -9,17 +9,20 @@ export interface EnemyActionQueueStateSnapshot {
 export abstract class EnemyActionQueue {
   protected actions: Action[] = []
   protected pending: Action[] = []
+  protected displayPlan: Action[] = []
   protected rng: () => number = Math.random
 
   initialize(actions: Action[], rng: () => number): void {
     this.actions = [...actions]
     this.rng = rng
     this.pending = []
+    this.displayPlan = []
     this.onInitialize()
   }
 
   protected onInitialize(): void {
     this.populate()
+    this.snapshotDisplayPlan()
   }
 
   next(): Action | undefined {
@@ -44,6 +47,7 @@ export abstract class EnemyActionQueue {
   clearAll(): void {
     this.pending.length = 0
     this.actions.length = 0
+    this.displayPlan.length = 0
   }
 
   discardNext(): Action | undefined {
@@ -70,6 +74,18 @@ export abstract class EnemyActionQueue {
 
   protected abstract populate(): void
 
+  snapshotDisplayPlan(): void {
+    this.displayPlan = [...this.pending]
+  }
+
+  getDisplayPlan(): Action[] {
+    return [...this.displayPlan]
+  }
+
+  clearDisplayPlan(): void {
+    this.displayPlan.length = 0
+  }
+
   serializeState(): EnemyActionQueueStateSnapshot {
     return {
       pending: [...this.pending],
@@ -80,5 +96,6 @@ export abstract class EnemyActionQueue {
   restoreState(snapshot: EnemyActionQueueStateSnapshot): void {
     this.pending = [...snapshot.pending]
     this.actions = [...snapshot.actions]
+    this.snapshotDisplayPlan()
   }
 }

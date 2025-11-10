@@ -78,6 +78,11 @@ const enemySlots = computed<EnemySlot[]>(() => {
   return current.enemies.map((enemySnapshot) => {
     const isActive = enemySnapshot.status === 'active' && enemySnapshot.currentHp > 0
     const overrideNextActions = actingEnemyActionHints.value.get(enemySnapshot.id)
+    const baseNextActions: EnemyActionHint[] =
+      enemySnapshot.hasActedThisTurn || !enemySnapshot.nextActions
+        ? []
+        : enemySnapshot.nextActions
+    const nextActions = overrideNextActions ?? baseNextActions
     const enemyInfo = isActive
       ? {
           id: enemySnapshot.id,
@@ -87,7 +92,7 @@ const enemySlots = computed<EnemySlot[]>(() => {
             current: enemySnapshot.currentHp,
             max: enemySnapshot.maxHp,
           },
-          nextActions: overrideNextActions ?? enemySnapshot.nextActions ?? [],
+          nextActions,
           skills: enemySnapshot.skills ?? [],
           states: mapStatesToEntries(enemySnapshot.states) ?? [],
         }
