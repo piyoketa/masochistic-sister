@@ -9,7 +9,7 @@ BattleEnemyArea の責務:
 - 戦闘ログやアニメーションの制御、カード手札の操作には関与しない。
 
 主な通信相手とインターフェース:
-- BattleView（親）: props で snapshot / battle / 選択状態を受け取り、hover-start・hover-end・enemy-click・cancel-selection を emit する。
+- BattleView（親）: props で snapshot / 選択状態を受け取り、hover-start・hover-end・enemy-click・cancel-selection を emit する。
 - EnemyCard: 各敵カードを描画する。`enemy: EnemyInfo`、`selectable: boolean` 等の既存インターフェースを利用。
   `EnemyInfo` は `@/types/battle` の型で、スナップショットから生成した情報を格納する。類似する型として `BattleSnapshot['enemies'][number]` があるが、
   EnemyInfo はビュー描画向けに nextActions や states の整形済み情報を持つ点が異なる。
@@ -18,13 +18,8 @@ BattleEnemyArea の責務:
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
-import type { Battle } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
 import type { EnemyInfo, EnemyTrait, EnemyActionHint } from '@/types/battle'
-import type { Enemy } from '@/domain/entities/Enemy'
-import { Damages } from '@/domain/entities/Damages'
-import { Attack, Action as BattleAction, AllyBuffSkill } from '@/domain/entities/Action'
-import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
 import type { StageEventPayload } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
@@ -37,7 +32,6 @@ interface EnemySelectionHint {
 
 const props = defineProps<{
   snapshot: BattleSnapshot | undefined
-  battle: Battle | undefined
   isInitializing: boolean
   errorMessage: string | null
   isSelectingEnemy: boolean
@@ -64,6 +58,7 @@ const processedStageBatchIds = new Set<string>()
 let actingTimer: ReturnType<typeof window.setTimeout> | null = null
 type EnemyCardInstance = InstanceType<typeof EnemyCard>
 const enemyCardRefs = new Map<number, EnemyCardInstance>()
+const actingEnemyActionHints = ref<Map<number, EnemyActionHint[]>>(new Map())
 
 const selectionHintMap = computed<Map<number, EnemySelectionHint>>(() => {
   const hints = props.selectionHints ?? []
@@ -76,29 +71,24 @@ const selectionHintMap = computed<Map<number, EnemySelectionHint>>(() => {
 
 const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
-  const battle = props.battle
-  if (!current || !battle) {
+  if (!current) {
     return []
   }
 
   return current.enemies.map((enemySnapshot) => {
-    const enemy = battle.enemyTeam.findEnemy(enemySnapshot.id) as Enemy | undefined
     const isActive = enemySnapshot.status === 'active' && enemySnapshot.currentHp > 0
+    const overrideNextActions = actingEnemyActionHints.value.get(enemySnapshot.id)
     const enemyInfo = isActive
       ? {
           id: enemySnapshot.id,
           name: enemySnapshot.name,
-          image: enemy?.image ?? '',
+          image: enemySnapshot.image ?? '',
           hp: {
             current: enemySnapshot.currentHp,
             max: enemySnapshot.maxHp,
           },
-          nextActions: summarizeEnemyActions(battle, enemySnapshot.id),
-          skills:
-            enemy?.actions.map((action) => ({
-              name: action.name,
-              detail: action.describe(),
-            })) ?? [],
+          nextActions: overrideNextActions ?? enemySnapshot.nextActions ?? [],
+          skills: enemySnapshot.skills ?? [],
           states: mapStatesToEntries(enemySnapshot.states) ?? [],
         }
       : undefined
@@ -158,12 +148,21 @@ watch(
 
 function triggerEnemyHighlight(enemyId: number | null): void {
   actingEnemyId.value = enemyId
+  if (enemyId !== null && props.snapshot) {
+    const enemySnapshot = props.snapshot.enemies.find((enemy) => enemy.id === enemyId)
+    if (enemySnapshot) {
+      actingEnemyActionHints.value.set(enemyId, enemySnapshot.nextActions ?? [])
+    }
+  }
   if (actingTimer) {
     window.clearTimeout(actingTimer)
   }
   actingTimer = window.setTimeout(() => {
     if (actingEnemyId.value === enemyId) {
       actingEnemyId.value = null
+      if (enemyId !== null) {
+        actingEnemyActionHints.value.delete(enemyId)
+      }
     }
     actingTimer = null
   }, 600)
@@ -252,114 +251,6 @@ function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
     detail: state.description(),
     magnitude: state.magnitude,
   }))
-}
-
-function summarizeEnemyActions(battle: Battle, enemyId: number): EnemyActionHint[] {
-  const enemy = battle.enemyTeam.findEnemy(enemyId) as Enemy | undefined
-  if (!enemy) {
-    return []
-  }
-
-  if (enemy.hasActedThisTurn) {
-    return [
-      {
-        title: '行動済み',
-        type: 'skill',
-        icon: '',
-        acted: true,
-        description: `${enemy.name}はこのターン既に行動済み。`,
-      },
-    ]
-  }
-
-  const queued = enemy.queuedActions
-  if (!queued || queued.length === 0) {
-    return []
-  }
-
-  const [nextAction] = queued
-  return nextAction ? [summarizeEnemyAction(battle, enemy, nextAction)] : []
-}
-
-function summarizeEnemyAction(battle: Battle, enemy: Enemy, action: BattleAction): EnemyActionHint {
-  if (action instanceof SkipTurnAction) {
-    return {
-      title: action.name,
-      type: 'skip',
-      icon: '',
-      description: action.describe(),
-    }
-  }
-
-  if (action instanceof Attack) {
-    return buildAttackActionHint(battle, enemy, action)
-  }
-
-  return buildSkillActionHint(battle, action)
-}
-
-function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): EnemyActionHint {
-  const damages = action.baseDamages
-  const states = action.inflictStatePreviews
-  const primaryState = states[0]
-
-  const calculatedDamages = new Damages({
-    baseAmount: damages.baseAmount,
-    baseCount: damages.baseCount,
-    type: damages.type,
-    attackerStates: enemy.getStates(),
-    defenderStates: battle.player.getStates(),
-  })
-
-  return {
-    title: action.name,
-    type: 'attack',
-    icon: '',
-    pattern: {
-      amount: damages.baseAmount,
-      count: damages.baseCount,
-      type: damages.type,
-    },
-    calculatedPattern: {
-      amount: calculatedDamages.amount,
-      count: calculatedDamages.count,
-    },
-    status: primaryState
-      ? {
-          name: primaryState.name,
-          magnitude: primaryState.magnitude ?? 1,
-          description: primaryState.description(),
-        }
-      : undefined,
-    description: action.describe(),
-  }
-}
-
-function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyActionHint {
-  const gainState = action.gainStatePreviews[0]
-  let targetName: string | undefined
-  if (action instanceof AllyBuffSkill) {
-    const plannedTargetId = action.getPlannedTarget?.()
-    if (plannedTargetId !== undefined) {
-      const target = battle.enemyTeam.findEnemy(plannedTargetId)
-      targetName = target?.name
-    }
-  }
-
-  return {
-    title: action.name,
-    type: action.type,
-    icon: '',
-    description: action.describe(),
-    targetName,
-    selfState: gainState
-      ? {
-          name: gainState.name,
-          magnitude: gainState.magnitude ?? 1,
-          description: gainState.description(),
-        }
-      : undefined,
-  }
 }
 </script>
 

@@ -84,15 +84,17 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
     })
   }
 
-  return (props.enemy.skills ?? []).map((skill, index) => ({
-    key: `${skill.name}-${index}`,
-    icon: selectLegacyIcon(skill.detail),
-    label: formatLegacyLabel(skill),
-    segments: [{ text: formatLegacyLabel(skill) }],
-    tooltips: { 0: skill.detail },
-    description: skill.detail,
-    tooltipKey: `enemy-skill-${props.enemy.id}-${index}`,
-  }))
+  return [
+    {
+      key: `enemy-action-placeholder-${props.enemy.id}`,
+      icon: '',
+      label: '-',
+      segments: [{ text: '-' }],
+      description: '',
+      tooltips: {},
+      tooltipKey: `enemy-action-placeholder-${props.enemy.id}`,
+    },
+  ]
 })
 
 const stateChips = computed(() => (props.enemy.states ?? []).map(formatStateChip))

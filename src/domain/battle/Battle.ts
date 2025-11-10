@@ -18,6 +18,8 @@ import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
 import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
+import type { EnemyActionHint, EnemySkill } from '@/types/battle'
+import { buildEnemyActionHints } from './enemyActionHintBuilder'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -48,11 +50,14 @@ export interface BattleSnapshot {
   enemies: Array<{
     id: number
     name: string
+    image: string
     currentHp: number
     maxHp: number
     states: State[]
     hasActedThisTurn: boolean
     status: EnemyStatus
+    skills: EnemySkill[]
+    nextActions?: EnemyActionHint[]
   }>
   deck: Card[]
   hand: Card[]
@@ -335,11 +340,17 @@ export class Battle {
         return {
           id,
           name: enemy.name,
+          image: enemy.image,
           currentHp: enemy.currentHp,
           maxHp: enemy.maxHp,
           states: enemy.states,
           hasActedThisTurn: enemy.hasActedThisTurn,
           status: enemy.status,
+          skills: enemy.actions.map((action) => ({
+            name: action.name,
+            detail: action.describe(),
+          })),
+          nextActions: buildEnemyActionHints(this, enemy),
         }
       }),
       deck: this.deckValue.list(),

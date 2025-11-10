@@ -608,7 +608,6 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
             <BattleEnemyArea
               :key="`enemy-area-${viewResetToken}`"
               :snapshot="snapshot"
-              :battle="viewManager.battle"
               :is-initializing="isInitializing"
               :error-message="errorMessage"
               :stage-event="latestStageEvent"
