@@ -20,7 +20,7 @@ export class StickyState extends State {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-   return `被連続攻撃回数+${bonus}`
+   return `被攻撃回数+${bonus}`
   }
 
   override isPreHitModifier(): boolean {

@@ -20,6 +20,6 @@ export class FlurryAction extends Attack {
   }
 
   protected override description(): string {
-    return '特殊効果なしの連続攻撃'
+    return 'ふつうの連続攻撃'
   }
 }

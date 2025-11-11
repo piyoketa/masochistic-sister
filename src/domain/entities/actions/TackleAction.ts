@@ -18,6 +18,6 @@ export class TackleAction extends Attack {
   }
 
   protected override description(): string {
-    return '特殊効果なしの単回攻撃'
+    return 'ふつうの一回攻撃'
   }
 }

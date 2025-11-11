@@ -20,7 +20,7 @@ export class StrengthState extends State {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `与えるダメージを+${bonus}する`
+    return `与ダメージ+${bonus}`
   }
 
   override affectsAttacker(): boolean {

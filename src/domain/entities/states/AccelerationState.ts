@@ -20,7 +20,7 @@ export class AccelerationState extends State {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `攻撃回数を+${bonus}する`
+    return `攻撃回数+${bonus}`
   }
 
   override affectsAttacker(): boolean {
