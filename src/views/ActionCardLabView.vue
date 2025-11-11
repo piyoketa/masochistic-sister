@@ -36,7 +36,8 @@ const statusComparisonCards = showcaseCards.filter((card) => card.type === 'stat
       <h2>実験的デザインC（上下逆転グラデーション）</h2>
       <p>
         スキル: 従来配色の上下をひっくり返し、穏やかな色味を下に配置。<br />
-        アタック: 実験デザインの上下を逆転させ、炎の起点をカード中央付近へ寄せる。
+        アタック: 実験デザインの上下を逆転させ、炎の起点をカード中央付近へ寄せる。<br />
+        状態異常: 赤紫のグラデーションと毒の靄をイメージしたサークルを重ね、毒々しいムードを強調。
       </p>
       <CardList
         :cards="[...skillAttackCards, ...statusComparisonCards]"
@@ -122,6 +123,17 @@ const statusComparisonCards = showcaseCards.filter((card) => card.type === 'stat
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 140, 64, 0.55), transparent 55%),
     linear-gradient(0deg, #fff3d2 0%, #ffd87a 55%, #f6783a 100%) !important;
+}
+
+.card-lab__section--experimental-c :deep(.action-card--status) {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 64, 128, 0.45), transparent 52%),
+    radial-gradient(circle at 80% 15%, rgba(140, 0, 255, 0.35), transparent 55%),
+    linear-gradient(185deg, #4b003a 0%, #1b0013 100%) !important;
+  border-color: rgba(255, 88, 150, 0.85);
+  box-shadow:
+    0 0 14px rgba(255, 64, 140, 0.35),
+    inset 0 0 8px rgba(107, 0, 72, 0.55);
 }
 
 </style>

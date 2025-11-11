@@ -21,7 +21,7 @@ const CARD_TYPE_THEMES: Record<
     muted: 'rgba(20, 24, 24, 0.75)',
     accent: '#f5c46b',
     background:
-      'radial-gradient(circle at 50% 18%, rgba(255, 140, 64, 0.55), transparent 55%), linear-gradient(0deg, #fff3d2 0%, #ffd87a 55%, #f6783a 100%)',
+      'radial-gradient(circle at 50% 40%, rgba(255, 140, 64, 0.55), transparent 55%), linear-gradient(0deg, #fff3d2 0%, #ffd87a 55%, #f6783a 100%)',
   },
   skill: {
     bgStart: '#f0d09b',
@@ -37,6 +37,8 @@ const CARD_TYPE_THEMES: Record<
     text: '#ffe5e5',
     muted: 'rgba(255, 226, 226, 0.75)',
     accent: '#ff7b7b',
+    background:
+      'radial-gradient(circle at 20% 20%, rgba(255, 64, 128, 0.45), transparent 52%), radial-gradient(circle at 80% 15%, rgba(140, 0, 255, 0.35), transparent 55%), linear-gradient(185deg, #4b003a 0%, #1b0013 100%)',
   },
 }
 
