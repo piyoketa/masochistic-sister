@@ -6,10 +6,10 @@ export class StickyState extends State {
   constructor(magnitude = 1) {
     super({
       id: 'state-sticky',
-      name: 'ねばねば',
+      name: '鈍化',
       magnitude,
       cardDefinition: {
-        title: 'ねばねば',
+        title: '鈍化',
         cardType: 'status',
         type: new StatusTypeCardTag(),
         target: undefined,

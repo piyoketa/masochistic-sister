@@ -1,7 +1,7 @@
 import { Relic } from './Relic'
 
 /**
- * 滑りやすさ：ねばねばがあると攻撃回数アップ
+ * 滑りやすさ：鈍化があると攻撃回数アップ
  */
 export class SlipperyTouchRelic extends Relic {
   readonly id = 'slippery-touch'
@@ -10,6 +10,6 @@ export class SlipperyTouchRelic extends Relic {
   readonly icon = '💦'
 
   description(): string {
-    return '永続：手札に「ねばねば」がある間、攻撃カードの攻撃回数が+1される。'
+    return '永続：手札に「鈍化」がある間、攻撃カードの攻撃回数が+1される。'
   }
 }

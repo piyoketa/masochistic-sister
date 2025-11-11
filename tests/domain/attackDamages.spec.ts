@@ -216,7 +216,7 @@ describe('Attack#calcDamagesの挙動', () => {
     expect(damages.defenderStates).toContain(corrosion)
   })
 
-  it('硬い殻(20)があるとダメージが10に減少する', () => {
+  it('防御(20)があるとダメージが10に減少する', () => {
     const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
     const defenderEnemy = createEnemyWithStates()
@@ -257,7 +257,7 @@ describe('Attack#calcDamagesの挙動', () => {
     expect(damages.defenderStates).not.toContain(defenderAcceleration)
   })
 
-  it('単体攻撃はねばねばによる回数増加を受けない', () => {
+  it('単体攻撃は鈍化による回数増加を受けない', () => {
     const action = new TackleAction()
     const attacker = createPlayerWithHand().player
     const sticky = new StickyState(1)

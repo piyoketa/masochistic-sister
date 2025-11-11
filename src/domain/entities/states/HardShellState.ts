@@ -6,10 +6,10 @@ export class HardShellState extends State {
   constructor(magnitude = 20) {
     super({
       id: 'state-hard-shell',
-      name: '硬い殻',
+      name: '防御',
       magnitude,
       cardDefinition: {
-        title: '硬い殻',
+        title: '防御',
         cardType: 'status',
         type: new StatusTypeCardTag(),
         target: undefined,
@@ -20,7 +20,7 @@ export class HardShellState extends State {
 
   override description(): string {
     const reduction = this.magnitude ?? 0
-    return `受けるダメージを${reduction}軽減する`
+    return `被ダメージ-${reduction}`
   }
 
   override affectsDefender(): boolean {

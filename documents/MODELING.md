@@ -39,7 +39,7 @@
 | --- | --- |
 | `baseDamages` (`Damages`) | 技の基本ダメージ定義。ダメージ量・回数・参照 State の記録をまとめて扱います。 |
 | `execute(context)` | 攻撃共通フロー（事前処理→ダメージ計算→HP 減算→記憶カード生成）を実装。`beforeAttack`/`onAfterDamage` で個別の副次効果を差し込めます。 |
-| `calcDamages(attacker, defender)` | 筋力/加速/腐食/硬い殻 など双方の `State` を走査して最終ダメージを算出し、参照した State を `Damages` 内に格納します。 |
+| `calcDamages(attacker, defender)` | 筋力/加速/腐食/防御 など双方の `State` を走査して最終ダメージを算出し、参照した State を `Damages` 内に格納します。 |
 | `cloneWithDamages(damages, overrides)` | 同一アクションをダメージのみ変更した「記憶カード」として複製するためのユーティリティ。 |
 | `setOverrideDamages(damages)` | `beforeAttack` などでダメージを上書きしたいときに使用します。`calcDamages` 呼び出し前に 1 度だけ有効。 |
 
