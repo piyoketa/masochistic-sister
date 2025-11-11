@@ -333,7 +333,10 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
             </template>
           </template>
           <template v-else>
-            {{ props.description }}
+            <template v-for="(line, index) in props.description.split('\n')" :key="index">
+              <span>{{ line }}</span>
+              <br v-if="index < props.description.split('\n').length - 1" />
+            </template>
           </template>
         </p>
         <div v-if="effectTagList.length" class="tag-list tag-list--effect">
@@ -373,7 +376,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   box-sizing: border-box;
   width: 120px;
   height: 170px;
-  padding: 5px 12px;
+  padding: 5px 12px 12px;
   border-radius: 12px;
   background: var(
     --card-background,
@@ -527,11 +530,11 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   font-size: 10px;
   line-height: 1.4;
   color: var(--card-text-color, rgba(245, 245, 245, 0.92));
-  padding-right: 8px;
 }
 .action-card--attack .card-description {
   font-size: 14px;
   font-weight: 700;
+  padding-right: 8px;
 }
 
 .damage-panel {
@@ -604,7 +607,9 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 
 .damage-value--boosted,
 .card-description .value--boosted {
-  color: #4cff9f;
-  text-shadow: 0 0 6px rgba(76, 255, 159, 0.35);
+  color: #1f8c68;
+  text-shadow:
+    0 0 6px rgba(31, 140, 104, 0.35),
+    0 0 1px rgba(0, 0, 0, 0.6);
 }
 </style>

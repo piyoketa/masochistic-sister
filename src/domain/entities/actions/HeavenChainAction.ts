@@ -27,7 +27,7 @@ export class HeavenChainAction extends Skill {
   }
 
   protected override description(): string {
-    return 'このターン、選択した敵の行動を封じる'
+    return 'このターン\n行動を封じる'
   }
 
   protected override buildOperations(): Operation[] {

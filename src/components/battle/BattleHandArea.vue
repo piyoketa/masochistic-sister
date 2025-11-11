@@ -1113,7 +1113,7 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
 
 .hand-counter {
   position: absolute;
-  bottom: 20px;
+  bottom: 10px;
   color: rgba(240, 235, 250, 0.9);
   font-size: 12px;
   letter-spacing: 0.05em;
@@ -1230,14 +1230,15 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
 }
 
 .hand-track {
-  --card-width: 150px;
+  --card-width: 140px;
   --card-overlap: 48px;
   display: flex;
   flex-wrap: nowrap;
   justify-content: center;
   align-items: flex-end;
   gap: 0;
-  min-height: 150px;
+  min-height: 170px;
+  margin-top: -10px;
 }
 
 .hand-card-wrapper {

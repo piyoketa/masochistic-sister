@@ -20,7 +20,7 @@ export class MasochisticAuraAction extends Skill {
   }
 
   protected override description(): string {
-    return '選択した敵を即座に行動させる'
+    return '攻撃予定の敵が\n即座に行動する'
   }
 
   protected override buildOperations(): Operation[] {

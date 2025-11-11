@@ -16,7 +16,7 @@ export class BattlePrepAction extends Skill {
   }
 
   protected override description(): string {
-    return '次のターンに獲得するマナを+1する'
+    return '次のターン開始時\nマナ+1'
   }
 
   protected override perform(context: ActionContext): void {

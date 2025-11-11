@@ -20,7 +20,7 @@ export class CorrosionState extends State {
 
   override description(): string {
     const bonus = (this.magnitude ?? 0) * 10
-    return `ダメージを受けるとき、+${bonus}`
+    return `被ダメージ+${bonus}`
   }
 
   override affectsDefender(): boolean {
