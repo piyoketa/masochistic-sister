@@ -42,6 +42,11 @@ const router = createRouter({
       name: 'deck-view',
       component: () => import('@/views/DeckView.vue'),
     },
+    {
+      path: '/lab/action-cards',
+      name: 'action-card-lab',
+      component: () => import('@/views/ActionCardLabView.vue'),
+    },
   ],
 })
 

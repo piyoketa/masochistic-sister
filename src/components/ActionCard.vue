@@ -1,25 +1,35 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { CardType, AttackStyle, CardTagInfo } from '@/types/battle'
+import type { CardType, AttackStyle, CardTagInfo, DescriptionSegment } from '@/types/battle'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const CARD_TYPE_THEMES: Record<
   CardType,
-  { bgStart: string; bgEnd: string; text: string; accent: string; muted: string }
+  {
+    bgStart: string
+    bgEnd: string
+    text: string
+    accent: string
+    muted: string
+    background?: string
+  }
 > = {
   attack: {
-    bgStart: '#fff3d0',
-    bgEnd: '#f4d8a0',
+    bgStart: '#fff3d2',
+    bgEnd: '#f6783a',
     text: '#2f1506',
-    muted: 'rgba(60, 33, 12, 0.7)',
+    muted: 'rgba(20, 24, 24, 0.75)',
     accent: '#f5c46b',
+    background:
+      'radial-gradient(circle at 50% 18%, rgba(255, 140, 64, 0.55), transparent 55%), linear-gradient(0deg, #fff3d2 0%, #ffd87a 55%, #f6783a 100%)',
   },
   skill: {
-    bgStart: '#fff3d0',
-    bgEnd: '#f0d09b',
+    bgStart: '#f0d09b',
+    bgEnd: '#fff3d0',
     text: '#2f1506',
     muted: 'rgba(60, 33, 12, 0.7)',
     accent: '#f5c46b',
+    background: 'linear-gradient(180deg, #f0d09b 0%, #fff3d0 100%)',
   },
   status: {
     bgStart: '#5c0f12',
@@ -41,7 +51,7 @@ const props = defineProps<{
   cost: number
   illustration?: string
   description: string
-  descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
+  descriptionSegments?: DescriptionSegment[]
   attackStyle?: AttackStyle
   primaryTags?: CardTagInfo[]
   effectTags?: CardTagInfo[]
@@ -52,6 +62,8 @@ const props = defineProps<{
   affordable?: boolean
   damageAmount?: number
   damageCount?: number
+  damageAmountBoosted?: boolean
+  damageCountBoosted?: boolean
   variant?: 'default' | 'frame'
 }>()
 
@@ -84,7 +96,7 @@ const cardStyleVars = computed(() => {
   const theme = CARD_TYPE_THEMES[props.type] ?? CARD_TYPE_THEMES.skill
   const tagBg =
     props.type === 'status' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'
-  return {
+  const vars: Record<string, string> = {
     '--card-bg-start': theme.bgStart,
     '--card-bg-end': theme.bgEnd,
     '--card-text-color': theme.text,
@@ -93,6 +105,10 @@ const cardStyleVars = computed(() => {
     '--card-border-color': isPlayable.value ? BORDER_COLORS.playable : BORDER_COLORS.blocked,
     '--card-tag-bg': tagBg,
   }
+  if (theme.background) {
+    vars['--card-background'] = theme.background
+  }
+  return vars
 })
 
 const primaryTagList = computed(() => props.primaryTags ?? [])
@@ -126,6 +142,12 @@ const damageAmountClass = computed(() => {
   return 'damage-amount--100'
 })
 
+const damageAmountClasses = computed(() => [
+  'damage-amount',
+  damageAmountClass.value,
+  { 'damage-value--boosted': props.damageAmountBoosted },
+])
+
 const damageCountClass = computed(() => {
   if (typeof props.damageCount !== 'number' || props.damageCount <= 1) {
     return null
@@ -143,7 +165,14 @@ const damageCountClass = computed(() => {
   return 'damage-count--100'
 })
 
+const damageCountClasses = computed(() => [
+  'damage-count',
+  damageCountClass.value,
+  { 'damage-value--boosted': props.damageCountBoosted },
+])
+
 let activeTag: { id: string; description: string } | null = null
+let activeSegment: { key: string; tooltip: string } | null = null
 
 const handleEnter = () => {
   if (props.disabled || isFrameVariant.value) {
@@ -158,6 +187,10 @@ const handleLeave = () => {
     hideOverlay()
   }
   activeTag = null
+  if (activeSegment && descriptionOverlay.text === activeSegment.tooltip) {
+    hideOverlay()
+  }
+  activeSegment = null
 }
 
 function handleTagEnter(event: MouseEvent, tag: CardTagInfo): void {
@@ -203,6 +236,49 @@ function handleTagLeave(tag: CardTagInfo): void {
   hideOverlay()
   activeTag = null
 }
+
+function handleSegmentEnter(event: MouseEvent, key: string, tooltip?: string): void {
+  if (isFrameVariant.value) {
+    return
+  }
+  if (!tooltip) {
+    activeSegment = null
+    return
+  }
+  activeSegment = { key, tooltip }
+  showOverlay(tooltip, { x: event.clientX, y: event.clientY })
+}
+
+function handleSegmentMove(event: MouseEvent, key: string, tooltip?: string): void {
+  if (isFrameVariant.value || !tooltip) {
+    return
+  }
+  if (
+    !descriptionOverlay.visible ||
+    !activeSegment ||
+    activeSegment.key !== key ||
+    activeSegment.tooltip !== tooltip
+  ) {
+    return
+  }
+  updatePosition({ x: event.clientX, y: event.clientY })
+}
+
+function handleSegmentLeave(key: string, tooltip?: string): void {
+  if (!tooltip || isFrameVariant.value) {
+    return
+  }
+  if (
+    !activeSegment ||
+    activeSegment.key !== key ||
+    activeSegment.tooltip !== tooltip ||
+    descriptionOverlay.text !== tooltip
+  ) {
+    return
+  }
+  hideOverlay()
+  activeSegment = null
+}
 </script>
 
 <template>
@@ -223,19 +299,20 @@ function handleTagLeave(tag: CardTagInfo): void {
 
       <header class="card-header">
         <h4>{{ props.title }}</h4>
+        <div v-if="primaryTagText" class="primary-tag-text">
+          {{ primaryTagText }}
+        </div>
       </header>
-
-      <div v-if="primaryTagText" class="primary-tag-text">
-        {{ primaryTagText }}
-      </div>
 
       <section class="card-body">
         <div v-if="showDamagePanel" class="damage-panel">
-          <span class="damage-amount" :class="damageAmountClass">{{ props.damageAmount }}</span>
+          <span :class="damageAmountClasses">
+            {{ props.damageAmount }}
+            <span class="damage-unit">ダメージ</span>
+          </span>
           <span
             v-if="props.damageCount && props.damageCount > 1"
-            class="damage-count"
-            :class="damageCountClass"
+            :class="damageCountClasses"
           >
             ×{{ props.damageCount }}
           </span>
@@ -244,7 +321,13 @@ function handleTagLeave(tag: CardTagInfo): void {
           <template v-if="props.descriptionSegments && props.descriptionSegments.length">
             <template v-for="(segment, index) in props.descriptionSegments" :key="index">
               <br v-if="segment.text === '\n'" />
-              <span v-else :class="{ 'value--boosted': segment.highlighted }">
+              <span
+                v-else
+                :class="{ 'value--boosted': segment.highlighted }"
+                @mouseenter="(event) => handleSegmentEnter(event, `segment-${index}`, segment.tooltip)"
+                @mousemove="(event) => handleSegmentMove(event, `segment-${index}`, segment.tooltip)"
+                @mouseleave="() => handleSegmentLeave(`segment-${index}`, segment.tooltip)"
+              >
                 {{ segment.text }}
               </span>
             </template>
@@ -287,22 +370,22 @@ function handleTagLeave(tag: CardTagInfo): void {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  width: 94px;
-  height: 140px;
-  padding: 12px;
+  box-sizing: border-box;
+  width: 120px;
+  height: 170px;
+  padding: 5px 12px;
   border-radius: 12px;
-  background: linear-gradient(
-    180deg,
-    var(--card-bg-start, rgba(31, 29, 44, 1)),
-    var(--card-bg-end, rgba(18, 18, 24, 1))
+  background: var(
+    --card-background,
+    linear-gradient(180deg, var(--card-bg-start, #1f1d2c), var(--card-bg-end, #121218))
   );
-  border: 5px solid var(--card-border-color, #ffe27a);
+  border: 2px solid var(--card-border-color, #ffe27a);
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.45);
   transition: transform 140ms ease, box-shadow 140ms ease;
   cursor: pointer;
   outline: none;
   z-index: 1;
-  color: var(--card-text-color, #f5f5f5);
+  color: var(--card-text-color, #f5f5f5);   
 }
 
 .action-card:hover,
@@ -357,10 +440,13 @@ function handleTagLeave(tag: CardTagInfo): void {
 
 .card-header {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding-bottom: 6px;
+  gap: 2px;
+  margin-bottom: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  min-height: 42px;
 }
 
 .card-header h4 {
@@ -371,13 +457,22 @@ function handleTagLeave(tag: CardTagInfo): void {
 }
 
 .primary-tag-text {
-  margin-top: 4px;
-  margin-bottom: 4px;
+  margin-top: 0;
+  margin-bottom: 0;
   font-size: 9px;
   letter-spacing: 0.08em;
   color: var(--card-muted-color, rgba(245, 245, 245, 0.75));
   text-align: center;
   white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+}
+.action-card--attack .primary-tag-text {
+  color: rgba(0, 33, 33, 0.75);
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.action-card--attack .primary-tag-text{
+  color: rgb(0, 33, 33, 0.75);
 }
 
 .tag-list {
@@ -432,10 +527,11 @@ function handleTagLeave(tag: CardTagInfo): void {
   font-size: 10px;
   line-height: 1.4;
   color: var(--card-text-color, rgba(245, 245, 245, 0.92));
+  padding-right: 8px;
 }
-
-.card-description .value--boosted {
-  color: #4cff9f;
+.action-card--attack .card-description {
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .damage-panel {
@@ -447,10 +543,18 @@ function handleTagLeave(tag: CardTagInfo): void {
   color: var(--card-text-color, #2f1b08);
 }
 
-.damage-amount {
+.damage-amount,
+.damage-count {
   font-weight: 800;
   color: var(--card-text-color, #2f1b08);
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.damage-count {
+  font-weight: 700;
+  opacity: 0.85;
 }
 
 .damage-amount--100 {
@@ -473,12 +577,6 @@ function handleTagLeave(tag: CardTagInfo): void {
   font-size: 30px;
 }
 
-.damage-count {
-  font-weight: 700;
-  color: var(--card-text-color, #2f1b08);
-  opacity: 0.85;
-}
-
 .damage-count--100 {
   font-size: 14px;
 }
@@ -493,5 +591,20 @@ function handleTagLeave(tag: CardTagInfo): void {
 
 .damage-count--130 {
   font-size: 17px;
+}
+
+.damage-unit {
+  font-size: 7px;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  display: block;
+  margin-top: -2px;
+}
+
+.damage-value--boosted,
+.card-description .value--boosted {
+  color: #4cff9f;
+  text-shadow: 0 0 6px rgba(76, 255, 159, 0.35);
 }
 </style>

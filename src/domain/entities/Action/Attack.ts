@@ -27,7 +27,6 @@ import type { ActionContext, ActionType, BaseActionProps } from './ActionBase'
 import { Action } from './ActionBase'
 import { isPlayerEntity } from '../typeGuards'
 import type { CardDefinition } from '../CardDefinition'
-import type { DamagePattern } from '../Damages'
 
 export interface AttackProps extends BaseActionProps {
   baseDamage: Damages
@@ -388,35 +387,20 @@ export abstract class Attack extends Action {
   }
 
   describeForPlayerCard(options?: PlayerAttackDescriptionOptions): PlayerAttackDescription {
-    const base = options?.baseDamages ?? this.baseProfile
-    const display = options?.displayDamages ?? base
-
-    const baseAmount = Math.max(0, Math.floor(base.amount))
-    const baseCount = Math.max(1, Math.floor(base.count))
-    const amount = Math.max(0, Math.floor(display.amount))
-    const count = Math.max(1, Math.floor(display.count))
-    const pattern: DamagePattern = display.type ?? base.type
-    const isMulti = pattern === 'multi' || count > 1
-
-    const amountChanged = amount !== baseAmount
-    const countChanged = count !== baseCount
-
-    const segments: Array<{ text: string; highlighted?: boolean }> = []
-    segments.push({ text: isMulti ? '⚔️' : '💥' })
-    segments.push({ text: `${amount}`, highlighted: amountChanged })
-    if (isMulti) {
-      segments.push({ text: `×${count}`, highlighted: countChanged })
-    }
-    segments.push({ text: 'ダメージ' })
-
     const inflictedStates = options?.inflictedStates ?? this.inflictStatePreviews
-    if (inflictedStates.length > 0) {
-      for (const state of inflictedStates) {
+    const segments: PlayerAttackDescription['segments'] = []
+
+    for (const [index, state] of inflictedStates.entries()) {
+      if (index > 0) {
         segments.push({ text: '\n' })
-        const magnitude = state.magnitude !== undefined ? `(${state.magnitude})` : ''
-        segments.push({ text: `${state.name}${magnitude}` })
-        segments.push({ text: 'を与える' })
       }
+      const magnitude =
+        state.magnitude !== undefined && state.magnitude >= 2 ? `(${state.magnitude})` : ''
+      const description = state.description?.() ?? ''
+      segments.push({
+        text: `🌀${state.name}${magnitude}`,
+        tooltip: description || undefined,
+      })
     }
 
     const label = segments.map((segment) => segment.text).join('')
@@ -513,5 +497,5 @@ export interface PlayerAttackDescriptionOptions {
 
 export interface PlayerAttackDescription {
   label: string
-  segments: Array<{ text: string; highlighted?: boolean }>
+  segments: Array<{ text: string; highlighted?: boolean; tooltip?: string }>
 }

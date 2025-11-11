@@ -60,6 +60,12 @@ export type CardTagInfo = {
   description?: string
 }
 
+export type DescriptionSegment = {
+  text: string
+  highlighted?: boolean
+  tooltip?: string
+}
+
 export type CardInfo = {
   id: string
   title: string
@@ -67,11 +73,13 @@ export type CardInfo = {
   cost: number
   illustration: string
   description: string
-  descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
+  descriptionSegments?: DescriptionSegment[]
   attackStyle?: AttackStyle
   primaryTags?: CardTagInfo[]
   effectTags?: CardTagInfo[]
   categoryTags?: CardTagInfo[]
   damageAmount?: number
   damageCount?: number
+  damageAmountBoosted?: boolean
+  damageCountBoosted?: boolean
 }

@@ -38,7 +38,8 @@ export function formatEnemyActionLabel(
     const amount = Math.max(0, Math.floor(calculatedPattern?.amount ?? pattern?.amount ?? 0))
     const count = Math.max(1, Math.floor(calculatedPattern?.count ?? pattern?.count ?? 1))
 
-    const isMulti = pattern?.type === 'multi' || count > 1
+    const attackPattern = calculatedPattern?.type ?? pattern?.type ?? 'single'
+    const isMulti = attackPattern === 'multi'
     const damageIcon = isMulti ? '⚔️' : '💥'
 
     if (includeTitle) {

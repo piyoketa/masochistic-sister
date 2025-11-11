@@ -19,7 +19,7 @@ import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Card } from '@/domain/entities/Card'
 import type { Enemy } from '@/domain/entities/Enemy'
 import ActionCard from '@/components/ActionCard.vue'
-import type { CardInfo, CardTagInfo, AttackStyle } from '@/types/battle'
+import type { CardInfo, CardTagInfo, AttackStyle, DescriptionSegment } from '@/types/battle'
 import {
   TargetEnemyOperation,
   SelectHandCardOperation,
@@ -196,12 +196,14 @@ function buildHandEntry(card: Card, index: number, currentMana: number): HandEnt
     description,
     descriptionSegments,
     attackStyle,
-    primaryTags,
-    effectTags,
-    categoryTags,
-    damageAmount,
-    damageCount,
-  } = buildCardPresentation(card, index)
+  primaryTags,
+  effectTags,
+  categoryTags,
+  damageAmount,
+  damageCount,
+  damageAmountBoosted,
+  damageCountBoosted,
+} = buildCardPresentation(card, index)
 
   return {
     key: identifier,
@@ -219,6 +221,8 @@ function buildHandEntry(card: Card, index: number, currentMana: number): HandEnt
       categoryTags,
       damageAmount,
       damageCount,
+      damageAmountBoosted,
+      damageCountBoosted,
     },
     card,
     id: card.id,
@@ -229,13 +233,15 @@ function buildHandEntry(card: Card, index: number, currentMana: number): HandEnt
 
 function buildCardPresentation(card: Card, index: number): {
   description: string
-  descriptionSegments?: Array<{ text: string; highlighted?: boolean }>
+  descriptionSegments?: DescriptionSegment[]
   attackStyle?: AttackStyle
   primaryTags: CardTagInfo[]
   effectTags: CardTagInfo[]
   categoryTags: CardTagInfo[]
   damageAmount?: number
   damageCount?: number
+  damageAmountBoosted?: boolean
+  damageCountBoosted?: boolean
 } {
   const definition = card.definition
   const primaryTags: CardTagInfo[] = []
@@ -244,10 +250,12 @@ function buildCardPresentation(card: Card, index: number): {
   const seenTagIds = new Set<string>()
 
   let description = card.description
-  let descriptionSegments: Array<{ text: string; highlighted?: boolean }> | undefined
+  let descriptionSegments: DescriptionSegment[] | undefined
   let attackStyle: AttackStyle | undefined
   let damageAmount: number | undefined
   let damageCount: number | undefined
+  let damageAmountBoosted = false
+  let damageCountBoosted = false
 
   addTagEntry(definition.type, primaryTags, seenTagIds, (tag) => tag.name)
   if ('target' in definition) {
@@ -261,15 +269,25 @@ function buildCardPresentation(card: Card, index: number): {
 
   if (action instanceof Attack) {
     const damages = action.baseDamages
-    damageAmount = damages.baseAmount
-    damageCount = damages.baseCount
+    const baseDamageAmount = Math.max(0, Math.floor(damages.baseAmount))
+    const baseDamageCount = Math.max(1, Math.floor(damages.baseCount ?? 1))
+    damageAmount = baseDamageAmount
+    damageCount = baseDamageCount
     const formatted = action.describeForPlayerCard({
       baseDamages: damages,
       displayDamages: damages,
       inflictedStates: action.inflictStatePreviews,
     })
-    description = formatted.label
-    descriptionSegments = formatted.segments
+    ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(formatted))
+    const applyDamageDisplay = (displayDamages: Damages): void => {
+      const nextAmount = Math.max(0, Math.floor(displayDamages.amount))
+      const nextCount = Math.max(1, Math.floor(displayDamages.count ?? 1))
+      damageAmount = nextAmount
+      damageCount = nextCount
+      damageAmountBoosted = nextAmount !== baseDamageAmount
+      damageCountBoosted = nextCount !== baseDamageCount
+    }
+    applyDamageDisplay(damages)
 
     const targetEnemyId = props.hoveredEnemyId
     if (battle && interactionState.selectedCardKey === `card-${card.id ?? index}` && targetEnemyId !== null) {
@@ -287,8 +305,8 @@ function buildCardPresentation(card: Card, index: number): {
           displayDamages: calculatedDamages,
           inflictedStates: action.inflictStatePreviews,
         })
-        description = recalculated.label
-        descriptionSegments = recalculated.segments
+        ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(recalculated))
+        applyDamageDisplay(calculatedDamages)
       }
     }
 
@@ -298,8 +316,7 @@ function buildCardPresentation(card: Card, index: number): {
     } else if (typeTagId === 'tag-type-single-attack') {
       attackStyle = 'single'
     } else {
-      const count = Math.max(1, Math.floor(damages.baseCount ?? 1))
-      attackStyle = count > 1 ? 'multi' : 'single'
+      attackStyle = damages.type === 'multi' ? 'multi' : 'single'
     }
   }
 
@@ -312,6 +329,8 @@ function buildCardPresentation(card: Card, index: number): {
     categoryTags,
     damageAmount,
     damageCount,
+    damageAmountBoosted,
+    damageCountBoosted,
   }
 }
 
@@ -350,6 +369,29 @@ function addTagEntries(
       description: tag.description,
     })
   }
+}
+
+function stripDamageInfoFromDescription(formatted: {
+  label: string
+  segments: DescriptionSegment[]
+}): { label: string; segments: DescriptionSegment[] } {
+  const trimmed = trimDamageSegments(formatted.segments)
+  return {
+    label: trimmed.map((segment) => segment.text).join(''),
+    segments: trimmed,
+  }
+}
+
+function trimDamageSegments(segments: DescriptionSegment[]): DescriptionSegment[] {
+  const damageLabelIndex = segments.findIndex((segment) => segment.text === 'ダメージ')
+  if (damageLabelIndex === -1) {
+    return [...segments]
+  }
+  let trimmed = segments.slice(damageLabelIndex + 1)
+  while (trimmed.length > 0 && trimmed[0].text === '\n') {
+    trimmed = trimmed.slice(1)
+  }
+  return trimmed
 }
 
 function isCardDisabled(entry: HandEntry): boolean {

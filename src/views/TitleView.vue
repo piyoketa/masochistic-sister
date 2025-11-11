@@ -47,6 +47,11 @@ const demoLinks: LinkEntry[] = [
     description: '被ダメージ演出 + 効果音のプレビュー',
     to: '/demo/damage-effects',
   },
+  {
+    label: 'ActionCard実験場',
+    description: 'カード配色の比較実験ページ',
+    to: '/lab/action-cards',
+  },
 ]
 </script>
 
