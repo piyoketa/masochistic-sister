@@ -27,14 +27,18 @@ interface UseHandAnimationsOptions {
 
 const ACTION_CARD_WIDTH = 94
 const ACTION_CARD_HEIGHT = 140
+const DRAW_ANIMATION_FALLBACK_MS = 600
+const DRAW_ANIMATION_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
+const DRAW_ANIMATION_CLEANUP_BUFFER_MS = 100
 
 export function useHandAnimations(options: UseHandAnimationsOptions) {
   const hiddenCardIds = ref<Set<number>>(new Set())
   const visibleCardIds = ref<Set<number>>(new Set())
   const floatingCards = reactive<FloatingCardAnimation[]>([])
   const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
-  const deckDrawRetryCounters = new Map<number, number>()
   const cardElementRefs = new Map<number, HTMLElement>()
+  const drawAnimationCleanupTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
+  const drawAnimationStartTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
 
   function ensureVisibleCardId(cardId: number | undefined): void {
     if (cardId === undefined || hiddenCardIds.value.has(cardId) || visibleCardIds.value.has(cardId)) {
@@ -69,36 +73,39 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     visibleCardIds.value = nextVisible
   }
 
-  function startDeckDrawAnimation(cardId: number, attempt = 0): void {
+  function startDeckDrawAnimation(cardId: number, config?: { durationMs?: number; delayMs?: number }): void {
     const cardElement = cardElementRefs.get(cardId)
     const deckElement = options.deckCounterRef.value
-    const zoneElement = options.handZoneRef.value
-    const entry = options.findHandEntryByCardId(cardId)
-    if (!cardElement || !deckElement || !zoneElement || !entry) {
-      const retries = deckDrawRetryCounters.get(cardId) ?? attempt
-      if (retries < 5) {
-        deckDrawRetryCounters.set(cardId, retries + 1)
-        window.setTimeout(() => startDeckDrawAnimation(cardId, retries + 1), 50)
-      } else {
-        deckDrawRetryCounters.delete(cardId)
-      }
+    if (!cardElement || !deckElement) {
+      console.error('[BattleHandArea][deck-draw] 必要なDOM要素を取得できずアニメーションを省略しました', {
+        cardId,
+        hasCardElement: Boolean(cardElement),
+        hasDeckElement: Boolean(deckElement),
+      })
       return
     }
-    deckDrawRetryCounters.delete(cardId)
-    const deckRect = deckElement.getBoundingClientRect()
-    const targetRect = cardElement.getBoundingClientRect()
-    const zoneRect = zoneElement.getBoundingClientRect()
-    hideCard(cardId)
-    spawnFloatingCard({
-      cardInfo: entry.info,
-      operations: entry.operations,
-      affordable: entry.affordable,
-      fromRect: deckRect,
-      toRect: targetRect,
-      zoneRect,
-      variant: 'draw',
-      onComplete: () => showCard(cardId),
-    })
+    const duration = normalizeDuration(config?.durationMs)
+    const delayMs = Math.max(0, config?.delayMs ?? 0)
+    cleanupDrawAnimation(cardId)
+    if (delayMs > 0) {
+      prepareCardForDelayedAnimation(cardElement)
+    }
+
+    const startAnimation = () => {
+      drawAnimationStartTimers.delete(cardId)
+      applyDrawTransform(cardElement, deckElement, duration)
+      const cleanupTimer = window.setTimeout(() => {
+        cleanupDrawAnimation(cardId)
+      }, duration + DRAW_ANIMATION_CLEANUP_BUFFER_MS)
+      drawAnimationCleanupTimers.set(cardId, cleanupTimer)
+    }
+
+    if (delayMs > 0) {
+      const startTimer = window.setTimeout(startAnimation, delayMs)
+      drawAnimationStartTimers.set(cardId, startTimer)
+    } else {
+      startAnimation()
+    }
   }
 
   function startCardRemovalAnimation(
@@ -220,6 +227,11 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
       cardElementRefs.set(cardId, target)
       ensureVisibleCardId(cardId)
     } else {
+      cleanupDrawAnimation(cardId)
+      const previous = cardElementRefs.get(cardId)
+      if (previous) {
+        cleanupInlineAnimation(previous)
+      }
       cardElementRefs.delete(cardId)
     }
   }
@@ -246,7 +258,28 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
   function cleanup(): void {
     pendingRemovalTimers.forEach((timer) => window.clearTimeout(timer))
     pendingRemovalTimers.clear()
-    deckDrawRetryCounters.clear()
+    drawAnimationCleanupTimers.forEach((timer) => window.clearTimeout(timer))
+    drawAnimationCleanupTimers.clear()
+    drawAnimationStartTimers.forEach((timer) => window.clearTimeout(timer))
+    drawAnimationStartTimers.clear()
+    cardElementRefs.forEach((element) => cleanupInlineAnimation(element))
+  }
+
+  function cleanupDrawAnimation(cardId: number): void {
+    const startTimer = drawAnimationStartTimers.get(cardId)
+    if (startTimer) {
+      window.clearTimeout(startTimer)
+      drawAnimationStartTimers.delete(cardId)
+    }
+    const timer = drawAnimationCleanupTimers.get(cardId)
+    if (timer) {
+      window.clearTimeout(timer)
+      drawAnimationCleanupTimers.delete(cardId)
+    }
+    const element = cardElementRefs.get(cardId)
+    if (element) {
+      cleanupInlineAnimation(element)
+    }
   }
 
   return {
@@ -260,6 +293,62 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     visibleCardIds,
     markCardsVisible,
   }
+}
+
+function applyDrawTransform(cardElement: HTMLElement, deckElement: HTMLElement, duration: number): void {
+  const deckRect = deckElement.getBoundingClientRect()
+  const cardRect = cardElement.getBoundingClientRect()
+  const deckWidth = deckRect.width || ACTION_CARD_WIDTH
+  const deckHeight = deckRect.height || ACTION_CARD_HEIGHT
+  const cardWidth = cardRect.width || ACTION_CARD_WIDTH
+  const cardHeight = cardRect.height || ACTION_CARD_HEIGHT
+  const deckCenterX = deckRect.left + deckWidth / 2
+  const deckCenterY = deckRect.top + deckHeight / 2
+  const cardCenterX = cardRect.left + cardWidth / 2
+  const cardCenterY = cardRect.top + cardHeight / 2
+  const deltaX = deckCenterX - cardCenterX
+  const deltaY = deckCenterY - cardCenterY
+  const scaleX = deckWidth / cardWidth
+  const scaleY = deckHeight / cardHeight
+
+  cardElement.style.transition = 'none'
+  cardElement.style.transformOrigin = 'center center'
+  cardElement.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(${scaleX}, ${scaleY})`
+  cardElement.style.opacity = '0'
+  cardElement.style.willChange = 'transform, opacity'
+  cardElement.style.zIndex = '5'
+
+  requestAnimationFrame(() => {
+    const opacityDuration = Math.round(duration * 0.55)
+    cardElement.style.transition = [
+      `transform ${duration}ms ${DRAW_ANIMATION_EASING}`,
+      `opacity ${opacityDuration}ms cubic-bezier(0.3, 0.95, 0.45, 1)`,
+    ].join(', ')
+    cardElement.style.transform = 'translate3d(0, 0, 0) scale(1)'
+    cardElement.style.opacity = '1'
+  })
+}
+
+function cleanupInlineAnimation(element: HTMLElement): void {
+  element.style.transition = ''
+  element.style.transform = ''
+  element.style.opacity = ''
+  element.style.willChange = ''
+  element.style.zIndex = ''
+}
+
+function prepareCardForDelayedAnimation(element: HTMLElement): void {
+  element.style.transition = 'none'
+  element.style.opacity = '0'
+  element.style.willChange = 'opacity'
+  element.style.zIndex = '4'
+}
+
+function normalizeDuration(duration?: number): number {
+  if (typeof duration !== 'number' || Number.isNaN(duration) || duration <= 0) {
+    return DRAW_ANIMATION_FALLBACK_MS
+  }
+  return duration
 }
 
 function buildFallbackCardInfo(cardId: number, title: string): CardInfo {

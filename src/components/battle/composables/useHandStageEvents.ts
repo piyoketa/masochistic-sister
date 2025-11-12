@@ -13,7 +13,7 @@ interface UseHandStageEventsOptions {
   snapshot: () => BattleSnapshot | undefined
   cardTitleMap: ComputedRef<Map<number, string>>
   findHandEntryByCardId: (cardId: number) => HandEntry | undefined
-  startDeckDrawAnimation: (cardId: number) => void
+  startDeckDrawAnimation: (cardId: number, options?: { durationMs?: number }) => void
   startCardRemovalAnimation: (
     cardId: number,
     entry: HandEntry | undefined,
@@ -26,6 +26,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const handOverflowOverlayMessage = ref<string | null>(null)
   const pendingDrawCardIds = ref<Set<number>>(new Set())
   const previousHandIds = ref<Set<number>>(new Set())
+  const pendingDrawAnimationOptions = new Map<number, { durationMs?: number; delayMs?: number }>()
   const processedStageBatchIds = new Set<string>()
   let handOverflowTimer: ReturnType<typeof window.setTimeout> | null = null
 
@@ -84,7 +85,9 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     for (const cardId of newlyAdded) {
       if (pendingDrawCardIds.value.has(cardId)) {
         removeFromSet(pendingDrawCardIds, cardId)
-        options.startDeckDrawAnimation(cardId)
+        const animationOptions = pendingDrawAnimationOptions.get(cardId)
+        pendingDrawAnimationOptions.delete(cardId)
+        options.startDeckDrawAnimation(cardId, animationOptions)
         continue
       }
     }
@@ -92,7 +95,12 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
 
   function handleDeckDrawStage(event: StageEventPayload): void {
     const cardIds = extractCardIds(event.metadata)
-    cardIds.forEach((id) => addToSet(pendingDrawCardIds, id))
+    const durationMs = extractDurationMs(event.metadata)
+    cardIds.forEach((id, index) => {
+      addToSet(pendingDrawCardIds, id)
+      const delayMs = index * DRAW_STAGGER_DELAY_MS
+      pendingDrawAnimationOptions.set(id, { durationMs, delayMs })
+    })
     if (event.metadata?.handOverflow) {
       showHandOverflowOverlay()
     }
@@ -135,6 +143,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       handOverflowTimer = null
     }
     pendingDrawCardIds.value = new Set()
+    pendingDrawAnimationOptions.clear()
   }
 
   return {
@@ -155,6 +164,16 @@ function extractCardIds(metadata: StageEventPayload['metadata']): number[] {
   }
   return []
 }
+
+function extractDurationMs(metadata: StageEventPayload['metadata']): number | undefined {
+  if (!metadata) {
+    return undefined
+  }
+  const durationCandidate = metadata.durationMs ?? metadata.animationDurationMs
+  return typeof durationCandidate === 'number' && durationCandidate > 0 ? durationCandidate : undefined
+}
+
+const DRAW_STAGGER_DELAY_MS = 100
 
 function addToSet(target: Ref<Set<number>>, value: number): void {
   const current = target.value

@@ -294,6 +294,52 @@ describe('BattleHandArea コンポーネント', () => {
     vi.useRealTimers()
   })
 
+  it('deck-draw ステージで追加されたカードが即座に手札へ表示される', async () => {
+    const drawnCard = new Card({ action: new BattlePrepAction() })
+    const drawnCardId = 77
+    drawnCard.assignId(drawnCardId)
+    const wrapper = mount(BattleHandArea, {
+      props: {
+        snapshot: createSnapshot([]),
+        hoveredEnemyId: null,
+        isInitializing: false,
+        errorMessage: null,
+        isPlayerTurn: true,
+        isInputLocked: false,
+        viewManager: createViewManagerStub(createBattleStub([])),
+        requestEnemyTarget: vi.fn(),
+        cancelEnemySelection: vi.fn(),
+        stageEvent: null,
+      },
+      global: {
+        stubs: {
+          ActionCard: actionCardStub,
+          TransitionGroup: false,
+        },
+      },
+    })
+
+    const flushAll = async () => {
+      await flushPromises()
+      await wrapper.vm.$nextTick()
+    }
+
+    await wrapper.setProps({
+      stageEvent: createStageEvent({ stage: 'deck-draw', cardIds: [drawnCardId] }),
+    })
+    await flushAll()
+
+    await wrapper.setProps({
+      snapshot: createSnapshot([drawnCard]),
+      viewManager: createViewManagerStub(createBattleStub([drawnCard])),
+    })
+    await flushAll()
+
+    const handWrapper = wrapper.find('.hand-card-wrapper')
+    expect(handWrapper.exists()).toBe(true)
+    expect(handWrapper.classes()).not.toContain('hand-card-wrapper--hidden')
+  })
+
   it('card-create ステージでカードが即座に手札へ追加される', async () => {
     const newCard = new Card({ action: new BattlePrepAction() })
     newCard.assignId(555)

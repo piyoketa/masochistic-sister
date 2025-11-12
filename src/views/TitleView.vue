@@ -58,6 +58,11 @@ const demoLinks: LinkEntry[] = [
     to: '/lab/card-animations',
   },
   {
+    label: 'Card Draw Lab',
+    description: '山札から手札へカードを引く演出を検証',
+    to: '/lab/card-draw',
+  },
+  {
     label: 'Card Glow Lab',
     description: 'ActionCardの縁を光らせるアニメーション実験',
     to: '/lab/card-glow',

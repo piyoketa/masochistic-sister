@@ -743,12 +743,14 @@ export class OperationRunner {
       .filter((event) => (event.cardIds?.length ?? 0) > 0)
       .map((event) => {
         const batchId = sharedBatchId ?? this.nextBatchId('deck-draw')
+        const durationMs = this.calculateDeckDrawDuration(event.cardIds.length)
         return this.createInstruction(
           this.cloneBattleSnapshot(snapshot),
           0,
           {
             stage: 'deck-draw',
             cardIds: event.cardIds,
+            durationMs,
           },
           undefined,
           batchId,
@@ -883,6 +885,14 @@ export class OperationRunner {
       return 0
     }
     return (hits - 1) * 200
+  }
+
+  private calculateDeckDrawDuration(cardCount: number): number {
+    if (cardCount <= 0) {
+      return 0
+    }
+    const additionalDelay = Math.max(0, cardCount - 1) * 100
+    return 600 + additionalDelay
   }
 
   private calculateTurnStartDraw(): number {

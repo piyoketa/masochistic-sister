@@ -953,18 +953,18 @@ onBeforeUnmount(() => {
   transition: opacity 250ms ease, transform 250ms ease;
 }
 
-.card-wipe-enter-active,
-.card-wipe-leave-active {
+:global(.card-wipe-enter-active),
+:global(.card-wipe-leave-active) {
   transition: clip-path 420ms ease;
 }
 
-.card-wipe-enter-from,
-.card-wipe-leave-to {
+:global(.card-wipe-enter-from),
+:global(.card-wipe-leave-to) {
   clip-path: circle(0% at 50% 50%);
 }
 
-.card-wipe-enter-to,
-.card-wipe-leave-from {
+:global(.card-wipe-enter-to),
+:global(.card-wipe-leave-from) {
   clip-path: circle(120% at 50% 50%);
 }
 
@@ -1026,26 +1026,26 @@ onBeforeUnmount(() => {
 }
 
 /* materialize */
-.enter-spawn-enter-from {
+:global(.enter-spawn-enter-from) {
   opacity: 0;
   transform: scale(0.7);
   filter: blur(10px);
 }
 
-.enter-spawn-enter-to {
+:global(.enter-spawn-enter-to) {
   opacity: 1;
   transform: scale(1);
   filter: blur(0);
 }
 
-.enter-spawn-enter-active {
+:global(.enter-spawn-enter-active) {
   transition:
     opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
     transform 1s cubic-bezier(0.16, 1, 0.3, 1),
     filter 1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.enter-spawn-enter-active :deep(.action-card)::before {
+:global(.enter-spawn-enter-active) :deep(.action-card)::before {
   content: '';
   position: absolute;
   inset: -8%;
@@ -1072,7 +1072,7 @@ onBeforeUnmount(() => {
 }
 
 /* reveal */
-.enter-reveal-enter-from {
+:global(.enter-reveal-enter-from) {
   opacity: 0;
   mask-size: 0% 0%;
   -webkit-mask-size: 0% 0%;
@@ -1081,14 +1081,14 @@ onBeforeUnmount(() => {
   filter: blur(6px);
 }
 
-.enter-reveal-enter-to {
+:global(.enter-reveal-enter-to) {
   opacity: 1;
   mask-size: 200% 200%;
   -webkit-mask-size: 200% 200%;
   filter: blur(0);
 }
 
-.enter-reveal-enter-active {
+:global(.enter-reveal-enter-active) {
   transition:
     opacity 1s cubic-bezier(0.2, 0.9, 0.2, 1),
     mask-size 1s cubic-bezier(0.2, 0.9, 0.2, 1),
@@ -1097,26 +1097,26 @@ onBeforeUnmount(() => {
 }
 
 /* flip */
-.enter-flip-enter-from {
+:global(.enter-flip-enter-from) {
   opacity: 0;
   transform: rotateY(90deg) scale(0.96);
   filter: blur(4px);
 }
 
-.enter-flip-enter-to {
+:global(.enter-flip-enter-to) {
   opacity: 1;
   transform: rotateY(0deg) scale(1);
   filter: blur(0);
 }
 
-.enter-flip-enter-active {
+:global(.enter-flip-enter-active) {
   transition:
     transform 1s cubic-bezier(0.16, 1, 0.3, 1),
     opacity 1s ease-out,
     filter 1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.enter-flip-enter-active :deep(.action-card) {
+:global(.enter-flip-enter-active) :deep(.action-card) {
   transform-style: preserve-3d;
   backface-visibility: hidden;
 }
@@ -1126,26 +1126,26 @@ onBeforeUnmount(() => {
 }
 
 /* spark */
-.enter-spark-enter-from {
+:global(.enter-spark-enter-from) {
   opacity: 0;
   transform: scale(0.85);
 }
 
-.enter-spark-enter-to {
+:global(.enter-spark-enter-to) {
   opacity: 1;
   transform: scale(1);
 }
 
-.enter-spark-enter-active {
+:global(.enter-spark-enter-active) {
   transition: opacity 1s ease-out, transform 1s ease-out;
 }
 
-.enter-spark-enter-active :deep(.action-card) {
+:global(.enter-spark-enter-active) :deep(.action-card) {
   position: relative;
   overflow: visible;
 }
 
-.enter-spark-enter-active :deep(.action-card)::after {
+:global(.enter-spark-enter-active) :deep(.action-card)::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -1208,16 +1208,16 @@ onBeforeUnmount(() => {
   }
 }
 
-.card-spiral-enter-active,
-.card-spiral-leave-active {
+:global(.card-spiral-enter-active),
+:global(.card-spiral-leave-active) {
   animation: spiral-wipe 520ms ease forwards;
 }
 
-.card-spiral-leave-active {
+:global(.card-spiral-leave-active) {
   animation-direction: normal;
 }
 
-.card-spiral-enter-active {
+:global(.card-spiral-enter-active) {
   animation-direction: reverse;
 }
 
@@ -1260,8 +1260,8 @@ onBeforeUnmount(() => {
   }
 }
 
-.card-spiral-enter-active,
-.card-spiral-leave-active {
+:global(.card-spiral-enter-active),
+:global(.card-spiral-leave-active) {
   position: relative;
   overflow: hidden;
   animation: conic-spin 520ms linear infinite;
@@ -1604,26 +1604,26 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .enter-spawn-enter-active,
-  .enter-reveal-enter-active,
-  .enter-flip-enter-active,
-  .enter-spark-enter-active,
-  .card-wipe-enter-active,
-  .card-wipe-leave-active,
-  .card-spiral-enter-active,
-  .card-spiral-leave-active,
-  .card-burnout-enter-active,
-  .card-burnout-leave-active,
-  .card-svg-burn-enter-active,
-  .card-svg-burn-leave-active,
-  .card-ash-enter-active,
-  .card-ash-leave-active,
-  .card-ringburn-enter-active,
-  .card-ringburn-leave-active,
+  :global(.enter-spawn-enter-active),
+  :global(.enter-reveal-enter-active),
+  :global(.enter-flip-enter-active),
+  :global(.enter-spark-enter-active),
+  :global(.card-wipe-enter-active),
+  :global(.card-wipe-leave-active),
+  :global(.card-spiral-enter-active),
+  :global(.card-spiral-leave-active),
+  :global(.card-burnout-enter-active),
+  :global(.card-burnout-leave-active),
+  :global(.card-svg-burn-enter-active),
+  :global(.card-svg-burn-leave-active),
+  :global(.card-ash-enter-active),
+  :global(.card-ash-leave-active),
+  :global(.card-ringburn-enter-active),
+  :global(.card-ringburn-leave-active),
   .card-create-enter-active {
-  transition-duration: 200ms !important;
-  animation-duration: 200ms !important;
-}
+    transition-duration: 200ms !important;
+    animation-duration: 200ms !important;
+  }
 
 .lab-floating-layer {
   position: absolute;
