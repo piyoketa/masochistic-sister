@@ -47,6 +47,16 @@ const router = createRouter({
       name: 'action-card-lab',
       component: () => import('@/views/ActionCardLabView.vue'),
     },
+    {
+      path: '/lab/card-animations',
+      name: 'card-animation-lab',
+      component: () => import('@/views/CardAnimationLabView.vue'),
+    },
+    {
+      path: '/lab/card-glow',
+      name: 'card-glow-lab',
+      component: () => import('@/views/CardGlowLabView.vue'),
+    },
   ],
 })
 

@@ -52,6 +52,16 @@ const demoLinks: LinkEntry[] = [
     description: 'カード配色の比較実験ページ',
     to: '/lab/action-cards',
   },
+  {
+    label: 'Card Animation Lab',
+    description: 'card-create / eliminate のワイプ演出実験',
+    to: '/lab/card-animations',
+  },
+  {
+    label: 'Card Glow Lab',
+    description: 'ActionCardの縁を光らせるアニメーション実験',
+    to: '/lab/card-glow',
+  },
 ]
 </script>
 
