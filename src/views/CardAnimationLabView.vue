@@ -10,7 +10,7 @@ CardAnimationLabView の責務:
 - ActionCard: 実際に表示するカードコンポーネント。固定データを渡し、操作やダメージ計算は行わない。
 -->
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import ActionCard from '@/components/ActionCard.vue'
 
 const sampleCard = {
@@ -35,8 +35,26 @@ const sampleCard = {
 
 const enterCardVisible = ref(false)
 const leaveCardVisible = ref(true)
-const leaveAnimationMode = ref<'circle' | 'spiral'>('circle')
+const leaveAnimationMode = ref<'circle' | 'spiral' | 'burnout' | 'svg-burn' | 'ash' | 'ringburn'>('circle')
 const enterAnimationMode = ref<'spawn' | 'reveal' | 'flip' | 'spark'>('spawn')
+const leaveTransitionName = computed(() => {
+  switch (leaveAnimationMode.value) {
+    case 'circle':
+      return 'card-wipe'
+    case 'spiral':
+      return 'card-spiral'
+    case 'burnout':
+      return 'card-burnout'
+    case 'svg-burn':
+      return 'card-svg-burn'
+    case 'ash':
+      return 'card-ash'
+    case 'ringburn':
+      return 'card-ringburn'
+    default:
+      return 'card-wipe'
+  }
+})
 
 const playEnterAnimation = async () => {
   enterCardVisible.value = false
@@ -101,9 +119,11 @@ const playLeaveAnimation = () => {
     <section class="lab-section">
       <h2>Leave Animation (card-eliminate)</h2>
       <p>
-        クリックでカードがワイプ消滅します。アニメーションパターン（円 / 渦巻き）を切り替えて比較できます。
+        クリックでカードが消滅する様子を確認できます。従来の円形 / 渦巻ワイプに加え、提案いただいた焦げ落ち系アニメーション
+        4 種（焦げ穴 / SVG 灰化 / 砂化 / リング燃焼）を切り替えて比較できます。
       </p>
-      <div class="mode-switch">
+      <div class="mode-switch mode-switch--wrap">
+        <span class="mode-switch__label">Classic</span>
         <label>
           <input v-model="leaveAnimationMode" type="radio" value="circle" />
           Circle
@@ -111,6 +131,25 @@ const playLeaveAnimation = () => {
         <label>
           <input v-model="leaveAnimationMode" type="radio" value="spiral" />
           Spiral
+        </label>
+      </div>
+      <div class="mode-switch mode-switch--wrap">
+        <span class="mode-switch__label">Burn Variants</span>
+        <label>
+          <input v-model="leaveAnimationMode" type="radio" value="burnout" />
+          焦げ穴 Burnout
+        </label>
+        <label>
+          <input v-model="leaveAnimationMode" type="radio" value="svg-burn" />
+          SVG Burn
+        </label>
+        <label>
+          <input v-model="leaveAnimationMode" type="radio" value="ash" />
+          砂化 Ash
+        </label>
+        <label>
+          <input v-model="leaveAnimationMode" type="radio" value="ringburn" />
+          Ring Burn
         </label>
       </div>
       <div class="button-row">
@@ -127,7 +166,7 @@ const playLeaveAnimation = () => {
         </button>
       </div>
       <div class="lab-stage">
-        <Transition :name="leaveAnimationMode === 'spiral' ? 'card-spiral' : 'card-wipe'" mode="out-in">
+        <Transition :name="leaveTransitionName" mode="out-in">
           <ActionCard
             v-if="leaveCardVisible"
             key="leave-card"
@@ -138,6 +177,14 @@ const playLeaveAnimation = () => {
         </Transition>
       </div>
     </section>
+    <svg class="lab-defs" width="0" height="0" aria-hidden="true">
+      <defs>
+        <filter id="lab-burn-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="3" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+      </defs>
+    </svg>
   </main>
 </template>
 
@@ -174,10 +221,34 @@ const playLeaveAnimation = () => {
   font-size: 20px;
 }
 
+:global(:root) {
+  --lab-burn-ease: cubic-bezier(0.2, 0.9, 0.2, 1);
+  --lab-burn-noise-img: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFUlEQVR4nGP4z/D/fwYGBgaGhgYAAAwIAfK0Nn+sAAAAAElFTkSuQmCC');
+}
+
 .mode-switch {
   display: flex;
   gap: 12px;
   margin-top: 12px;
+}
+
+.mode-switch--wrap {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mode-switch__label {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.lab-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 .button-row {
@@ -408,6 +479,24 @@ const playLeaveAnimation = () => {
   inherits: false;
 }
 
+@property --burn-radius {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
+
+@property --svg-burn-progress {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
+
+@property --ringburn-progress {
+  syntax: '<percentage>';
+  initial-value: 0%;
+  inherits: false;
+}
+
 @keyframes spiral-wipe {
   from {
     --spiral-angle: 0turn;
@@ -456,6 +545,310 @@ const playLeaveAnimation = () => {
   }
 }
 
+/* 焦げ穴 Burnout */
+:global(.card-burnout-enter-from),
+:global(.card-burnout-leave-to) {
+  opacity: 0;
+  transform: scale(0.98);
+  --burn-radius: 120%;
+}
+
+:global(.card-burnout-enter-to),
+:global(.card-burnout-leave-from) {
+  opacity: 1;
+  transform: scale(1);
+  --burn-radius: 0%;
+}
+
+:global(.card-burnout-enter-active),
+:global(.card-burnout-leave-active) {
+  transition:
+    opacity 700ms var(--lab-burn-ease),
+    transform 700ms var(--lab-burn-ease),
+    --burn-radius 700ms var(--lab-burn-ease);
+}
+
+:global(.card-burnout-leave-active) :deep(.action-card) {
+  position: relative;
+  -webkit-mask-image:
+    radial-gradient(circle at center, transparent 0 var(--burn-radius), #000 calc(var(--burn-radius) + 1%)),
+    var(--lab-burn-noise-img);
+  mask-image:
+    radial-gradient(circle at center, transparent 0 var(--burn-radius), #000 calc(var(--burn-radius) + 1%)),
+    var(--lab-burn-noise-img);
+  -webkit-mask-repeat: no-repeat, repeat;
+  mask-repeat: no-repeat, repeat;
+  -webkit-mask-position: 50% 50%, 0 0;
+  mask-position: 50% 50%, 0 0;
+  -webkit-mask-size: 220% 220%, auto;
+  mask-size: 220% 220%, auto;
+}
+
+:global(.card-burnout-leave-active) :deep(.action-card)::after {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  border-radius: inherit;
+  background: radial-gradient(closest-side, rgba(255, 148, 43, 0.35), rgba(255, 148, 43, 0));
+  filter: blur(12px);
+  opacity: 0;
+  animation: burnGlow 700ms var(--lab-burn-ease);
+  pointer-events: none;
+}
+
+@keyframes burnGlow {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes ember {
+  0% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* SVG Burn inspired */
+:global(.card-svg-burn-enter-from),
+:global(.card-svg-burn-leave-to) {
+  opacity: 0;
+  transform: scale(0.96);
+  --svg-burn-progress: 120%;
+}
+
+:global(.card-svg-burn-enter-to),
+:global(.card-svg-burn-leave-from) {
+  opacity: 1;
+  transform: scale(1);
+  --svg-burn-progress: 0%;
+}
+
+:global(.card-svg-burn-enter-active),
+:global(.card-svg-burn-leave-active) {
+  transition:
+    opacity 700ms var(--lab-burn-ease),
+    transform 700ms var(--lab-burn-ease),
+    --svg-burn-progress 700ms var(--lab-burn-ease);
+}
+
+:global(.card-svg-burn-leave-active) :deep(.action-card) {
+  position: relative;
+  overflow: visible;
+  animation: svgBurnMask 700ms var(--lab-burn-ease) forwards;
+}
+
+:global(.card-svg-burn-leave-active) :deep(.action-card)::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: inherit;
+  background: radial-gradient(circle at center, rgba(17, 8, 2, 0) calc(var(--svg-burn-progress) - 6%), rgba(10, 4, 1, 0.9) var(--svg-burn-progress));
+  -webkit-mask-image: radial-gradient(circle at center, transparent calc(var(--svg-burn-progress) - 4%), #000 calc(var(--svg-burn-progress) + 2%));
+  mask-image: radial-gradient(circle at center, transparent calc(var(--svg-burn-progress) - 4%), #000 calc(var(--svg-burn-progress) + 2%));
+  filter: url(#lab-burn-noise);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+:global(.card-svg-burn-leave-active) :deep(.action-card)::after {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  border-radius: inherit;
+  background: radial-gradient(closest-side, rgba(255, 190, 120, 0.4), rgba(255, 190, 120, 0));
+  opacity: 0;
+  filter: blur(16px);
+  animation: ember 700ms var(--lab-burn-ease);
+  pointer-events: none;
+}
+
+@keyframes svgBurnMask {
+  from {
+    --svg-burn-progress: 0%;
+  }
+  to {
+    --svg-burn-progress: 120%;
+  }
+}
+
+/* 砂化 Ash */
+:global(.card-ash-enter-from),
+:global(.card-ash-leave-to) {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+:global(.card-ash-enter-to),
+:global(.card-ash-leave-from) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+:global(.card-ash-enter-active),
+:global(.card-ash-leave-active) {
+  transition: opacity 620ms ease, transform 620ms ease;
+}
+
+:global(.card-ash-leave-active) :deep(.action-card) {
+  position: relative;
+  -webkit-mask-image: linear-gradient(to top, transparent 0% 25%, #000 55% 100%);
+  mask-image: linear-gradient(to top, transparent 0% 25%, #000 55% 100%);
+  -webkit-mask-position: 50% 0%;
+  mask-position: 50% 0%;
+  -webkit-mask-size: 100% 220%;
+  mask-size: 100% 220%;
+  animation: ashMask 620ms ease forwards;
+}
+
+:global(.card-ash-leave-active) :deep(.action-card)::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 10%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  mix-blend-mode: screen;
+  filter: blur(0.5px);
+  box-shadow:
+    -40px 6px 0 0 rgba(200, 200, 200, 0.9),
+    10px -3px 0 0 rgba(220, 220, 220, 0.7),
+    30px 1px 0 0 rgba(230, 230, 230, 0.7),
+    -20px -4px 0 0 rgba(210, 210, 210, 0.8),
+    45px 5px 0 0 rgba(200, 200, 200, 0.6);
+  animation: ashRise 620ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes ashMask {
+  0% {
+    -webkit-mask-position: 50% 0%;
+    mask-position: 50% 0%;
+  }
+  100% {
+    -webkit-mask-position: 50% 100%;
+    mask-position: 50% 100%;
+  }
+}
+
+@keyframes ashRise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(1);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -34px) scale(0.9);
+  }
+}
+
+/* Ring Burn */
+:global(.card-ringburn-enter-from),
+:global(.card-ringburn-leave-to) {
+  opacity: 0;
+  transform: scale(0.96);
+  --ringburn-progress: 0%;
+}
+
+:global(.card-ringburn-enter-to),
+:global(.card-ringburn-leave-from) {
+  opacity: 1;
+  transform: scale(1);
+  --ringburn-progress: 60%;
+}
+
+:global(.card-ringburn-enter-active),
+:global(.card-ringburn-leave-active) {
+  transition:
+    opacity 640ms var(--lab-burn-ease),
+    transform 640ms var(--lab-burn-ease),
+    --ringburn-progress 640ms var(--lab-burn-ease);
+}
+
+:global(.card-ringburn-leave-active) :deep(.action-card) {
+  position: relative;
+  -webkit-mask-image: radial-gradient(closest-side, #000 calc(var(--ringburn-progress) - 2%), transparent var(--ringburn-progress));
+  mask-image: radial-gradient(closest-side, #000 calc(var(--ringburn-progress) - 2%), transparent var(--ringburn-progress));
+  animation: ringburnErode 640ms var(--lab-burn-ease) forwards;
+}
+
+:global(.card-ringburn-leave-active) :deep(.action-card)::before {
+  content: '';
+  position: absolute;
+  inset: -6%;
+  border-radius: inherit;
+  background: conic-gradient(
+      from 0turn,
+      rgba(255, 180, 0, 0) 0turn,
+      rgba(255, 120, 0, 0.45) 0.85turn,
+      rgba(255, 180, 0, 0) 1turn
+    );
+  filter: blur(10px);
+  opacity: 0;
+  animation:
+    emberRing 320ms ease-out forwards,
+    emberFade 640ms ease-out 160ms forwards;
+  pointer-events: none;
+}
+
+:global(.card-ringburn-leave-active) :deep(.action-card)::after {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(255, 180, 0, 0.4), transparent 50%),
+    radial-gradient(circle at 12% 82%, rgba(255, 90, 0, 0.25), transparent 55%);
+  opacity: 0;
+  animation: ember 640ms var(--lab-burn-ease);
+  pointer-events: none;
+}
+
+@keyframes ringburnErode {
+  0% {
+    --ringburn-progress: 60%;
+  }
+  100% {
+    --ringburn-progress: 2%;
+  }
+}
+
+@keyframes emberRing {
+  from {
+    opacity: 0;
+    transform: rotate(0turn);
+  }
+  to {
+    opacity: 0.9;
+    transform: rotate(0.75turn);
+  }
+}
+
+@keyframes emberFade {
+  to {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .enter-spawn-enter-active,
   .enter-reveal-enter-active,
@@ -464,15 +857,17 @@ const playLeaveAnimation = () => {
   .card-wipe-enter-active,
   .card-wipe-leave-active,
   .card-spiral-enter-active,
-  .card-spiral-leave-active {
+  .card-spiral-leave-active,
+  .card-burnout-enter-active,
+  .card-burnout-leave-active,
+  .card-svg-burn-enter-active,
+  .card-svg-burn-leave-active,
+  .card-ash-enter-active,
+  .card-ash-leave-active,
+  .card-ringburn-enter-active,
+  .card-ringburn-leave-active {
     transition-duration: 200ms !important;
     animation-duration: 200ms !important;
   }
 }
 </style>
-.mode-switch {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 12px;
-}
