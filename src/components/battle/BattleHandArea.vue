@@ -14,7 +14,7 @@ BattleHandArea の責務:
 - ActionCard: 各カードのレンダリングを担当する既存コンポーネント。`CardInfo` と操作情報を渡し、クリックイベントで選択を検知する。
 -->
 <script setup lang="ts">
-import { computed, reactive, ref, onBeforeUnmount } from 'vue'
+import { computed, reactive, ref, onBeforeUnmount, watch } from 'vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import ActionCard from '@/components/ActionCard.vue'
 import type {
@@ -82,21 +82,32 @@ const discardCount = computed(() => props.snapshot?.discardPile.length ?? 0)
 
 const {
   floatingCards,
-  cardCreateOverlays,
   isCardHidden,
-  isCardRecentlyCreated,
+  isCardVisible,
   registerCardElement,
   startDeckDrawAnimation,
   startCardRemovalAnimation,
-  startCardCreateSequence,
-  startCardCreateHighlight,
   cleanup: cleanupAnimations,
+  markCardsVisible,
 } = useHandAnimations({
   handZoneRef,
   deckCounterRef,
   discardCounterRef,
   findHandEntryByCardId,
 })
+markCardsVisible(
+  handEntries.value
+    .map((entry) => entry.id)
+    .filter((id): id is number => typeof id === 'number'),
+)
+
+watch(
+  () =>
+    handEntries.value
+      .map((entry) => entry.id)
+      .filter((id): id is number => typeof id === 'number'),
+  (ids) => markCardsVisible(ids),
+)
 
 const { handOverflowOverlayMessage, dispose: disposeStageEvents } = useHandStageEvents({
   stageEvent: () => props.stageEvent,
@@ -105,8 +116,6 @@ const { handOverflowOverlayMessage, dispose: disposeStageEvents } = useHandStage
   findHandEntryByCardId,
   startDeckDrawAnimation,
   startCardRemovalAnimation,
-  startCardCreateSequence,
-  startCardCreateHighlight,
 })
 
 const {
@@ -167,11 +176,6 @@ defineExpose({ resetSelection, cancelSelection })
         {{ handSelectionRequest.message }}
       </div>
     </transition>
-    <TransitionGroup name="card-create" tag="div" class="card-create-overlay">
-      <div v-for="item in cardCreateOverlays" :key="item.key" class="card-create-node">
-        <ActionCard v-bind="item.info" :operations="[]" :affordable="true" />
-      </div>
-    </TransitionGroup>
     <TransitionGroup name="hand-card" tag="div" class="hand-track">
       <div
         v-for="(entry, index) in handEntries"
@@ -180,12 +184,12 @@ defineExpose({ resetSelection, cancelSelection })
         :class="[
           cardWrapperClasses(index),
           isCardHidden(entry) ? 'hand-card-wrapper--hidden' : '',
-          isCardRecentlyCreated(entry) ? 'hand-card-wrapper--recent' : '',
           selectionWrapperClass(entry),
         ]"
         :ref="(el) => registerCardElement(entry.id, entry.info.title, el)"
       >
         <ActionCard
+          v-if="isCardVisible(entry)"
           v-bind="entry.info"
           :operations="entry.operations"
           :affordable="entry.affordable"

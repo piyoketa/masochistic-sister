@@ -40,15 +40,6 @@ EnemyEffects.vueは、演出が必要な時のみdisplayされ、EnemyCard全体
 
 
 
-# 取ってきた場所メモ
-バフ
-http://www.kurage-kosho.info/battle.html
-http://www.kurage-kosho.info/mp3/status03.mp3
-
-テレポート：
-http://www.kurage-kosho.info/battle.html
-http://www.kurage-kosho.info/mp3/teleport01.mp3
-
 
 materials/sounds/sen_ge_panchi04.mp3
 鞭

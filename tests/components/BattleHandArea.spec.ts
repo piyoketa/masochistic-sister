@@ -294,8 +294,7 @@ describe('BattleHandArea コンポーネント', () => {
     vi.useRealTimers()
   })
 
-  it('card-create ステージで生成オーバーレイが表示され、完了後に手札へ戻る', async () => {
-    vi.useFakeTimers()
+  it('card-create ステージでカードが即座に手札へ追加される', async () => {
     const newCard = new Card({ action: new BattlePrepAction() })
     newCard.assignId(555)
 
@@ -336,16 +335,9 @@ describe('BattleHandArea コンポーネント', () => {
     })
     await flushAll()
 
-    expect(wrapper.findAll('.card-create-node')).toHaveLength(1)
-    expect(wrapper.find('.hand-card-wrapper').classes()).toContain('hand-card-wrapper--hidden')
-
-    await vi.advanceTimersByTimeAsync(1000)
-    await flushAll()
-    await vi.advanceTimersByTimeAsync(300)
-    await flushAll()
-
-    expect(wrapper.find('.card-create-node').exists()).toBe(false)
-    expect(wrapper.find('.hand-card-wrapper').classes()).not.toContain('hand-card-wrapper--hidden')
-    vi.useRealTimers()
+    const handWrapper = wrapper.find('.hand-card-wrapper')
+    expect(handWrapper.exists()).toBe(true)
+    expect(handWrapper.classes()).not.toContain('hand-card-wrapper--hidden')
+    expect(handWrapper.classes()).not.toContain('hand-card-wrapper--recent')
   })
 })

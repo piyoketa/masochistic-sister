@@ -18,12 +18,6 @@ export interface FloatingCardAnimation {
   active: boolean
 }
 
-interface CardCreateOverlay {
-  key: string
-  info: CardInfo
-  id: number
-}
-
 interface UseHandAnimationsOptions {
   handZoneRef: Ref<HTMLElement | null>
   deckCounterRef: Ref<HTMLElement | null>
@@ -31,36 +25,48 @@ interface UseHandAnimationsOptions {
   findHandEntryByCardId: (cardId: number) => HandEntry | undefined
 }
 
-const CARD_CREATE_DURATION_MS = 1000
 const ACTION_CARD_WIDTH = 94
 const ACTION_CARD_HEIGHT = 140
 
 export function useHandAnimations(options: UseHandAnimationsOptions) {
   const hiddenCardIds = ref<Set<number>>(new Set())
-  const recentCardIds = ref<Set<number>>(new Set())
+  const visibleCardIds = ref<Set<number>>(new Set())
   const floatingCards = reactive<FloatingCardAnimation[]>([])
-  const cardCreateOverlays = ref<CardCreateOverlay[]>([])
-  const cardCreateTimers = new Map<string, ReturnType<typeof window.setTimeout>>()
   const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
   const deckDrawRetryCounters = new Map<number, number>()
   const cardElementRefs = new Map<number, HTMLElement>()
+
+  function ensureVisibleCardId(cardId: number | undefined): void {
+    if (cardId === undefined || hiddenCardIds.value.has(cardId) || visibleCardIds.value.has(cardId)) {
+      return
+    }
+    const nextVisible = new Set(visibleCardIds.value)
+    nextVisible.add(cardId)
+    visibleCardIds.value = nextVisible
+  }
 
   function hideCard(cardId?: number): void {
     if (cardId === undefined) {
       return
     }
-    const next = new Set(hiddenCardIds.value)
-    next.add(cardId)
-    hiddenCardIds.value = next
+    const nextHidden = new Set(hiddenCardIds.value)
+    const nextVisible = new Set(visibleCardIds.value)
+    nextHidden.add(cardId)
+    nextVisible.delete(cardId)
+    hiddenCardIds.value = nextHidden
+    visibleCardIds.value = nextVisible
   }
 
   function showCard(cardId?: number): void {
     if (cardId === undefined) {
       return
     }
-    const next = new Set(hiddenCardIds.value)
-    next.delete(cardId)
-    hiddenCardIds.value = next
+    const nextHidden = new Set(hiddenCardIds.value)
+    const nextVisible = new Set(visibleCardIds.value)
+    nextHidden.delete(cardId)
+    nextVisible.add(cardId)
+    hiddenCardIds.value = nextHidden
+    visibleCardIds.value = nextVisible
   }
 
   function startDeckDrawAnimation(cardId: number, attempt = 0): void {
@@ -139,36 +145,6 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     })
   }
 
-  function startCardCreateSequence(entry: HandEntry): void {
-    const cardId = entry.id
-    if (cardId === undefined) {
-      return
-    }
-    hideCard(cardId)
-    const key = `card-create-${cardId}-${Date.now()}`
-    cardCreateOverlays.value = [...cardCreateOverlays.value, { key, info: entry.info, id: cardId }]
-    const timer = window.setTimeout(() => {
-      finishCardCreateSequence(key, cardId)
-    }, CARD_CREATE_DURATION_MS)
-    cardCreateTimers.set(key, timer)
-  }
-
-  function finishCardCreateSequence(key: string, cardId: number): void {
-    const timer = cardCreateTimers.get(key)
-    if (timer) {
-      window.clearTimeout(timer)
-      cardCreateTimers.delete(key)
-    }
-    cardCreateOverlays.value = cardCreateOverlays.value.filter((item) => item.key !== key)
-    showCard(cardId)
-    startCardCreateHighlight(cardId)
-  }
-
-  function startCardCreateHighlight(cardId: number): void {
-    addToSet(recentCardIds, cardId)
-    window.setTimeout(() => removeFromSet(recentCardIds, cardId), 550)
-  }
-
   function spawnFloatingCard(options: {
     cardInfo: CardInfo
     operations: string[]
@@ -242,6 +218,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
       const target = actionCard ?? wrapper
       target.dataset.cardTitle = title
       cardElementRefs.set(cardId, target)
+      ensureVisibleCardId(cardId)
     } else {
       cardElementRefs.delete(cardId)
     }
@@ -251,13 +228,22 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     return entry.id !== undefined && hiddenCardIds.value.has(entry.id)
   }
 
-  function isCardRecentlyCreated(entry: HandEntry): boolean {
-    return entry.id !== undefined && recentCardIds.value.has(entry.id)
+  function isCardVisible(entry: HandEntry): boolean {
+    return entry.id === undefined || visibleCardIds.value.has(entry.id)
+  }
+
+  function markCardsVisible(cardIds: number[]): void {
+    const nextVisible = new Set(visibleCardIds.value)
+    const nextHidden = new Set(hiddenCardIds.value)
+    for (const id of cardIds) {
+      nextHidden.delete(id)
+      nextVisible.add(id)
+    }
+    visibleCardIds.value = nextVisible
+    hiddenCardIds.value = nextHidden
   }
 
   function cleanup(): void {
-    cardCreateTimers.forEach((timer) => window.clearTimeout(timer))
-    cardCreateTimers.clear()
     pendingRemovalTimers.forEach((timer) => window.clearTimeout(timer))
     pendingRemovalTimers.clear()
     deckDrawRetryCounters.clear()
@@ -265,36 +251,15 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
 
   return {
     floatingCards,
-    cardCreateOverlays,
     isCardHidden,
-    isCardRecentlyCreated,
+    isCardVisible,
     registerCardElement,
     startDeckDrawAnimation,
     startCardRemovalAnimation,
-    startCardCreateSequence,
-    startCardCreateHighlight,
     cleanup,
+    visibleCardIds,
+    markCardsVisible,
   }
-}
-
-function addToSet(target: Ref<Set<number>>, value: number): void {
-  const current = target.value
-  if (current.has(value)) {
-    return
-  }
-  const clone = new Set(current)
-  clone.add(value)
-  target.value = clone
-}
-
-function removeFromSet(target: Ref<Set<number>>, value: number): void {
-  const current = target.value
-  if (!current.has(value)) {
-    return
-  }
-  const clone = new Set(current)
-  clone.delete(value)
-  target.value = clone
 }
 
 function buildFallbackCardInfo(cardId: number, title: string): CardInfo {

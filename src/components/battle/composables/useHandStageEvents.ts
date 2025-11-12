@@ -20,14 +20,11 @@ interface UseHandStageEventsOptions {
     variant: 'trash' | 'eliminate',
     options?: { fallbackTitle?: string },
   ) => void
-  startCardCreateSequence: (entry: HandEntry) => void
-  startCardCreateHighlight: (cardId: number) => void
 }
 
 export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const handOverflowOverlayMessage = ref<string | null>(null)
   const pendingDrawCardIds = ref<Set<number>>(new Set())
-  const pendingCreateQueue: PendingCreateRequest[] = []
   const previousHandIds = ref<Set<number>>(new Set())
   const processedStageBatchIds = new Set<string>()
   let handOverflowTimer: ReturnType<typeof window.setTimeout> | null = null
@@ -56,9 +53,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
           break
         case 'card-eliminate':
           handleCardEliminateStage(event)
-          break
-        case 'card-create':
-          handleCardCreateStage(event)
           break
         default:
           break
@@ -93,19 +87,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         options.startDeckDrawAnimation(cardId)
         continue
       }
-      if (pendingCreateQueue.length > 0) {
-        const request = pendingCreateQueue[0]
-        request.count -= 1
-        const entry = options.findHandEntryByCardId(cardId)
-        if (entry) {
-          options.startCardCreateSequence(entry)
-        } else {
-          options.startCardCreateHighlight(cardId)
-        }
-        if (request.count <= 0) {
-          pendingCreateQueue.shift()
-        }
-      }
     }
   }
 
@@ -137,16 +118,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     })
   }
 
-  function handleCardCreateStage(event: StageEventPayload): void {
-    const count =
-      (Array.isArray(event.metadata?.cards) ? event.metadata.cards.length : undefined) ??
-      (Array.isArray(event.metadata?.cardIds) ? event.metadata.cardIds.length : undefined) ??
-      0
-    if (count > 0) {
-      pendingCreateQueue.push({ batchId: event.batchId, count })
-    }
-  }
-
   function showHandOverflowOverlay(): void {
     handOverflowOverlayMessage.value = '手札が満杯です！'
     if (handOverflowTimer) {
@@ -164,7 +135,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       handOverflowTimer = null
     }
     pendingDrawCardIds.value = new Set()
-    pendingCreateQueue.length = 0
   }
 
   return {
