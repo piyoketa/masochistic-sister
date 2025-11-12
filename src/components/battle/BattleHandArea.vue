@@ -16,23 +16,16 @@ BattleHandArea の責務:
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
-import type { Card } from '@/domain/entities/Card'
-import type { Enemy } from '@/domain/entities/Enemy'
 import ActionCard from '@/components/ActionCard.vue'
-import type { CardInfo, CardTagInfo, AttackStyle, DescriptionSegment } from '@/types/battle'
-import {
-  TargetEnemyOperation,
-  SelectHandCardOperation,
-  type CardOperation,
-  type TargetEnemyAvailabilityEntry,
-  type HandCardSelectionAvailabilityEntry,
-  type OperationContext,
+import type { CardInfo } from '@/types/battle'
+import type {
+  CardOperation,
+  TargetEnemyAvailabilityEntry,
 } from '@/domain/entities/operations'
-import { Attack } from '@/domain/entities/Action'
-import { Damages } from '@/domain/entities/Damages'
 import type { ViewManager } from '@/view/ViewManager'
-import type { CardTag } from '@/domain/entities/CardTag'
 import type { StageEventPayload } from '@/types/animation'
+import { useHandPresentation, type HandEntry } from './composables/useHandPresentation'
+import { useHandInteraction } from './composables/useHandInteraction'
 
 interface FloatingCardAnimation {
   key: string
@@ -48,23 +41,6 @@ interface FloatingCardAnimation {
     transform: string
   }
   active: boolean
-}
-
-interface HandEntry {
-  key: string
-  info: CardInfo
-  card: Card
-  id?: number
-  operations: string[]
-  affordable: boolean
-}
-
-interface HandSelectionRequest {
-  allowedIds: Set<number>
-  blockedReasons: Map<number, string>
-  message: string
-  resolve: (cardId: number) => void
-  reject: (error: Error) => void
 }
 
 const props = defineProps<{
@@ -100,7 +76,6 @@ const interactionState = reactive<{
   isAwaitingEnemy: false,
 })
 
-const hoveredCardKey = ref<string | null>(null)
 const handZoneRef = ref<HTMLElement | null>(null)
 const deckCounterRef = ref<HTMLElement | null>(null)
 const discardCounterRef = ref<HTMLElement | null>(null)
@@ -116,41 +91,46 @@ const previousHandIds = ref<Set<number>>(new Set())
 const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
 const cardElementRefs = new Map<number, HTMLElement>()
 const deckDrawRetryCounters = new Map<number, number>()
+const cardCreateOverlays = ref<Array<{ key: string; info: CardInfo; id: number }>>([])
+const cardCreateTimers = new Map<string, ReturnType<typeof window.setTimeout>>()
+const CARD_CREATE_DURATION_MS = 1000
 const ACTION_CARD_WIDTH = 94
 const ACTION_CARD_HEIGHT = 140
-const handSelectionRequest = ref<HandSelectionRequest | null>(null)
 
-const supportedOperations = new Set<string>([
-  TargetEnemyOperation.TYPE,
-  SelectHandCardOperation.TYPE,
-])
-
-const handEntries = computed<HandEntry[]>(() => {
-  const current = props.snapshot
-  if (!current) {
-    return []
-  }
-
-  const currentMana = current.player.currentMana
-  const entries = current.hand.map((card, index) => buildHandEntry(card, index, currentMana))
-  const regularCards = entries.filter((entry) => entry.card.type !== 'status')
-  const statusCards = entries.filter((entry) => entry.card.type === 'status')
-  return [...regularCards, ...statusCards]
+const {
+  handEntries,
+  cardTitleMap,
+  buildOperationContext,
+  findHandEntryByCardId,
+} = useHandPresentation({
+  props,
+  interactionState,
 })
-
 const hasCards = computed(() => handEntries.value.length > 0)
 const handCount = computed(() => props.snapshot?.hand.length ?? 0)
 const handLimit = computed(() => props.viewManager.battle?.hand.maxSize() ?? 10)
 const deckCount = computed(() => props.snapshot?.deck.length ?? 0)
 const discardCount = computed(() => props.snapshot?.discardPile.length ?? 0)
-const cardTitleMap = computed(() => {
-  const map = new Map<number, string>()
-  handEntries.value.forEach((entry) => {
-    if (entry.id !== undefined) {
-      map.set(entry.id, entry.info.title)
-    }
-  })
-  return map
+
+const {
+  hoveredCardKey,
+  handSelectionRequest,
+  handleCardHoverStart,
+  handleCardHoverEnd,
+  handleCardClick,
+  handleHandContextMenu,
+  isCardDisabled,
+  isHandSelectionCandidate,
+  handSelectionBlockedReason,
+  selectionWrapperClass,
+  resetSelection,
+  cancelSelection,
+  cancelHandSelectionRequest,
+} = useHandInteraction({
+  props,
+  emit,
+  interactionState,
+  buildOperationContext,
 })
 
 const hoveredCardIndex = computed(() =>
@@ -159,24 +139,6 @@ const hoveredCardIndex = computed(() =>
     : -1,
 )
 
-function buildOperationContext(): OperationContext | null {
-  const battle = props.viewManager.battle
-  if (!battle) {
-    return null
-  }
-  return {
-    battle,
-    player: battle.player,
-  }
-}
-
-function findHandEntryByCardId(cardId: number | undefined): HandEntry | undefined {
-  if (cardId === undefined) {
-    return undefined
-  }
-  return handEntries.value.find((entry) => entry.id === cardId)
-}
-
 function cardWrapperClasses(index: number): Record<string, boolean> {
   const hoveredIndex = hoveredCardIndex.value
   return {
@@ -184,385 +146,6 @@ function cardWrapperClasses(index: number): Record<string, boolean> {
     'hand-card-wrapper--adjacent-left': hoveredIndex !== -1 && index === hoveredIndex - 1,
     'hand-card-wrapper--adjacent-right': hoveredIndex !== -1 && index === hoveredIndex + 1,
   }
-}
-
-function buildHandEntry(card: Card, index: number, currentMana: number): HandEntry {
-  const definition = card.definition
-  const identifier = card.id !== undefined ? `card-${card.id}` : `card-${index}`
-  const operations = definition.operations ?? []
-  const affordable = card.cost <= currentMana
-
-  const {
-    description,
-    descriptionSegments,
-    attackStyle,
-  primaryTags,
-  effectTags,
-  categoryTags,
-  damageAmount,
-  damageCount,
-  damageAmountBoosted,
-  damageCountBoosted,
-} = buildCardPresentation(card, index)
-
-  return {
-    key: identifier,
-    info: {
-      id: identifier,
-      title: card.title,
-      type: card.type,
-      cost: card.cost,
-      illustration: definition.image ?? '🂠',
-      description,
-      descriptionSegments,
-      attackStyle,
-      primaryTags,
-      effectTags,
-      categoryTags,
-      damageAmount,
-      damageCount,
-      damageAmountBoosted,
-      damageCountBoosted,
-    },
-    card,
-    id: card.id,
-    operations,
-    affordable,
-  }
-}
-
-function buildCardPresentation(card: Card, index: number): {
-  description: string
-  descriptionSegments?: DescriptionSegment[]
-  attackStyle?: AttackStyle
-  primaryTags: CardTagInfo[]
-  effectTags: CardTagInfo[]
-  categoryTags: CardTagInfo[]
-  damageAmount?: number
-  damageCount?: number
-  damageAmountBoosted?: boolean
-  damageCountBoosted?: boolean
-} {
-  const definition = card.definition
-  const primaryTags: CardTagInfo[] = []
-  const effectTags: CardTagInfo[] = []
-  const categoryTags: CardTagInfo[] = []
-  const seenTagIds = new Set<string>()
-
-  let description = card.description
-  let descriptionSegments: DescriptionSegment[] | undefined
-  let attackStyle: AttackStyle | undefined
-  let damageAmount: number | undefined
-  let damageCount: number | undefined
-  let damageAmountBoosted = false
-  let damageCountBoosted = false
-
-  addTagEntry(definition.type, primaryTags, seenTagIds, (tag) => tag.name)
-  if ('target' in definition) {
-    addTagEntry(definition.target, primaryTags, seenTagIds, (tag) => tag.name)
-  }
-  addTagEntries(effectTags, card.effectTags)
-  addTagEntries(categoryTags, card.categoryTags, (tag) => tag.name)
-
-  const action = card.action
-  const battle = props.viewManager.battle
-
-  if (action instanceof Attack) {
-    const damages = action.baseDamages
-    const baseDamageAmount = Math.max(0, Math.floor(damages.baseAmount))
-    const baseDamageCount = Math.max(1, Math.floor(damages.baseCount ?? 1))
-    damageAmount = baseDamageAmount
-    damageCount = baseDamageCount
-    const formatted = action.describeForPlayerCard({
-      baseDamages: damages,
-      displayDamages: damages,
-      inflictedStates: action.inflictStatePreviews,
-    })
-    ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(formatted))
-    const applyDamageDisplay = (displayDamages: Damages): void => {
-      const nextAmount = Math.max(0, Math.floor(displayDamages.amount))
-      const nextCount = Math.max(1, Math.floor(displayDamages.count ?? 1))
-      damageAmount = nextAmount
-      damageCount = nextCount
-      damageAmountBoosted = nextAmount !== baseDamageAmount
-      damageCountBoosted = nextCount !== baseDamageCount
-    }
-    applyDamageDisplay(damages)
-
-    const targetEnemyId = props.hoveredEnemyId
-    if (battle && interactionState.selectedCardKey === `card-${card.id ?? index}` && targetEnemyId !== null) {
-      const enemy = battle.enemyTeam.findEnemy(targetEnemyId) as Enemy | undefined
-      if (enemy) {
-        const calculatedDamages = new Damages({
-          baseAmount: damages.baseAmount,
-          baseCount: damages.baseCount,
-          type: damages.type,
-          attackerStates: battle.player.getStates(),
-          defenderStates: enemy.getStates(),
-        })
-        const recalculated = action.describeForPlayerCard({
-          baseDamages: damages,
-          displayDamages: calculatedDamages,
-          inflictedStates: action.inflictStatePreviews,
-        })
-        ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(recalculated))
-        applyDamageDisplay(calculatedDamages)
-      }
-    }
-
-    const typeTagId = definition.type.id
-    if (typeTagId === 'tag-type-multi-attack') {
-      attackStyle = 'multi'
-    } else if (typeTagId === 'tag-type-single-attack') {
-      attackStyle = 'single'
-    } else {
-      attackStyle = damages.type === 'multi' ? 'multi' : 'single'
-    }
-  }
-
-  return {
-    description,
-    descriptionSegments,
-    attackStyle,
-    primaryTags,
-    effectTags,
-    categoryTags,
-    damageAmount,
-    damageCount,
-    damageAmountBoosted,
-    damageCountBoosted,
-  }
-}
-
-function addTagEntry(
-  tag: CardTag | undefined,
-  entries: CardTagInfo[],
-  registry: Set<string>,
-  formatter: (tag: CardTag) => string = (candidate) => candidate.name,
-): void {
-  if (!tag || registry.has(tag.id)) {
-    return
-  }
-  registry.add(tag.id)
-  entries.push({
-    id: tag.id,
-    label: formatter(tag),
-    description: tag.description,
-  })
-}
-
-function addTagEntries(
-  entries: CardTagInfo[],
-  tags?: readonly CardTag[],
-  formatter: (tag: CardTag) => string = (candidate) => candidate.name,
-): void {
-  if (!tags) {
-    return
-  }
-  for (const tag of tags) {
-    if (entries.some((existing) => existing.id === tag.id)) {
-      continue
-    }
-    entries.push({
-      id: tag.id,
-      label: formatter(tag),
-      description: tag.description,
-    })
-  }
-}
-
-function stripDamageInfoFromDescription(formatted: {
-  label: string
-  segments: DescriptionSegment[]
-}): { label: string; segments: DescriptionSegment[] } {
-  const trimmed = trimDamageSegments(formatted.segments)
-  return {
-    label: trimmed.map((segment) => segment.text).join(''),
-    segments: trimmed,
-  }
-}
-
-function trimDamageSegments(segments: DescriptionSegment[]): DescriptionSegment[] {
-  const damageLabelIndex = segments.findIndex((segment) => segment.text === 'ダメージ')
-  if (damageLabelIndex === -1) {
-    return [...segments]
-  }
-  let trimmed = segments.slice(damageLabelIndex + 1)
-  while (trimmed.length > 0 && trimmed[0].text === '\n') {
-    trimmed = trimmed.slice(1)
-  }
-  return trimmed
-}
-
-function isCardDisabled(entry: HandEntry): boolean {
-  const handRequest = handSelectionRequest.value
-  if (handRequest) {
-    if (entry.id === undefined) {
-      return true
-    }
-    return !handRequest.allowedIds.has(entry.id)
-  }
-  if (props.isInputLocked) {
-    return true
-  }
-  if (!props.isPlayerTurn) {
-    return true
-  }
-  if (!entry.affordable) {
-    return true
-  }
-  if (interactionState.isAwaitingEnemy) {
-    return interactionState.selectedCardKey !== entry.key
-  }
-  return false
-}
-
-
-function handleCardHoverStart(entry: HandEntry): void {
-  if (interactionState.isAwaitingEnemy || handSelectionRequest.value) {
-    return
-  }
-  hoveredCardKey.value = entry.key
-  emit('update-footer', '左クリック：使用　右クリック：詳細')
-}
-
-function handleCardHoverEnd(): void {
-  if (interactionState.isAwaitingEnemy || handSelectionRequest.value) {
-    return
-  }
-  hoveredCardKey.value = null
-  emit('reset-footer')
-}
-
-async function handleCardClick(entry: HandEntry): Promise<void> {
-  if (handSelectionRequest.value) {
-    handleHandSelectionClick(entry)
-    return
-  }
-  if (props.isInputLocked || !props.isPlayerTurn || !entry.affordable) {
-    return
-  }
-
-  if (interactionState.isAwaitingEnemy && interactionState.selectedCardKey !== entry.key) {
-    return
-  }
-
-  if (entry.id === undefined) {
-    emit('error', 'カードにIDが割り当てられていません')
-    return
-  }
-
-  interactionState.selectedCardKey = entry.key
-  interactionState.selectedCardId = entry.id
-
-  if (entry.operations.length === 0) {
-    emit('play-card', { cardId: entry.id, operations: [] })
-    resetSelection()
-    return
-  }
-
-  const unsupported = entry.operations.filter((operation) => !supportedOperations.has(operation))
-  if (unsupported.length > 0) {
-    emit(
-      'error',
-      `未対応の操作が含まれているため、このカードは使用できません (${unsupported.join(', ')})`,
-    )
-    resetSelection()
-    emit('hide-overlay')
-    return
-  }
-
-  try {
-    await executeOperations(entry)
-  } catch (error) {
-    if (error instanceof Error) {
-      emit('error', error.message)
-    } else {
-      emit('error', String(error))
-    }
-    resetSelection()
-  }
-}
-
-function handleHandSelectionClick(entry: HandEntry): void {
-  const request = handSelectionRequest.value
-  if (!request) {
-    return
-  }
-  if (entry.id === undefined) {
-    emit('error', 'カードにIDが割り当てられていません')
-    return
-  }
-  if (!request.allowedIds.has(entry.id)) {
-    const reason = request.blockedReasons.get(entry.id) ?? 'このカードは選択できません'
-    emit('error', reason)
-    return
-  }
-  request.resolve(entry.id)
-}
-
-async function executeOperations(entry: HandEntry): Promise<void> {
-  const collectedOperations: CardOperation[] = []
-
-  for (const operationType of entry.operations) {
-    if (operationType === TargetEnemyOperation.TYPE) {
-      interactionState.isAwaitingEnemy = true
-      const hints = gatherEnemySelectionHints(entry)
-      if (hints.length > 0) {
-        emit('show-enemy-selection-hints', hints)
-      }
-      emit('update-footer', '対象の敵を選択：左クリックで決定　右クリックでキャンセル')
-      try {
-        const enemyId = await props.requestEnemyTarget()
-        collectedOperations.push({
-          type: TargetEnemyOperation.TYPE,
-          payload: enemyId,
-        })
-      } finally {
-        interactionState.isAwaitingEnemy = false
-        emit('reset-footer')
-        emit('clear-enemy-selection-hints')
-      }
-      continue
-    }
-    if (operationType === SelectHandCardOperation.TYPE) {
-      const targetCardId = await requestHandCardSelection(entry)
-      collectedOperations.push({
-        type: SelectHandCardOperation.TYPE,
-        payload: targetCardId,
-      })
-      continue
-    }
-
-    throw new Error(`未対応の操作 ${operationType} です`)
-  }
-
-  const cardId = interactionState.selectedCardId
-  if (cardId === null) {
-    throw new Error('カード使用に必要な情報が不足しています')
-  }
-
-  emit('play-card', { cardId, operations: collectedOperations })
-  resetSelection({ keepSelection: false })
-}
-
-function resetSelection(options?: { keepSelection?: boolean }): void {
-  interactionState.isAwaitingEnemy = false
-  if (!options?.keepSelection) {
-    interactionState.selectedCardKey = null
-    interactionState.selectedCardId = null
-  }
-  hoveredCardKey.value = null
-  emit('reset-footer')
-  emit('hide-overlay')
-  cancelHandSelectionRequest()
-}
-
-function cancelSelection(): void {
-  if (interactionState.isAwaitingEnemy) {
-    props.cancelEnemySelection()
-  }
-  resetSelection()
 }
 
 defineExpose({ resetSelection, cancelSelection })
@@ -619,6 +202,8 @@ onBeforeUnmount(() => {
   }
   pendingRemovalTimers.forEach((timer) => window.clearTimeout(timer))
   pendingRemovalTimers.clear()
+  cardCreateTimers.forEach((timer) => window.clearTimeout(timer))
+  cardCreateTimers.clear()
   cancelHandSelectionRequest()
 })
 
@@ -648,7 +233,12 @@ function processNewHandCards(newlyAdded: number[]): void {
     if (pendingCreateQueue.length > 0) {
       const request = pendingCreateQueue[0]
       request.count -= 1
-      startCardCreateHighlight(cardId)
+      const entry = findHandEntryByCardId(cardId)
+      if (entry) {
+        startCardCreateSequence(entry)
+      } else {
+        startCardCreateHighlight(cardId)
+      }
       if (request.count <= 0) {
         pendingCreateQueue.shift()
       }
@@ -694,57 +284,6 @@ function handleCardCreateStage(event: StageEventPayload): void {
   if (count > 0) {
     pendingCreateQueue.push({ batchId: event.batchId, count })
   }
-}
-
-function gatherEnemySelectionHints(entry: HandEntry): TargetEnemyAvailabilityEntry[] {
-  const action = entry.card.action
-  const context = buildOperationContext()
-  if (!action || !context) {
-    return []
-  }
-  return action.describeTargetEnemyAvailability(context)
-}
-
-async function requestHandCardSelection(entry: HandEntry): Promise<number> {
-  const action = entry.card.action
-  const context = buildOperationContext()
-  if (!action || !context) {
-    throw new Error('カード選択を開始できませんでした')
-  }
-  const availability = action.describeHandSelectionAvailability(context)
-  if (availability.length === 0) {
-    throw new Error('選択可能なカードが見つかりません')
-  }
-  const selectable = availability.filter((item) => item.selectable)
-  if (selectable.length === 0) {
-    throw new Error('条件を満たすカードが手札に存在しません')
-  }
-  const allowedIds = new Set(selectable.map((item) => item.cardId))
-  const blockedReasons = new Map<number, string>()
-  availability.forEach((item) => {
-    if (!item.selectable && item.reason && typeof item.cardId === 'number') {
-      blockedReasons.set(item.cardId, item.reason)
-    }
-  })
-
-  return new Promise<number>((resolve, reject) => {
-    handSelectionRequest.value = {
-      allowedIds,
-      blockedReasons,
-      message: '対象カードを選択：左クリックで決定　右クリックでキャンセル',
-      resolve: (cardId: number) => {
-        handSelectionRequest.value = null
-        emit('reset-footer')
-        resolve(cardId)
-      },
-      reject: (error: Error) => {
-        handSelectionRequest.value = null
-        emit('reset-footer')
-        reject(error)
-      },
-    }
-    emit('update-footer', handSelectionRequest.value.message)
-  })
 }
 
 function startDeckDrawAnimation(cardId: number, attempt = 0): void {
@@ -827,6 +366,33 @@ function startCardRemovalAnimation(
 function startCardCreateHighlight(cardId: number): void {
   addToSet(recentCardIds, cardId)
   window.setTimeout(() => removeFromSet(recentCardIds, cardId), 550)
+}
+
+function startCardCreateSequence(entry: HandEntry): void {
+  const cardId = entry.id
+  if (cardId === undefined) {
+    return
+  }
+  hideCard(cardId)
+  const key = `card-create-${cardId}-${Date.now()}`
+  cardCreateOverlays.value = [...cardCreateOverlays.value, { key, info: entry.info, id: cardId }]
+  const timer = window.setTimeout(() => {
+    finishCardCreateSequence(key, cardId)
+  }, CARD_CREATE_DURATION_MS)
+  cardCreateTimers.set(key, timer)
+}
+
+function finishCardCreateSequence(key: string, cardId: number): void {
+  if (cardCreateTimers.has(key)) {
+    const timer = cardCreateTimers.get(key)
+    if (timer) {
+      window.clearTimeout(timer)
+    }
+    cardCreateTimers.delete(key)
+  }
+  cardCreateOverlays.value = cardCreateOverlays.value.filter((item) => item.key !== key)
+  showCard(cardId)
+  startCardCreateHighlight(cardId)
 }
 
 function spawnFloatingCard(options: {
@@ -968,41 +534,6 @@ function isCardRecentlyCreated(entry: HandEntry): boolean {
   return entry.id !== undefined && recentCardIds.value.has(entry.id)
 }
 
-function isHandSelectionCandidate(entry: HandEntry): boolean {
-  const request = handSelectionRequest.value
-  if (!request || entry.id === undefined) {
-    return false
-  }
-  return request.allowedIds.has(entry.id)
-}
-
-function handSelectionBlockedReason(entry: HandEntry): string | undefined {
-  const request = handSelectionRequest.value
-  if (!request || entry.id === undefined) {
-    return undefined
-  }
-  return request.blockedReasons.get(entry.id)
-}
-
-function selectionWrapperClass(entry: HandEntry): string | undefined {
-  const request = handSelectionRequest.value
-  if (!request || entry.id === undefined) {
-    return undefined
-  }
-  return request.allowedIds.has(entry.id)
-    ? 'hand-card-wrapper--selection-candidate'
-    : 'hand-card-wrapper--selection-blocked'
-}
-
-function cancelHandSelectionRequest(reason?: string): void {
-  const request = handSelectionRequest.value
-  if (!request) {
-    return
-  }
-  handSelectionRequest.value = null
-  request.reject(new Error(reason ?? 'カード選択がキャンセルされました'))
-}
-
 function registerCardElement(cardId: number | undefined, title: string, el: Element | null): void {
   if (cardId === undefined) {
     return
@@ -1031,6 +562,11 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
         {{ handSelectionRequest.message }}
       </div>
     </transition>
+    <TransitionGroup name="card-create" tag="div" class="card-create-overlay">
+      <div v-for="item in cardCreateOverlays" :key="item.key" class="card-create-node">
+        <ActionCard v-bind="item.info" :operations="[]" :affordable="true" />
+      </div>
+    </TransitionGroup>
     <TransitionGroup name="hand-card" tag="div" class="hand-track">
       <div
         v-for="(entry, index) in handEntries"
@@ -1241,6 +777,63 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   margin-top: -10px;
 }
 
+.card-create-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  display: flex;
+  gap: 16px;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.card-create-node {
+  position: relative;
+}
+
+.card-create-enter-from {
+  opacity: 0;
+  transform: scale(0.7);
+  filter: blur(10px);
+}
+
+.card-create-enter-to {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+
+.card-create-enter-active {
+  transition:
+    opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-create-enter-active .card-create-node::after {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  border-radius: 20px;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
+  filter: blur(18px);
+  opacity: 0;
+  animation: card-create-halo 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-create-leave-active {
+  transition: opacity 200ms ease;
+}
+
+.card-create-leave-from {
+  opacity: 1;
+}
+
+.card-create-leave-to {
+  opacity: 0;
+}
+
 .hand-card-wrapper {
   position: relative;
   width: var(--card-width);
@@ -1362,6 +955,30 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   }
 }
 
+@keyframes card-create-halo {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-create-enter-active {
+    transition-duration: 200ms;
+  }
+  .card-create-enter-active .card-create-node::after {
+    animation-duration: 200ms;
+  }
+}
+
 .hand-floating-layer {
   position: absolute;
   inset: 0;
@@ -1437,10 +1054,3 @@ function registerCardElement(cardId: number | undefined, title: string, el: Elem
   color: #ff9fb3;
 }
 </style>
-function handleHandContextMenu(event: MouseEvent): void {
-  if (!handSelectionRequest.value) {
-    return
-  }
-  event.preventDefault()
-  cancelHandSelectionRequest('カード選択がキャンセルされました')
-}

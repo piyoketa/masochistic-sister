@@ -9,6 +9,7 @@ import { HandSwapAction } from '@/domain/entities/actions/HandSwapAction'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { ViewManager } from '@/view/ViewManager'
 import type { CardOperation } from '@/domain/entities/operations'
+import type { StageEventPayload } from '@/types/animation'
 
 const actionCardStub = defineComponent({
   inheritAttrs: false,
@@ -86,6 +87,23 @@ function createViewManagerStub(battle?: ReturnType<typeof createBattleStub>): Vi
   return {
     battle,
   } as unknown as ViewManager
+}
+
+function createStageEvent(options: {
+  stage: string
+  cardIds?: number[]
+  cards?: Array<Record<string, unknown>>
+}): StageEventPayload {
+  return {
+    entryType: 'player-event',
+    batchId: `batch-${Math.random()}`,
+    issuedAt: Date.now(),
+    metadata: {
+      stage: options.stage,
+      cardIds: options.cardIds,
+      cards: options.cards,
+    },
+  }
 }
 
 describe('BattleHandArea コンポーネント', () => {
@@ -273,6 +291,61 @@ describe('BattleHandArea コンポーネント', () => {
     await vi.advanceTimersByTimeAsync(1500)
     await flushPromises()
     expect(wrapper.find('.hand-overlay').exists()).toBe(false)
+    vi.useRealTimers()
+  })
+
+  it('card-create ステージで生成オーバーレイが表示され、完了後に手札へ戻る', async () => {
+    vi.useFakeTimers()
+    const newCard = new Card({ action: new BattlePrepAction() })
+    newCard.assignId(555)
+
+    const wrapper = mount(BattleHandArea, {
+      props: {
+        snapshot: createSnapshot([]),
+        hoveredEnemyId: null,
+        isInitializing: false,
+        errorMessage: null,
+        isPlayerTurn: true,
+        isInputLocked: false,
+        viewManager: createViewManagerStub(createBattleStub([])),
+        requestEnemyTarget: vi.fn(),
+        cancelEnemySelection: vi.fn(),
+        stageEvent: null,
+      },
+      global: {
+        stubs: {
+          ActionCard: actionCardStub,
+          TransitionGroup: false,
+        },
+      },
+    })
+
+    const flushAll = async () => {
+      await flushPromises()
+      await wrapper.vm.$nextTick()
+    }
+
+    await wrapper.setProps({
+      stageEvent: createStageEvent({ stage: 'card-create', cardIds: [555] }),
+    })
+    await flushAll()
+
+    await wrapper.setProps({
+      snapshot: createSnapshot([newCard]),
+      viewManager: createViewManagerStub(createBattleStub([newCard])),
+    })
+    await flushAll()
+
+    expect(wrapper.findAll('.card-create-node')).toHaveLength(1)
+    expect(wrapper.find('.hand-card-wrapper').classes()).toContain('hand-card-wrapper--hidden')
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushAll()
+    await vi.advanceTimersByTimeAsync(300)
+    await flushAll()
+
+    expect(wrapper.find('.card-create-node').exists()).toBe(false)
+    expect(wrapper.find('.hand-card-wrapper').classes()).not.toContain('hand-card-wrapper--hidden')
     vi.useRealTimers()
   })
 })
