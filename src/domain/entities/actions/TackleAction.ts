@@ -7,6 +7,7 @@ export class TackleAction extends Attack {
     super({
       name: 'たいあたり',
       baseDamage: new Damages({ baseAmount: 20, baseCount: 1, type: 'single' }),
+      effectType: 'slam',
       cardDefinition: {
         title: 'たいあたり',
         cardType: 'attack',

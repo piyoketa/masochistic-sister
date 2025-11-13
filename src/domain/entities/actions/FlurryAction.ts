@@ -9,6 +9,7 @@ export class FlurryAction extends Attack {
     super({
       name: '乱れ突き',
       baseDamage: new Damages({ baseAmount: 10, baseCount: 2, type: 'multi' }),
+      effectType: 'slash',
       cardDefinition: {
         title: '乱れ突き',
         cardType: 'attack',

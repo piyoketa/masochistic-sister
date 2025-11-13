@@ -25,7 +25,7 @@ export class BloodSuckAction extends Attack {
     super({
       name: '吸血',
       baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
-      effectType: 'bite',
+      // effectType: 'bite',
       cardDefinition: {
         title: '吸血',
         cardType: 'attack',

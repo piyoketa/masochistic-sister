@@ -11,6 +11,7 @@ export class MucusShotAction extends Attack {
     super({
       name: '粘液飛ばし',
       baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
+      effectType: 'spit',
       inflictStates: [() => new StickyState(1)],
       cardDefinition: {
         title: '粘液飛ばし',

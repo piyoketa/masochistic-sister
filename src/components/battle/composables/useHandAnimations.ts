@@ -1,5 +1,6 @@
 import { reactive, ref, type Ref } from 'vue'
 import type { CardInfo } from '@/types/battle'
+import { spawnCardAshOverlay } from '@/utils/cardAshOverlay'
 import type { HandEntry } from './useHandPresentation'
 
 export interface FloatingCardAnimation {
@@ -33,6 +34,8 @@ const DRAW_ANIMATION_CLEANUP_BUFFER_MS = 100
 const CARD_CREATE_MATERIALIZE_DURATION_MS = 1000
 const CARD_CREATE_TRAVEL_DURATION_MS = 500
 const CARD_CREATE_CLEANUP_BUFFER_MS = 120
+const CARD_ELIMINATE_DURATION_MS = 1000
+const CARD_ELIMINATE_CLEANUP_BUFFER_MS = 120
 
 export function useHandAnimations(options: UseHandAnimationsOptions) {
   const hiddenCardIds = ref<Set<number>>(new Set())
@@ -215,7 +218,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
         ? targetElement.getBoundingClientRect()
         : {
             left: sourceRect.left,
-            top: sourceRect.top - 40,
+            top: sourceRect.top,
             width: sourceRect.width,
             height: sourceRect.height,
           }
@@ -228,6 +231,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
       toRect: targetRect,
       zoneRect,
       variant,
+      duration: variant === 'eliminate' ? CARD_ELIMINATE_DURATION_MS : undefined,
       onComplete: () => showCard(cardId),
     })
   }
@@ -243,9 +247,13 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     duration?: number
     onComplete?: () => void
   }): void {
-    const duration = options.duration ?? 300
-    const revealDelay = Math.max(0, duration - 80)
-    const cleanupDelay = duration + 80
+    const duration =
+      options.variant === 'eliminate' ? CARD_ELIMINATE_DURATION_MS : options.duration ?? 300
+    const revealDelay = options.variant === 'eliminate' ? duration : Math.max(0, duration - 80)
+    const cleanupDelay =
+      options.variant === 'eliminate'
+        ? duration + CARD_ELIMINATE_CLEANUP_BUFFER_MS
+        : duration + 80
     const fromCenterX = options.fromRect.left + options.fromRect.width / 2
     const fromCenterY = options.fromRect.top + options.fromRect.height / 2
     const toCenterX = options.toRect.left + options.toRect.width / 2
@@ -273,6 +281,8 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
       active: false,
     })
     floatingCards.push(card)
+    const removeAshOverlay =
+      options.variant === 'eliminate' ? spawnCardAshOverlay(options.fromRect) : undefined
     let revealed = false
     const reveal = () => {
       if (revealed) {
@@ -291,6 +301,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
       if (index >= 0) {
         floatingCards.splice(index, 1)
       }
+      removeAshOverlay?.()
       reveal()
     }, cleanupDelay)
   }

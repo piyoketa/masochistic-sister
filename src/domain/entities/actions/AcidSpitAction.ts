@@ -8,6 +8,7 @@ export class AcidSpitAction extends Attack {
     super({
       name: '酸を吐く',
       baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
+      effectType: 'spit',
       inflictStates: [() => new CorrosionState()],
       cardDefinition: {
         title: '酸を吐く',
