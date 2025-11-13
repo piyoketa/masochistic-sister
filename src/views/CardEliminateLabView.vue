@@ -1,0 +1,345 @@
+<!--
+CardEliminateLabView の責務:
+- 砂化アニメーション（card-eliminate）の単体デモを提供し、ActionCard が下→上ワイプと粒子演出で消える様子を確認できるようにする。
+- ボタン操作でカードの生成 / 砂化 / リセットを行い、ログに簡易的な出力を残す。
+
+責務ではないこと:
+- Battle 本編や ViewManager との統合。ここはあくまで演出確認専用のラボページ。
+-->
+<script setup lang="ts">
+import { ref } from 'vue'
+import ActionCard from '@/components/ActionCard.vue'
+
+const actionCard = {
+  id: 'lab-card',
+  title: '砂化テスト',
+  type: 'skill' as const,
+  cost: 2,
+  illustration: '🜂',
+  description: 'テスト用のカード\n砂化演出を確認できます。',
+  primaryTags: [{ id: 'tag-type-skill', label: '演出' }],
+  effectTags: [],
+  categoryTags: [],
+  descriptionSegments: [],
+  attackStyle: 'single' as const,
+  damageAmount: 0,
+  damageCount: 0,
+}
+
+const stageRef = ref<HTMLElement | null>(null)
+const cardRef = ref<HTMLElement | null>(null)
+const cardVisible = ref(true)
+const isDespawning = ref(false)
+const logs = ref<string[]>([])
+
+const log = (message: string) => {
+  const stamp = new Date().toLocaleTimeString()
+  logs.value = [...logs.value.slice(-30), `[${stamp}] ${message}`]
+}
+
+const spawnCard = () => {
+  cardVisible.value = true
+  isDespawning.value = false
+  log('カード生成')
+}
+
+const resetCard = () => {
+  spawnCard()
+  log('リセット: 新しいカードを配置')
+}
+
+const ensureCard = () => {
+  if (!cardVisible.value) {
+    spawnCard()
+  }
+}
+
+const despawnCard = () => {
+  if (!cardVisible.value || isDespawning.value) {
+    log('砂化: カード無し')
+    return
+  }
+  const dom = cardRef.value
+  if (!dom) {
+    log('砂化: DOM未取得')
+    return
+  }
+  const rect = dom.getBoundingClientRect()
+  spawnAshOverlay(rect)
+  isDespawning.value = true
+  log('砂化: 再生開始')
+  window.setTimeout(() => {
+    cardVisible.value = false
+    isDespawning.value = false
+    log('砂化: 完了')
+  }, 1000 + 150)
+}
+
+const spawnAshOverlay = (rect: DOMRect) => {
+  const overlay = document.createElement('div')
+  overlay.className = 'ash-overlay'
+  Object.assign(overlay.style, {
+    left: `${rect.left}px`,
+    top: `${rect.top}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+  })
+  document.body.appendChild(overlay)
+
+  const width = rect.width
+  const height = rect.height
+  const particleCount = 72
+  const fragment = document.createDocumentFragment()
+  let maxDelay = 0
+  let maxDuration = 0
+
+  for (let i = 0; i < particleCount; i += 1) {
+    const particle = document.createElement('i')
+    particle.className = 'particle'
+
+    const x = (Math.random() * 0.9 + 0.05) * width
+    const y = (Math.random() * 0.55 + 0.4) * height
+    const dx = Math.random() * 120 - 60
+    const dy = -(Math.random() * 110 + 50)
+    const size = (Math.random() * 3.5 + 2).toFixed(2) + 'px'
+    const delay = Math.round(Math.random() * 220)
+    const duration = Math.round(900 + Math.random() * 400)
+
+    maxDelay = Math.max(maxDelay, delay)
+    maxDuration = Math.max(maxDuration, duration)
+
+    particle.style.setProperty('--p-x', `${x.toFixed(2)}px`)
+    particle.style.setProperty('--p-y', `${y.toFixed(2)}px`)
+    particle.style.setProperty('--p-dx', `${dx.toFixed(2)}px`)
+    particle.style.setProperty('--p-dy', `${dy.toFixed(2)}px`)
+    particle.style.setProperty('--p-size', size)
+    particle.style.setProperty('--p-delay', `${delay}ms`)
+    particle.style.setProperty('--p-dur', `${duration}ms`)
+    fragment.appendChild(particle)
+  }
+
+  overlay.appendChild(fragment)
+  const total = maxDelay + maxDuration + 120
+  window.setTimeout(() => overlay.remove(), total)
+}
+</script>
+
+<template>
+  <main class="ash-demo">
+    <header class="toolbar">
+      <button type="button" @click="ensureCard">中央に生成</button>
+      <button type="button" @click="despawnCard">消滅：砂化</button>
+      <button type="button" @click="resetCard">リセット</button>
+    </header>
+    <section ref="stageRef" class="stage">
+      <div class="spawn-area">
+        <div
+          v-if="cardVisible"
+          ref="cardRef"
+          class="ash-card"
+          :class="{ 'ash-despawn': isDespawning }"
+        >
+          <ActionCard v-bind="actionCard" :operations="[]" :affordable="true" />
+        </div>
+      </div>
+      <p class="hint">中央で生成 → 「消滅：砂化」でワイプ強調＋粒子を確認できます</p>
+    </section>
+    <pre class="log-view" aria-live="polite">{{ logs.join('\n') }}</pre>
+  </main>
+</template>
+
+<style scoped>
+:global(:root) {
+  --ash-duration: 1000ms;
+  --ash-ease: cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.ash-demo {
+  min-height: 100vh;
+  margin: 0;
+  padding: 24px;
+  background: radial-gradient(1200px 700px at 50% 10%, #1a2146 0%, #0f1220 60%);
+  color: #eef2ff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  display: grid;
+  gap: 20px;
+  place-items: center;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: #161a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 12px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+button {
+  appearance: none;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #273056;
+  color: #e7ecff;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.12s ease, background 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  background: #2f3a6e;
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.stage {
+  position: relative;
+  width: min(880px, 96vw);
+  height: 60vh;
+  min-height: 420px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 14px 48px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.spawn-area {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.hint {
+  position: absolute;
+  inset: auto 0 12px 0;
+  text-align: center;
+  color: #aab3ff;
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+.ash-card {
+  width: 180px;
+  aspect-ratio: 5 / 7;
+  border-radius: 14px;
+  padding: 12px;
+  background: linear-gradient(180deg, #ffffff, #f7f8ff);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 0, 0, 0.18) inset;
+  position: relative;
+  overflow: visible;
+  -webkit-mask-image: linear-gradient(to top, transparent 0 35%, #000 45% 100%);
+  mask-image: linear-gradient(to top, transparent 0 35%, #000 45% 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 260%;
+  mask-size: 100% 260%;
+  -webkit-mask-position: 50% 0%;
+  mask-position: 50% 0%;
+}
+
+.ash-card :deep(.action-card) {
+  width: 100%;
+  height: 100%;
+}
+
+.ash-card.ash-despawn {
+  animation:
+    ashMask var(--ash-duration) var(--ash-ease) forwards,
+    ashFade var(--ash-duration) var(--ash-ease) forwards;
+}
+
+:global(.ash-overlay) {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  left: 0;
+  top: 0;
+}
+
+:global(.particle) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--p-size, 3px);
+  height: var(--p-size, 3px);
+  border-radius: 50%;
+  background: rgba(235, 235, 235, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  filter: blur(0.4px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  transform: translate(var(--p-x, 0px), var(--p-y, 0px));
+  animation: ashParticle var(--p-dur, var(--ash-duration)) ease-out var(--p-delay, 0ms) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes ashMask {
+  0% {
+    -webkit-mask-position: 50% 0%;
+    mask-position: 50% 0%;
+  }
+  100% {
+    -webkit-mask-position: 50% 120%;
+    mask-position: 50% 120%;
+  }
+}
+
+@keyframes ashFade {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+@keyframes ashParticle {
+  0% {
+    opacity: 0;
+    transform: translate(var(--p-x, 0px), var(--p-y, 0px)) scale(1);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(
+        calc(var(--p-x, 0px) + var(--p-dx, 0px)),
+        calc(var(--p-y, 0px) + var(--p-dy, -70px))
+      )
+      scale(0.9);
+  }
+}
+
+.log-view {
+  width: min(880px, 96vw);
+  min-height: 120px;
+  max-height: 160px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+</style>
