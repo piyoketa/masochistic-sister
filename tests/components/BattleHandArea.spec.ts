@@ -341,6 +341,7 @@ describe('BattleHandArea コンポーネント', () => {
   })
 
   it('card-create ステージでカードが即座に手札へ追加される', async () => {
+    vi.useFakeTimers()
     const newCard = new Card({ action: new BattlePrepAction() })
     newCard.assignId(555)
 
@@ -385,5 +386,76 @@ describe('BattleHandArea コンポーネント', () => {
     expect(handWrapper.exists()).toBe(true)
     expect(handWrapper.classes()).not.toContain('hand-card-wrapper--hidden')
     expect(handWrapper.classes()).not.toContain('hand-card-wrapper--recent')
+    expect(handWrapper.classes()).toContain('hand-card-wrapper--create')
+
+    await vi.advanceTimersByTimeAsync(2000)
+    await flushAll()
+    expect(handWrapper.classes()).not.toContain('hand-card-wrapper--create')
+    vi.useRealTimers()
+  })
+
+  it('被虐のオーラ経由で敵の記憶カードが生成された場合でもcard-createアニメーションが発火する', async () => {
+    vi.useFakeTimers()
+    const auraCard = new Card({ action: new BattlePrepAction() })
+    auraCard.assignId(1)
+    const wrapper = mount(BattleHandArea, {
+      props: {
+        snapshot: createSnapshot([auraCard]),
+        hoveredEnemyId: null,
+        isInitializing: false,
+        errorMessage: null,
+        isPlayerTurn: true,
+        isInputLocked: false,
+        viewManager: createViewManagerStub(createBattleStub([auraCard])),
+        requestEnemyTarget: vi.fn(),
+        cancelEnemySelection: vi.fn(),
+        stageEvent: null,
+      },
+      global: {
+        stubs: {
+          ActionCard: actionCardStub,
+          TransitionGroup: false,
+        },
+      },
+    })
+
+    const flushAll = async () => {
+      await flushPromises()
+      await wrapper.vm.$nextTick()
+    }
+
+    const memoryCardId = 999
+    await wrapper.setProps({
+      stageEvent: {
+        entryType: 'enemy-act',
+        batchId: 'enemy-act:create',
+        issuedAt: Date.now(),
+        metadata: {
+          stage: 'card-create',
+          cardIds: [memoryCardId],
+          cardTitles: ['たいあたり'],
+          cardCount: 1,
+          durationMs: 1500,
+        },
+      },
+    })
+    await flushAll()
+
+    const memoryCard = new Card({ action: new BattlePrepAction() })
+    memoryCard.assignId(memoryCardId)
+    await wrapper.setProps({
+      snapshot: createSnapshot([auraCard, memoryCard]),
+      viewManager: createViewManagerStub(createBattleStub([auraCard, memoryCard])),
+    })
+    await flushAll()
+
+    const wrappers = wrapper.findAll('.hand-card-wrapper')
+    const createdWrapper = wrappers[wrappers.length - 1]
+    expect(createdWrapper.classes()).toContain('hand-card-wrapper--create')
+
+    await vi.advanceTimersByTimeAsync(2000)
+    await flushAll()
+    expect(createdWrapper.classes()).not.toContain('hand-card-wrapper--create')
+    vi.useRealTimers()
   })
 })

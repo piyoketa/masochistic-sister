@@ -86,9 +86,11 @@ const {
   isCardVisible,
   registerCardElement,
   startDeckDrawAnimation,
+  startCardCreateAnimation,
   startCardRemovalAnimation,
   cleanup: cleanupAnimations,
   markCardsVisible,
+  isCardInCreateAnimation,
 } = useHandAnimations({
   handZoneRef,
   deckCounterRef,
@@ -115,6 +117,7 @@ const { handOverflowOverlayMessage, dispose: disposeStageEvents } = useHandStage
   cardTitleMap,
   findHandEntryByCardId,
   startDeckDrawAnimation,
+  startCardCreateAnimation,
   startCardRemovalAnimation,
 })
 
@@ -184,6 +187,7 @@ defineExpose({ resetSelection, cancelSelection })
         :class="[
           cardWrapperClasses(index),
           isCardHidden(entry) ? 'hand-card-wrapper--hidden' : '',
+          isCardInCreateAnimation(entry) ? 'hand-card-wrapper--create' : '',
           selectionWrapperClass(entry),
         ]"
         :ref="(el) => registerCardElement(entry.id, entry.info.title, el)"

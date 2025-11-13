@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import { Battle } from '@/domain/battle/Battle'
+import type { BattleSnapshot } from '@/domain/battle/Battle'
 import { Deck } from '@/domain/battle/Deck'
 import { Hand } from '@/domain/battle/Hand'
 import { DiscardPile } from '@/domain/battle/DiscardPile'
@@ -110,6 +111,34 @@ describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () 
       )
     })
   })
+
+  it('敵行動で生成されるcard-createアニメーションのcardIdsが手札差分と一致する', () => {
+    const operationLog = buildOperationLog(operationEntries, operationEntries.length - 1)
+    const replayer = new OperationLogReplayer({
+      createBattle: battleFactory,
+      operationLog,
+    })
+    const { actionLog } = replayer.buildActionLog()
+    const entries = actionLog.toArray()
+    let lastAppliedSnapshot = battleFactory().getSnapshot()
+
+    entries.forEach((entry) => {
+      const animations = entry.animations ?? []
+      animations.forEach((instruction) => {
+        const diff = collectAddedHandCardIds(lastAppliedSnapshot, instruction.snapshot)
+        if (instruction.metadata?.stage === 'card-create') {
+          const metadataIds = Array.isArray(instruction.metadata?.cardIds)
+            ? (instruction.metadata?.cardIds as number[])
+            : []
+          expect(metadataIds).toEqual(diff)
+        }
+        lastAppliedSnapshot = instruction.snapshot
+      })
+      if (entry.postEntrySnapshot) {
+        lastAppliedSnapshot = entry.postEntrySnapshot
+      }
+    })
+  })
 })
 
 function collectScenarioReferences(snapshot: Awaited<ReturnType<Battle['getSnapshot']>>) {
@@ -187,4 +216,13 @@ function buildOperationEntries(references: ReturnType<typeof collectScenarioRefe
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
   })
   return entries
+}
+
+function collectAddedHandCardIds(before?: BattleSnapshot, after?: BattleSnapshot): number[] {
+  const beforeIds = new Set(
+    (before?.hand ?? []).map((card) => card.id).filter((id): id is number => typeof id === 'number'),
+  )
+  return (after?.hand ?? [])
+    .map((card) => card.id)
+    .filter((id): id is number => typeof id === 'number' && !beforeIds.has(id))
 }

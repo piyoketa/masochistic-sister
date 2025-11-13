@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { OperationLog } from '@/domain/battle/OperationLog'
 import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
 import type { BattleActionLogEntry } from '@/domain/battle/ActionLog'
+import type { BattleSnapshot } from '@/domain/battle/Battle'
 import { createBattleSampleScenario } from '../../fixtures/battleSampleScenario'
 import { createBattleScenario2 } from '../../fixtures/battleSampleScenario2'
 
@@ -135,4 +136,39 @@ describe('OperationRunner ActionLog / wait metadata', () => {
     const damageOutcomes = animations?.[2].damageOutcomes ?? []
     expect(damageOutcomes.length).toBe(5)
   })
+
+  it('敵行動でcard-createアニメーションが発生する場合は手札差分とcardIdsが一致する', () => {
+    const scenario = createBattleSampleScenario()
+    const actionLog = scenario.replayer.getActionLog()
+    const entries = actionLog.toArray()
+    let lastAppliedSnapshot = scenario.createBattle().getSnapshot()
+
+    entries.forEach((entry) => {
+      const animations = entry.animations ?? []
+      animations.forEach((instruction) => {
+        const diff = collectAddedHandCardIds(lastAppliedSnapshot, instruction.snapshot)
+        if (instruction.metadata?.stage === 'card-create') {
+          const metadataIds = Array.isArray(instruction.metadata?.cardIds)
+            ? (instruction.metadata?.cardIds as number[])
+            : []
+          expect(metadataIds).toEqual(diff)
+        }
+        lastAppliedSnapshot = instruction.snapshot
+      })
+      if (animations.length === 0 && entry.postEntrySnapshot) {
+        lastAppliedSnapshot = entry.postEntrySnapshot
+      } else if (entry.postEntrySnapshot) {
+        lastAppliedSnapshot = entry.postEntrySnapshot
+      }
+    })
+  })
 })
+
+function collectAddedHandCardIds(before?: BattleSnapshot, after?: BattleSnapshot): number[] {
+  const beforeIds = new Set(
+    (before?.hand ?? []).map((card) => card.id).filter((id): id is number => typeof id === 'number'),
+  )
+  return (after?.hand ?? [])
+    .map((card) => card.id)
+    .filter((id): id is number => typeof id === 'number' && !beforeIds.has(id))
+}

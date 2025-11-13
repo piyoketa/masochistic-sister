@@ -5,7 +5,8 @@ import type { HandEntry } from './useHandPresentation'
 
 interface PendingCreateRequest {
   batchId: string
-  count: number
+  remainingCount: number
+  cardIds: number[]
 }
 
 interface UseHandStageEventsOptions {
@@ -14,6 +15,7 @@ interface UseHandStageEventsOptions {
   cardTitleMap: ComputedRef<Map<number, string>>
   findHandEntryByCardId: (cardId: number) => HandEntry | undefined
   startDeckDrawAnimation: (cardId: number, options?: { durationMs?: number }) => void
+  startCardCreateAnimation: (cardId: number) => void
   startCardRemovalAnimation: (
     cardId: number,
     entry: HandEntry | undefined,
@@ -27,6 +29,13 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const pendingDrawCardIds = ref<Set<number>>(new Set())
   const previousHandIds = ref<Set<number>>(new Set())
   const pendingDrawAnimationOptions = new Map<number, { durationMs?: number; delayMs?: number }>()
+  const pendingCreateQueue: PendingCreateRequest[] = []
+  const snapshotCreateQueue = () =>
+    pendingCreateQueue.map((request) => ({
+      batchId: request.batchId,
+      remainingCount: request.remainingCount,
+      cardIds: [...request.cardIds],
+    }))
   const processedStageBatchIds = new Set<string>()
   let handOverflowTimer: ReturnType<typeof window.setTimeout> | null = null
 
@@ -54,6 +63,9 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
           break
         case 'card-eliminate':
           handleCardEliminateStage(event)
+          break
+        case 'card-create':
+          handleCardCreateStage(event)
           break
         default:
           break
@@ -90,6 +102,14 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         options.startDeckDrawAnimation(cardId, animationOptions)
         continue
       }
+      if (pendingCreateQueue.length > 0) {
+        logCardCreateDebug('Snapshot検知: card-create 対象カードを割り当て', {
+          cardId,
+          snapshot: snapshotCreateQueue(),
+        })
+        assignCardToCreateQueue(cardId)
+        continue
+      }
     }
   }
 
@@ -104,6 +124,69 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     if (event.metadata?.handOverflow) {
       showHandOverflowOverlay()
     }
+  }
+
+  function handleCardCreateStage(event: StageEventPayload): void {
+    const cardIds = extractCardIds(event.metadata)
+    const declaredCount = extractCardCreateCount(event.metadata)
+    const remainingCount = Math.max(cardIds.length, declaredCount)
+    if (remainingCount <= 0) {
+      return
+    }
+    pendingCreateQueue.push({
+      batchId: event.batchId,
+      remainingCount,
+      cardIds: [...cardIds],
+    })
+    logCardCreateDebug('stage event 受信: card-create を待機キューへ追加', {
+      batchId: event.batchId,
+      cardIds,
+      declaredCount,
+      snapshot: snapshotCreateQueue(),
+    })
+  }
+
+  function assignCardToCreateQueue(cardId: number): void {
+    for (const request of pendingCreateQueue) {
+      const index = request.cardIds.indexOf(cardId)
+      if (index !== -1) {
+        request.cardIds.splice(index, 1)
+        triggerCardCreateAnimation(request, cardId)
+        if (request.remainingCount <= 0) {
+          const requestIndex = pendingCreateQueue.indexOf(request)
+          if (requestIndex >= 0) {
+            pendingCreateQueue.splice(requestIndex, 1)
+          }
+        }
+        return
+      }
+    }
+    while (pendingCreateQueue.length > 0) {
+      const current = pendingCreateQueue[0]
+      if (current.remainingCount <= 0) {
+        pendingCreateQueue.shift()
+        continue
+      }
+      triggerCardCreateAnimation(current, cardId)
+      if (current.remainingCount <= 0) {
+        pendingCreateQueue.shift()
+      }
+      return
+    }
+    console.error('[BattleHandArea][card-create] 対応する生成キューが見つからずアニメーションに失敗しました', {
+      cardId,
+      snapshot: snapshotCreateQueue(),
+    })
+  }
+
+  function triggerCardCreateAnimation(request: PendingCreateRequest, cardId: number): void {
+    request.remainingCount = Math.max(0, request.remainingCount - 1)
+    logCardCreateDebug('card-create アニメーション開始', {
+      cardId,
+      batchId: request.batchId,
+      remainingCount: request.remainingCount,
+    })
+    options.startCardCreateAnimation(cardId)
   }
 
   function handleCardTrashStage(event: StageEventPayload): void {
@@ -144,6 +227,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     }
     pendingDrawCardIds.value = new Set()
     pendingDrawAnimationOptions.clear()
+    pendingCreateQueue.length = 0
   }
 
   return {
@@ -175,6 +259,25 @@ function extractDurationMs(metadata: StageEventPayload['metadata']): number | un
 
 const DRAW_STAGGER_DELAY_MS = 100
 
+function extractCardCreateCount(metadata: StageEventPayload['metadata']): number {
+  if (!metadata) {
+    return 0
+  }
+  if (typeof metadata.cardCount === 'number') {
+    return metadata.cardCount
+  }
+  if (Array.isArray(metadata.cardIds)) {
+    return metadata.cardIds.length
+  }
+  if (Array.isArray((metadata as { cardTitles?: unknown }).cardTitles)) {
+    return (metadata as { cardTitles?: unknown[] }).cardTitles?.length ?? 0
+  }
+  if (Array.isArray(metadata.cards)) {
+    return metadata.cards.length
+  }
+  return 1
+}
+
 function addToSet(target: Ref<Set<number>>, value: number): void {
   const current = target.value
   if (current.has(value)) {
@@ -193,4 +296,30 @@ function removeFromSet(target: Ref<Set<number>>, value: number): void {
   const clone = new Set(current)
   clone.delete(value)
   target.value = clone
+}
+function snapshotCreateQueue(queue: PendingCreateRequest[] = pendingCreateQueue): Array<{
+  batchId: string
+  remainingCount: number
+  cardIds: number[]
+}> {
+  return queue.map((request) => ({
+    batchId: request.batchId,
+    remainingCount: request.remainingCount,
+    cardIds: [...request.cardIds],
+  }))
+}
+
+function logCardCreateDebug(message: string, payload?: Record<string, unknown>): void {
+  if (typeof console === 'undefined') {
+    return
+  }
+  let serialized: unknown = ''
+  if (payload) {
+    try {
+      serialized = JSON.parse(JSON.stringify(payload))
+    } catch {
+      serialized = payload
+    }
+  }
+  console.info(`[BattleHandArea][card-create] ${message}`, serialized)
 }

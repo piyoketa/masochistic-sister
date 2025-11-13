@@ -68,7 +68,7 @@ export const ACTION_LOG_ENTRY_04_ENEMY_ACT: ActionLogEntrySummary = {
       waitMs: 0,
       batchId: 'enemy-highlight:5',
       metadata: {stage:'enemy-highlight',enemyId:3,actionId:'酸を吐く',skipped:false},
-      snapshot: {player:{hp:145,mana:2},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'}],discardCount:1,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP145/MP2, 手札[天の鎖・天の鎖・戦いの準備・日課・腐食・酸を吐く], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
+      snapshot: {player:{hp:145,mana:2},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'}],discardCount:1,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP145/MP2, 手札[天の鎖・天の鎖・戦いの準備・日課], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
     // [被ダメージ] プレイヤーへの攻撃結果
     {
@@ -76,13 +76,13 @@ export const ACTION_LOG_ENTRY_04_ENEMY_ACT: ActionLogEntrySummary = {
       batchId: 'player-damage:6',
       metadata: {stage:'player-damage',enemyId:3,actionId:'酸を吐く'},
       damageOutcomes: [{damage:5,effectType:'slash'}],
-      snapshot: {player:{hp:145,mana:2},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'}],discardCount:1,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP145/MP2, 手札[天の鎖・天の鎖・戦いの準備・日課・腐食・酸を吐く], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
+      snapshot: {player:{hp:145,mana:2},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'}],discardCount:1,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP145/MP2, 手札[天の鎖・天の鎖・戦いの準備・日課], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
     // [手札追加] 敵攻撃の記憶カード (腐食・酸を吐く) を手札へ
     {
       waitMs: 0,
       batchId: 'card-create:7',
-      metadata: {stage:'card-create',enemyId:3,cards:['腐食','酸を吐く']},
+      metadata: {stage:'card-create',durationMs:1500,enemyId:3,cardTitles:['腐食','酸を吐く'],cards:['腐食','酸を吐く'],cardCount:2,cardIds:[9,10]},
       snapshot: {player:{hp:145,mana:2},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:6,title:'戦いの準備'},{id:7,title:'日課'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'}],discardCount:1,exileCount:0,deckCount:4,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP145/MP2, 手札[天の鎖・天の鎖・戦いの準備・日課・腐食・酸を吐く], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
   ],
@@ -162,7 +162,7 @@ export const ACTION_LOG_ENTRY_08_ENEMY_ACT: ActionLogEntrySummary = {
       waitMs: 0,
       batchId: 'enemy-highlight:14',
       metadata: {stage:'enemy-highlight',enemyId:0,actionId:'たいあたり',skipped:false},
-      snapshot: {player:{hp:115,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:11,title:'たいあたり'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP115/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き・たいあたり], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
+      snapshot: {player:{hp:115,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP115/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
     // [被ダメージ] プレイヤーへの攻撃結果
     {
@@ -170,13 +170,13 @@ export const ACTION_LOG_ENTRY_08_ENEMY_ACT: ActionLogEntrySummary = {
       batchId: 'player-damage:15',
       metadata: {stage:'player-damage',enemyId:0,actionId:'たいあたり'},
       damageOutcomes: [{damage:30,effectType:'slash'}],
-      snapshot: {player:{hp:115,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:11,title:'たいあたり'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP115/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き・たいあたり], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
+      snapshot: {player:{hp:115,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP115/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
     // [手札追加] 敵攻撃の記憶カード (たいあたり) を手札へ
     {
       waitMs: 0,
       batchId: 'card-create:16',
-      metadata: {stage:'card-create',enemyId:0,cards:['たいあたり']},
+      metadata: {stage:'card-create',durationMs:1500,enemyId:0,cardTitles:['たいあたり'],cards:['たいあたり'],cardCount:1,cardIds:[11]},
       snapshot: {player:{hp:115,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:11,title:'たいあたり'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP115/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き・たいあたり], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
   ],
@@ -212,7 +212,7 @@ export const ACTION_LOG_ENTRY_10_ENEMY_ACT: ActionLogEntrySummary = {
       waitMs: 0,
       batchId: 'enemy-highlight:19',
       metadata: {stage:'enemy-highlight',enemyId:2,actionId:'粘液飛ばし',skipped:false},
-      snapshot: {player:{hp:100,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:11,title:'たいあたり'},{id:12,title:'鈍化'},{id:13,title:'粘液飛ばし'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP100/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き・たいあたり・鈍化・粘液飛ばし], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
+      snapshot: {player:{hp:100,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:11,title:'たいあたり'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP100/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き・たいあたり], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
     // [被ダメージ] プレイヤーへの攻撃結果
     {
@@ -220,13 +220,13 @@ export const ACTION_LOG_ENTRY_10_ENEMY_ACT: ActionLogEntrySummary = {
       batchId: 'player-damage:20',
       metadata: {stage:'player-damage',enemyId:2,actionId:'粘液飛ばし'},
       damageOutcomes: [{damage:15,effectType:'slash'}],
-      snapshot: {player:{hp:100,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:11,title:'たいあたり'},{id:12,title:'鈍化'},{id:13,title:'粘液飛ばし'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP100/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き・たいあたり・鈍化・粘液飛ばし], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
+      snapshot: {player:{hp:100,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:11,title:'たいあたり'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP100/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き・たいあたり], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
     // [手札追加] 敵攻撃の記憶カード (鈍化・粘液飛ばし) を手札へ
     {
       waitMs: 0,
       batchId: 'card-create:21',
-      metadata: {stage:'card-create',enemyId:2,cards:['鈍化','粘液飛ばし']},
+      metadata: {stage:'card-create',durationMs:1500,enemyId:2,cardTitles:['鈍化','粘液飛ばし'],cards:['鈍化','粘液飛ばし'],cardCount:2,cardIds:[12,13]},
       snapshot: {player:{hp:100,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:9,title:'腐食'},{id:10,title:'酸を吐く'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:11,title:'たいあたり'},{id:12,title:'鈍化'},{id:13,title:'粘液飛ばし'}],discardCount:3,exileCount:0,deckCount:2,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:25,status:'active'},{id:3,hp:10,status:'active'}]}, // 確認: HP100/MP0, 手札[天の鎖・天の鎖・腐食・酸を吐く・天の鎖・疼き・たいあたり・鈍化・粘液飛ばし], 敵HP[オーク=40, オークダンサー=40, 触手=25, かたつむり=10]
     },
   ],
@@ -448,7 +448,7 @@ export const ACTION_LOG_ENTRY_20_ENEMY_ACT: ActionLogEntrySummary = {
       waitMs: 0,
       batchId: 'enemy-highlight:41',
       metadata: {stage:'enemy-highlight',enemyId:1,actionId:'乱れ突き',skipped:false},
-      snapshot: {player:{hp:60,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:12,title:'鈍化'},{id:5,title:'被虐のオーラ'},{id:14,title:'乱れ突き'}],discardCount:6,exileCount:1,deckCount:1,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:0,status:'defeated'}]}, // 確認: HP60/MP0, 手札[天の鎖・天の鎖・天の鎖・疼き・鈍化・被虐のオーラ・乱れ突き], 敵HP[オーク=40, オークダンサー=40, 触手=0, かたつむり=0]
+      snapshot: {player:{hp:60,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:12,title:'鈍化'},{id:5,title:'被虐のオーラ'}],discardCount:6,exileCount:1,deckCount:1,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:0,status:'defeated'}]}, // 確認: HP60/MP0, 手札[天の鎖・天の鎖・天の鎖・疼き・鈍化・被虐のオーラ], 敵HP[オーク=40, オークダンサー=40, 触手=0, かたつむり=0]
     },
     // [被ダメージ] プレイヤーへの攻撃結果
     {
@@ -456,13 +456,13 @@ export const ACTION_LOG_ENTRY_20_ENEMY_ACT: ActionLogEntrySummary = {
       batchId: 'player-damage:42',
       metadata: {stage:'player-damage',enemyId:1,actionId:'乱れ突き'},
       damageOutcomes: [{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'}],
-      snapshot: {player:{hp:60,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:12,title:'鈍化'},{id:5,title:'被虐のオーラ'},{id:14,title:'乱れ突き'}],discardCount:6,exileCount:1,deckCount:1,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:0,status:'defeated'}]}, // 確認: HP60/MP0, 手札[天の鎖・天の鎖・天の鎖・疼き・鈍化・被虐のオーラ・乱れ突き], 敵HP[オーク=40, オークダンサー=40, 触手=0, かたつむり=0]
+      snapshot: {player:{hp:60,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:12,title:'鈍化'},{id:5,title:'被虐のオーラ'}],discardCount:6,exileCount:1,deckCount:1,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:0,status:'defeated'}]}, // 確認: HP60/MP0, 手札[天の鎖・天の鎖・天の鎖・疼き・鈍化・被虐のオーラ], 敵HP[オーク=40, オークダンサー=40, 触手=0, かたつむり=0]
     },
     // [手札追加] 敵攻撃の記憶カード (乱れ突き) を手札へ
     {
       waitMs: 0,
       batchId: 'card-create:43',
-      metadata: {stage:'card-create',enemyId:1,cards:['乱れ突き']},
+      metadata: {stage:'card-create',durationMs:1500,enemyId:1,cardTitles:['乱れ突き'],cards:['乱れ突き'],cardCount:1,cardIds:[14]},
       snapshot: {player:{hp:60,mana:0},hand:[{id:0,title:'天の鎖'},{id:1,title:'天の鎖'},{id:2,title:'天の鎖'},{id:8,title:'疼き'},{id:12,title:'鈍化'},{id:5,title:'被虐のオーラ'},{id:14,title:'乱れ突き'}],discardCount:6,exileCount:1,deckCount:1,enemies:[{id:0,hp:40,status:'active'},{id:1,hp:40,status:'active'},{id:2,hp:0,status:'defeated'},{id:3,hp:0,status:'defeated'}]}, // 確認: HP60/MP0, 手札[天の鎖・天の鎖・天の鎖・疼き・鈍化・被虐のオーラ・乱れ突き], 敵HP[オーク=40, オークダンサー=40, 触手=0, かたつむり=0]
     },
   ],

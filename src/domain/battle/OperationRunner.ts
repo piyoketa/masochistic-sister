@@ -62,6 +62,8 @@ type PlayCardOperations = Extract<
 >['operations']
 
 export class OperationRunner {
+  private static readonly CARD_CREATE_ANIMATION_DURATION_MS = 1500
+
   private readonly battle: Battle
   private readonly actionLog: ActionLog
   private readonly onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
@@ -679,8 +681,17 @@ export class OperationRunner {
       return
     }
     const animations: AnimationInstruction[] = []
+    // card-createステージより前にカードが手札へ出現するとView側がアニメーションを割り当てられないため、
+    // ハイライト/被ダメージまではカード生成分を一時的に隠したスナップショットを用いる。
+    const cardAdditionIds =
+      summary?.cardsAddedToPlayerHand
+        .map((card) => card.id)
+        .filter((id): id is number => typeof id === 'number') ?? []
+    const snapshotBeforeCardAdditions =
+      cardAdditionIds.length > 0 ? this.cloneSnapshotWithoutHandCards(snapshot, cardAdditionIds) : undefined
+
     animations.push(
-      this.createInstruction(snapshot, 0, {
+      this.createInstruction(snapshotBeforeCardAdditions ?? snapshot, 0, {
         stage: 'enemy-highlight',
         enemyId: entry.enemyId,
         actionId: entry.actionId,
@@ -694,7 +705,7 @@ export class OperationRunner {
       const damageStage = this.resolveDamageStage(damageEvents, 'player-damage')
       animations.push(
         this.createInstruction(
-          snapshot,
+          snapshotBeforeCardAdditions ?? snapshot,
           this.calculateEnemyDamageWait(damageEvents, Boolean(summary?.cardsAddedToPlayerHand.length)),
           {
             stage: damageStage,
@@ -709,12 +720,24 @@ export class OperationRunner {
     const shouldAddMemoryCards =
       summary && !(context?.playerDefeated ?? false) && summary.cardsAddedToPlayerHand.length > 0
     if (shouldAddMemoryCards) {
+      const cardAdditions = summary!.cardsAddedToPlayerHand
+      const cardIds = cardAdditions
+        .map((card) => card.id)
+        .filter((id): id is number => typeof id === 'number')
+      const cardTitles = cardAdditions.map((card) => card.title)
+      const cardCreateMetadata: Record<string, unknown> = {
+        stage: 'card-create',
+        durationMs: OperationRunner.CARD_CREATE_ANIMATION_DURATION_MS,
+        enemyId: entry.enemyId,
+        cardTitles,
+        cards: cardTitles,
+        cardCount: cardAdditions.length,
+      }
+      if (cardIds.length > 0) {
+        cardCreateMetadata.cardIds = cardIds
+      }
       animations.push(
-        this.createInstruction(snapshot, 0, {
-          stage: 'card-create',
-          enemyId: entry.enemyId,
-          cards: summary!.cardsAddedToPlayerHand.map((card) => card.title),
-        }),
+        this.createInstruction(snapshot, 0, cardCreateMetadata),
       )
     }
 
@@ -799,6 +822,19 @@ export class OperationRunner {
         batchId,
       )
     })
+  }
+
+  private cloneSnapshotWithoutHandCards(snapshot: BattleSnapshot, cardIds: number[]): BattleSnapshot {
+    if (cardIds.length === 0) {
+      return this.cloneBattleSnapshot(snapshot)
+    }
+    const clone = this.cloneBattleSnapshot(snapshot)
+    const removeSet = new Set(cardIds)
+    clone.hand = clone.hand.filter((card) => {
+      const cardId = card.id
+      return !(typeof cardId === 'number' && removeSet.has(cardId))
+    })
+    return clone
   }
 
   private resolveDamageStage(

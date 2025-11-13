@@ -706,9 +706,16 @@ export class Battle {
   }
 
   private extractNewHandCards(before: Card[], after: Card[]): EnemyTurnActionCardGain[] {
-    const beforeSet = new Set(before)
+    const beforeIds = new Set(before.map((card) => card.id))
     return after
-      .filter((card) => !beforeSet.has(card))
+      .filter((card) => {
+        const cardId = card.id
+        if (cardId === undefined) {
+          // fallback to reference comparison when id is missing
+          return !before.includes(card)
+        }
+        return !beforeIds.has(cardId)
+      })
       .map((card) => ({
         id: card.id,
         title: card.title,

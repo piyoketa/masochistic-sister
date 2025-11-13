@@ -30,6 +30,9 @@ const ACTION_CARD_HEIGHT = 140
 const DRAW_ANIMATION_FALLBACK_MS = 600
 const DRAW_ANIMATION_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
 const DRAW_ANIMATION_CLEANUP_BUFFER_MS = 100
+const CARD_CREATE_MATERIALIZE_DURATION_MS = 1000
+const CARD_CREATE_TRAVEL_DURATION_MS = 500
+const CARD_CREATE_CLEANUP_BUFFER_MS = 120
 
 export function useHandAnimations(options: UseHandAnimationsOptions) {
   const hiddenCardIds = ref<Set<number>>(new Set())
@@ -39,6 +42,11 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
   const cardElementRefs = new Map<number, HTMLElement>()
   const drawAnimationCleanupTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
   const drawAnimationStartTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
+  const cardCreateAnimationTimers = new Map<
+    number,
+    { travelTimer?: ReturnType<typeof window.setTimeout>; cleanupTimer?: ReturnType<typeof window.setTimeout> }
+  >()
+  const activeCreateCardIds = ref<Set<number>>(new Set())
 
   function ensureVisibleCardId(cardId: number | undefined): void {
     if (cardId === undefined || hiddenCardIds.value.has(cardId) || visibleCardIds.value.has(cardId)) {
@@ -93,6 +101,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
 
     const startAnimation = () => {
       drawAnimationStartTimers.delete(cardId)
+      logHandAnimationDebug('deck-draw transform適用', { cardId, duration, delayMs })
       applyDrawTransform(cardElement, deckElement, duration)
       const cleanupTimer = window.setTimeout(() => {
         cleanupDrawAnimation(cardId)
@@ -106,6 +115,77 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     } else {
       startAnimation()
     }
+  }
+
+  function startCardCreateAnimation(cardId: number): void {
+    const cardElement = cardElementRefs.get(cardId)
+    if (!cardElement) {
+      console.error('[BattleHandArea][card-create] カードDOMが見つからずアニメーションを省略しました', {
+        cardId,
+      })
+      retryCardCreateAnimation(cardId, 1)
+      return
+    }
+    cleanupCardCreateAnimation(cardId)
+    addCreateCardId(cardId)
+    const cardRect = cardElement.getBoundingClientRect()
+    const viewportCenterX =
+      typeof window !== 'undefined' ? window.innerWidth / 2 : cardRect.left + cardRect.width / 2
+    const viewportCenterY =
+      typeof window !== 'undefined' ? window.innerHeight / 2 : cardRect.top + cardRect.height / 2
+    const cardCenterX = cardRect.left + (cardRect.width || ACTION_CARD_WIDTH) / 2
+    const cardCenterY = cardRect.top + (cardRect.height || ACTION_CARD_HEIGHT) / 2
+    const deltaX = viewportCenterX - cardCenterX
+    const deltaY = viewportCenterY - cardCenterY
+
+    cardElement.style.transition = 'none'
+    cardElement.style.transformOrigin = 'center center'
+    cardElement.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.7)`
+    cardElement.style.opacity = '0'
+    cardElement.style.filter = 'blur(10px)'
+    cardElement.style.willChange = 'transform, opacity, filter'
+    cardElement.style.zIndex = '6'
+
+    requestAnimationFrame(() => {
+      logHandAnimationDebug('card-create materialize開始', { cardId, deltaX, deltaY })
+      cardElement.style.transition = [
+        `transform ${CARD_CREATE_MATERIALIZE_DURATION_MS}ms ${DRAW_ANIMATION_EASING}`,
+        `opacity ${CARD_CREATE_MATERIALIZE_DURATION_MS}ms ${DRAW_ANIMATION_EASING}`,
+        `filter ${CARD_CREATE_MATERIALIZE_DURATION_MS}ms ${DRAW_ANIMATION_EASING}`,
+      ].join(', ')
+      cardElement.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1)`
+      cardElement.style.opacity = '1'
+      cardElement.style.filter = 'blur(0)'
+    })
+
+    const travelTimer = window.setTimeout(() => {
+      cardElement.style.transition = `transform ${CARD_CREATE_TRAVEL_DURATION_MS}ms ${DRAW_ANIMATION_EASING}`
+      cardElement.style.transform = 'translate3d(0, 0, 0) scale(1)'
+    }, CARD_CREATE_MATERIALIZE_DURATION_MS)
+
+    const cleanupTimer = window.setTimeout(() => {
+      cleanupCardCreateAnimation(cardId)
+    }, CARD_CREATE_MATERIALIZE_DURATION_MS + CARD_CREATE_TRAVEL_DURATION_MS + CARD_CREATE_CLEANUP_BUFFER_MS)
+
+    cardCreateAnimationTimers.set(cardId, { travelTimer, cleanupTimer })
+  }
+
+  function retryCardCreateAnimation(cardId: number, attempt: number): void {
+    if (attempt > 3) {
+      return
+    }
+    window.setTimeout(() => {
+      const cardElement = cardElementRefs.get(cardId)
+      if (!cardElement) {
+        console.error('[BattleHandArea][card-create] リトライでもカードDOMが見つからずアニメーションを中断しました', {
+          cardId,
+          attempt,
+        })
+        retryCardCreateAnimation(cardId, attempt + 1)
+        return
+      }
+      startCardCreateAnimation(cardId)
+    }, 50 * attempt)
   }
 
   function startCardRemovalAnimation(
@@ -228,10 +308,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
       ensureVisibleCardId(cardId)
     } else {
       cleanupDrawAnimation(cardId)
-      const previous = cardElementRefs.get(cardId)
-      if (previous) {
-        cleanupInlineAnimation(previous)
-      }
+      cleanupCardCreateAnimation(cardId)
       cardElementRefs.delete(cardId)
     }
   }
@@ -262,6 +339,16 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     drawAnimationCleanupTimers.clear()
     drawAnimationStartTimers.forEach((timer) => window.clearTimeout(timer))
     drawAnimationStartTimers.clear()
+    cardCreateAnimationTimers.forEach(({ travelTimer, cleanupTimer }) => {
+      if (travelTimer) {
+        window.clearTimeout(travelTimer)
+      }
+      if (cleanupTimer) {
+        window.clearTimeout(cleanupTimer)
+      }
+    })
+    cardCreateAnimationTimers.clear()
+    activeCreateCardIds.value = new Set()
     cardElementRefs.forEach((element) => cleanupInlineAnimation(element))
   }
 
@@ -282,16 +369,53 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     }
   }
 
+  function cleanupCardCreateAnimation(cardId: number): void {
+    const timers = cardCreateAnimationTimers.get(cardId)
+    if (timers?.travelTimer) {
+      window.clearTimeout(timers.travelTimer)
+    }
+    if (timers?.cleanupTimer) {
+      window.clearTimeout(timers.cleanupTimer)
+    }
+    cardCreateAnimationTimers.delete(cardId)
+    removeCreateCardId(cardId)
+    const element = cardElementRefs.get(cardId)
+    if (element) {
+      cleanupInlineAnimation(element)
+    }
+  }
+
+  function addCreateCardId(cardId: number): void {
+    const next = new Set(activeCreateCardIds.value)
+    next.add(cardId)
+    activeCreateCardIds.value = next
+  }
+
+  function removeCreateCardId(cardId: number): void {
+    if (!activeCreateCardIds.value.has(cardId)) {
+      return
+    }
+    const next = new Set(activeCreateCardIds.value)
+    next.delete(cardId)
+    activeCreateCardIds.value = next
+  }
+
+  function isCardInCreateAnimation(entry: HandEntry): boolean {
+    return entry.id !== undefined && activeCreateCardIds.value.has(entry.id)
+  }
+
   return {
     floatingCards,
     isCardHidden,
     isCardVisible,
     registerCardElement,
     startDeckDrawAnimation,
+    startCardCreateAnimation,
     startCardRemovalAnimation,
     cleanup,
     visibleCardIds,
     markCardsVisible,
+    isCardInCreateAnimation,
   }
 }
 
@@ -335,6 +459,7 @@ function cleanupInlineAnimation(element: HTMLElement): void {
   element.style.opacity = ''
   element.style.willChange = ''
   element.style.zIndex = ''
+  element.style.filter = ''
 }
 
 function prepareCardForDelayedAnimation(element: HTMLElement): void {
@@ -363,4 +488,11 @@ function buildFallbackCardInfo(cardId: number, title: string): CardInfo {
     effectTags: [],
     categoryTags: [],
   }
+}
+
+function logHandAnimationDebug(message: string, payload?: Record<string, unknown>): void {
+  if (typeof console === 'undefined') {
+    return
+  }
+  console.info(`[BattleHandArea][animation] ${message}`, payload ?? '')
 }

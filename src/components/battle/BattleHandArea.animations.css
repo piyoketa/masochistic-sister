@@ -55,6 +55,30 @@
   pointer-events: none;
 }
 
+.hand-card-wrapper--create {
+  pointer-events: none;
+}
+
+.hand-card-wrapper--create.hand-card-enter-from,
+.hand-card-wrapper--create.hand-card-enter-to,
+.hand-card-wrapper--create.hand-card-enter-active {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.hand-card-wrapper--create :deep(.action-card)::after {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: inherit;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+  filter: blur(18px);
+  opacity: 0;
+  animation: hand-card-create-halo 1s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
 @keyframes hand-card-wipe-forward {
   0% {
     opacity: 0;
@@ -82,5 +106,20 @@
   100% {
     opacity: 0;
     transform: translate(40%, -40%) rotate(-14deg);
+  }
+}
+
+@keyframes hand-card-create-halo {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
   }
 }
