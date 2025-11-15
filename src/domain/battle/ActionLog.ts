@@ -11,11 +11,15 @@ import type { DamageOutcome } from '../entities/Damages'
 type ValueFactory<T> = T | ((battle: Battle) => T)
 
 export interface AnimationInstruction {
-  snapshot: BattleSnapshot
   waitMs: number
-  batchId: string
   metadata?: AnimationStageMetadata
   damageOutcomes?: readonly DamageOutcome[]
+}
+
+export interface AnimationBatch {
+  batchId: string
+  snapshot: BattleSnapshot
+  instructions: AnimationInstruction[]
 }
 
 export type AnimationStageMetadata =
@@ -63,8 +67,34 @@ export type AnimationStageMetadata =
       cards?: string[]
       cardCount?: number
     }
+  | {
+      stage: 'create-state-card'
+      durationMs?: number
+      stateId?: string
+      stateName?: string
+      cardId?: number
+      cardIds?: number[]
+      cardTitle?: string
+      cardTitles?: string[]
+      cardCount?: number
+      enemyId?: number
+    }
+  | {
+      stage: 'memory-card'
+      durationMs?: number
+      stateId?: string
+      stateName?: string
+      cardId?: number
+      cardIds?: number[]
+      cardTitle?: string
+      cardTitles?: string[]
+      cardCount?: number
+      enemyId?: number
+      soundId?: string
+    }
   | { stage: 'damage'; cardId?: number; cardTitle?: string }
   | { stage: 'player-damage'; enemyId?: number; actionId?: string; cardId?: number; cardTitle?: string }
+  | { stage: 'audio'; soundId: string; durationMs?: number }
   | { stage: 'defeat'; defeatedEnemyIds: number[]; cardId?: number; cardTitle?: string }
 
 export type EnemyActEntryMetadata = Omit<EnemyTurnActionSummary, 'snapshotAfter'> & {
@@ -73,7 +103,7 @@ export type EnemyActEntryMetadata = Omit<EnemyTurnActionSummary, 'snapshotAfter'
 }
 
 type BaseActionLogEntry = {
-  animations?: AnimationInstruction[]
+  animationBatches?: AnimationBatch[]
   postEntrySnapshot?: BattleSnapshot
   getAnimationTotalWaitMs?: () => number
 }
@@ -162,11 +192,8 @@ export class ActionLog {
   private enhanceEntry<T extends BattleActionLogEntry>(entry: T): T {
     const enhanced = entry
     enhanced.getAnimationTotalWaitMs = () => {
-      const instructions = enhanced.animations ?? []
-      const total = instructions.reduce(
-        (sum, instruction) => sum + Math.max(0, instruction.waitMs ?? 0),
-        0,
-      )
+      const batches = enhanced.animationBatches ?? []
+      const total = batches.reduce((sum, batch) => sum + this.calculateBatchWait(batch), 0)
       if (enhanced.type === 'enemy-act') {
         return Math.max(total, 500)
       }
@@ -181,6 +208,13 @@ export class ActionLog {
     }
 
     return value
+  }
+
+  private calculateBatchWait(batch: AnimationBatch): number {
+    if (!batch.instructions || batch.instructions.length === 0) {
+      return 0
+    }
+    return batch.instructions.reduce((max, instruction) => Math.max(max, Math.max(0, instruction.waitMs)), 0)
   }
 }
 

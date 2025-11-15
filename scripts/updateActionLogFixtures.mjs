@@ -85,10 +85,23 @@ function describeCardList(metadata) {
   return ''
 }
 
+function expandAnimations(entry) {
+  const batches = entry.animationBatches ?? []
+  return batches.flatMap((batch) =>
+    (batch.instructions ?? []).map((instruction) => ({
+      waitMs: instruction.waitMs,
+      metadata: instruction.metadata,
+      damageOutcomes: instruction.damageOutcomes,
+      batchId: batch.batchId,
+      snapshot: batch.snapshot,
+    })),
+  )
+}
+
 function buildCardNameMap(summary) {
   const map = new Map()
   summary.forEach((entry) => {
-    entry.animations?.forEach((animation) => {
+    expandAnimations(entry).forEach((animation) => {
       animation.snapshot?.hand?.forEach((card) => {
         if (card?.id !== undefined && card?.title) {
           map.set(card.id, card.title)
@@ -113,11 +126,12 @@ function describeEntry(entry, context, enemyNames, cardNameMap) {
   if (type === 'start-player-turn') {
     context.turn += 1
   }
+  const animations = expandAnimations(entry)
   switch (type) {
     case 'battle-start':
       return 'バトル開始：初期手札と敵HPを描画'
     case 'start-player-turn': {
-      const draw = entry.animations?.[0]?.metadata?.draw ?? 0
+      const draw = animations[0]?.metadata?.draw ?? 0
       return `ターン${context.turn}開始：${draw}枚ドロー`
     }
     case 'play-card': {
@@ -131,7 +145,7 @@ function describeEntry(entry, context, enemyNames, cardNameMap) {
     case 'end-player-turn':
       return `ターン${context.turn}終了：敵行動フェイズへ`
     case 'enemy-act': {
-      const highlight = entry.animations?.find((anim) => anim.metadata?.stage === 'enemy-highlight')
+      const highlight = animations.find((anim) => anim.metadata?.stage === 'enemy-highlight')
       const enemyId = highlight?.metadata?.enemyId
       const enemyName = enemyId !== undefined ? enemyNames[enemyId] ?? `敵${enemyId}` : '敵'
       const actionId = highlight?.metadata?.actionId ?? '行動'
@@ -141,10 +155,10 @@ function describeEntry(entry, context, enemyNames, cardNameMap) {
     case 'player-event':
       return `プレイヤーイベント解決（${entry.eventId ?? 'event'}）`
     case 'state-event': {
-      const subjectId = entry.animations?.[0]?.metadata?.subjectId
+      const subjectId = animations[0]?.metadata?.subjectId
       const subjectName = subjectId !== undefined ? enemyNames[subjectId] ?? `対象${subjectId}` : '対象'
-      const stateId = entry.animations?.[0]?.metadata?.stateId ?? 'state'
-      const result = entry.animations?.[0]?.metadata?.payload?.result ?? 'resolve'
+      const stateId = animations[0]?.metadata?.stateId ?? 'state'
+      const result = animations[0]?.metadata?.payload?.result ?? 'resolve'
       return `ステートイベント：${subjectName}の${stateId}が${result}`
     }
     case 'victory':
@@ -227,15 +241,14 @@ function formatScenario({ logPath, marker, output, enemyNames }) {
     if (entry.eventId) {
       lines.push(`  eventId: '${entry.eventId}',`)
     }
+    const animations = expandAnimations(entry)
     lines.push('  animations: [')
-    entry.animations?.forEach((animation) => {
+    animations.forEach((animation) => {
       const animComment = stageComment(animation.metadata?.stage, animation.metadata)
       lines.push(`    // ${animComment}`)
       lines.push('    {')
       lines.push(`      waitMs: ${animation.waitMs},`)
-      if (animation.batchId) {
-        lines.push(`      batchId: '${animation.batchId}',`)
-      }
+      lines.push(`      batchId: '${animation.batchId}',`)
       if (animation.metadata) {
         lines.push(`      metadata: ${toInlineObject(animation.metadata)},`)
       }

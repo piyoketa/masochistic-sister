@@ -237,22 +237,22 @@ export function createBattleScenario(): BattleScenario {
   registerOperation('endPlayerTurn1', { type: 'end-player-turn' })
   registerOperation('playTackleOnSnail', {
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, 'たいあたり'),
+    card: (battle: Battle) => findMemoryCardId(battle, 'たいあたり'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
   })
   registerOperation('playAcidSpitOnTentacle', {
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '酸を吐く'),
+    card: (battle: Battle) => findMemoryCardId(battle, '酸を吐く'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
   })
   registerOperation('playMucusShotOnTentacle', {
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '粘液飛ばし'),
+    card: (battle: Battle) => findMemoryCardId(battle, '粘液飛ばし'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
   })
   registerOperation('playCorrosion', {
     type: 'play-card',
-    card: (battle) => findStatusCardId(battle, '腐食'),
+    card: (battle: Battle) => findStatusCardId(battle, '腐食'),
   })
   registerOperation('endPlayerTurn2', { type: 'end-player-turn' })
   registerOperation('playAcheOnFlurry', {
@@ -261,18 +261,18 @@ export function createBattleScenario(): BattleScenario {
     operations: [
       {
         type: 'select-hand-card',
-        payload: (battle) => findMemoryCardId(battle, '乱れ突き'),
+        payload: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
       },
     ],
   })
   registerOperation('playFlurryOnOrc', {
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
   })
   registerOperation('playFlurryOnOrcDancer', {
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
   })
 

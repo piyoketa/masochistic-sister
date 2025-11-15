@@ -121,15 +121,31 @@ export class Player {
     this.currentManaValue = Math.max(0, Math.min(this.maxManaValue, Math.floor(value)))
   }
 
-  addState(state: State, options?: { battle?: Battle }): void {
+  addState(state: State, options?: { battle?: Battle; enemyId?: number }): void {
     const battle = options?.battle
-    if (battle && state.cardDefinitionBase) {
-      this.memoryManager.rememberState({
-        state,
-        repository: battle.cardRepository,
-        battle,
-      })
+    if (!battle) {
+      return
     }
+
+    if (!state.cardDefinitionBase) {
+      return
+    }
+
+    const card = this.memoryManager.rememberState({
+      state,
+      repository: battle.cardRepository,
+      battle,
+    })
+    battle.recordStateCardAnimation({
+      stateId: state.id,
+      stateName: state.name,
+      cardId: card.id,
+      cardIds: card.id !== undefined ? [card.id] : undefined,
+      cardTitle: card.title,
+      cardTitles: card.title ? [card.title] : state.name ? [state.name] : undefined,
+      cardCount: card.id !== undefined ? 1 : undefined,
+      enemyId: options?.enemyId,
+    })
   }
 
   removeState(stateId: string): void {
@@ -181,12 +197,23 @@ export class Player {
     this.handRef = hand
   }
 
-  rememberEnemyAttack(damages: Damages, baseAttack: Attack, battle: Battle): void {
-    this.memoryManager.rememberEnemyAttack({
+  rememberEnemyAttack(damages: Damages, baseAttack: Attack, battle: Battle, options?: { enemyId?: number }): void {
+    const card = this.memoryManager.rememberEnemyAttack({
       damages,
       baseAttack,
       repository: battle.cardRepository,
       battle,
+    })
+    battle.recordMemoryCardAnimation({
+      // Attack にはユニークIDが存在しないため、演出用 stateId として攻撃名を使い、ビューが記憶元を識別できるようにする。
+      stateId: baseAttack.name,
+      stateName: baseAttack.name,
+      cardId: card.id,
+      cardIds: card.id !== undefined ? [card.id] : undefined,
+      cardTitle: card.title,
+      cardTitles: card.title ? [card.title] : baseAttack.name ? [baseAttack.name] : undefined,
+      cardCount: card.id !== undefined ? 1 : undefined,
+      enemyId: options?.enemyId,
     })
   }
 }

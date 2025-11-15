@@ -39,7 +39,7 @@ import {
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
-import type { StageEventPayload } from '@/types/animation'
+import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -202,6 +202,9 @@ watch(
       playerDamageEffectsRef.value?.play()
     } else if (stage === 'mana') {
       manaPulseKey.value += 1
+    } else if (stage === 'audio') {
+      const metadata = event.metadata
+      handleAudioStage(metadata?.stage === 'audio' ? metadata : undefined)
     }
   },
 )
@@ -237,6 +240,24 @@ function requestEnemyTarget(): Promise<number> {
       },
     }
   })
+}
+
+function handleAudioStage(metadata: Extract<StageEventMetadata, { stage: 'audio' }> | undefined): void {
+  const soundId = metadata?.soundId
+  if (!soundId) {
+    return
+  }
+  playAudioCue(soundId)
+}
+
+function playAudioCue(soundId: string): void {
+  if (!soundId) {
+    return
+  }
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.info('[AudioStage] 効果音を再生します', soundId)
+  }
 }
 
 function resolveEnemySelection(enemyId: number): void {

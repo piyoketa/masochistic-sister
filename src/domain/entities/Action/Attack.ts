@@ -25,7 +25,7 @@ import {
 } from '../operations'
 import type { ActionContext, ActionType, BaseActionProps } from './ActionBase'
 import { Action } from './ActionBase'
-import { isPlayerEntity } from '../typeGuards'
+import { isEnemyEntity, isPlayerEntity } from '../typeGuards'
 import type { CardDefinition } from '../CardDefinition'
 
 export interface AttackProps extends BaseActionProps {
@@ -135,7 +135,10 @@ export abstract class Attack extends Action {
     this.onAfterDamage(context, damages, defender)
 
     if (this.isPlayer(defender)) {
-      defender.rememberEnemyAttack(damages, this, context.battle)
+      const rememberedEnemyId = isEnemyEntity(context.source) ? context.source.id : undefined
+      defender.rememberEnemyAttack(damages, this, context.battle, {
+        enemyId: typeof rememberedEnemyId === 'number' ? rememberedEnemyId : undefined,
+      })
     }
   }
 

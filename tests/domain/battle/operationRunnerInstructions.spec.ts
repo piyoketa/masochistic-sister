@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import { OperationLog } from '@/domain/battle/OperationLog'
 import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
-import type { BattleActionLogEntry } from '@/domain/battle/ActionLog'
+import type { BattleActionLogEntry, AnimationInstruction } from '@/domain/battle/ActionLog'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import { createBattleSampleScenario } from '../../fixtures/battleSampleScenario'
 import { createBattleScenario2 } from '../../fixtures/battleSampleScenario2'
@@ -105,16 +105,28 @@ describe('OperationRunner ActionLog / wait metadata', () => {
     const entry = actionLog.at(entryIndex)
 
     expect(entry?.type).toBe('play-card')
-    const animations = entry?.animations
+    const animations = flattenEntryAnimations(entry)
     expect(animations).toBeDefined()
     expect(animations).toHaveLength(4)
-    expect(animations?.map((instruction) => instruction.metadata?.stage)).toEqual([
+    if (animations.length < 4) {
+      throw new Error('play-card のアニメーション数が期待より少ないためテストを継続できません')
+    }
+    const ensureAnimation = <T>(value: T | undefined, label: string): T => {
+      if (!value) {
+        throw new Error(`${label} アニメーションが検証対象から欠落しています`)
+      }
+      return value
+    }
+    const cardTrashAnimation = ensureAnimation(animations[0], 'card-trash')
+    const damageAnimation = ensureAnimation(animations[2], 'damage')
+    const defeatAnimation = ensureAnimation(animations[3], 'defeat')
+    expect(animations.map((payload) => payload.instruction.metadata?.stage)).toEqual([
       'card-trash',
       'mana',
       'damage',
       'defeat',
     ])
-    expect(animations?.map((instruction) => instruction.waitMs)).toEqual([0, 0, 800, 1000])
+    expect(animations.map((payload) => payload.instruction.waitMs)).toEqual([0, 0, 800, 1000])
 
     const { battle } = scenario.replayer.run(entryIndex)
     const resolvedCardId = actionLog.resolveValue(
@@ -122,18 +134,18 @@ describe('OperationRunner ActionLog / wait metadata', () => {
       battle,
     )
 
-    const cardStillInHand = animations?.[0].snapshot.hand.some((card) => card.id === resolvedCardId)
+    const cardStillInHand = cardTrashAnimation.snapshot.hand.some((card) => card.id === resolvedCardId)
     expect(cardStillInHand).toBe(false)
-    const cardInDiscard = animations?.[0].snapshot.discardPile.some((card) => card.id === resolvedCardId)
+    const cardInDiscard = cardTrashAnimation.snapshot.discardPile.some((card) => card.id === resolvedCardId)
     expect(cardInDiscard).toBe(true)
 
     const ironBloomId = scenario.references.enemyIds.ironBloom
-    const damageStageEnemy = animations?.[2].snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
-    const defeatStageEnemy = animations?.[3].snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
+    const damageStageEnemy = damageAnimation.snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
+    const defeatStageEnemy = defeatAnimation.snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
     expect(damageStageEnemy?.status).not.toBe('defeated')
     expect(defeatStageEnemy?.status).toBe('defeated')
 
-    const damageOutcomes = animations?.[2].damageOutcomes ?? []
+    const damageOutcomes = damageAnimation.instruction.damageOutcomes ?? []
     expect(damageOutcomes.length).toBe(5)
   })
 
@@ -144,16 +156,16 @@ describe('OperationRunner ActionLog / wait metadata', () => {
     let lastAppliedSnapshot = scenario.createBattle().getSnapshot()
 
     entries.forEach((entry) => {
-      const animations = entry.animations ?? []
-      animations.forEach((instruction) => {
-        const diff = collectAddedHandCardIds(lastAppliedSnapshot, instruction.snapshot)
+      const animations = flattenEntryAnimations(entry)
+      animations.forEach(({ instruction, snapshot }) => {
+        const diff = collectAddedHandCardIds(lastAppliedSnapshot, snapshot)
         if (instruction.metadata?.stage === 'card-create') {
           const metadataIds = Array.isArray(instruction.metadata?.cardIds)
             ? (instruction.metadata?.cardIds as number[])
             : []
           expect(metadataIds).toEqual(diff)
         }
-        lastAppliedSnapshot = instruction.snapshot
+        lastAppliedSnapshot = snapshot
       })
       if (animations.length === 0 && entry.postEntrySnapshot) {
         lastAppliedSnapshot = entry.postEntrySnapshot
@@ -161,6 +173,14 @@ describe('OperationRunner ActionLog / wait metadata', () => {
         lastAppliedSnapshot = entry.postEntrySnapshot
       }
     })
+
+    const flattenedEnemyAnimations = entries
+      .filter((entry) => entry.type === 'enemy-act')
+      .flatMap((entry) => flattenEntryAnimations(entry))
+    expect(flattenedEnemyAnimations.some(({ instruction }) => instruction.metadata?.stage === 'create-state-card')).toBe(
+      true,
+    )
+    expect(flattenedEnemyAnimations.some(({ instruction }) => instruction.metadata?.stage === 'memory-card')).toBe(true)
   })
 })
 
@@ -171,4 +191,19 @@ function collectAddedHandCardIds(before?: BattleSnapshot, after?: BattleSnapshot
   return (after?.hand ?? [])
     .map((card) => card.id)
     .filter((id): id is number => typeof id === 'number' && !beforeIds.has(id))
+}
+
+function flattenEntryAnimations(
+  entry: BattleActionLogEntry | undefined,
+): Array<{ instruction: AnimationInstruction; snapshot: BattleSnapshot }> {
+  if (!entry) {
+    return []
+  }
+  const batches = entry.animationBatches ?? []
+  return batches.flatMap((batch) =>
+    (batch.instructions ?? []).map((instruction) => ({
+      instruction,
+      snapshot: batch.snapshot,
+    })),
+  )
 }

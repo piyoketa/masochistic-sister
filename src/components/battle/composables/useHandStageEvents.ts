@@ -28,6 +28,8 @@ type DeckDrawStageMetadata = Extract<StageEventMetadata, { stage: 'deck-draw' }>
 type CardTrashStageMetadata = Extract<StageEventMetadata, { stage: 'card-trash' }>
 type CardEliminateStageMetadata = Extract<StageEventMetadata, { stage: 'card-eliminate' }>
 type CardCreateStageMetadata = Extract<StageEventMetadata, { stage: 'card-create' }>
+type CreateStateCardStageMetadata = Extract<StageEventMetadata, { stage: 'create-state-card' }>
+type MemoryCardStageMetadata = Extract<StageEventMetadata, { stage: 'memory-card' }>
 
 export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const handOverflowOverlayMessage = ref<string | null>(null)
@@ -71,6 +73,12 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
           break
         case 'card-create':
           handleCardCreateStage(event, metadata)
+          break
+        case 'create-state-card':
+          handleCreateStateCardStage(event, metadata)
+          break
+        case 'memory-card':
+          handleMemoryCardStage(event, metadata)
           break
         default:
           break
@@ -134,20 +142,33 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   function handleCardCreateStage(event: StageEventPayload, metadata: CardCreateStageMetadata): void {
     const cardIds = metadata.cardIds ?? []
     const declaredCount = extractCardCreateCount(metadata)
-    const remainingCount = Math.max(cardIds.length, declaredCount)
-    if (remainingCount <= 0) {
-      return
-    }
-    pendingCreateQueue.push({
-      batchId: event.batchId,
-      remainingCount,
-      cardIds: [...cardIds],
-    })
-    logCardCreateDebug('stage event 受信: card-create を待機キューへ追加', {
+    enqueueCardCreateRequest({
+      stage: 'card-create',
       batchId: event.batchId,
       cardIds,
       declaredCount,
-      snapshot: snapshotCreateQueue(),
+    })
+  }
+
+  function handleCreateStateCardStage(event: StageEventPayload, metadata: CreateStateCardStageMetadata): void {
+    const cardIds = resolveCardIds(metadata)
+    const declaredCount = (metadata.cardCount ?? cardIds.length) || 1
+    enqueueCardCreateRequest({
+      stage: 'create-state-card',
+      batchId: event.batchId,
+      cardIds,
+      declaredCount,
+    })
+  }
+
+  function handleMemoryCardStage(event: StageEventPayload, metadata: MemoryCardStageMetadata): void {
+    const cardIds = metadata.cardIds ?? resolveCardIds(metadata)
+    const declaredCount = (metadata.cardCount ?? cardIds.length) || 1
+    enqueueCardCreateRequest({
+      stage: 'memory-card',
+      batchId: event.batchId,
+      cardIds,
+      declaredCount,
     })
   }
 
@@ -196,6 +217,28 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       remainingCount: request.remainingCount,
     })
     options.startCardCreateAnimation(cardId)
+  }
+  function enqueueCardCreateRequest(params: {
+    stage: string
+    batchId: string
+    cardIds: number[]
+    declaredCount: number
+  }): void {
+    const remainingCount = Math.max(params.cardIds.length, params.declaredCount)
+    if (remainingCount <= 0) {
+      return
+    }
+    pendingCreateQueue.push({
+      batchId: params.batchId,
+      remainingCount,
+      cardIds: [...params.cardIds],
+    })
+    logCardCreateDebug(`stage event 受信: ${params.stage} を待機キューへ追加`, {
+      batchId: params.batchId,
+      cardIds: params.cardIds,
+      declaredCount: params.declaredCount,
+      snapshot: snapshotCreateQueue(),
+    })
   }
 
   function handleCardTrashStage(event: StageEventPayload, metadata: CardTrashStageMetadata): void {
@@ -256,6 +299,21 @@ function extractDurationMs(metadata: DurationAwareMetadata | undefined): number 
 }
 
 const DRAW_STAGGER_DELAY_MS = 100
+
+type CardIdentifierMetadata = {
+  cardIds?: number[]
+  cardId?: number
+}
+
+function resolveCardIds(metadata: CardIdentifierMetadata): number[] {
+  if (Array.isArray(metadata.cardIds) && metadata.cardIds.length > 0) {
+    return [...metadata.cardIds]
+  }
+  if (typeof metadata.cardId === 'number') {
+    return [metadata.cardId]
+  }
+  return []
+}
 
 type CardCountMetadata = StageEventMetadata & {
   cardCount?: number

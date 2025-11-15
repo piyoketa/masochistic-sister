@@ -41,11 +41,13 @@ function createSnapshot(withEnemy = false): BattleSnapshot | undefined {
       {
         id: 1,
         name: 'オーク',
+        image: '/dummy/orc.png',
         currentHp: 10,
         maxHp: 10,
         states: [],
         hasActedThisTurn: false,
         status: 'active',
+        skills: [],
       },
     ],
     deck: [],
@@ -167,7 +169,7 @@ describe('BattleEnemyArea コンポーネント', () => {
       stageEvent: {
         entryType: 'enemy-act',
         batchId: 'enemy-highlight:test',
-        metadata: { stage: 'enemy-highlight', enemyId: 1 },
+        metadata: { stage: 'enemy-highlight', enemyId: 1, skipped: false },
         issuedAt: Date.now(),
       },
     })

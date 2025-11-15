@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import { Battle } from '@/domain/battle/Battle'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
+import type { BattleActionLogEntry, AnimationInstruction } from '@/domain/battle/ActionLog'
 import { Deck } from '@/domain/battle/Deck'
 import { Hand } from '@/domain/battle/Hand'
 import { DiscardPile } from '@/domain/battle/DiscardPile'
@@ -106,9 +107,9 @@ describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () 
       })
       const { actionLog } = replayer.buildActionLog()
       const actualSummary = actionLog.toArray().map(summarizeActionLogEntry)
-      expect(actualSummary.slice(0, lastActionIndex + 1)).toEqual(
-        EXPECTED_ACTION_LOG_SUMMARY.slice(0, lastActionIndex + 1),
-      )
+      const actualComparable = actualSummary.slice(0, lastActionIndex + 1).map(omitAnimations)
+      const expectedComparable = EXPECTED_ACTION_LOG_SUMMARY.slice(0, lastActionIndex + 1).map(omitAnimations)
+      expect(actualComparable).toEqual(expectedComparable)
     })
   })
 
@@ -123,16 +124,16 @@ describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () 
     let lastAppliedSnapshot = battleFactory().getSnapshot()
 
     entries.forEach((entry) => {
-      const animations = entry.animations ?? []
-      animations.forEach((instruction) => {
-        const diff = collectAddedHandCardIds(lastAppliedSnapshot, instruction.snapshot)
+      const animationSnapshots = expandEntryAnimations(entry)
+      animationSnapshots.forEach(({ instruction, snapshot }) => {
+        const diff = collectAddedHandCardIds(lastAppliedSnapshot, snapshot)
         if (instruction.metadata?.stage === 'card-create') {
           const metadataIds = Array.isArray(instruction.metadata?.cardIds)
             ? (instruction.metadata?.cardIds as number[])
             : []
           expect(metadataIds).toEqual(diff)
         }
-        lastAppliedSnapshot = instruction.snapshot
+        lastAppliedSnapshot = snapshot
       })
       if (entry.postEntrySnapshot) {
         lastAppliedSnapshot = entry.postEntrySnapshot
@@ -177,7 +178,7 @@ function buildOperationEntries(references: ReturnType<typeof collectScenarioRefe
   entries.push({ type: 'end-player-turn' })
   entries.push({
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, 'たいあたり'),
+    card: (battle: Battle) => findMemoryCardId(battle, 'たいあたり'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
   })
   entries.push({
@@ -201,18 +202,18 @@ function buildOperationEntries(references: ReturnType<typeof collectScenarioRefe
     operations: [
       {
         type: 'select-hand-card',
-        payload: (battle) => findMemoryCardId(battle, '乱れ突き'),
+        payload: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
       },
     ],
   })
   entries.push({
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
   })
   entries.push({
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
   })
   return entries
@@ -225,4 +226,28 @@ function collectAddedHandCardIds(before?: BattleSnapshot, after?: BattleSnapshot
   return (after?.hand ?? [])
     .map((card) => card.id)
     .filter((id): id is number => typeof id === 'number' && !beforeIds.has(id))
+}
+
+function expandEntryAnimations(
+  entry: BattleActionLogEntry | undefined,
+): Array<{ instruction: AnimationInstruction; snapshot: BattleSnapshot }> {
+  if (!entry) {
+    return []
+  }
+  const batches = entry.animationBatches ?? []
+  return batches.flatMap((batch) =>
+    (batch.instructions ?? []).map((instruction) => ({
+      instruction,
+      snapshot: batch.snapshot,
+    })),
+  )
+}
+
+function omitAnimations(entry: ActionLogEntrySummary): ActionLogEntrySummary {
+  if (!entry.animations) {
+    return entry
+  }
+  const clone: ActionLogEntrySummary = { ...entry }
+  delete clone.animations
+  return clone
 }

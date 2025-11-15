@@ -800,12 +800,12 @@ export class ViewManager {
     entry: BattleActionLogEntry,
     resolvedEntry?: ResolvedBattleActionLogEntry,
   ): AnimationScriptInput | null {
-    const animations = entry.animations ?? []
+    const batches = entry.animationBatches ?? []
     const commands: AnimationCommand[] = []
     const entryIndex = Math.max(0, this.actionLog.length - 1)
     const totalDuration = entry.getAnimationTotalWaitMs ? entry.getAnimationTotalWaitMs() : 0
 
-    if (animations.length === 0) {
+    if (batches.length === 0) {
       if (!entry.postEntrySnapshot) {
         return null
       }
@@ -828,24 +828,28 @@ export class ViewManager {
       }
     }
 
-    animations.forEach((instruction) => {
-      commands.push({
-        type: 'stage-event',
-        batchId: instruction.batchId,
-        entryType: entry.type,
-        metadata: this.buildStageMetadata(instruction),
-        resolvedEntry,
+    batches.forEach((batch) => {
+      const instructions = batch.instructions ?? []
+      instructions.forEach((instruction) => {
+        commands.push({
+          type: 'stage-event',
+          batchId: batch.batchId,
+          entryType: entry.type,
+          metadata: this.buildStageMetadata(instruction),
+          resolvedEntry,
+        })
       })
-      if (instruction.waitMs > 0) {
-        commands.push({ type: 'wait', duration: instruction.waitMs })
+      const batchWait = instructions.reduce((max, instruction) => Math.max(max, Math.max(0, instruction.waitMs)), 0)
+      if (batchWait > 0) {
+        commands.push({ type: 'wait', duration: batchWait })
       }
       commands.push({
         type: 'update-snapshot',
-        snapshot: instruction.snapshot,
+        snapshot: batch.snapshot,
       })
     })
 
-    if (entry.postEntrySnapshot) {
+    if (entry.postEntrySnapshot && batches.length > 0) {
       commands.push({
         type: 'update-snapshot',
         snapshot: entry.postEntrySnapshot,

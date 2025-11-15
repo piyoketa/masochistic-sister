@@ -1,5 +1,6 @@
-import type { BattleActionLogEntry } from '@/domain/battle/ActionLog'
+import type { BattleActionLogEntry, ValueFactory } from '@/domain/battle/ActionLog'
 import { OperationLog } from '@/domain/battle/OperationLog'
+import type { CardOperation } from '@/domain/entities/operations'
 
 export type OperationLogEntryConfig = Parameters<OperationLog['push']>[0]
 
@@ -20,8 +21,8 @@ export interface AnimationInstructionSummary {
 
 export interface ActionLogEntrySummary {
   type: BattleActionLogEntry['type']
-  card?: BattleActionLogEntry extends { card: infer T } ? T : never
-  operations?: BattleActionLogEntry extends { operations?: infer O } ? O : never
+  card?: number | ValueFactory<number>
+  operations?: CardOperation[]
   animations?: AnimationInstructionSummary[]
   eventId?: string
 }
@@ -39,33 +40,34 @@ export function summarizeActionLogEntry(entry: BattleActionLogEntry): ActionLogE
   if (entry.type === 'player-event') {
     summary.eventId = entry.eventId
   }
-  if (entry.animations) {
-    summary.animations = entry.animations.map((instruction) => {
-      const animationSummary: AnimationInstructionSummary = {
-        waitMs: instruction.waitMs,
-        batchId: instruction.batchId,
-        snapshot: {
-          player: {
-            hp: instruction.snapshot.player.currentHp,
-            mana: instruction.snapshot.player.currentMana,
+  if (entry.animationBatches) {
+    summary.animations = entry.animationBatches.flatMap((batch) =>
+      (batch.instructions ?? []).map((instruction) => {
+        const animationSummary: AnimationInstructionSummary = {
+          waitMs: instruction.waitMs,
+          batchId: batch.batchId,
+          snapshot: {
+            player: {
+              hp: batch.snapshot.player.currentHp,
+              mana: batch.snapshot.player.currentMana,
+            },
+            hand: batch.snapshot.hand.map((card) => ({
+              id: card.id,
+              title: card.title,
+            })),
+            discardCount: batch.snapshot.discardPile.length,
+            exileCount: batch.snapshot.exilePile.length,
+            deckCount: batch.snapshot.deck.length,
+            enemies: batch.snapshot.enemies.map((enemy) => ({
+              id: enemy.id,
+              hp: enemy.currentHp,
+              status: enemy.status,
+            })),
           },
-          hand: instruction.snapshot.hand.map((card) => ({
-            id: card.id,
-            title: card.title,
-          })),
-          discardCount: instruction.snapshot.discardPile.length,
-          exileCount: instruction.snapshot.exilePile.length,
-          deckCount: instruction.snapshot.deck.length,
-          enemies: instruction.snapshot.enemies.map((enemy) => ({
-            id: enemy.id,
-            hp: enemy.currentHp,
-            status: enemy.status,
-          })),
-        },
-      }
-      if (instruction.damageOutcomes) {
-        animationSummary.damageOutcomes = instruction.damageOutcomes.map((outcome) => ({ ...outcome }))
-      }
+        }
+        if (instruction.damageOutcomes) {
+          animationSummary.damageOutcomes = instruction.damageOutcomes.map((outcome) => ({ ...outcome }))
+        }
       if (instruction.metadata) {
         const cleanedMetadata = Object.fromEntries(
           Object.entries(instruction.metadata).filter(([, value]) => value !== undefined),
@@ -74,8 +76,9 @@ export function summarizeActionLogEntry(entry: BattleActionLogEntry): ActionLogE
           animationSummary.metadata = cleanedMetadata
         }
       }
-      return animationSummary
-    })
+        return animationSummary
+      }),
+    )
   }
   return summary
 }

@@ -8,7 +8,6 @@ import { Player } from '@/domain/entities/Player'
 import { Enemy as EnemyEntity } from '@/domain/entities/Enemy'
 import { State } from '@/domain/entities/State'
 import { EnemySingleTargetCardTag, SingleAttackCardTag } from '@/domain/entities/cardTags'
-import { EnemySingleTargetCardTag, SingleAttackCardTag } from '@/domain/entities/cardTags'
 
 class TestPlayer extends Player {
   private readonly customStates: State[] = []

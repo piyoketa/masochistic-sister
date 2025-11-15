@@ -212,7 +212,8 @@ describe('BattleView', () => {
     await flushPromises()
     expect(viewManager.state.executedIndex).toBeGreaterThan(initialIndex)
 
-    const retryButton = wrapper.findAll('.header-button')[0]!
+    const retryButton = wrapper.find('.header-button')
+    expect(retryButton.exists()).toBe(true)
     expect(retryButton.attributes('disabled')).toBeUndefined()
 
     await retryButton.trigger('click')
@@ -282,9 +283,13 @@ describe('BattleView', () => {
     await flushPromises()
 
     expect(wrapper.find('.battle-gameover-overlay').exists()).toBe(true)
-    const [retryButton, undoButton] = wrapper.findAll('.header-button')
-    expect(retryButton.attributes('disabled')).toBeUndefined()
-    expect(undoButton.attributes('disabled')).toBeUndefined()
+    const headerButtons = wrapper.findAll('.header-button')
+    const retryButton = headerButtons.at(0)
+    const undoButton = headerButtons.at(1)
+    expect(retryButton).toBeDefined()
+    expect(undoButton).toBeDefined()
+    expect(retryButton?.attributes('disabled')).toBeUndefined()
+    expect(undoButton?.attributes('disabled')).toBeUndefined()
   })
 
   it('カードを選択し敵をクリックすると操作がキューに積まれる', async () => {

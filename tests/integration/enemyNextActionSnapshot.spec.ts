@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import { Battle } from '@/domain/battle/Battle'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
+import type { BattleActionLogEntry, AnimationInstruction } from '@/domain/battle/ActionLog'
 import { Deck } from '@/domain/battle/Deck'
 import { Hand } from '@/domain/battle/Hand'
 import { DiscardPile } from '@/domain/battle/DiscardPile'
@@ -46,7 +47,8 @@ describe('敵行動予測のSnapshot固定', () => {
     const entries = buildActionLogEntries(-1)
     const startTurnEntries = entries.filter((entry) => entry.type === 'start-player-turn')
     expect(startTurnEntries.length).toBeGreaterThan(0)
-    const firstTurnSnapshot = startTurnEntries[0]?.animations?.[0]?.snapshot
+    const firstTurnAnimations = flattenEntryAnimations(startTurnEntries[0])
+    const firstTurnSnapshot = firstTurnAnimations[0]?.snapshot
     expect(extractNextActionTitles(firstTurnSnapshot, references.enemyIds.orc)).toEqual([
       'たいあたり',
     ])
@@ -71,7 +73,8 @@ describe('敵行動予測のSnapshot固定', () => {
     const entries = buildActionLogEntries(0)
     const startTurnEntries = entries.filter((entry) => entry.type === 'start-player-turn')
     expect(startTurnEntries.length).toBeGreaterThanOrEqual(2)
-    const secondTurnSnapshot = startTurnEntries[1]?.animations?.[0]?.snapshot
+    const secondTurnAnimations = flattenEntryAnimations(startTurnEntries[1])
+    const secondTurnSnapshot = secondTurnAnimations[0]?.snapshot
     expect(extractNextActionTitles(secondTurnSnapshot, references.enemyIds.orc)).toEqual([
       'ビルドアップ',
     ])
@@ -106,19 +109,33 @@ function findEnemyHighlightSnapshotAfter(
 ): BattleSnapshot {
   for (let index = afterIndex + 1; index < entries.length; index += 1) {
     const entry = entries[index]
-    if (entry.type !== 'enemy-act' || !entry.animations) {
+    if (!entry || entry.type !== 'enemy-act') {
       continue
     }
-    const highlight = entry.animations.find(
-      (instruction) =>
-        instruction.metadata?.stage === 'enemy-highlight' &&
-        instruction.metadata?.enemyId === enemyId,
+    const highlight = flattenEntryAnimations(entry).find(
+      ({ instruction }) =>
+        instruction.metadata?.stage === 'enemy-highlight' && instruction.metadata?.enemyId === enemyId,
     )
     if (highlight) {
       return highlight.snapshot
     }
   }
   throw new Error(`enemyId=${enemyId} のハイライトSnapshotが見つかりません`)
+}
+
+function flattenEntryAnimations(
+  entry: BattleActionLogEntry | undefined,
+): Array<{ instruction: AnimationInstruction; snapshot: BattleSnapshot }> {
+  if (!entry) {
+    return []
+  }
+  const batches = entry.animationBatches ?? []
+  return batches.flatMap((batch) =>
+    (batch.instructions ?? []).map((instruction) => ({
+      instruction,
+      snapshot: batch.snapshot,
+    })),
+  )
 }
 
 function collectScenarioReferences(snapshot: Awaited<ReturnType<Battle['getSnapshot']>>) {

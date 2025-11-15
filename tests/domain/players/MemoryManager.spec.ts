@@ -51,8 +51,12 @@ describe('MemoryManager', () => {
     })
 
     expect(card.id).toBeDefined()
-    expect(card.action?.baseDamages.amount).toBe(damages.amount)
-    expect(card.action?.baseDamages.count).toBe(damages.count)
+    const rememberedAction = card.action
+    if (!(rememberedAction instanceof Attack)) {
+      throw new Error('記憶カードのアクションがAttackではありません')
+    }
+    expect(rememberedAction.baseDamages.amount).toBe(damages.amount)
+    expect(rememberedAction.baseDamages.count).toBe(damages.count)
     expect(card.cardTags?.some((tag) => tag.id === 'tag-memory')).toBe(true)
     expect(battle.addCardToPlayerHand).toHaveBeenCalledWith(card)
   })

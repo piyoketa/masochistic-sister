@@ -9,7 +9,7 @@ import { HandSwapAction } from '@/domain/entities/actions/HandSwapAction'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { ViewManager } from '@/view/ViewManager'
 import type { CardOperation } from '@/domain/entities/operations'
-import type { StageEventPayload } from '@/types/animation'
+import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 
 const actionCardStub = defineComponent({
   inheritAttrs: false,
@@ -93,20 +93,12 @@ function createViewManagerStub(battle?: ReturnType<typeof createBattleStub>): Vi
   } as unknown as ViewManager
 }
 
-function createStageEvent(options: {
-  stage: string
-  cardIds?: number[]
-  cards?: Array<Record<string, unknown>>
-}): StageEventPayload {
+function createStageEvent(metadata: StageEventMetadata): StageEventPayload {
   return {
     entryType: 'player-event',
     batchId: `batch-${Math.random()}`,
     issuedAt: Date.now(),
-    metadata: {
-      stage: options.stage,
-      cardIds: options.cardIds,
-      cards: options.cards,
-    },
+    metadata,
   }
 }
 
@@ -140,7 +132,7 @@ describe('BattleHandArea コンポーネント', () => {
     const simpleCard = new Card({ action: new BattlePrepAction() })
     simpleCard.assignId(1)
 
-    const requestEnemyTarget = vi.fn<[], Promise<number>>()
+    const requestEnemyTarget = vi.fn<() => Promise<number>>(async () => 0)
 
     const wrapper = mount(BattleHandArea, {
       props: {
@@ -202,8 +194,9 @@ describe('BattleHandArea コンポーネント', () => {
       return 0
     })
 
+    const eliminateCardId = eliminateCard.id ?? -1
     await wrapper.setProps({
-      stageEvent: createStageEvent({ stage: 'card-eliminate', cardIds: [eliminateCard.id] }),
+      stageEvent: createStageEvent({ stage: 'card-eliminate', cardIds: [eliminateCardId] }),
     })
     await flushPromises()
 
@@ -218,7 +211,7 @@ describe('BattleHandArea コンポーネント', () => {
     const targetCard = new Card({ action: new HeavenChainAction() })
     targetCard.assignId(42)
 
-    const requestEnemyTarget = vi.fn<[], Promise<number>>(() => Promise.resolve(999))
+    const requestEnemyTarget = vi.fn<() => Promise<number>>(() => Promise.resolve(999))
     const cancelEnemySelection = vi.fn()
 
     const wrapper = mount(BattleHandArea, {
@@ -284,11 +277,15 @@ describe('BattleHandArea コンポーネント', () => {
     })
 
     const cardButtons = wrapper.findAll('.action-card-stub')
-    await cardButtons[0].trigger('click')
+    const firstCard = cardButtons.at(0)
+    expect(firstCard).toBeDefined()
+    await firstCard!.trigger('click')
     await flushPromises()
     expect(wrapper.emitted('play-card')).toBeUndefined()
 
-    await cardButtons[1].trigger('click')
+    const secondCard = cardButtons.at(1)
+    expect(secondCard).toBeDefined()
+    await secondCard!.trigger('click')
     await flushPromises()
 
     const emitted = wrapper.emitted('play-card')
@@ -327,7 +324,7 @@ describe('BattleHandArea コンポーネント', () => {
       stageEvent: {
         entryType: 'start-player-turn',
         batchId: 'card-move:test',
-        metadata: { stage: 'deck-draw', handOverflow: true },
+        metadata: { stage: 'deck-draw', cardIds: [card.id ?? 0], handOverflow: true },
         issuedAt: Date.now(),
       },
     })
@@ -496,12 +493,13 @@ describe('BattleHandArea コンポーネント', () => {
     await flushAll()
 
     const wrappers = wrapper.findAll('.hand-card-wrapper')
-    const createdWrapper = wrappers[wrappers.length - 1]
-    expect(createdWrapper.classes()).toContain('hand-card-wrapper--create')
+    const createdWrapper = wrappers.at(-1)
+    expect(createdWrapper).toBeDefined()
+    expect(createdWrapper!.classes()).toContain('hand-card-wrapper--create')
 
     await vi.advanceTimersByTimeAsync(2000)
     await flushAll()
-    expect(createdWrapper.classes()).not.toContain('hand-card-wrapper--create')
+    expect(createdWrapper!.classes()).not.toContain('hand-card-wrapper--create')
     vi.useRealTimers()
   })
 })

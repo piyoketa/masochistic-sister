@@ -3,8 +3,9 @@ import { describe, it, expect } from 'vitest'
 import { Enemy } from '@/domain/entities/Enemy'
 import { BattlePrepAction } from '@/domain/entities/actions/BattlePrepAction'
 import { AccelerationState, LargeState } from '@/domain/entities/states'
+import type { State } from '@/domain/entities/State'
 
-function createEnemyWithStates(states = []): Enemy {
+function createEnemyWithStates(states: State[] = []): Enemy {
   return new Enemy({
     name: 'テスト敵',
     maxHp: 30,

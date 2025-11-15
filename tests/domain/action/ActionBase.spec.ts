@@ -5,7 +5,6 @@ import { Player } from '@/domain/entities/Player'
 import { Enemy } from '@/domain/entities/Enemy'
 import { State } from '@/domain/entities/State'
 import { SelfTargetCardTag, SkillTypeCardTag } from '@/domain/entities/cardTags'
-import { SelfTargetCardTag, SkillTypeCardTag } from '@/domain/entities/cardTags'
 
 class MetadataOperation extends Operation<number> {
   static readonly TYPE = 'metadata-operation'

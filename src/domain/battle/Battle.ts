@@ -164,6 +164,27 @@ export class Battle {
   private pendingManaAnimationEvents: Array<{ amount: number }> = []
   private pendingDefeatAnimationEvents: number[] = []
   private pendingDrawAnimationEvents: Array<{ cardIds: number[] }> = []
+  private pendingStateCardAnimationEvents: Array<{
+    stateId?: string
+    stateName?: string
+    cardId?: number
+    cardIds?: number[]
+    cardTitle?: string
+    cardTitles?: string[]
+    cardCount?: number
+    enemyId?: number
+  }> = []
+  private pendingMemoryCardAnimationEvents: Array<{
+    stateId?: string
+    stateName?: string
+    cardId?: number
+    cardIds?: number[]
+    cardTitle?: string
+    cardTitles?: string[]
+    cardCount?: number
+    enemyId?: number
+    soundId?: string
+  }> = []
   private interruptEnemyActionQueue: QueuedInterruptEnemyAction[] = []
   private lastPlayCardAnimationContext?: PlayCardAnimationContext
   private pendingEntrySnapshotOverride?: BattleSnapshot
@@ -647,6 +668,33 @@ export class Battle {
     this.pendingDefeatAnimationEvents.push(enemyId)
   }
 
+  recordStateCardAnimation(event: {
+    stateId?: string
+    stateName?: string
+    cardId?: number
+    cardIds?: number[]
+    cardTitle?: string
+    cardTitles?: string[]
+    cardCount?: number
+    enemyId?: number
+  }): void {
+    this.pendingStateCardAnimationEvents.push({ ...event })
+  }
+
+  recordMemoryCardAnimation(event: {
+    stateId?: string
+    stateName?: string
+    cardId?: number
+    cardIds?: number[]
+    cardTitle?: string
+    cardTitles?: string[]
+    cardCount?: number
+    enemyId?: number
+    soundId?: string
+  }): void {
+    this.pendingMemoryCardAnimationEvents.push({ ...event })
+  }
+
   consumeLastPlayCardAnimationContext(): PlayCardAnimationContext | undefined {
     const context = this.lastPlayCardAnimationContext
     this.lastPlayCardAnimationContext = undefined
@@ -702,6 +750,37 @@ export class Battle {
   consumeDrawAnimationEvents(): Array<{ cardIds: number[] }> {
     const events = this.pendingDrawAnimationEvents
     this.pendingDrawAnimationEvents = []
+    return events
+  }
+
+  consumeStateCardAnimationEvents(): Array<{
+    stateId?: string
+    stateName?: string
+    cardId?: number
+    cardIds?: number[]
+    cardTitle?: string
+    cardTitles?: string[]
+    cardCount?: number
+    enemyId?: number
+  }> {
+    const events = this.pendingStateCardAnimationEvents
+    this.pendingStateCardAnimationEvents = []
+    return events
+  }
+
+  consumeMemoryCardAnimationEvents(): Array<{
+    stateId?: string
+    stateName?: string
+    cardId?: number
+    cardIds?: number[]
+    cardTitle?: string
+    cardTitles?: string[]
+    cardCount?: number
+    enemyId?: number
+    soundId?: string
+  }> {
+    const events = this.pendingMemoryCardAnimationEvents
+    this.pendingMemoryCardAnimationEvents = []
     return events
   }
 

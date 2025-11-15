@@ -1,58 +1,52 @@
-# アニメーション再設計計画（バッチ導入）
+---
+title: アニメーション再設計計画（バッチ導入）
+---
 
-## 目的
-- `BattleActionLogEntry` / `AnimationInstruction` にバッチ概念を導入し、1バッチ内で複数ステージのアニメーションを同期的に再生できるようにする。
-- stage `card-create` を `create-state-card` / `memory-card` に分割し、それぞれ描画時間・発生タイミングを明確化する。
-- 音声再生ステージを追加し、`play-card` / `enemy-act` と連動した効果音を再生できる拡張点を用意する。
-
-## タスク分解
-1. **バッチ概念の追加 (Domain / Types)**
-   - `AnimationInstruction` に `batchId` を必須化し、`waitMs` の解釈を「同バッチ内で最大の `waitMs` が経過したら次バッチへ進む」ルールに更新。
-   - `BattleActionLogEntry.animations` を `AnimationBatch[]`（`{ id: string; snapshot: BattleSnapshot; instructions: AnimationInstruction[] }`）へ置き換え、構造を明確化。過去シナリオテスト（fixtures）もこの形式に更新する。
-   - `OperationRunner` とドキュメント (`animation_instruction.md`) を更新。
-
-2. **create-state-card / memory-card の分離実装**
-   - `Player.addState` / `Player.rememberEnemyAttack` でそれぞれ異なるアニメーション event を積む。
-   - `OperationRunner` の `buildEnemyActionAnimations` / `buildPlayCardAnimations` 内で新 stage を発行。  
-     - `create-state-card`: `waitMs = 500ms` 固定、敵行動バッチ (`enemy-action-batch`) に入れる。
-     - `memory-card`: `waitMs = 1500ms` 固定、敵行動バッチ後に `remember-enemy-attack-batch` を追加して再生。
-   - 既存の card-create ロジック (`useHandStageEvents` / `useHandAnimations`) を stage 名で振り分け、state-cardはシンプル演出、memory-cardは既存 Materialize を流用。
-
-3. **音声ステージの追加**
-   - Action 定義に任意 `soundId` を持たせ、`OperationRunner` が `stage: 'audio'` を生成（`waitMs = 500ms`）。デフォルトでは soundId を持たないため、stage は生成されない。
-   - `play-card` バッチで mana / card-trash / audio をまとめ、`enemy-act` 側でも必要に応じて音声 stage を差し込む余地を残す（フロントの音声コンポーネントはスケルトンで可）。
-
-4. **フロント実装更新**
-   - `BattleView` のアニメーション再生ロジックを「バッチ単位で再生」できるようリファクタ。  
-     - 同バッチ内の instruction は並列再生。
-     - 最大 `waitMs` を計測し、完了後に次バッチへ。
-   - `useHandStageEvents` / `useHandAnimations` を `create-state-card` / `memory-card` / `audio` に対応させ、再生時間を調整。
-   - 効果音コンポーネント (丹ロジック) のスケルトンを配置し、`stage: 'audio'` 受信時にトリガする仕組みを構築。
-
-5. **テスト / ドキュメント**
-   - `tests/domain/battle/operationRunnerInstructions.spec.ts` などで新しいステージ/バッチが期待通りに出力されるか確認。
-   - `tests/components/BattleHandArea.spec.ts` や演出テストも stage 名変更へ追随。
-   - `documents/animation_instruction.md` を更新し、enemy-act / play-card のバッチ構成と待ち時間を明記。
-
-## 不明点・確認事項
-1. **バッチ構造のデータ形式**  
-   - `animations: AnimationInstruction[]` を保ちつつ `batchId` をキーに扱うか、`BattleActionLogEntry` 側を `AnimationBatch[]` に変えるか。  
-   - **選択肢**:  
-     - (A) `AnimationInstruction` に `batchId` を追加し、View でグルーピング（後方互換性重視）。  
-     - (B) 新たに `AnimationBatch` 型を Entry に持たせ、`instructions` 配列をネスト（構造明確）。  
-   - **推奨**: (B) 明確に配列で管理したほうがバッチ単位の進行制御が実装しやすい。ただし既存データの migrate が必要。
-
-2. **`memory-card` のバッチ配置**
-   - 各 `enemy-act` の `enemy-action-batch` に続けて `remember-enemy-attack-batch` を生成。敵アクションが攻撃ではない場合は `remember` バッチを生成しない。
-
-3. **Front 側既存アニメーションとの整合**
-   - バッチ単位で snapshot/StageEvent を扱えるよう、`BattleView` / StageEvent queue の処理を調整。現状で特別な意思決定は不要（この方針で問題なし）。
-
-## 次のステップ
-1. バッチ構造のデータモデル決定（不明点1 = AnimationBatch 形式）→ 決定済み(B)。
-2. OperationRunner で `create-state-card` / `memory-card` / `audio` ステージを出力するよう改修。
-3. Front の StageEvent 処理をバッチ対応へリファクタ。
-4. サウンド再生コンポーネントのスケルトン実装。
-5. 既存シナリオテスト／fixtures を新フォーマットに更新し、ドキュメント (`animation_instruction.md` など) を刷新。
-
-不明点1〜3 についてご判断いただければ、設計を確定させて実装に着手します。***
+# 設計概要
+- **バッチ型アニメーションの導入**: `BattleActionLogEntry.animationBatches`（`{ batchId, snapshot, instructions: AnimationInstruction[] }`）を基準にし、同一バッチ内の指示は同一 snapshot と `batchId` を共有して同時再生される。`AnimationInstruction` は `waitMs` と `metadata` を持ち、View は各バッチの最大 `waitMs` を待って次バッチへ進む。`BattleView` / `ViewManager` はバッチの進行管理（現在のバッチ、次バッチ、max wait）に責務を持つ。
+- **新しい stage 種別**  
+  - `create-state-card`（プレイヤーが状態異常を得た際に発生、`waitMs = 500ms`、敵アクションバッチ内）。  
+  - `memory-card`（`Player.rememberEnemyAttack` 時の記憶カード生成、`waitMs = 1500ms`、敵の `enemy-action-batch` 終了後に `remember-enemy-attack-batch` を追加）。  
+  - `audio`（効果音再生向け、`waitMs = 500ms`、`Action` に `soundId` がある場合に生成）。  
+- **バッチ構成の例**  
+  - `enemy-act`（酸を吐く）:  
+    1. `enemy-act-start-batch`: `enemy-highlight`（`waitMs=0`）。  
+    2. `enemy-action-batch`: `player-damage`（`waitMs=(count-1)*200+500`）、`create-state-card`（`waitMs=500`）。  
+    3. `remember-enemy-attack-batch`: `memory-card`（`waitMs=1500`）。  
+  - `play-card`（天の鎖）: 単一バッチ `play-card` に mana（0.3s）、card-eliminate（720ms）、音声（0.5s）をまとめる。  
+  - `play-card`（乱れ突き 10×3）: 同一バッチに mana（0.3s）、card-trash（300ms）、damage（`(count-1)*0.2+0.5`）を含める。  
+- **OperationRunner/Battle の役割整理**:  
+  - `OperationRunner` は `EnemyTurnActionSummary` / `PlayCard` 時に `AnimationBatch` を構築し、各 batch に snapshot と `AnimationInstruction`（`metadata`, `damageOutcomes`, `batchId` など）を添付。`create-state-card` は `Player.addState` 周りで metadata を注入し、`memory-card` は `Player.rememberEnemyAttack` の結果で発火する。  
+  - `Battle` 側は `EnemyTurnActionSummary` に `snapshotAfter` を含めつつ `AnimationBatch` への参照 metadata を整理、`Player` からの state/memory イベントを `OperationRunner` に伝搬する。  
+- **View 側の再生制御**:  
+  - `BattleView` は `ViewManager` から送られる `AnimationScript` をバッチに分割し、各 batch の completion（`max waitMs` + commands）で次 batch を再生。  
+  - `StageEventPayload` は `batchId`・`metadata`（`create-state-card`/`memory-card`/`audio`）・`resolvedEntry` を保持し、`BattleEnemyArea`/`useHandStageEvents` などが `batchId` ごとに throttled に処理する。  
+  - `useHandAnimations` は `card-*` stage で待機時間を `AnimationBatch` の `waitMs` から取得し、`card-eliminate` (720ms)/`card-trash` (300ms) を反映。`useHandStageEvents` では `create-state-card` vs `memory-card` で別のアニメーションパスを用意。  
+- **音声コンポーネント**: stage `audio` を受け取る `DamageEffects` などのスケルトン（`SoundPlayer`）を導入し、`battle` のアクションで発生した `soundId` を再生。  
+- **ドキュメント更新**: 整理したバッチ構成、wait 値、stage 名は `documents/animation_instruction.md` に追記して共有する。### 型変更ポイント（予定）
+1. `AnimationInstruction` に `batchId`（string）、`metadata`（`AnimationStageMetadata` の拡張）、`waitMs` を保持。  
+2. `BattleActionLogEntry` から `animations?: AnimationInstruction[]` を廃止し、`AnimationBatch[]` を保持。バッチの `snapshot` は `BattleSnapshot`、`instructions` は `AnimationInstruction[]`。  
+3. `StageEventPayload` に `batchId` を追加し、`resolvedEntry` は `AnimationBatch` の `resolvedEntry` に基づいた `ResolvedBattleActionLogEntry`。新 stage を型に追加。  
+4. `OperationRunner` の `attachEnemyActAnimations`/`buildPlayCardAnimations` をリファクタし、複数バッチを生成する helper を導入。  
+5. `Player` の `addState`/`rememberEnemyAttack` に `AnimationBatch` 用メタ情報（state id / source action）を付加し、`Battle` や `OperationRunner` が利用。+6. `BattleView` / `ViewManager` が `AnimationScript` をバッチベースで再生し、`AnimationCommand` に `batchId` を含める。+7. `useHandStageEvents` / `BattleEnemyArea` などが `batchId` をもとに `processedStageBatchIds` を管理し、`memory-card` / `audio` を処理。++# 影響を受けるテストと対応方針
+1. `tests/domain/battle/operationRunnerInstructions.spec.ts`, `tests/domain/battle/operationRunner.spec.ts`  
+   - `AnimationBatch[]` への変更と `create-state-card` / `memory-card` / `audio` stage の `metadata` 追加に伴い、期待値をバッチ構造に合わせて更新。`waitMs` はバッチの最大値をチェックし、`snapshot` が `BattleSnapshot` であることも検証。  
+2. `tests/components/BattleHandArea.spec.ts`, `tests/components/BattleEnemyArea.spec.ts`  
+   - `StageEventMetadata.stage` に `create-state-card` / `memory-card` / `audio` を追加し、バッチ `batchId` の固定値・`waitMs` を含めたケースを再現。不要な stage 重複テストは削除可。ただし削除する場合はテスト名・内容・理由を一覧化し、確認を求める。  
+3. `tests/views/BattleView.spec.ts` / `tests/view/ViewManager.spec.ts`  
+   - `AnimationScript` の `commands` 生成に `batchId` を含めるため、これらの spec で `batchId` と `metadata.entryType` の一致を確認する helper を追加。`resolvedEntry` の更新タイミングもバッチ単位に変更。++# 型エラー対応方針（改修前整理）
+## 優先的に解消すべき型エラー（今回の設計に直結）
+1. `tests/components/BattleHandArea.spec.ts` / `BattleEnemyArea.spec.ts` の `StageEventMetadata` で `skipped` / `cardIds` / `damage` などが不足している箇所。新 stage を追加する前に型定義をバッチ対応版へ直す必要あり。  
+2. `tests/components/BattleHandArea.spec.ts` における `stage` プロパティの不正文字列。`StageEventMetadata` の union に合致する文字列（`create-state-card` 等）に調整してから改修。  
+3. `tests/domain/battle/operationRunnerInstructions.spec.ts` で `animations` を単一配列として扱っている箇所。`AnimationBatch[]` に切り替えないとバッチ再生ロジックが破綻する。  
+4. `CardDrawLabView` / `DamageEffectsDemoView` の DOM `ref` や `DamageOutcome.effectType` の型違反。フロント全体の type-check が通っていることが前提なので先に収束させておく。  
+5. `BattleView.spec.ts` / `ViewManager.spec.ts` における `AnimationCommand` / `resolvedEntry` の null guard。バッチ導入後も `resolvedEntry` の参照が必要なため、ここを先行して整備。  
+## 優先順位を下げられる型エラー（後回し可）  
+1. `tests/domain/action/Attack.spec.ts` 等での `Duplicate identifier`。バッチ設計に無関係なので、`animation` 変更後にまとめて整理。  
+2. `tests/domain/*` の `Object is possibly 'undefined'` 系（多くは `OperationRunner` テスト）。バッチ構造が安定したあとに再評価で十分。  
+3. `BattleHandArea.spec.ts` の `createdWrapper` など `undefined` 可能性を `!` で一時抑える箇所。バッチ実装後にリファイン。++# 次のステップ
+1. 新しい `AnimationBatch` / stage を型定義に落とし込み、`OperationRunner` が複数バッチを出力する helper を実装。  
+2. `BattleView`・`ViewManager` をバッチループ再生対応に変更し、`StageEvent` に `batchId` が含まれる形で `latestStageEvent` を更新。  
+3. `useHandStageEvents` / `BattleHandArea` のテストを更新し、必要なら `memory-card` / `audio` stage に関する複数ケースを追加。  
+4. 影響が大きいテスト（`operationRunnerInstructions.spec.ts`, `BattleHandArea.spec.ts`）の期待値を更新し、削除候補が出たら一覧と理由を共有。  
+5. `documents/animation_instruction.md` を改訂し、enemy-act / play-card / `audio` / `memory-card` バッチ構成と `waitMs` を記載。*** 
