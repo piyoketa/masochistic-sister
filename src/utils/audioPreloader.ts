@@ -28,8 +28,9 @@ export async function preloadAudioAssets(assets: AudioAsset[]): Promise<AudioPre
       }
       const audio = new Audio(asset.src)
       audio.preload = 'auto'
+      const decodable = audio as HTMLAudioElement & { decode?: () => Promise<void> }
       try {
-        await audio.decode?.()
+        await decodable.decode?.()
       } catch {
         // ブラウザによって decode が存在しないため無視
       }

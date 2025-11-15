@@ -6,7 +6,12 @@ import type {
   EnemyTurnActionSummary,
   DamageAnimationEvent,
 } from './Battle'
-import type { AnimationInstruction, BattleActionLogEntry } from './ActionLog'
+import type {
+  AnimationInstruction,
+  AnimationStageMetadata,
+  BattleActionLogEntry,
+  EnemyActEntryMetadata,
+} from './ActionLog'
 import { ActionLog } from './ActionLog'
 import type { Card } from '../entities/Card'
 import type { DamageOutcome } from '../entities/Damages'
@@ -288,7 +293,7 @@ export class OperationRunner {
           type: 'enemy-act',
           enemyId: action.enemyId,
           actionId: action.actionName,
-          metadata: action,
+          metadata: this.createEnemyActEntryMetadata(action),
         },
         { suppressFlush: true },
       )
@@ -303,7 +308,7 @@ export class OperationRunner {
     for (const action of immediateActions) {
       const summary = action.summary
       this.pendingEnemyActSummaries.push(summary)
-      const metadataPayload: Record<string, unknown> = { ...summary }
+      const metadataPayload = this.createEnemyActEntryMetadata(summary)
       if (action.trigger) {
         metadataPayload.interruptTrigger = action.trigger
       }
@@ -319,6 +324,34 @@ export class OperationRunner {
         },
         { suppressFlush: true },
       )
+    }
+  }
+
+  /**
+   * 戦闘ログに書き出す敵行動の metadata は snapshot を含まない形で複製し、
+   * ActionLog の型制約（`EnemyActEntryMetadata`）を満たすようにする。
+   * snapshot は `pendingEnemyActSummaries` 側で保持し、アニメーションで再利用する想定。
+   */
+  private createEnemyActEntryMetadata(action: EnemyTurnActionSummary): EnemyActEntryMetadata {
+    const { snapshotAfter, cardsAddedToPlayerHand, animation, metadata, ...rest } = action
+    return {
+      ...rest,
+      cardsAddedToPlayerHand: cardsAddedToPlayerHand.map((card) => ({ ...card })),
+      animation: animation
+        ? {
+            damageEvents: animation.damageEvents.map((event) => ({
+              ...event,
+              outcomes: event.outcomes.map((outcome) => ({ ...outcome })),
+            })),
+            cardAdditions: animation.cardAdditions.map((card) => ({ ...card })),
+            playerDefeated: animation.playerDefeated,
+            stateDiffs: animation.stateDiffs.map((diff) => ({
+              enemyId: diff.enemyId,
+              states: diff.states.map((state) => ({ ...state })),
+            })),
+          }
+        : undefined,
+      metadata: metadata ? { ...metadata } : undefined,
     }
   }
 
@@ -566,7 +599,7 @@ export class OperationRunner {
     snapshot: BattleSnapshot,
     drainedEvents: DrainedAnimationEvents,
   ): void {
-    let metadata: Record<string, unknown> | undefined
+    let metadata: AnimationStageMetadata | undefined
     let waitMs = 0
     const instructions: AnimationInstruction[] = []
     switch (entry.type) {
@@ -729,7 +762,7 @@ export class OperationRunner {
         .map((card) => card.id)
         .filter((id): id is number => typeof id === 'number')
       const cardTitles = cardAdditions.map((card) => card.title)
-      const cardCreateMetadata: Record<string, unknown> = {
+      const cardCreateMetadata: AnimationStageMetadata = {
         stage: 'card-create',
         durationMs: OperationRunner.CARD_CREATE_ANIMATION_DURATION_MS,
         enemyId: entry.enemyId,
@@ -868,7 +901,7 @@ export class OperationRunner {
   private buildDefeatInstructions(
     defeatEnemyIds: number[],
     snapshot: BattleSnapshot,
-    metadataOverrides?: Record<string, unknown>,
+    metadataOverrides?: { cardId?: number; cardTitle?: string },
   ): AnimationInstruction[] {
     if (!defeatEnemyIds || defeatEnemyIds.length === 0) {
       return []
@@ -886,7 +919,7 @@ export class OperationRunner {
   private createInstruction(
     snapshot: BattleSnapshot,
     waitMs: number,
-    metadata: Record<string, unknown>,
+    metadata: AnimationStageMetadata,
     damageOutcomes?: readonly DamageOutcome[],
     batchId?: string,
   ): AnimationInstruction {

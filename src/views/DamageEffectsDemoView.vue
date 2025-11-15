@@ -50,7 +50,10 @@ const scenarios: Scenario[] = [
     id: 'default',
     label: 'Fallback (no effectType)',
     description: 'effectType 未指定のデフォルト動作',
-    outcomes: [{ damage: 14 }, { damage: 6 }],
+    outcomes: [
+      { damage: 14, effectType: 'default' },
+      { damage: 6, effectType: 'default' },
+    ],
   },
 ]
 
@@ -78,8 +81,9 @@ watch(
   () => effectsRef.value,
   (value) => {
     console.info('[DamageEffectsDemo] effectsRef changed', Boolean(value))
-    if (value?.isReady) {
-      console.info('[DamageEffectsDemo] effectsRef expose isReady value', value.isReady.value)
+    const readyValue = resolveDamageEffectsReady(value)
+    if (readyValue !== undefined) {
+      console.info('[DamageEffectsDemo] effectsRef expose isReady value', readyValue)
     }
   },
   { immediate: true },
@@ -106,6 +110,13 @@ watch(
   },
   { immediate: true },
 )
+
+function resolveDamageEffectsReady(target: InstanceType<typeof DamageEffects> | null): boolean | undefined {
+  if (!target) {
+    return undefined
+  }
+  return typeof target.isReady === 'boolean' ? target.isReady : undefined
+}
 </script>
 
 <template>

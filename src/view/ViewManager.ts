@@ -19,7 +19,11 @@ import {
   OperationRunnableError,
   type EntryAppendContext,
 } from '@/domain/battle/OperationRunner'
-import { ActionLog, type AnimationInstruction, type BattleActionLogEntry } from '@/domain/battle/ActionLog'
+import {
+  ActionLog,
+  type AnimationInstruction,
+  type BattleActionLogEntry,
+} from '@/domain/battle/ActionLog'
 import {
   type ResolvedBattleActionLogEntry,
   type ResolvedPlayCardOperation,
@@ -27,6 +31,7 @@ import {
   type CardSummary,
 } from '@/domain/battle/ActionLogReplayer'
 import type { Battle, BattleSnapshot, FullBattleSnapshot } from '@/domain/battle/Battle'
+import type { StageEventMetadata } from '@/types/animation'
 
 declare global {
   interface Window {
@@ -71,7 +76,7 @@ export type AnimationCommand =
       type: 'stage-event'
       batchId: string
       entryType: BattleActionLogEntry['type']
-      metadata?: Record<string, unknown>
+      metadata?: StageEventMetadata
       resolvedEntry?: ResolvedBattleActionLogEntry
     }
   | { type: 'custom'; name: string; payload?: unknown }
@@ -82,6 +87,7 @@ export interface AnimationScript {
   commands: AnimationCommand[]
   resolvedEntry?: ResolvedBattleActionLogEntry
   metadata?: {
+    entryType?: BattleActionLogEntry['type']
     canSkip?: boolean
     estimatedDuration?: number
   }
@@ -129,6 +135,7 @@ export class ViewManager {
   private initialBattleSnapshot?: FullBattleSnapshot
   private readonly listeners = new Set<ViewManagerEventListener>()
   private readonly initialOperationIndex: number
+  private readonly animationDebugLoggingEnabled = DEFAULT_ANIMATION_DEBUG_LOGGING
   private animationSequence = 0
   private isProcessingInputQueue = false
   private isInitializing = false
@@ -847,6 +854,9 @@ export class ViewManager {
 
     for (let index = commands.length - 1; index >= 0; index -= 1) {
       const command = commands[index]
+      if (!command) {
+        continue
+      }
       if (command.type === 'update-snapshot') {
         command.resolvedEntry = resolvedEntry
         break
@@ -858,17 +868,21 @@ export class ViewManager {
       commands,
       resolvedEntry,
       metadata: {
+        entryType: entry.type,
         estimatedDuration: totalDuration,
       },
     }
   }
 
-  private buildStageMetadata(instruction: AnimationInstruction): Record<string, unknown> | undefined {
-    const metadata = instruction.metadata ? { ...instruction.metadata } : {}
+  private buildStageMetadata(instruction: AnimationInstruction): StageEventMetadata | undefined {
+    if (!instruction.metadata) {
+      return undefined
+    }
+    const metadata: StageEventMetadata = { ...instruction.metadata }
     if (instruction.damageOutcomes && instruction.damageOutcomes.length > 0) {
       metadata.damageOutcomes = instruction.damageOutcomes.map((outcome) => ({ ...outcome }))
     }
-    return Object.keys(metadata).length > 0 ? metadata : undefined
+    return metadata
   }
 
   private logAnimationDebug(message: string, payload?: Record<string, unknown>): void {

@@ -5,6 +5,7 @@ import type {
   CardTargetTag,
   CardTypeTag,
   SkillTypeTag,
+  SkipTypeTag,
   StatusTypeTag,
 } from './CardTag'
 
@@ -39,8 +40,7 @@ export interface StatusCardDefinition
   target?: undefined
 }
 
-export interface SkipCardDefinition
-  extends BaseCardDefinition<'skip', SkipTypeCardTag> {
+export interface SkipCardDefinition extends BaseCardDefinition<'skip', SkipTypeTag> {
   target?: undefined
 }
 

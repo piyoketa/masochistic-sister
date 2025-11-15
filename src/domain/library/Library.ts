@@ -66,6 +66,7 @@ export class Library {
       attack: [],
       skill: [],
       status: [],
+      skip: [],
     }
 
     for (const card of cards) {
@@ -76,7 +77,7 @@ export class Library {
       bucket.push(card)
     }
 
-    return [...buckets.skill, ...buckets.attack, ...buckets.status]
+    return [...buckets.skill, ...buckets.attack, ...buckets.status, ...buckets.skip]
   }
 
   private instantiateActions(): Action[] {

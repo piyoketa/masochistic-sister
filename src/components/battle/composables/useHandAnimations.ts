@@ -1,6 +1,7 @@
 import { reactive, ref, type Ref, type ComponentPublicInstance } from 'vue'
 import type { CardInfo, CardType } from '@/types/battle'
 import { useCardEliminateOverlays } from './useCardEliminateOverlays'
+import { spawnCardAshOverlay } from '@/utils/cardAshOverlay'
 import type { HandEntry } from './useHandPresentation'
 
 export interface FloatingCardAnimation {
@@ -40,6 +41,7 @@ const CARD_TYPE_PARTICLE_COLORS: Record<CardType, string> = {
   attack: 'rgba(255, 210, 120, 0.95)',
   skill: 'rgba(255, 230, 150, 0.9)',
   status: 'rgba(255, 150, 190, 0.95)',
+  skip: 'rgba(190, 190, 255, 0.9)',
 }
 const DEFAULT_PARTICLE_COLOR = 'rgba(235, 235, 235, 0.9)'
 const ASH_SHORT_PRESET = {
@@ -52,18 +54,27 @@ const ENABLE_HAND_ANIMATION_DEBUG =
   typeof import.meta !== 'undefined' ? import.meta.env.VITE_DEBUG_HAND_ANIMATION === 'true' : false
 const ENABLE_HAND_CARD_DEBUG =
   typeof import.meta !== 'undefined' ? import.meta.env.VITE_DEBUG_CARD_ELIMINATE === 'true' : false
+type RectLike = { left: number; top: number; width: number; height: number }
+type TimerId = number
+
+function normalizeRect(rect: DOMRect | RectLike): DOMRect {
+  if (rect instanceof DOMRect) {
+    return rect
+  }
+  return new DOMRect(rect.left, rect.top, rect.width, rect.height)
+}
 
 export function useHandAnimations(options: UseHandAnimationsOptions) {
-const hiddenCardIds = ref<Set<number>>(new Set())
-const visibleCardIds = ref<Set<number>>(new Set())
-const floatingCards = reactive<FloatingCardAnimation[]>([])
-const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
-const cardElementRefs = new Map<number, HTMLElement>()
-  const drawAnimationCleanupTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
-  const drawAnimationStartTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
+  const hiddenCardIds = ref<Set<number>>(new Set())
+  const visibleCardIds = ref<Set<number>>(new Set())
+  const floatingCards = reactive<FloatingCardAnimation[]>([])
+  const pendingRemovalTimers = new Map<number, TimerId>()
+  const cardElementRefs = new Map<number, HTMLElement>()
+  const drawAnimationCleanupTimers = new Map<number, TimerId>()
+  const drawAnimationStartTimers = new Map<number, TimerId>()
   const cardCreateAnimationTimers = new Map<
     number,
-    { travelTimer?: ReturnType<typeof window.setTimeout>; cleanupTimer?: ReturnType<typeof window.setTimeout> }
+    { travelTimer?: TimerId; cleanupTimer?: TimerId }
   >()
   const activeCreateCardIds = ref<Set<number>>(new Set())
   const { overlays: eliminateOverlays, spawnOverlay: spawnEliminateOverlay } = useCardEliminateOverlays()
@@ -262,7 +273,7 @@ const cardElementRefs = new Map<number, HTMLElement>()
       return
     }
     const sourceRect = cardElement.getBoundingClientRect()
-    const zoneRect = zoneElement.getBoundingClientRect()
+    const zoneBounds = zoneElement.getBoundingClientRect()
     const targetRect =
       variant === 'trash'
         ? targetElement.getBoundingClientRect()
@@ -277,8 +288,8 @@ const cardElementRefs = new Map<number, HTMLElement>()
       logHandAnimationDebug('spawnFloatingCard payload', {
         fromRect: sourceRect,
         toRect: targetRect,
-        zoneRect,
-        variant: options.variant,
+        zoneRect: zoneBounds,
+        variant,
       })
     }
     spawnFloatingCard({
@@ -287,9 +298,8 @@ const cardElementRefs = new Map<number, HTMLElement>()
       affordable: entry?.affordable ?? true,
       fromRect: sourceRect,
       toRect: targetRect,
-      zoneRect,
+      zoneRect: zoneBounds,
       variant,
-      duration: variant === 'eliminate' ? CARD_ELIMINATE_DURATION_MS : undefined,
       onComplete: () => showCard(cardId),
     })
   }
@@ -298,9 +308,9 @@ const cardElementRefs = new Map<number, HTMLElement>()
     cardInfo: CardInfo
     operations: string[]
     affordable: boolean
-    fromRect: DOMRect
-    toRect: DOMRect
-    zoneRect: DOMRect
+    fromRect: DOMRect | RectLike
+    toRect: DOMRect | RectLike
+    zoneRect: DOMRect | RectLike
     variant: FloatingCardAnimation['variant']
     duration?: number
     onComplete?: () => void
@@ -312,14 +322,17 @@ const cardElementRefs = new Map<number, HTMLElement>()
       options.variant === 'eliminate'
         ? duration + CARD_ELIMINATE_CLEANUP_BUFFER_MS
         : duration + 80
-    const fromCenterX = options.fromRect.left + options.fromRect.width / 2
-    const fromCenterY = options.fromRect.top + options.fromRect.height / 2
-    const toCenterX = options.toRect.left + options.toRect.width / 2
-    const toCenterY = options.toRect.top + options.toRect.height / 2
-    const width = options.fromRect.width || ACTION_CARD_WIDTH
-    const height = options.fromRect.height || ACTION_CARD_HEIGHT
-    const startLeft = fromCenterX - width / 2 - options.zoneRect.left
-    const startTop = fromCenterY - height / 2 - options.zoneRect.top
+    const fromRect = normalizeRect(options.fromRect)
+    const toRect = normalizeRect(options.toRect)
+    const zoneRect = normalizeRect(options.zoneRect)
+    const fromCenterX = fromRect.left + fromRect.width / 2
+    const fromCenterY = fromRect.top + fromRect.height / 2
+    const toCenterX = toRect.left + toRect.width / 2
+    const toCenterY = toRect.top + toRect.height / 2
+    const width = fromRect.width || ACTION_CARD_WIDTH
+    const height = fromRect.height || ACTION_CARD_HEIGHT
+    const startLeft = fromCenterX - width / 2 - zoneRect.left
+    const startTop = fromCenterY - height / 2 - zoneRect.top
     const deltaX = toCenterX - fromCenterX
     const deltaY = toCenterY - fromCenterY
 
@@ -341,7 +354,7 @@ const cardElementRefs = new Map<number, HTMLElement>()
     floatingCards.push(card)
     const removeAshOverlay =
       options.variant === 'eliminate'
-        ? spawnCardAshOverlay(options.fromRect, {
+        ? spawnCardAshOverlay(normalizeRect(options.fromRect), {
             ...ASH_SHORT_PRESET,
             particleColor:
               CARD_TYPE_PARTICLE_COLORS[options.cardInfo.type ?? 'skill'] ?? DEFAULT_PARTICLE_COLOR,

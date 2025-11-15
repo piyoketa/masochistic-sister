@@ -1,5 +1,11 @@
 import type { CardOperation } from '../entities/operations'
-import type { Battle, BattleSnapshot } from './Battle'
+import type {
+  Battle,
+  BattleSnapshot,
+  EnemyStateDiff,
+  EnemyTurnActionSummary,
+  InterruptEnemyActionTrigger,
+} from './Battle'
 import type { DamageOutcome } from '../entities/Damages'
 
 type ValueFactory<T> = T | ((battle: Battle) => T)
@@ -8,8 +14,62 @@ export interface AnimationInstruction {
   snapshot: BattleSnapshot
   waitMs: number
   batchId: string
-  metadata?: Record<string, unknown>
+  metadata?: AnimationStageMetadata
   damageOutcomes?: readonly DamageOutcome[]
+}
+
+export type AnimationStageMetadata =
+  | { stage: 'battle-start' }
+  | { stage: 'turn-start'; draw?: number; handOverflow?: boolean }
+  | { stage: 'turn-end' }
+  | { stage: 'victory' }
+  | { stage: 'gameover' }
+  | { stage: 'card-move'; cardId?: number; cardTitle?: string }
+  | { stage: 'card-trash'; cardId?: number; cardTitle?: string; cardIds?: number[]; cardTitles?: string[] }
+  | {
+      stage: 'card-eliminate'
+      cardId?: number
+      cardTitle?: string
+      cardIds?: number[]
+      cardTitles?: string[]
+    }
+  | { stage: 'deck-draw'; cardIds: number[]; durationMs?: number; handOverflow?: boolean }
+  | { stage: 'mana'; amount?: number; eventId?: string }
+  | {
+      stage: 'state-update'
+      eventId?: string
+      payload?: unknown
+      subject?: 'player' | 'enemy'
+      subjectId?: number
+      stateId?: string
+      cardId?: number
+      cardTitle?: string
+      enemyStates?: EnemyStateDiff[]
+    }
+  | {
+      stage: 'escape'
+      subject: 'player' | 'enemy'
+      subjectId?: number
+      stateId: string
+      payload?: unknown
+    }
+  | { stage: 'enemy-highlight'; enemyId: number; actionId?: string; skipped: boolean }
+  | {
+      stage: 'card-create'
+      durationMs?: number
+      enemyId?: number
+      cardIds?: number[]
+      cardTitles?: string[]
+      cards?: string[]
+      cardCount?: number
+    }
+  | { stage: 'damage'; cardId?: number; cardTitle?: string }
+  | { stage: 'player-damage'; enemyId?: number; actionId?: string; cardId?: number; cardTitle?: string }
+  | { stage: 'defeat'; defeatedEnemyIds: number[]; cardId?: number; cardTitle?: string }
+
+export type EnemyActEntryMetadata = Omit<EnemyTurnActionSummary, 'snapshotAfter'> & {
+  interruptTrigger?: InterruptEnemyActionTrigger
+  interruptMetadata?: Record<string, unknown>
 }
 
 type BaseActionLogEntry = {
@@ -38,7 +98,7 @@ export type BattleActionLogEntry =
       type: 'enemy-act'
       enemyId: number
       actionId?: string
-      metadata?: Record<string, unknown>
+      metadata?: EnemyActEntryMetadata
     } & BaseActionLogEntry)
   | ({
       type: 'state-event'

@@ -284,7 +284,7 @@ function trimDamageSegments(segments: DescriptionSegment[]): DescriptionSegment[
     return [...segments]
   }
   let trimmed = segments.slice(damageLabelIndex + 1)
-  while (trimmed.length > 0 && trimmed[0].text === '\n') {
+  while (trimmed.length > 0 && trimmed[0]?.text === '\n') {
     trimmed = trimmed.slice(1)
   }
   return trimmed

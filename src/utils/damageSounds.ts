@@ -63,6 +63,10 @@ function pickBandedSound(
   bands: Array<{ threshold: number; src: string }>,
   damage: number,
 ): ResolvedSound {
-  const band = bands.find((entry) => damage >= entry.threshold) ?? bands[bands.length - 1]
+  const fallbackBand = bands.length > 0 ? bands[bands.length - 1] : undefined
+  const band = bands.find((entry) => damage >= entry.threshold) ?? fallbackBand
+  if (!band) {
+    throw new Error(`[damageSounds] サウンドバンドが定義されていません: label=${label}`)
+  }
   return { id: `${label}-${band.threshold}`, src: band.src }
 }

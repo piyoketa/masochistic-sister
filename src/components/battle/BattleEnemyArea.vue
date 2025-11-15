@@ -20,7 +20,7 @@ import EnemyCard from '@/components/EnemyCard.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
 import type { EnemyInfo, EnemyTrait, EnemyActionHint } from '@/types/battle'
-import type { StageEventPayload } from '@/types/animation'
+import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
 
@@ -55,7 +55,8 @@ interface EnemySlot {
 
 const actingEnemyId = ref<number | null>(null)
 const processedStageBatchIds = new Set<string>()
-let actingTimer: ReturnType<typeof window.setTimeout> | null = null
+type DamageStageMetadata = Extract<StageEventMetadata, { stage: 'player-damage' }>
+let actingTimer: number | null = null
 type EnemyCardInstance = InstanceType<typeof EnemyCard>
 const enemyCardRefs = new Map<number, EnemyCardInstance>()
 
@@ -134,13 +135,22 @@ watch(
       processedStageBatchIds.clear()
       processedStageBatchIds.add(event.batchId)
     }
-    const stage = event.metadata?.stage as string | undefined
-    if (stage === 'enemy-highlight') {
-      const enemyId =
-        typeof event.metadata?.enemyId === 'number' ? (event.metadata.enemyId as number) : null
-      triggerEnemyHighlight(enemyId)
-    } else if (stage === 'damage') {
-      handleDamageStage(event)
+    const metadata = event.metadata
+    if (!metadata) {
+      return
+    }
+      switch (metadata.stage) {
+        case 'enemy-highlight': {
+          const enemyId =
+            typeof metadata.enemyId === 'number' ? metadata.enemyId : null
+          triggerEnemyHighlight(enemyId)
+          break
+        }
+        case 'player-damage':
+          handleDamageStage(event, metadata)
+          break
+      default:
+        break
     }
   },
 )
@@ -170,21 +180,21 @@ onBeforeUnmount(() => {
   }
 })
 
-function handleDamageStage(event: StageEventPayload): void {
-  const enemyId = resolveEnemyIdFromStage(event)
+function handleDamageStage(event: StageEventPayload, metadata: DamageStageMetadata): void {
+  const enemyId = resolveEnemyIdFromStage(event, metadata)
   if (enemyId === null) {
     return
   }
   const outcomes =
-    (event.metadata?.damageOutcomes as DamageOutcome[] | undefined)?.map((outcome) => ({
+    metadata.damageOutcomes?.map((outcome) => ({
       ...outcome,
     })) ?? []
   const target = enemyCardRefs.get(enemyId)
   target?.playDamage(outcomes)
 }
 
-function resolveEnemyIdFromStage(event: StageEventPayload): number | null {
-  const rawEnemyId = event.metadata?.enemyId
+function resolveEnemyIdFromStage(event: StageEventPayload, metadata: DamageStageMetadata): number | null {
+  const rawEnemyId = metadata.enemyId
   if (typeof rawEnemyId === 'number' && Number.isInteger(rawEnemyId)) {
     return rawEnemyId
   }
@@ -265,7 +275,7 @@ function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
       >
         <EnemyCard
           v-if="slot.enemy"
-          :ref="(el) => registerEnemyCardRef(slot.enemy!.id, el)"
+          :ref="(el) => registerEnemyCardRef(slot.enemy!.id, el as EnemyCardInstance | null)"
           :enemy="slot.enemy"
           :selectable="isEnemySelectable(slot.enemy.id)"
           :hovered="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"

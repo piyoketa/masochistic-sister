@@ -11,10 +11,25 @@ CardGlowLabView の責務:
 -->
 <script setup lang="ts">
 import { ref } from 'vue'
+import type { AttackStyle, CardTagInfo, CardType, DescriptionSegment } from '@/types/battle'
 import ActionCard from '@/components/ActionCard.vue'
 
 const glowEnabled = ref(true)
-const sampleCard = {
+const sampleCard: {
+  id: string
+  title: string
+  type: CardType
+  cost: number
+  illustration: string
+  description: string
+  descriptionSegments: DescriptionSegment[]
+  attackStyle: AttackStyle
+  primaryTags: CardTagInfo[]
+  effectTags: CardTagInfo[]
+  categoryTags: CardTagInfo[]
+  damageAmount: number
+  damageCount: number
+} = {
   id: 'glow-card',
   title: '金星の祈り',
   type: 'skill',

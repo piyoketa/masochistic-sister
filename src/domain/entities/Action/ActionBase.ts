@@ -27,7 +27,7 @@ import {
   type HandCardSelectionAvailabilityEntry,
 } from '../operations'
 
-export type ActionType = 'attack' | 'skill'
+export type ActionType = 'attack' | 'skill' | 'skip'
 
 export interface ActionContext {
   battle: Battle

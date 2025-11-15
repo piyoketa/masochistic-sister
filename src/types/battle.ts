@@ -22,6 +22,7 @@ export type EnemyActionHint = {
   calculatedPattern?: {
     amount: number
     count?: number
+    type?: 'single' | 'multi'
   }
   status?: {
     name: string
@@ -50,7 +51,7 @@ export type EnemyInfo = {
   states?: EnemyTrait[]
 }
 
-export type CardType = 'attack' | 'skill' | 'status'
+export type CardType = 'attack' | 'skill' | 'status' | 'skip'
 
 export type AttackStyle = 'single' | 'multi'
 
@@ -82,4 +83,6 @@ export type CardInfo = {
   damageCount?: number
   damageAmountBoosted?: boolean
   damageCountBoosted?: boolean
+  affordable?: boolean
+  disabled?: boolean
 }

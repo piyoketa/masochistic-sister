@@ -317,6 +317,10 @@ export class Card {
     }
 
     if (baseDefinition.cardType === 'attack') {
+      const attackTarget = baseDefinition.target
+      if (!attackTarget) {
+        throw new Error('Attack definition missing target tag')
+      }
       return {
         ...baseDefinition,
         ...rest,
@@ -324,10 +328,14 @@ export class Card {
         type: baseDefinition.type,
         effectTags,
         categoryTags,
-        target: baseDefinition.target,
+        target: attackTarget,
       }
     }
 
+    const skillTarget = baseDefinition.target
+    if (!skillTarget) {
+      throw new Error('Skill definition missing target tag')
+    }
     return {
       ...baseDefinition,
       ...rest,
@@ -335,7 +343,7 @@ export class Card {
       type: baseDefinition.type,
       effectTags,
       categoryTags,
-      target: baseDefinition.target,
+      target: skillTarget,
     }
   }
 }

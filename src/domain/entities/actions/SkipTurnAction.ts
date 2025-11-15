@@ -1,6 +1,6 @@
 import { Action, type ActionContext } from '../Action'
 import type { Enemy } from '../Enemy'
-import { SelfTargetCardTag, SkipTypeCardTag } from '../cardTags'
+import { SkipTypeCardTag } from '../cardTags'
 
 export class SkipTurnAction extends Action {
   static readonly ICON = '⛓'
@@ -13,7 +13,6 @@ export class SkipTurnAction extends Action {
         title: '足止め',
         cardType: 'skip',
         type: new SkipTypeCardTag(),
-        target: new SelfTargetCardTag(),
         cost: 0,
       },
     })

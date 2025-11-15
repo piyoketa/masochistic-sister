@@ -13,7 +13,7 @@
  * - `Enemy` / `Card`: `summarizeEnemy`・`summarizeCard` で UI 表示用の簡易サマリへ変換する。同じ「カード」概念でも `CardDefinition` は表示用メタ情報のみ扱う点が異なる。
  */
 import type { BattleSnapshot, EnemyTurnActionSummary } from './Battle'
-import { ActionLog, type BattleActionLogEntry } from './ActionLog'
+import { ActionLog, type BattleActionLogEntry, type EnemyActEntryMetadata } from './ActionLog'
 import type { Battle } from './Battle'
 import type { Enemy } from '../entities/Enemy'
 import type { Card } from '../entities/Card'
@@ -72,7 +72,14 @@ export class ActionLogReplayer {
       case 'start-player-turn':
         return { ...entry }
       case 'player-event':
+        return entry
       case 'enemy-act':
+        return {
+          type: 'enemy-act',
+          enemyId: entry.enemyId,
+          actionId: entry.actionId,
+          metadata: entry.metadata as EnemyActEntryMetadata,
+        }
       case 'state-event':
         return entry
       case 'play-card':
@@ -204,7 +211,7 @@ export type ResolvedBattleActionLogEntry =
       selectedHandCardId?: number
       selectedHandCard?: CardSummary
     }
-  | { type: 'enemy-act'; enemyId: number; actionId?: string; metadata?: Record<string, unknown> }
+  | { type: 'enemy-act'; enemyId: number; actionId?: string; metadata?: EnemyActEntryMetadata }
   | {
       type: 'state-event'
       subject: 'player' | 'enemy'
@@ -212,7 +219,7 @@ export type ResolvedBattleActionLogEntry =
       stateId: string
       payload?: unknown
     }
-  | { type: 'end-player-turn'; enemyActions?: EnemyTurnActionSummary[] }
+  | { type: 'end-player-turn'; enemyActions?: EnemyActEntryMetadata[] }
   | { type: 'victory' }
   | { type: 'gameover' }
 

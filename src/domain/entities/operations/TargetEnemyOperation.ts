@@ -74,11 +74,8 @@ export class TargetEnemyOperation extends Operation<Enemy> {
   describeAvailability(context: OperationContext): TargetEnemyAvailabilityEntry[] {
     const battle = context.battle
     const enemies = getAllEnemies(battle)
-    return enemies
-      .filter((enemy) => enemy.id !== undefined)
-      .map((enemy) => {
+    return enemies.filter(isIdentifiedEnemy).map((enemy) => {
       const enemyId = enemy.id
-      // enemyId is defined thanks to filter
       if (!enemy.isActive()) {
         return {
           enemyId,
@@ -127,4 +124,8 @@ export class TargetEnemyOperation extends Operation<Enemy> {
 
 function getAllEnemies(battle: Battle): Enemy[] {
   return battle.enemyTeam.members
+}
+
+function isIdentifiedEnemy(enemy: Enemy): enemy is Enemy & { id: number } {
+  return typeof enemy.id === 'number'
 }

@@ -517,7 +517,7 @@ function createBattleFromPlayerStore(
   teamId: string,
   playerStore: ReturnType<typeof usePlayerStore>,
 ): Battle {
-  const teamFactory = ENEMY_TEAM_FACTORIES[teamId] ?? ENEMY_TEAM_FACTORIES.snail
+  const enemyTeam = resolveEnemyTeam(teamId)
   playerStore.ensureInitialized()
   const cardRepository = new CardRepository()
   const deckCards = playerStore.buildDeck(cardRepository)
@@ -530,7 +530,7 @@ function createBattleFromPlayerStore(
     id: `battle-${teamId}`,
     cardRepository,
     player,
-    enemyTeam: teamFactory(),
+    enemyTeam,
     deck: new Deck(deckCards),
     hand: new Hand(),
     discardPile: new DiscardPile(),
@@ -541,12 +541,26 @@ function createBattleFromPlayerStore(
   })
 }
 
+const DEFAULT_ENEMY_TEAM_FACTORY = () => new SnailTeam()
+
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
-  snail: () => new SnailTeam(),
+  snail: DEFAULT_ENEMY_TEAM_FACTORY,
   'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
   'iron-bloom-scripted': () => new IronBloomTeam({ mode: 'scripted' }),
   'hummingbird-scorpion': () => new HummingbirdScorpionTeam(),
   'orc-hero-elite': () => new OrcHeroEliteTeam(),
+}
+
+/**
+ * teamId で該当する factory が取れない場合には snail チームを使って
+ * 予期せぬ undefined を防ぎつつ type-safe な EnemyTeam を返す。
+ */
+function resolveEnemyTeam(teamId: string): EnemyTeam {
+  const factory = ENEMY_TEAM_FACTORIES[teamId]
+  if (factory) {
+    return factory()
+  }
+  return DEFAULT_ENEMY_TEAM_FACTORY()
 }
 </script>
 

@@ -675,7 +675,7 @@ export class Battle {
     }
   }
 
-  private consumeDamageAnimationEvents(): DamageAnimationEvent[] {
+  consumeDamageAnimationEvents(): DamageAnimationEvent[] {
     const events = this.pendingDamageAnimationEvents
     this.pendingDamageAnimationEvents = []
     return events

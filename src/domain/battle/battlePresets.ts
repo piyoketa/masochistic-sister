@@ -26,7 +26,6 @@ import type { EnemyTeam } from '../entities/EnemyTeam'
 
 interface DeckBuilderResult {
   deck: Card[]
-  [key: string]: unknown
 }
 
 interface BattlePreset {

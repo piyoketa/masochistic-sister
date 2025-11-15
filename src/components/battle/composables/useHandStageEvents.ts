@@ -1,5 +1,5 @@
 import { ref, watch, nextTick, type ComputedRef, type Ref } from 'vue'
-import type { StageEventPayload } from '@/types/animation'
+import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { HandEntry } from './useHandPresentation'
 
@@ -24,6 +24,11 @@ interface UseHandStageEventsOptions {
   ) => void
 }
 
+type DeckDrawStageMetadata = Extract<StageEventMetadata, { stage: 'deck-draw' }>
+type CardTrashStageMetadata = Extract<StageEventMetadata, { stage: 'card-trash' }>
+type CardEliminateStageMetadata = Extract<StageEventMetadata, { stage: 'card-eliminate' }>
+type CardCreateStageMetadata = Extract<StageEventMetadata, { stage: 'card-create' }>
+
 export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const handOverflowOverlayMessage = ref<string | null>(null)
   const pendingDrawCardIds = ref<Set<number>>(new Set())
@@ -37,7 +42,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       cardIds: [...request.cardIds],
     }))
   const processedStageBatchIds = new Set<string>()
-  let handOverflowTimer: ReturnType<typeof window.setTimeout> | null = null
+  let handOverflowTimer: number | null = null
 
   watch(
     () => options.stageEvent(),
@@ -50,22 +55,22 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         processedStageBatchIds.clear()
         processedStageBatchIds.add(event.batchId)
       }
-      const stage = (event.metadata?.stage as string | undefined) ?? undefined
-      if (!stage) {
+      const metadata = event.metadata
+      if (!metadata) {
         return
       }
-      switch (stage) {
+      switch (metadata.stage) {
         case 'deck-draw':
-          handleDeckDrawStage(event)
+          handleDeckDrawStage(event, metadata)
           break
         case 'card-trash':
-          handleCardTrashStage(event)
+          handleCardTrashStage(event, metadata)
           break
         case 'card-eliminate':
-          handleCardEliminateStage(event)
+          handleCardEliminateStage(event, metadata)
           break
         case 'card-create':
-          handleCardCreateStage(event)
+          handleCardCreateStage(event, metadata)
           break
         default:
           break
@@ -113,22 +118,22 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     }
   }
 
-  function handleDeckDrawStage(event: StageEventPayload): void {
-    const cardIds = extractCardIds(event.metadata)
-    const durationMs = extractDurationMs(event.metadata)
+  function handleDeckDrawStage(event: StageEventPayload, metadata: DeckDrawStageMetadata): void {
+    const cardIds = metadata.cardIds ?? []
+    const durationMs = extractDurationMs(metadata)
     cardIds.forEach((id, index) => {
       addToSet(pendingDrawCardIds, id)
       const delayMs = index * DRAW_STAGGER_DELAY_MS
       pendingDrawAnimationOptions.set(id, { durationMs, delayMs })
     })
-    if (event.metadata?.handOverflow) {
+    if (metadata.handOverflow) {
       showHandOverflowOverlay()
     }
   }
 
-  function handleCardCreateStage(event: StageEventPayload): void {
-    const cardIds = extractCardIds(event.metadata)
-    const declaredCount = extractCardCreateCount(event.metadata)
+  function handleCardCreateStage(event: StageEventPayload, metadata: CardCreateStageMetadata): void {
+    const cardIds = metadata.cardIds ?? []
+    const declaredCount = extractCardCreateCount(metadata)
     const remainingCount = Math.max(cardIds.length, declaredCount)
     if (remainingCount <= 0) {
       return
@@ -163,6 +168,10 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     }
     while (pendingCreateQueue.length > 0) {
       const current = pendingCreateQueue[0]
+      if (!current) {
+        pendingCreateQueue.shift()
+        continue
+      }
       if (current.remainingCount <= 0) {
         pendingCreateQueue.shift()
         continue
@@ -189,9 +198,9 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     options.startCardCreateAnimation(cardId)
   }
 
-  function handleCardTrashStage(event: StageEventPayload): void {
-    const cardIds = extractCardIds(event.metadata)
-    const titles = (event.metadata?.cardTitles as string[] | undefined) ?? []
+  function handleCardTrashStage(event: StageEventPayload, metadata: CardTrashStageMetadata): void {
+    const cardIds = metadata.cardIds ?? []
+    const titles = metadata.cardTitles ?? []
     cardIds.forEach((id, index) => {
       const fallbackTitle = titles[index] ?? options.cardTitleMap.value.get(id) ?? 'カード'
       const entry = options.findHandEntryByCardId(id)
@@ -199,9 +208,9 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     })
   }
 
-  function handleCardEliminateStage(event: StageEventPayload): void {
-    const cardIds = extractCardIds(event.metadata)
-    const titles = (event.metadata?.cardTitles as string[] | undefined) ?? []
+  function handleCardEliminateStage(event: StageEventPayload, metadata: CardEliminateStageMetadata): void {
+    const cardIds = metadata.cardIds ?? []
+    const titles = metadata.cardTitles ?? []
     cardIds.forEach((id, index) => {
       const fallbackTitle = titles[index] ?? options.cardTitleMap.value.get(id) ?? 'カード'
       const entry = options.findHandEntryByCardId(id)
@@ -236,20 +245,9 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   }
 }
 
-function extractCardIds(metadata: StageEventPayload['metadata']): number[] {
-  if (!metadata) {
-    return []
-  }
-  if (Array.isArray(metadata.cardIds)) {
-    return metadata.cardIds.filter((id): id is number => typeof id === 'number')
-  }
-  if (typeof metadata.cardId === 'number') {
-    return [metadata.cardId]
-  }
-  return []
-}
+type DurationAwareMetadata = StageEventMetadata & { durationMs?: number; animationDurationMs?: number }
 
-function extractDurationMs(metadata: StageEventPayload['metadata']): number | undefined {
+function extractDurationMs(metadata: DurationAwareMetadata | undefined): number | undefined {
   if (!metadata) {
     return undefined
   }
@@ -259,7 +257,14 @@ function extractDurationMs(metadata: StageEventPayload['metadata']): number | un
 
 const DRAW_STAGGER_DELAY_MS = 100
 
-function extractCardCreateCount(metadata: StageEventPayload['metadata']): number {
+type CardCountMetadata = StageEventMetadata & {
+  cardCount?: number
+  cardIds?: number[]
+  cardTitles?: unknown[]
+  cards?: unknown[]
+}
+
+function extractCardCreateCount(metadata: CardCountMetadata | undefined): number {
   if (!metadata) {
     return 0
   }
@@ -297,18 +302,6 @@ function removeFromSet(target: Ref<Set<number>>, value: number): void {
   clone.delete(value)
   target.value = clone
 }
-function snapshotCreateQueue(queue: PendingCreateRequest[] = pendingCreateQueue): Array<{
-  batchId: string
-  remainingCount: number
-  cardIds: number[]
-}> {
-  return queue.map((request) => ({
-    batchId: request.batchId,
-    remainingCount: request.remainingCount,
-    cardIds: [...request.cardIds],
-  }))
-}
-
 function logCardCreateDebug(message: string, payload?: Record<string, unknown>): void {
   if (typeof console === 'undefined') {
     return

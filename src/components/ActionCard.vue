@@ -40,6 +40,15 @@ const CARD_TYPE_THEMES: Record<
     background:
       'radial-gradient(circle at 20% 20%, rgba(255, 64, 128, 0.45), transparent 52%), radial-gradient(circle at 80% 15%, rgba(140, 0, 255, 0.35), transparent 55%), linear-gradient(185deg, #4b003a 0%, #1b0013 100%)',
   },
+  skip: {
+    bgStart: '#7d6ead',
+    bgEnd: '#2f1a3b',
+    text: '#fff5ff',
+    muted: 'rgba(255, 255, 255, 0.65)',
+    accent: '#b69af8',
+    background:
+      'radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.35), transparent 45%), linear-gradient(180deg, #7d6ead 0%, #2f1a3b 100%)',
+  },
 }
 
 const BORDER_COLORS = {

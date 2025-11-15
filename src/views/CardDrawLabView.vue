@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, type ComponentPublicInstance } from 'vue'
 import ActionCard from '@/components/ActionCard.vue'
 import type { CardTagInfo, CardType } from '@/types/battle'
 
@@ -175,15 +175,29 @@ function animateCardFromDeck(card: LabCard, delayMs = 0): void {
   }
 }
 
-function registerHandCard(cardId: number, el: Element | null): void {
-  if (!cardId) {
+function registerHandCard(cardId: number, el: Element | ComponentPublicInstance | null): void {
+  if (cardId === undefined) {
     return
   }
-  if (el) {
-    handCardRefs.set(cardId, el as HTMLElement)
-  } else {
-    handCardRefs.delete(cardId)
+  const element = resolveRefElement(el)
+  if (element) {
+    handCardRefs.set(cardId, element)
+    return
   }
+  handCardRefs.delete(cardId)
+}
+
+function resolveRefElement(el: Element | ComponentPublicInstance | null): HTMLElement | null {
+  if (!el) {
+    return null
+  }
+  if (el instanceof HTMLElement) {
+    return el
+  }
+  if ('$el' in el && el.$el instanceof HTMLElement) {
+    return el.$el
+  }
+  return null
 }
 
 function discardHand(): void {
@@ -203,7 +217,9 @@ function shuffle<T>(array: T[]): T[] {
   const result = [...array]
   for (let i = result.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[result[i], result[j]] = [result[j], result[i]]
+    const temp = result[i]
+    result[i] = result[j]
+    result[j] = temp
   }
   return result
 }

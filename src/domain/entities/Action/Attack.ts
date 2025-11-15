@@ -467,6 +467,10 @@ function mergeCardDefinition(
   }
 
   if (base.cardType === 'attack') {
+    const target = base.target
+    if (!target) {
+      throw new Error('Attack definition missing target tag')
+    }
     return {
       ...base,
       ...rest,
@@ -474,18 +478,22 @@ function mergeCardDefinition(
       type: base.type,
       effectTags,
       categoryTags,
-      target: base.target,
+      target,
     }
   }
 
+  const skillTarget = base.target
+  if (!skillTarget) {
+    throw new Error('Skill definition missing target tag')
+  }
   return {
     ...base,
-    ...rest,
-    cardType: 'skill',
-    type: base.type,
-    effectTags,
-    categoryTags,
-    target: base.target,
+      ...rest,
+      cardType: 'skill',
+      type: base.type,
+      effectTags,
+      categoryTags,
+      target: skillTarget,
   }
 }
 
