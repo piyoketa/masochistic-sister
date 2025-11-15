@@ -1,28 +1,37 @@
-import type { BattleActionLogEntry, ValueFactory } from '@/domain/battle/ActionLog'
+import type {
+  AnimationBatch,
+  AnimationInstruction,
+  BattleActionLogEntry,
+  ValueFactory,
+} from '@/domain/battle/ActionLog'
 import { OperationLog } from '@/domain/battle/OperationLog'
 import type { CardOperation } from '@/domain/entities/operations'
+import type { BattleSnapshot } from '@/domain/battle/Battle'
 
 export type OperationLogEntryConfig = Parameters<OperationLog['push']>[0]
 
-export interface AnimationInstructionSummary {
+export interface AnimationBatchInstructionSummary {
   waitMs: number
+  metadata?: AnimationInstruction['metadata']
+  damageOutcomes?: AnimationInstruction['damageOutcomes']
+}
+
+export interface AnimationBatchSummary {
   batchId: string
-  metadata?: Record<string, unknown>
-  snapshot: {
-    player: { hp: number; mana: number }
-    hand: Array<{ id?: number; title: string }>
-    discardCount: number
-    exileCount: number
-    deckCount: number
-    enemies: Array<{ id: number; hp: number; status: string }>
-  }
-  damageOutcomes?: Array<{ damage: number; effectType: string }>
+  snapshot: unknown
+  instructions: AnimationBatchInstructionSummary[]
+}
+
+export interface AnimationInstructionSummary extends AnimationBatchInstructionSummary {
+  batchId: string
+  snapshot: unknown
 }
 
 export interface ActionLogEntrySummary {
   type: BattleActionLogEntry['type']
   card?: number | ValueFactory<number>
   operations?: CardOperation[]
+  animationBatches?: AnimationBatchSummary[]
   animations?: AnimationInstructionSummary[]
   eventId?: string
 }
@@ -40,45 +49,10 @@ export function summarizeActionLogEntry(entry: BattleActionLogEntry): ActionLogE
   if (entry.type === 'player-event') {
     summary.eventId = entry.eventId
   }
-  if (entry.animationBatches) {
-    summary.animations = entry.animationBatches.flatMap((batch) =>
-      (batch.instructions ?? []).map((instruction) => {
-        const animationSummary: AnimationInstructionSummary = {
-          waitMs: instruction.waitMs,
-          batchId: batch.batchId,
-          snapshot: {
-            player: {
-              hp: batch.snapshot.player.currentHp,
-              mana: batch.snapshot.player.currentMana,
-            },
-            hand: batch.snapshot.hand.map((card) => ({
-              id: card.id,
-              title: card.title,
-            })),
-            discardCount: batch.snapshot.discardPile.length,
-            exileCount: batch.snapshot.exilePile.length,
-            deckCount: batch.snapshot.deck.length,
-            enemies: batch.snapshot.enemies.map((enemy) => ({
-              id: enemy.id,
-              hp: enemy.currentHp,
-              status: enemy.status,
-            })),
-          },
-        }
-        if (instruction.damageOutcomes) {
-          animationSummary.damageOutcomes = instruction.damageOutcomes.map((outcome) => ({ ...outcome }))
-        }
-      if (instruction.metadata) {
-        const cleanedMetadata = Object.fromEntries(
-          Object.entries(instruction.metadata).filter(([, value]) => value !== undefined),
-        )
-        if (Object.keys(cleanedMetadata).length > 0) {
-          animationSummary.metadata = cleanedMetadata
-        }
-      }
-        return animationSummary
-      }),
-    )
+  const animationBatches = summarizeAnimationBatches(entry.animationBatches ?? [])
+  if (animationBatches.length > 0) {
+    summary.animationBatches = animationBatches
+    summary.animations = flattenAnimationBatches(animationBatches)
   }
   return summary
 }
@@ -87,4 +61,33 @@ export function buildOperationLog(entries: OperationLogEntryConfig[], inclusiveI
   const log = new OperationLog()
   entries.slice(0, inclusiveIndex + 1).forEach((entry) => log.push(entry))
   return log
+}
+
+function summarizeAnimationBatches(batches: AnimationBatch[]): AnimationBatchSummary[] {
+  return batches.map((batch) => ({
+    batchId: batch.batchId,
+    snapshot: deepClone(batch.snapshot),
+    instructions: (batch.instructions ?? []).map((instruction) => ({
+      waitMs: instruction.waitMs,
+      metadata: deepClone(instruction.metadata),
+      damageOutcomes: instruction.damageOutcomes?.map((outcome) => ({ ...outcome })),
+    })),
+  }))
+}
+
+function flattenAnimationBatches(batches: AnimationBatchSummary[]): AnimationInstructionSummary[] {
+  return batches.flatMap((batch) =>
+    batch.instructions.map((instruction) => ({
+      ...instruction,
+      batchId: batch.batchId,
+      snapshot: batch.snapshot,
+    })),
+  )
+}
+
+function deepClone<T>(value: T): T {
+  if (value === undefined || value === null) {
+    return value
+  }
+  return JSON.parse(JSON.stringify(value)) as T
 }

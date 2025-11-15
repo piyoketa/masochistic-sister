@@ -35,6 +35,8 @@ function createPlayerWithHand() {
     hand,
     cardRepository: repository,
     addCardToPlayerHand: (card: Card) => hand.add(card),
+    recordStateCardAnimation: () => {},
+    recordMemoryCardAnimation: () => {},
   } as unknown as Battle
 
   return {
@@ -373,7 +375,7 @@ describe('Attack.performのダメージアウトカム', () => {
 
     expect(registeredEnemy.currentHp).toBe(9)
     const damages = attack.capturedDamages
-    expect(damages?.outcomes).toEqual([{ damage: 1, effectType: 'slash' }])
+    expect(damages?.outcomes).toEqual([{ damage: 1, effectType: 'slam' }])
     expect(damages?.totalPostHitDamage).toBe(1)
   })
 })

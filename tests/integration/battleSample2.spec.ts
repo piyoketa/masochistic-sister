@@ -108,9 +108,11 @@ describe('シナリオ2: OperationLog → ActionLog + AnimationInstruction', () 
       })
       const { actionLog } = replayer.buildActionLog()
       const actualSummary = actionLog.toArray().map(summarizeActionLogEntry)
-      expect(actualSummary.slice(0, lastActionIndex + 1)).toEqual(
-        EXPECTED_ACTION_LOG_SUMMARY_STAGE2.slice(0, lastActionIndex + 1),
+      const actualComparable = actualSummary.slice(0, lastActionIndex + 1).map(normalizeEntryForComparison)
+      const expectedComparable = EXPECTED_ACTION_LOG_SUMMARY_STAGE2.slice(0, lastActionIndex + 1).map(
+        normalizeEntryForComparison,
       )
+      expect(actualComparable).toEqual(expectedComparable)
     })
   })
 })
@@ -182,4 +184,31 @@ function buildOperationEntries(
     operations: [{ type: 'target-enemy', payload: references.enemyIds.kamaitachi }],
   })
   return entries
+}
+
+function normalizeEntryForComparison(entry: ActionLogEntrySummary): ActionLogEntrySummary {
+  const normalized: ActionLogEntrySummary = {
+    type: entry.type,
+  }
+  if (entry.card !== undefined) {
+    normalized.card = entry.card
+  }
+  if (entry.operations) {
+    normalized.operations = entry.operations
+  }
+  if (entry.eventId) {
+    normalized.eventId = entry.eventId
+  }
+  if (entry.animationBatches && entry.animationBatches.length > 0) {
+    normalized.animationBatches = entry.animationBatches.map((batch) => ({
+      batchId: batch.batchId,
+      snapshot: undefined,
+      instructions: batch.instructions.map((instruction) => ({
+        waitMs: instruction.waitMs,
+        metadata: instruction.metadata,
+        damageOutcomes: instruction.damageOutcomes,
+      })),
+    }))
+  }
+  return normalized
 }

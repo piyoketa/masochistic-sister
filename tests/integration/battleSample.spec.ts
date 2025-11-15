@@ -107,8 +107,10 @@ describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () 
       })
       const { actionLog } = replayer.buildActionLog()
       const actualSummary = actionLog.toArray().map(summarizeActionLogEntry)
-      const actualComparable = actualSummary.slice(0, lastActionIndex + 1).map(omitAnimations)
-      const expectedComparable = EXPECTED_ACTION_LOG_SUMMARY.slice(0, lastActionIndex + 1).map(omitAnimations)
+      const actualComparable = actualSummary.slice(0, lastActionIndex + 1).map(normalizeEntryForComparison)
+      const expectedComparable = EXPECTED_ACTION_LOG_SUMMARY.slice(0, lastActionIndex + 1).map(
+        normalizeEntryForComparison,
+      )
       expect(actualComparable).toEqual(expectedComparable)
     })
   })
@@ -243,11 +245,29 @@ function expandEntryAnimations(
   )
 }
 
-function omitAnimations(entry: ActionLogEntrySummary): ActionLogEntrySummary {
-  if (!entry.animations) {
-    return entry
+function normalizeEntryForComparison(entry: ActionLogEntrySummary): ActionLogEntrySummary {
+  const normalized: ActionLogEntrySummary = {
+    type: entry.type,
   }
-  const clone: ActionLogEntrySummary = { ...entry }
-  delete clone.animations
-  return clone
+  if (entry.card !== undefined) {
+    normalized.card = entry.card
+  }
+  if (entry.operations) {
+    normalized.operations = entry.operations
+  }
+  if (entry.eventId) {
+    normalized.eventId = entry.eventId
+  }
+  if (entry.animationBatches && entry.animationBatches.length > 0) {
+    normalized.animationBatches = entry.animationBatches.map((batch) => ({
+      batchId: batch.batchId,
+      snapshot: undefined,
+      instructions: batch.instructions.map((instruction) => ({
+        waitMs: instruction.waitMs,
+        metadata: instruction.metadata,
+        damageOutcomes: instruction.damageOutcomes,
+      })),
+    }))
+  }
+  return normalized
 }

@@ -85,10 +85,51 @@ function describeCardList(metadata) {
   return ''
 }
 
-function expandAnimations(entry) {
-  const batches = entry.animationBatches ?? []
+function resolveAnimationBatches(entry) {
+  if (Array.isArray(entry.animationBatches) && entry.animationBatches.length > 0) {
+    return entry.animationBatches.map((batch) => ({
+      batchId: batch.batchId,
+      snapshot: batch.snapshot,
+      instructions: (batch.instructions ?? []).map((instruction) => ({
+        waitMs: instruction.waitMs,
+        metadata: instruction.metadata,
+        damageOutcomes: instruction.damageOutcomes,
+      })),
+    }))
+  }
+  if (Array.isArray(entry.animations) && entry.animations.length > 0) {
+    const batches = new Map()
+    entry.animations.forEach((animation) => {
+      const batchId = animation.batchId ?? 'legacy-batch'
+      const existing = batches.get(batchId)
+      if (existing) {
+        existing.instructions.push({
+          waitMs: animation.waitMs,
+          metadata: animation.metadata,
+          damageOutcomes: animation.damageOutcomes,
+        })
+      } else {
+        batches.set(batchId, {
+          batchId,
+          snapshot: animation.snapshot,
+          instructions: [
+            {
+              waitMs: animation.waitMs,
+              metadata: animation.metadata,
+              damageOutcomes: animation.damageOutcomes,
+            },
+          ],
+        })
+      }
+    })
+    return Array.from(batches.values())
+  }
+  return []
+}
+
+function flattenAnimationBatches(batches) {
   return batches.flatMap((batch) =>
-    (batch.instructions ?? []).map((instruction) => ({
+    batch.instructions.map((instruction) => ({
       waitMs: instruction.waitMs,
       metadata: instruction.metadata,
       damageOutcomes: instruction.damageOutcomes,
@@ -101,7 +142,8 @@ function expandAnimations(entry) {
 function buildCardNameMap(summary) {
   const map = new Map()
   summary.forEach((entry) => {
-    expandAnimations(entry).forEach((animation) => {
+    const animations = flattenAnimationBatches(resolveAnimationBatches(entry))
+    animations.forEach((animation) => {
       animation.snapshot?.hand?.forEach((card) => {
         if (card?.id !== undefined && card?.title) {
           map.set(card.id, card.title)
@@ -126,7 +168,7 @@ function describeEntry(entry, context, enemyNames, cardNameMap) {
   if (type === 'start-player-turn') {
     context.turn += 1
   }
-  const animations = expandAnimations(entry)
+  const animations = flattenAnimationBatches(resolveAnimationBatches(entry))
   switch (type) {
     case 'battle-start':
       return 'バトル開始：初期手札と敵HPを描画'
@@ -241,25 +283,31 @@ function formatScenario({ logPath, marker, output, enemyNames }) {
     if (entry.eventId) {
       lines.push(`  eventId: '${entry.eventId}',`)
     }
-    const animations = expandAnimations(entry)
-    lines.push('  animations: [')
-    animations.forEach((animation) => {
-      const animComment = stageComment(animation.metadata?.stage, animation.metadata)
-      lines.push(`    // ${animComment}`)
+    const animationBatches = resolveAnimationBatches(entry)
+    lines.push('  animationBatches: [')
+    animationBatches.forEach((batch) => {
       lines.push('    {')
-      lines.push(`      waitMs: ${animation.waitMs},`)
-      lines.push(`      batchId: '${animation.batchId}',`)
-      if (animation.metadata) {
-        lines.push(`      metadata: ${toInlineObject(animation.metadata)},`)
-      }
-      if (animation.damageOutcomes) {
-        lines.push(`      damageOutcomes: ${toInlineObject(animation.damageOutcomes)},`)
-      }
-      if (animation.snapshot) {
-        const snapshotLine = toInlineObject(animation.snapshot)
-        const snapshotComment = buildSnapshotComment(animation.snapshot, enemyNames)
+      lines.push(`      batchId: '${batch.batchId}',`)
+      if (batch.snapshot) {
+        const snapshotLine = toInlineObject(batch.snapshot)
+        const snapshotComment = buildSnapshotComment(batch.snapshot, enemyNames)
         lines.push(`      snapshot: ${snapshotLine}, ${snapshotComment}`)
       }
+      lines.push('      instructions: [')
+      batch.instructions.forEach((instruction) => {
+        const animComment = stageComment(instruction.metadata?.stage, instruction.metadata)
+        lines.push(`        // ${animComment}`)
+        lines.push('        {')
+        lines.push(`          waitMs: ${instruction.waitMs},`)
+        if (instruction.metadata) {
+          lines.push(`          metadata: ${toInlineObject(instruction.metadata)},`)
+        }
+        if (instruction.damageOutcomes) {
+          lines.push(`          damageOutcomes: ${toInlineObject(instruction.damageOutcomes)},`)
+        }
+        lines.push('        },')
+      })
+      lines.push('      ],')
       lines.push('    },')
     })
     lines.push('  ],')

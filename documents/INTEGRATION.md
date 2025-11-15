@@ -1,0 +1,32 @@
+- enemy-act：かたつむりのAction「酸を吐く」の場合
+    - バッチ1: enemy-act-start-batch
+        - Instruction1: enemy-highlight
+            - waitsMs: 0
+    - バッチ2: enemy-action-batch
+        - 敵のActionによって発生するアニメーションはココに含めます。
+        - Instruction1: player-damage
+            - waits: (攻撃回数 - 1) × 0.2s + 0.5s
+        - Instruction2: create-state-card
+            - waits: 0.5s
+    - バッチ3: remember-enemy-attack-batch
+        - Instruction1: memory-card
+            - waits:  1.5s
+
+- play-card：「天の鎖」を使用した場合
+    - play-cardにまつわるAnimationInstructionは、現時点では全て同一のバッチにまとめます
+    - バッチ1: play-card
+        - Instruction1: mana
+            - waits: 0.3s
+        - Instruction2: card移動（card-trash / card-eliminate）
+            - card-eliminateなので、waits: 720ms
+        - Instruction3: 音声再生
+            - 音声を再生するstageを追加します。
+            - waits: 0.5s固定
+- play-card：「乱れ突き 10×3」を使用した場合
+    - バッチ1: play-card
+        - Instruction1: mana
+            - waits: 0.3s
+        - Instruction2: card移動（card-trash / card-eliminate）
+            - card-trashなので、waits: 300ms
+        - Instruction3: damage
+            - waits: (攻撃回数 - 1) × 0.2s + 0.5s

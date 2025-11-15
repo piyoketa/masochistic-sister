@@ -31,6 +31,8 @@ describe('Player.addState スタック処理', () => {
       addCardToPlayerHand: (card: Card) => {
         hand.add(card)
       },
+      recordStateCardAnimation: () => {},
+      recordMemoryCardAnimation: () => {},
     } as unknown as Battle
 
     return { battle, hand, repository }
