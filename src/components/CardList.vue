@@ -25,6 +25,8 @@ const props = withDefaults(
     selectable?: boolean
     hoverEffect?: boolean
     selectedCardId?: string | null
+    noHeightLimit?: boolean
+    forcePlayable?: boolean
   }>(),
   {
     cards: () => [] as CardInfo[],
@@ -32,6 +34,8 @@ const props = withDefaults(
     selectable: false,
     hoverEffect: true,
     selectedCardId: null,
+    noHeightLimit: false,
+    forcePlayable: false,
   },
 )
 
@@ -48,12 +52,16 @@ const containerStyle = computed(() => {
   const style: Record<string, string> = {
     '--card-list-gap': `${props.gap}px`,
   }
-  if (props.height !== undefined && props.height !== null) {
+  if (!props.noHeightLimit && props.height !== undefined && props.height !== null) {
     style['--card-list-max-height'] =
       typeof props.height === 'number' ? `${props.height}px` : props.height
   }
   return style
 })
+
+const bodyClasses = computed(() => ({
+  'card-list__body--no-limit': props.noHeightLimit,
+}))
 
 function itemClasses(card: CardInfo): Record<string, boolean> {
   return {
@@ -88,6 +96,17 @@ function handleClick(card: CardInfo): void {
   }
   emit('card-click', card)
 }
+
+function playableCard(card: CardInfo): CardInfo {
+  if (!props.forcePlayable) {
+    return card
+  }
+  return {
+    ...card,
+    affordable: true,
+    disabled: false,
+  }
+}
 </script>
 
 <template>
@@ -96,7 +115,7 @@ function handleClick(card: CardInfo): void {
       <h3>{{ props.title }}</h3>
       <span class="card-list__count">{{ props.cards.length }}枚</span>
     </header>
-    <div class="card-list__body">
+    <div class="card-list__body" :class="bodyClasses">
       <div class="card-list__grid">
         <div
           v-for="card in props.cards"
@@ -107,7 +126,7 @@ function handleClick(card: CardInfo): void {
           @mouseleave="handleMouseLeave(card)"
           @click="handleClick(card)"
         >
-          <ActionCard v-bind="card" />
+          <ActionCard v-bind="playableCard(card)" />
         </div>
       </div>
     </div>
@@ -147,6 +166,14 @@ function handleClick(card: CardInfo): void {
   overflow-y: auto;
   max-height: var(--card-list-max-height, 360px);
   padding-right: 8px;
+}
+
+.card-list__body--no-limit {
+  overflow: visible;
+  overflow-x: visible;
+  overflow-y: visible;
+  max-height: none;
+  padding-right: 0;
 }
 
 .card-list__grid {

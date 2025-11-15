@@ -7,30 +7,112 @@ CardEliminateLabView の責務:
 - Battle 本編や ViewManager との統合。ここはあくまで演出確認専用のラボページ。
 -->
 <script setup lang="ts">
-import { ref } from 'vue'
-import ActionCard from '@/components/ActionCard.vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import CardList from '@/components/CardList.vue'
+import { Library } from '@/domain/library/Library'
+import type { CardInfo, CardType } from '@/types/battle'
 
-const actionCard = {
+const library = new Library()
+const fallbackCard: CardInfo = {
   id: 'lab-card',
   title: '砂化テスト',
-  type: 'skill' as const,
+  type: 'skill',
   cost: 2,
   illustration: '🜂',
   description: 'テスト用のカード\n砂化演出を確認できます。',
+  descriptionSegments: [],
   primaryTags: [{ id: 'tag-type-skill', label: '演出' }],
   effectTags: [],
   categoryTags: [],
-  descriptionSegments: [],
-  attackStyle: 'single' as const,
+  attackStyle: 'single',
   damageAmount: 0,
   damageCount: 0,
 }
+type CardCandidateKey = 'heaven-chain' | 'flurry' | 'corrosion'
+
+type CardCandidateConfig = {
+  key: CardCandidateKey
+  title: string
+  type: CardType
+  description: string
+  particleColor: string
+}
+
+const cardConfigs: CardCandidateConfig[] = [
+  {
+    key: 'heaven-chain',
+    title: '天の鎖',
+    type: 'skill',
+    description: '敵を拘束し、行動不能にする聖鎖。',
+    particleColor: 'rgba(255, 230, 150, 0.9)',
+  },
+  {
+    key: 'flurry',
+    title: '乱れ突き',
+    type: 'attack',
+    description: '怒涛の連撃で敵を切り刻む攻撃カード。',
+    particleColor: 'rgba(255, 210, 120, 0.95)',
+  },
+  {
+    key: 'corrosion',
+    title: '腐食',
+    type: 'status',
+    description: '酸で装甲を蝕む状態異常カード。',
+    particleColor: 'rgba(255, 150, 190, 0.95)',
+  },
+]
+
+const libraryCards = library.listActionCards(999)
+
+const buildFallbackForConfig = (config: CardCandidateConfig): CardInfo => ({
+  ...fallbackCard,
+  id: `lab-card-${config.key}`,
+  title: config.title,
+  type: config.type,
+  description: config.description,
+})
+
+const candidateEntries = cardConfigs.map((config) => {
+  const found = libraryCards.find((card) => card.title === config.title && card.type === config.type)
+  return {
+    ...config,
+    card: found ?? buildFallbackForConfig(config),
+  }
+})
+
+const cardEntryMap = new Map(candidateEntries.map((entry) => [entry.key, entry]))
+
+const selectedCardKey = ref<CardCandidateKey>(candidateEntries[0]?.key ?? 'heaven-chain')
+
+const currentCardEntry = computed(() => cardEntryMap.get(selectedCardKey.value))
+const currentCard = computed(() => currentCardEntry.value?.card ?? fallbackCard)
+const currentParticleColor = computed(
+  () => currentCardEntry.value?.particleColor ?? 'rgba(235, 235, 235, 0.9)',
+)
 
 const stageRef = ref<HTMLElement | null>(null)
+const cardListContainer = ref<HTMLElement | null>(null)
 const cardRef = ref<HTMLElement | null>(null)
 const cardVisible = ref(true)
 const isDespawning = ref(false)
 const logs = ref<string[]>([])
+
+type AshOverlayOptions = {
+  motionScale?: number
+  durationScale?: number
+  horizontalSpreadScale?: number
+  particleColor?: string
+}
+
+type AshPattern = 'default' | 'short'
+
+const patternSettings: Record<AshPattern, { logLabel: string; overlayOptions?: AshOverlayOptions }> = {
+  default: { logLabel: '通常', overlayOptions: undefined },
+  short: {
+    logLabel: '短縮',
+    overlayOptions: { motionScale: 0.6, durationScale: 0.6, horizontalSpreadScale: 0.6 },
+  },
+}
 
 const log = (message: string) => {
   const stamp = new Date().toLocaleTimeString()
@@ -40,7 +122,8 @@ const log = (message: string) => {
 const spawnCard = () => {
   cardVisible.value = true
   isDespawning.value = false
-  log('カード生成')
+  log(`カード生成: ${currentCard.value.title}`)
+  syncCardElement()
 }
 
 const resetCard = () => {
@@ -54,7 +137,14 @@ const ensureCard = () => {
   }
 }
 
-const despawnCard = () => {
+const selectCard = (key: CardCandidateKey) => {
+  if (selectedCardKey.value === key) {
+    return
+  }
+  selectedCardKey.value = key
+}
+
+const despawnCard = (pattern: AshPattern = 'default') => {
   if (!cardVisible.value || isDespawning.value) {
     log('砂化: カード無し')
     return
@@ -65,17 +155,73 @@ const despawnCard = () => {
     return
   }
   const rect = dom.getBoundingClientRect()
-  spawnAshOverlay(rect)
+  const overlayOptions = {
+    ...(patternSettings[pattern]?.overlayOptions ?? {}),
+    particleColor: currentParticleColor.value,
+  }
+  spawnAshOverlay(rect, overlayOptions)
+  dom.classList.add('ash-despawn')
   isDespawning.value = true
-  log('砂化: 再生開始')
+  const patternLabel = patternSettings[pattern]?.logLabel ?? pattern
+  log(`砂化(${patternLabel}): 再生開始`)
   window.setTimeout(() => {
+    dom.classList.remove('ash-despawn')
     cardVisible.value = false
     isDespawning.value = false
-    log('砂化: 完了')
+    log(`砂化(${patternLabel}): 完了`)
   }, 1000 + 150)
 }
 
-const spawnAshOverlay = (rect: DOMRect) => {
+const syncCardElement = () => {
+  nextTick(() => {
+    if (!cardVisible.value) {
+      if (cardRef.value) {
+        cardRef.value.classList.remove('ash-card', 'ash-despawn')
+      }
+      cardRef.value = null
+      return
+    }
+    const container = cardListContainer.value
+    const target = container?.querySelector('.card-list__item') as HTMLElement | null
+    if (target && target !== cardRef.value) {
+      cardRef.value?.classList.remove('ash-card-container', 'ash-despawn')
+      target.classList.add('ash-card-container')
+      cardRef.value = target
+    }
+  })
+}
+
+onMounted(() => {
+  syncCardElement()
+})
+
+watch(
+  () => cardVisible.value,
+  (visible) => {
+    if (visible) {
+      syncCardElement()
+    } else if (cardRef.value) {
+      cardRef.value.classList.remove('ash-card-container', 'ash-despawn')
+      cardRef.value = null
+    }
+  },
+)
+
+watch(
+  () => selectedCardKey.value,
+  () => {
+    cardVisible.value = true
+    isDespawning.value = false
+    log(`表示カード切替: ${currentCard.value.title}`)
+    syncCardElement()
+  },
+)
+
+const spawnAshOverlay = (rect: DOMRect, options: AshOverlayOptions = {}) => {
+  const motionScale = options.motionScale ?? 1
+  const durationScale = options.durationScale ?? 1
+  const horizontalScale = options.horizontalSpreadScale ?? motionScale
+  const particleColor = options.particleColor ?? 'rgba(235, 235, 235, 0.9)'
   const overlay = document.createElement('div')
   overlay.className = 'ash-overlay'
   Object.assign(overlay.style, {
@@ -97,13 +243,13 @@ const spawnAshOverlay = (rect: DOMRect) => {
     const particle = document.createElement('i')
     particle.className = 'particle'
 
-    const x = (Math.random() * 0.9 + 0.05) * width
+    const x = (Math.random() * 0.7 + 0.15) * width
     const y = (Math.random() * 0.55 + 0.4) * height
-    const dx = Math.random() * 120 - 60
-    const dy = -(Math.random() * 110 + 50)
+    const dx = (Math.random() * 120 - 60) * horizontalScale
+    const dy = -(Math.random() * 110 + 50) * motionScale
     const size = (Math.random() * 3.5 + 2).toFixed(2) + 'px'
-    const delay = Math.round(Math.random() * 220)
-    const duration = Math.round(900 + Math.random() * 400)
+    const delay = Math.round(Math.random() * 220 * durationScale)
+    const duration = Math.round((900 + Math.random() * 400) * durationScale)
 
     maxDelay = Math.max(maxDelay, delay)
     maxDuration = Math.max(maxDuration, duration)
@@ -115,6 +261,8 @@ const spawnAshOverlay = (rect: DOMRect) => {
     particle.style.setProperty('--p-size', size)
     particle.style.setProperty('--p-delay', `${delay}ms`)
     particle.style.setProperty('--p-dur', `${duration}ms`)
+    particle.style.background = particleColor
+    particle.style.boxShadow = `0 0 0 1px ${particleColor}`
     fragment.appendChild(particle)
   }
 
@@ -128,18 +276,33 @@ const spawnAshOverlay = (rect: DOMRect) => {
   <main class="ash-demo">
     <header class="toolbar">
       <button type="button" @click="ensureCard">中央に生成</button>
-      <button type="button" @click="despawnCard">消滅：砂化</button>
+      <button type="button" @click="despawnCard()">消滅：砂化</button>
+      <button type="button" @click="despawnCard('short')">消滅：砂化（短縮）</button>
       <button type="button" @click="resetCard">リセット</button>
     </header>
+    <nav class="card-switcher">
+      <button
+        v-for="entry in candidateEntries"
+        :key="entry.key"
+        type="button"
+        class="card-switcher__button"
+        :class="{ 'card-switcher__button--active': entry.key === selectedCardKey }"
+        @click="selectCard(entry.key)"
+      >
+        {{ entry.title }}
+      </button>
+    </nav>
     <section ref="stageRef" class="stage">
       <div class="spawn-area">
-        <div
-          v-if="cardVisible"
-          ref="cardRef"
-          class="ash-card"
-          :class="{ 'ash-despawn': isDespawning }"
-        >
-          <ActionCard v-bind="actionCard" :operations="[]" :affordable="true" />
+        <div ref="cardListContainer" class="card-list-host">
+          <CardList
+            v-if="cardVisible"
+            :key="selectedCardKey"
+            :cards="[currentCard]"
+            :hover-effect="false"
+            :no-height-limit="true"
+            :force-playable="true"
+          />
         </div>
       </div>
       <p class="hint">中央で生成 → 「消滅：砂化」でワイプ強調＋粒子を確認できます</p>
@@ -150,7 +313,7 @@ const spawnAshOverlay = (rect: DOMRect) => {
 
 <style scoped>
 :global(:root) {
-  --ash-duration: 1000ms;
+  --ash-duration: 1200ms;
   --ash-ease: cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
@@ -203,6 +366,37 @@ button:active {
   transform: translateY(0);
 }
 
+.card-switcher {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.card-switcher__button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f5f5ff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.12s ease;
+}
+
+.card-switcher__button:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.card-switcher__button--active {
+  background: rgba(255, 208, 112, 0.25);
+  border-color: rgba(255, 208, 112, 0.85);
+  color: #ffe8c2;
+}
+
 .stage {
   position: relative;
   width: min(880px, 96vw);
@@ -234,19 +428,24 @@ button:active {
   font-size: 12px;
 }
 
-.ash-card {
-  width: 180px;
-  aspect-ratio: 5 / 7;
-  border-radius: 14px;
-  padding: 12px;
-  background: linear-gradient(180deg, #ffffff, #f7f8ff);
-  box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(0, 0, 0, 0.18) inset;
+:global(.ash-demo .card-list__item) {
+  width: 150px;
+  height: 210px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+:global(.ash-card-container) {
   position: relative;
   overflow: visible;
-  -webkit-mask-image: linear-gradient(to top, transparent 0 35%, #000 45% 100%);
-  mask-image: linear-gradient(to top, transparent 0 35%, #000 45% 100%);
+  width: 150px;
+  height: 210px;
+  /* 砂化の輪郭をくっきり見せたいので、透過→不透過の遷移帯を狭くする */
+  -webkit-mask-image: linear-gradient(to top, transparent 0 32%, rgba(0, 0, 0, 0.95) 38% 100%);
+  mask-image: linear-gradient(to top, transparent 0 32%, rgba(0, 0, 0, 0.95) 38% 100%);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 260%;
@@ -254,13 +453,10 @@ button:active {
   -webkit-mask-position: 50% 0%;
   mask-position: 50% 0%;
 }
-
-.ash-card :deep(.action-card) {
-  width: 100%;
-  height: 100%;
+:global(.ash-card-container .action-card) {
+  pointer-events: auto;
 }
-
-.ash-card.ash-despawn {
+:global(.ash-card-container.ash-despawn) {
   animation:
     ashMask var(--ash-duration) var(--ash-ease) forwards,
     ashFade var(--ash-duration) var(--ash-ease) forwards;
