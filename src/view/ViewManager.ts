@@ -883,9 +883,6 @@ export class ViewManager {
       return undefined
     }
     const metadata: StageEventMetadata = { ...instruction.metadata }
-    if (instruction.damageOutcomes && instruction.damageOutcomes.length > 0) {
-      metadata.damageOutcomes = instruction.damageOutcomes.map((outcome) => ({ ...outcome }))
-    }
     return metadata
   }
 

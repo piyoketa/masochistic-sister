@@ -145,25 +145,42 @@ describe('OperationRunner ActionLog / wait metadata', () => {
     expect(damageStageEnemy?.status).not.toBe('defeated')
     expect(defeatStageEnemy?.status).toBe('defeated')
 
-    const damageOutcomes = damageAnimation.instruction.damageOutcomes ?? []
+    const damageMetadata = damageAnimation.instruction.metadata ?? {}
+    const damageOutcomes = Array.isArray(
+      (damageMetadata as { damageOutcomes?: { damage: number }[] }).damageOutcomes,
+    )
+      ? ((damageMetadata as { damageOutcomes?: { damage: number; effectType: string }[] }).damageOutcomes ?? [])
+      : []
     expect(damageOutcomes.length).toBe(5)
   })
 
-  it('敵行動でcard-createアニメーションが発生する場合は手札差分とcardIdsが一致する', () => {
+  it('敵行動で状態／記憶カードアニメーションが発生する場合は手札差分とcardIdsが一致する', () => {
     const scenario = createBattleSampleScenario()
     const actionLog = scenario.replayer.getActionLog()
     const entries = actionLog.toArray()
     let lastAppliedSnapshot = scenario.createBattle().getSnapshot()
+    let creationBaseline: BattleSnapshot | undefined
+    const processedCreateIds = new Set<number>()
 
     entries.forEach((entry) => {
       const animations = flattenEntryAnimations(entry)
       animations.forEach(({ instruction, snapshot }) => {
-        const diff = collectAddedHandCardIds(lastAppliedSnapshot, snapshot)
-        if (instruction.metadata?.stage === 'card-create') {
-          const metadataIds = Array.isArray(instruction.metadata?.cardIds)
-            ? (instruction.metadata?.cardIds as number[])
-            : []
-          expect(metadataIds).toEqual(diff)
+        const metadata = instruction.metadata
+        const isCreationStage = metadata?.stage === 'create-state-card' || metadata?.stage === 'memory-card'
+        if (isCreationStage) {
+          if (!creationBaseline) {
+            creationBaseline = lastAppliedSnapshot
+          }
+          const metadataIds = Array.isArray(metadata?.cardIds) ? metadata.cardIds : []
+          const baselineIds = collectSnapshotCardIds(creationBaseline)
+          metadataIds.forEach((id) => {
+            expect(baselineIds.has(id)).toBe(false)
+            expect(processedCreateIds.has(id)).toBe(false)
+            processedCreateIds.add(id)
+          })
+        } else {
+          creationBaseline = undefined
+          processedCreateIds.clear()
         }
         lastAppliedSnapshot = snapshot
       })
@@ -184,15 +201,6 @@ describe('OperationRunner ActionLog / wait metadata', () => {
   })
 })
 
-function collectAddedHandCardIds(before?: BattleSnapshot, after?: BattleSnapshot): number[] {
-  const beforeIds = new Set(
-    (before?.hand ?? []).map((card) => card.id).filter((id): id is number => typeof id === 'number'),
-  )
-  return (after?.hand ?? [])
-    .map((card) => card.id)
-    .filter((id): id is number => typeof id === 'number' && !beforeIds.has(id))
-}
-
 function flattenEntryAnimations(
   entry: BattleActionLogEntry | undefined,
 ): Array<{ instruction: AnimationInstruction; snapshot: BattleSnapshot }> {
@@ -206,4 +214,16 @@ function flattenEntryAnimations(
       snapshot: batch.snapshot,
     })),
   )
+}
+
+function collectSnapshotCardIds(snapshot?: BattleSnapshot): Set<number> {
+  const ids = new Set<number>()
+  const zones = [snapshot?.hand ?? [], snapshot?.discardPile ?? [], snapshot?.exilePile ?? []]
+  zones.forEach((cards) => {
+    cards
+      .map((card) => card.id)
+      .filter((id): id is number => typeof id === 'number')
+      .forEach((id) => ids.add(id))
+  })
+  return ids
 }

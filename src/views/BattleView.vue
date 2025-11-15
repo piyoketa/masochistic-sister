@@ -194,17 +194,15 @@ watch(
     if (!event) {
       return
     }
-    const stage = (event.metadata?.stage as string | undefined) ?? undefined
-    if (stage === 'player-damage') {
-      playerDamageOutcomes.value =
-        ((event.metadata?.damageOutcomes as DamageOutcome[]) ?? []).map((outcome) => ({ ...outcome }))
+    const metadata = event.metadata
+    if (metadata?.stage === 'player-damage') {
+      playerDamageOutcomes.value = (metadata.damageOutcomes ?? []).map((outcome) => ({ ...outcome }))
       await nextTick()
       playerDamageEffectsRef.value?.play()
-    } else if (stage === 'mana') {
+    } else if (metadata?.stage === 'mana') {
       manaPulseKey.value += 1
-    } else if (stage === 'audio') {
-      const metadata = event.metadata
-      handleAudioStage(metadata?.stage === 'audio' ? metadata : undefined)
+    } else if (metadata?.stage === 'audio') {
+      handleAudioStage(metadata)
     }
   },
 )

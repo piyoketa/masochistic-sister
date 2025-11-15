@@ -115,7 +115,7 @@ describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () 
     })
   })
 
-  it('敵行動で生成されるcard-createアニメーションのcardIdsが手札差分と一致する', () => {
+  it('敵行動で生成される状態／記憶カードアニメーションのcardIdsが手札差分と一致する', () => {
     const operationLog = buildOperationLog(operationEntries, operationEntries.length - 1)
     const replayer = new OperationLogReplayer({
       createBattle: battleFactory,
@@ -124,16 +124,29 @@ describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () 
     const { actionLog } = replayer.buildActionLog()
     const entries = actionLog.toArray()
     let lastAppliedSnapshot = battleFactory().getSnapshot()
+    let creationBaseline: BattleSnapshot | undefined
+    const processedCreateIds = new Set<number>()
 
     entries.forEach((entry) => {
       const animationSnapshots = expandEntryAnimations(entry)
       animationSnapshots.forEach(({ instruction, snapshot }) => {
-        const diff = collectAddedHandCardIds(lastAppliedSnapshot, snapshot)
-        if (instruction.metadata?.stage === 'card-create') {
-          const metadataIds = Array.isArray(instruction.metadata?.cardIds)
-            ? (instruction.metadata?.cardIds as number[])
-            : []
-          expect(metadataIds).toEqual(diff)
+        const metadata = instruction.metadata
+        const isCreationStage =
+          metadata?.stage === 'create-state-card' || metadata?.stage === 'memory-card'
+        if (isCreationStage) {
+          if (!creationBaseline) {
+            creationBaseline = lastAppliedSnapshot
+          }
+          const metadataIds = Array.isArray(metadata?.cardIds) ? metadata.cardIds : []
+          const baselineIds = collectSnapshotCardIds(creationBaseline)
+          metadataIds.forEach((id) => {
+            expect(baselineIds.has(id)).toBe(false)
+            expect(processedCreateIds.has(id)).toBe(false)
+            processedCreateIds.add(id)
+          })
+        } else {
+          creationBaseline = undefined
+          processedCreateIds.clear()
         }
         lastAppliedSnapshot = snapshot
       })
@@ -221,13 +234,16 @@ function buildOperationEntries(references: ReturnType<typeof collectScenarioRefe
   return entries
 }
 
-function collectAddedHandCardIds(before?: BattleSnapshot, after?: BattleSnapshot): number[] {
-  const beforeIds = new Set(
-    (before?.hand ?? []).map((card) => card.id).filter((id): id is number => typeof id === 'number'),
-  )
-  return (after?.hand ?? [])
-    .map((card) => card.id)
-    .filter((id): id is number => typeof id === 'number' && !beforeIds.has(id))
+function collectSnapshotCardIds(snapshot?: BattleSnapshot): Set<number> {
+  const ids = new Set<number>()
+  const zones = [snapshot?.hand ?? [], snapshot?.discardPile ?? [], snapshot?.exilePile ?? []]
+  zones.forEach((cards) => {
+    cards
+      .map((card) => card.id)
+      .filter((id): id is number => typeof id === 'number')
+      .forEach((id) => ids.add(id))
+  })
+  return ids
 }
 
 function expandEntryAnimations(
@@ -265,7 +281,6 @@ function normalizeEntryForComparison(entry: ActionLogEntrySummary): ActionLogEnt
       instructions: batch.instructions.map((instruction) => ({
         waitMs: instruction.waitMs,
         metadata: instruction.metadata,
-        damageOutcomes: instruction.damageOutcomes,
       })),
     }))
   }

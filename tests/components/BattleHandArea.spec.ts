@@ -323,7 +323,7 @@ describe('BattleHandArea コンポーネント', () => {
     await wrapper.setProps({
       stageEvent: {
         entryType: 'start-player-turn',
-        batchId: 'card-move:test',
+        batchId: 'deck-draw:test',
         metadata: { stage: 'deck-draw', cardIds: [card.id ?? 0], handOverflow: true },
         issuedAt: Date.now(),
       },
@@ -383,7 +383,7 @@ describe('BattleHandArea コンポーネント', () => {
     expect(handWrapper.classes()).not.toContain('hand-card-wrapper--hidden')
   })
 
-  it('card-create ステージでカードが即座に手札へ追加される', async () => {
+  it('create-state-card ステージでカードが即座に手札へ追加される', async () => {
     vi.useFakeTimers()
     const newCard = new Card({ action: new BattlePrepAction() })
     newCard.assignId(555)
@@ -415,7 +415,7 @@ describe('BattleHandArea コンポーネント', () => {
     }
 
     await wrapper.setProps({
-      stageEvent: createStageEvent({ stage: 'card-create', cardIds: [555] }),
+      stageEvent: createStageEvent({ stage: 'create-state-card', cardIds: [555] }),
     })
     await flushAll()
 
@@ -437,7 +437,7 @@ describe('BattleHandArea コンポーネント', () => {
     vi.useRealTimers()
   })
 
-  it('被虐のオーラ経由で敵の記憶カードが生成された場合でもcard-createアニメーションが発火する', async () => {
+  it('被虐のオーラ経由で敵の記憶カードが生成された場合でもmemory-cardアニメーションが発火する', async () => {
     vi.useFakeTimers()
     const auraCard = new Card({ action: new BattlePrepAction() })
     auraCard.assignId(1)
@@ -474,7 +474,7 @@ describe('BattleHandArea コンポーネント', () => {
         batchId: 'enemy-act:create',
         issuedAt: Date.now(),
         metadata: {
-          stage: 'card-create',
+          stage: 'memory-card',
           cardIds: [memoryCardId],
           cardTitles: ['たいあたり'],
           cardCount: 1,

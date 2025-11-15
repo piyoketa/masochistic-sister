@@ -1,10 +1,7 @@
 import type { BattleActionLogEntry, AnimationStageMetadata } from '@/domain/battle/ActionLog'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
-import type { DamageOutcome } from '@/domain/entities/Damages'
 
-export type StageEventMetadata = AnimationStageMetadata & {
-  damageOutcomes?: readonly DamageOutcome[]
-}
+export type StageEventMetadata = AnimationStageMetadata
 
 export interface StageEventPayload {
   entryType: BattleActionLogEntry['type']

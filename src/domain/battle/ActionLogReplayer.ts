@@ -77,7 +77,7 @@ export class ActionLogReplayer {
         return {
           type: 'enemy-act',
           enemyId: entry.enemyId,
-          actionId: entry.actionId,
+          actionName: entry.actionName,
           metadata: entry.metadata as EnemyActEntryMetadata,
         }
       case 'state-event':
@@ -200,7 +200,7 @@ export class ActionLogReplayer {
 
 export type ResolvedBattleActionLogEntry =
   | { type: 'battle-start' }
-  | { type: 'start-player-turn'; draw?: number; handOverflow?: boolean }
+  | { type: 'start-player-turn'; draw?: number }
   | { type: 'player-event'; eventId: string; payload?: unknown }
   | {
       type: 'play-card'
@@ -211,7 +211,7 @@ export type ResolvedBattleActionLogEntry =
       selectedHandCardId?: number
       selectedHandCard?: CardSummary
     }
-  | { type: 'enemy-act'; enemyId: number; actionId?: string; metadata?: EnemyActEntryMetadata }
+  | { type: 'enemy-act'; enemyId: number; actionName?: string; metadata?: EnemyActEntryMetadata }
   | {
       type: 'state-event'
       subject: 'player' | 'enemy'

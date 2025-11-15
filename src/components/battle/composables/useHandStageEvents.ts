@@ -27,7 +27,6 @@ interface UseHandStageEventsOptions {
 type DeckDrawStageMetadata = Extract<StageEventMetadata, { stage: 'deck-draw' }>
 type CardTrashStageMetadata = Extract<StageEventMetadata, { stage: 'card-trash' }>
 type CardEliminateStageMetadata = Extract<StageEventMetadata, { stage: 'card-eliminate' }>
-type CardCreateStageMetadata = Extract<StageEventMetadata, { stage: 'card-create' }>
 type CreateStateCardStageMetadata = Extract<StageEventMetadata, { stage: 'create-state-card' }>
 type MemoryCardStageMetadata = Extract<StageEventMetadata, { stage: 'memory-card' }>
 
@@ -71,9 +70,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         case 'card-eliminate':
           handleCardEliminateStage(event, metadata)
           break
-        case 'card-create':
-          handleCardCreateStage(event, metadata)
-          break
         case 'create-state-card':
           handleCreateStateCardStage(event, metadata)
           break
@@ -116,7 +112,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         continue
       }
       if (pendingCreateQueue.length > 0) {
-        logCardCreateDebug('Snapshot検知: card-create 対象カードを割り当て', {
+        logCardCreateDebug('Snapshot検知: card生成対象カードを割り当て', {
           cardId,
           snapshot: snapshotCreateQueue(),
         })
@@ -137,17 +133,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     if (metadata.handOverflow) {
       showHandOverflowOverlay()
     }
-  }
-
-  function handleCardCreateStage(event: StageEventPayload, metadata: CardCreateStageMetadata): void {
-    const cardIds = metadata.cardIds ?? []
-    const declaredCount = extractCardCreateCount(metadata)
-    enqueueCardCreateRequest({
-      stage: 'card-create',
-      batchId: event.batchId,
-      cardIds,
-      declaredCount,
-    })
   }
 
   function handleCreateStateCardStage(event: StageEventPayload, metadata: CreateStateCardStageMetadata): void {

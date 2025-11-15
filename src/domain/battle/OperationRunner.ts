@@ -291,7 +291,7 @@ export class OperationRunner {
         {
           type: 'enemy-act',
           enemyId: action.enemyId,
-          actionId: action.actionName,
+          actionName: action.actionName,
           metadata: this.createEnemyActEntryMetadata(action),
         },
         { suppressFlush: true },
@@ -318,7 +318,7 @@ export class OperationRunner {
         {
           type: 'enemy-act',
           enemyId: summary.enemyId,
-          actionId: summary.actionName,
+          actionName: summary.actionName,
           metadata: metadataPayload,
         },
         { suppressFlush: true },
@@ -393,32 +393,32 @@ export class OperationRunner {
         ? this.buildCardMoveSnapshot(before, after, cardId)
         : { snapshot: this.cloneBattleSnapshot(after), destination: undefined }
     const cardMoveStage =
-      destination === 'discard' ? 'card-trash' : destination === 'exile' ? 'card-eliminate' : 'card-move'
+      destination === 'discard' ? 'card-trash' : destination === 'exile' ? 'card-eliminate' : undefined
     const cardMoveWaitMs =
       cardMoveStage === 'card-eliminate' ? OperationRunner.CARD_ELIMINATE_ANIMATION_DURATION_MS : 0
     const cardTitle = this.findCardTitle(before, cardId)
-    batches.push(
-      this.createBatch(cardMoveSnapshot, [
-        {
-          waitMs: cardMoveWaitMs,
-          metadata: {
-            stage: cardMoveStage,
-            cardId,
-            cardTitle,
+    if (cardMoveStage) {
+      const metadata: AnimationStageMetadata = {
+        stage: cardMoveStage,
+        cardIds: cardId !== undefined ? [cardId] : [],
+        cardTitles: cardTitle ? [cardTitle] : undefined,
+      }
+      batches.push(
+        this.createBatch(cardMoveSnapshot, [
+          {
+            waitMs: cardMoveWaitMs,
+            metadata,
           },
-        },
-      ]),
-    )
+        ]),
+      )
+    }
 
-    const hasCardMovementEvents = (drawEvents.length ?? 0) > 0 || (cardTrashEvents.length ?? 0) > 0
-    const cardMovementBatchId = hasCardMovementEvents ? this.nextBatchId('card-move') : undefined
-
-    const drawBatches = this.buildDeckDrawBatches(drawEvents, after, cardMovementBatchId)
+    const drawBatches = this.buildDeckDrawBatches(drawEvents, after)
     batches.push(...drawBatches)
 
     const manaBatches = this.buildManaBatches(manaEvents, after)
     batches.push(...manaBatches)
-    const trashBatches = this.buildCardTrashBatches(cardTrashEvents, after, cardMovementBatchId)
+    const trashBatches = this.buildCardTrashBatches(cardTrashEvents, after)
     batches.push(...trashBatches)
 
     const hasDamage = damageEvents.length > 0
@@ -426,17 +426,20 @@ export class OperationRunner {
       const damageSnapshot = this.buildDamageSnapshot(before, after, defeatIds)
       const damageStage = this.resolveDamageStage(damageEvents, 'damage')
       batches.push(
-        this.createBatch(damageSnapshot, [
-          {
-            waitMs: this.calculateDamageWaitFromEvents(damageEvents),
-            metadata: {
-              stage: damageStage,
-              cardId,
-              cardTitle,
+        this.createBatch(
+          damageSnapshot,
+          [
+            {
+              waitMs: this.calculateDamageWaitFromEvents(damageEvents),
+              metadata: {
+                stage: damageStage,
+                cardId,
+                cardTitle,
+                damageOutcomes: this.extractDamageOutcomesFromEvents(damageEvents),
+              },
             },
-            damageOutcomes: this.extractDamageOutcomesFromEvents(damageEvents),
-          },
-        ]),
+          ],
+        ),
       )
     }
 
@@ -446,29 +449,6 @@ export class OperationRunner {
     batches.push(...stateCardBatches)
     const memoryCardBatches = this.buildMemoryCardBatches(drainedEvents.memoryCardEvents, after)
     batches.push(...memoryCardBatches)
-
-    const needsStateUpdate =
-      !hasDamage &&
-      drawBatches.length === 0 &&
-      manaBatches.length === 0 &&
-      defeatBatches.length === 0 &&
-      trashBatches.length === 0 &&
-      stateCardBatches.length === 0 &&
-      memoryCardBatches.length === 0
-    if (needsStateUpdate) {
-      batches.push(
-        this.createBatch(after, [
-          {
-            waitMs: 0,
-            metadata: {
-              stage: 'state-update',
-              cardId,
-              cardTitle,
-            },
-          },
-        ]),
-      )
-    }
 
     return batches
   }
@@ -623,7 +603,7 @@ export class OperationRunner {
         metadata = { stage: 'battle-start' }
         break
       case 'start-player-turn':
-        metadata = { stage: 'turn-start', draw: entry.draw, handOverflow: entry.handOverflow }
+        metadata = { stage: 'turn-start' }
         break
       case 'end-player-turn':
         metadata = { stage: 'turn-end' }
@@ -641,12 +621,6 @@ export class OperationRunner {
             eventId: entry.eventId,
             amount,
           }
-        } else {
-          metadata = {
-            stage: 'state-update',
-            eventId: entry.eventId,
-            payload: entry.payload,
-          }
         }
         break
       }
@@ -662,15 +636,6 @@ export class OperationRunner {
             payload: entry.payload,
           }
           waitMs = 1000
-        } else {
-          metadata = {
-            stage: 'state-update',
-            subject: entry.subject,
-            subjectId: entry.subjectId,
-            stateId: entry.stateId,
-            payload: entry.payload,
-          }
-          waitMs = 0
         }
         break
       }
@@ -707,21 +672,17 @@ export class OperationRunner {
             waitMs: this.calculateDamageWaitFromEvents(damageEvents),
             metadata: {
               stage: damageStage,
+              damageOutcomes: this.extractDamageOutcomesFromEvents(damageEvents),
             },
-            damageOutcomes: this.extractDamageOutcomesFromEvents(damageEvents),
           },
         ]),
       )
     }
 
-    const hasCardMovementEvents =
-      (drainedEvents.drawEvents?.length ?? 0) > 0 || (drainedEvents.cardTrashEvents?.length ?? 0) > 0
-    const cardMovementBatchId = hasCardMovementEvents ? this.nextBatchId('card-move') : undefined
-
-    batches.push(...this.buildDeckDrawBatches(drainedEvents.drawEvents, snapshot, cardMovementBatchId))
+    batches.push(...this.buildDeckDrawBatches(drainedEvents.drawEvents, snapshot))
     batches.push(...this.buildManaBatches(drainedEvents.manaEvents, snapshot))
     batches.push(...this.buildDefeatBatches(drainedEvents.defeatEvents, snapshot))
-    batches.push(...this.buildCardTrashBatches(drainedEvents.cardTrashEvents, snapshot, cardMovementBatchId))
+    batches.push(...this.buildCardTrashBatches(drainedEvents.cardTrashEvents, snapshot))
     batches.push(...this.buildStateCardBatches(drainedEvents.stateCardEvents, snapshot))
     batches.push(...this.buildMemoryCardBatches(drainedEvents.memoryCardEvents, snapshot))
 
@@ -741,7 +702,7 @@ export class OperationRunner {
       return
     }
     const batches: AnimationBatch[] = []
-    // card-createステージより前にカードが手札へ出現するとView側がアニメーションを割り当てられないため、
+    // create-state-card / memory-card ステージより前にカードが手札へ出現するとView側がアニメーションを割り当てられないため、
     // ハイライト/被ダメージまではカード生成分を一時的に隠したスナップショットを用いる。
     const cardAdditionIds =
       summary?.cardsAddedToPlayerHand
@@ -757,7 +718,7 @@ export class OperationRunner {
           metadata: {
             stage: 'enemy-highlight',
             enemyId: entry.enemyId,
-            actionId: entry.actionId,
+            actionName: entry.actionName,
             skipped: summary?.skipped ?? false,
           },
         },
@@ -775,55 +736,8 @@ export class OperationRunner {
             metadata: {
               stage: damageStage,
               enemyId: entry.enemyId,
-              actionId: entry.actionId,
-            },
-            damageOutcomes: this.extractDamageOutcomesFromEvents(damageEvents),
-          },
-        ]),
-      )
-    }
-
-    const shouldAddMemoryCards =
-      summary &&
-      !(context?.playerDefeated ?? false) &&
-      summary.cardsAddedToPlayerHand.length > 0 &&
-      drainedEvents.memoryCardEvents.length === 0
-    if (shouldAddMemoryCards) {
-      const cardAdditions = summary!.cardsAddedToPlayerHand
-      const cardIds = cardAdditions
-        .map((card) => card.id)
-        .filter((id): id is number => typeof id === 'number')
-      const cardTitles = cardAdditions.map((card) => card.title)
-      const cardCreateMetadata: AnimationStageMetadata = {
-        stage: 'card-create',
-        durationMs: OperationRunner.CARD_CREATE_ANIMATION_DURATION_MS,
-        enemyId: entry.enemyId,
-        cardTitles,
-        cards: cardTitles,
-        cardCount: cardAdditions.length,
-      }
-      if (cardIds.length > 0) {
-        cardCreateMetadata.cardIds = cardIds
-      }
-      batches.push(
-        this.createBatch(snapshot, [
-          {
-            waitMs: 0,
-            metadata: cardCreateMetadata,
-          },
-        ]),
-      )
-    }
-
-    const stateDiffs = context?.stateDiffs ?? []
-    if (stateDiffs.length > 0) {
-      batches.push(
-        this.createBatch(snapshot, [
-          {
-            waitMs: 0,
-            metadata: {
-              stage: 'state-update',
-              enemyStates: stateDiffs,
+              actionName: entry.actionName,
+              damageOutcomes: this.extractDamageOutcomesFromEvents(damageEvents),
             },
           },
         ]),
@@ -837,28 +751,34 @@ export class OperationRunner {
   }
 
   private buildDeckDrawBatches(
-    drawEvents: Array<{ cardIds: number[] }>,
+    drawEvents: Array<{ cardIds: number[]; drawnCount?: number; handOverflow?: boolean }>,
     snapshot: BattleSnapshot,
-    sharedBatchId?: string,
   ): AnimationBatch[] {
     if (!drawEvents || drawEvents.length === 0) {
       return []
     }
     return drawEvents
-      .filter((event) => (event.cardIds?.length ?? 0) > 0)
+      .filter((event) => (event.cardIds?.length ?? 0) > 0 || event.handOverflow)
       .map((event) => {
-        const batchId = sharedBatchId ?? this.nextBatchId('deck-draw')
+        const batchId = this.nextBatchId('deck-draw')
         const durationMs = this.calculateDeckDrawDuration(event.cardIds.length)
+        const metadata: AnimationStageMetadata = {
+          stage: 'deck-draw',
+          cardIds: event.cardIds ?? [],
+          durationMs,
+        }
+        if (typeof event.drawnCount === 'number') {
+          metadata.draw = event.drawnCount
+        }
+        if (event.handOverflow) {
+          metadata.handOverflow = true
+        }
         return this.createBatch(
           snapshot,
           [
             {
               waitMs: 0,
-              metadata: {
-                stage: 'deck-draw',
-                cardIds: event.cardIds,
-                durationMs,
-              },
+              metadata,
             },
           ],
           batchId,
@@ -891,13 +811,12 @@ export class OperationRunner {
   private buildCardTrashBatches(
     trashEvents: Array<{ cardIds: number[] }>,
     snapshot: BattleSnapshot,
-    sharedBatchId?: string,
   ): AnimationBatch[] {
     if (!trashEvents || trashEvents.length === 0) {
       return []
     }
     return trashEvents.map((event) => {
-      const batchId = sharedBatchId ?? this.nextBatchId('card-trash')
+      const batchId = this.nextBatchId('card-trash')
       return this.createBatch(
         snapshot,
         [
@@ -1041,13 +960,22 @@ export class OperationRunner {
     instructions: AnimationInstruction[],
     batchId?: string,
   ): AnimationBatch {
-    const normalizedInstructions = instructions.map((instruction) => ({
-      waitMs: instruction.waitMs,
-      metadata: instruction.metadata ? { ...instruction.metadata } : undefined,
-      damageOutcomes: instruction.damageOutcomes
-        ? instruction.damageOutcomes.map((outcome) => ({ ...outcome }))
-        : undefined,
-    }))
+    const normalizedInstructions = instructions.map((instruction) => {
+      const metadata = instruction.metadata ? { ...instruction.metadata } : undefined
+      if (
+        metadata &&
+        'damageOutcomes' in metadata &&
+        Array.isArray((metadata as { damageOutcomes?: readonly DamageOutcome[] }).damageOutcomes)
+      ) {
+        ;(metadata as { damageOutcomes?: readonly DamageOutcome[] }).damageOutcomes = (
+          metadata as { damageOutcomes?: readonly DamageOutcome[] }
+        ).damageOutcomes?.map((outcome) => ({ ...outcome }))
+      }
+      return {
+        waitMs: instruction.waitMs,
+        metadata,
+      }
+    })
     const firstStage = normalizedInstructions[0]?.metadata?.stage
     return {
       batchId: batchId ?? this.nextBatchId(typeof firstStage === 'string' ? firstStage : 'instruction'),

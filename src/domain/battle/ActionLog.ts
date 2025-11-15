@@ -2,7 +2,6 @@ import type { CardOperation } from '../entities/operations'
 import type {
   Battle,
   BattleSnapshot,
-  EnemyStateDiff,
   EnemyTurnActionSummary,
   InterruptEnemyActionTrigger,
 } from './Battle'
@@ -13,7 +12,6 @@ type ValueFactory<T> = T | ((battle: Battle) => T)
 export interface AnimationInstruction {
   waitMs: number
   metadata?: AnimationStageMetadata
-  damageOutcomes?: readonly DamageOutcome[]
 }
 
 export interface AnimationBatch {
@@ -24,32 +22,14 @@ export interface AnimationBatch {
 
 export type AnimationStageMetadata =
   | { stage: 'battle-start' }
-  | { stage: 'turn-start'; draw?: number; handOverflow?: boolean }
+  | { stage: 'turn-start' }
   | { stage: 'turn-end' }
   | { stage: 'victory' }
   | { stage: 'gameover' }
-  | { stage: 'card-move'; cardId?: number; cardTitle?: string }
-  | { stage: 'card-trash'; cardId?: number; cardTitle?: string; cardIds?: number[]; cardTitles?: string[] }
-  | {
-      stage: 'card-eliminate'
-      cardId?: number
-      cardTitle?: string
-      cardIds?: number[]
-      cardTitles?: string[]
-    }
-  | { stage: 'deck-draw'; cardIds: number[]; durationMs?: number; handOverflow?: boolean }
+  | { stage: 'card-trash'; cardIds: number[]; cardTitles?: string[] }
+  | { stage: 'card-eliminate'; cardIds: number[]; cardTitles?: string[] }
+  | { stage: 'deck-draw'; cardIds: number[]; durationMs?: number; draw?: number; handOverflow?: boolean }
   | { stage: 'mana'; amount?: number; eventId?: string }
-  | {
-      stage: 'state-update'
-      eventId?: string
-      payload?: unknown
-      subject?: 'player' | 'enemy'
-      subjectId?: number
-      stateId?: string
-      cardId?: number
-      cardTitle?: string
-      enemyStates?: EnemyStateDiff[]
-    }
   | {
       stage: 'escape'
       subject: 'player' | 'enemy'
@@ -57,16 +37,7 @@ export type AnimationStageMetadata =
       stateId: string
       payload?: unknown
     }
-  | { stage: 'enemy-highlight'; enemyId: number; actionId?: string; skipped: boolean }
-  | {
-      stage: 'card-create'
-      durationMs?: number
-      enemyId?: number
-      cardIds?: number[]
-      cardTitles?: string[]
-      cards?: string[]
-      cardCount?: number
-    }
+  | { stage: 'enemy-highlight'; enemyId: number; actionName?: string; skipped: boolean }
   | {
       stage: 'create-state-card'
       durationMs?: number
@@ -92,8 +63,15 @@ export type AnimationStageMetadata =
       enemyId?: number
       soundId?: string
     }
-  | { stage: 'damage'; cardId?: number; cardTitle?: string }
-  | { stage: 'player-damage'; enemyId?: number; actionId?: string; cardId?: number; cardTitle?: string }
+  | { stage: 'damage'; cardId?: number; cardTitle?: string; damageOutcomes?: readonly DamageOutcome[] }
+  | {
+      stage: 'player-damage'
+      enemyId?: number
+      actionName?: string
+      cardId?: number
+      cardTitle?: string
+      damageOutcomes?: readonly DamageOutcome[]
+    }
   | { stage: 'audio'; soundId: string; durationMs?: number }
   | { stage: 'defeat'; defeatedEnemyIds: number[]; cardId?: number; cardTitle?: string }
 
@@ -110,7 +88,7 @@ type BaseActionLogEntry = {
 
 export type BattleActionLogEntry =
   | ({ type: 'battle-start' } & BaseActionLogEntry)
-  | ({ type: 'start-player-turn'; draw?: number; handOverflow?: boolean } & BaseActionLogEntry)
+  | ({ type: 'start-player-turn'; draw?: number } & BaseActionLogEntry)
   | ({
       type: 'play-card'
       card: ValueFactory<number>
@@ -127,7 +105,7 @@ export type BattleActionLogEntry =
   | ({
       type: 'enemy-act'
       enemyId: number
-      actionId?: string
+      actionName?: string
       metadata?: EnemyActEntryMetadata
     } & BaseActionLogEntry)
   | ({

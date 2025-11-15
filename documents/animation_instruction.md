@@ -18,19 +18,19 @@
 | stage | 表示内容 | 典型的な発生元 |
 | --- | --- | --- |
 | `battle-start` | 初期手札と盤面反映 | `battle-start` |
-| `turn-start` | ターン開始状態（マナリセット、手札情報） | `start-player-turn` |
-| `deck-draw` | 山札から手札にカードを加える | ターン開始ドロー、日課などのドロー効果 |
-| `card-move` | カードのゾーン移動（手札→除外など） | `play-card` |
+| `turn-start` | ターン開始フェーズ突入の通知（各種リセット後の状態を描画） | `start-player-turn` |
+| `deck-draw` | 山札や各種追加効果で手札に入ったカードを描画（draw数・手札上限情報付き） | ターン開始ドロー、日課などのドロー効果 |
 | `card-trash` | 手札のカードを捨て札に送る | `play-card`, 再装填などのカード効果 |
-| `card-eliminate` | カードを除外する | [消費]カードの`play-card` |
-| `card-create` | カードが生成され、手札に追加される | `enemy-act` |
+| `card-eliminate` | カードを除外（消費）ゾーンへ送る | [消費]カードの`play-card` |
+| `create-state-card` | 敵から受けた状態異常カードを生成し手札へ追加 | `Player.addState` |
+| `memory-card` | 敵攻撃の記憶カードを生成し手札へ追加 | `Player.rememberEnemyAttack` |
 | `damage` | 敵に対するダメージ演出 | `play-card` |
 | `player-damage` | プレイヤーに対するダメージ演出 | `enemy-act` |
 | `defeat` | 敵カードのフェードアウト（撃破） | `play-card` |
 | `escape` | 敵カードのフェードアウト（逃走） | `event`（例: trait-coward） |
-| `state-update` | 数値更新のみで演出が不要な状況 | ステータス調整、汎用プレイヤーイベント |
 | `enemy-highlight` | 行動中の敵カードを強調 | `enemy-act` |
-| `mana` | マナ加算エフェクト | `player-event` (mana) |
+| `mana` | マナ加算/消費エフェクト | `player-event` (mana), `play-card` |
+| `audio` | 効果音の再生トリガー | `play-card`, `enemy-act`, サウンドイベント |
 | `turn-end` | プレイヤーターン終了状態 | `end-player-turn` |
 | `victory` / `gameover` | リザルトオーバーレイ | それぞれの終端エントリ |
 
@@ -39,9 +39,9 @@
 | Entry type | Instruction ラフ | 待機時間 | 備考 |
 | --- | --- | --- | --- |
 | `battle-start` | [0] バトル初期状態 snapshot | 0ms | 初期3枚の配布後を描画 |
-| `start-player-turn` | [0] `turn-start`, [1] `mana`, [2] `deck-draw` | 0ms | 手札上限超過時は `deck-draw` の metadata に `handOverflow: true` を載せる |
+| `start-player-turn` | [0] `turn-start`, [1] `deck-draw` | 0ms | マナリセットは snapshot で表現し、手札上限超過は `deck-draw.metadata.handOverflow` へ集約 |
 | `play-card` | 行動による | 行動による | 詳細は後述 |
-| `enemy-act` | 行動による | 行動による | 攻撃時は `player-damage`、バフ時は `state-update` を挿入。行動不能ならアニメーション無し |
+| `enemy-act` | 行動による | 行動による | 攻撃時は `player-damage`、状態・記憶カード生成時は `create-state-card` / `memory-card` を挿入。行動不能ならアニメーション無し |
 | `end-player-turn` | [0] `turn-end` | 0ms | 敵行動再生は個別の `enemy-act` |
 | `victory` / `gameover` | [0] `victory` or `gameover` | 400ms | リザルト表示 |
 | `event` | 状況による | 状況による | 戦いの準備によるマナ追加や、なめくじの臆病による逃走など、なんらかのタイミングトリガーで発生したイベント。 |
@@ -53,14 +53,14 @@ play-card時のAnimationInstructionの生成例を示します。
 
 1. **[0] `mana`**
    - マナを消費（マイナス）または獲得（プラス）した値を示す。
-2. **[1] `card-move` / `card-trash`**  
-   - 使用カードが移動した直後の snapshot。手札→捨て札の場合は `card-trash`、除外などは `card-move`。
+2. **[1] `card-trash` / `card-eliminate`**  
+   - 使用カードが移動した直後の snapshot。手札→捨て札の場合は `card-trash`、消費カードは `card-eliminate`（除外演出は 720ms 固定）。
 3. **[2] `damage`**  
-   - ダメージを伴う場合のみ生成。`damageOutcomes` を含み、待機時間は (ヒット数-1)*0.2s。
+   - ダメージを伴う場合のみ生成。`metadata.damageOutcomes` にヒット配列を含め、待機時間は (ヒット数-1)×0.2s。
 4. **[3] `defeat`**  
    - 撃破された敵がいる場合のみ追加。1sかけて EnemyCard を透過させる。
-5. **[4] `state-update`**  
-   - ダメージもカード生成も起きなかった場合のフォールバック。HPやStateだけが変化したときに使用。
+
+ダメージやカード生成が無い場合でも、`update-snapshot` コマンドが盤面差分を反映するため、`state-update` のようなフォールバック stage は不要になった。
 
 ### enemy-act の詳細
 enemy-act時のAnimationInstructionの生成例を示します。
@@ -69,10 +69,11 @@ enemy-act時のAnimationInstructionの生成例を示します。
 - **攻撃行動**:  
   1. `enemy-highlight`  
   2. `player-damage`（ヒット数に応じて `(hits-1)*0.2s` 待機。ただし記憶カード追加がある場合は 0ms）  
-  3. `card-create`（記憶カード・状態異常カードをまとめて1 instruction に格納）
+  3. `create-state-card`（被弾時に `Player.addState` が呼ばれた場合）  
+  4. `memory-card`（`Player.rememberEnemyAttack` が発火した場合。攻撃バッチ終了後に再生）
 - **バフ/デバフ行動**:  
   1. `enemy-highlight`  
-  2. `state-update`（`metadata.enemyStates` に付与後のState一覧を入れる）
+  2. `create-state-card` / `memory-card`（行動に応じて複数バッチを連結）
 
 ## BattleActionLogEntry生成リファクタ計画
 
@@ -82,9 +83,9 @@ enemy-act時のAnimationInstructionの生成例を示します。
    - `stateEventBuffer` / `resolvedEventsBuffer` で扱う payload を型定義し、trait-coward や mana などステージ判定に必要な情報を取得しやすくする。
 
 2. **OperationRunnerでのInstruction生成**  
-   - `attachPlayCardAnimations`: `card-move → deck-draw* → mana* → damage* → defeat* → state-update*` の順に命令を構築し、ダメージの無いカードでは `damage` を出さない。`mana` インストラクションは `Player.spendMana` で積まれたイベントを取り出して配置する。  
-   - `attachEnemyActAnimations`: 手札追加がある場合のダメージ待機を 0ms に固定し、記憶カード追加は stage=`card-create` で出力。ダメージや撃破は各エンティティの `takeDamage` が直接キューに積んだ情報を利用する。  
-   - `attachSimpleEntryAnimation`: `start-player-turn` に `deck-draw` を差し込み、`player-event` (mana) → stage=`mana`、それ以外 → `state-update`。`state-event` も `escape` or `state-update` にマッピングする。
+   - `attachPlayCardAnimations`: `card-trash / card-eliminate → deck-draw* → mana* → 追加のcard-trash* → damage* → defeat* → create-state-card* → memory-card*` の順に命令を構築し、ダメージの無いカードでは `damage` を出さない。`mana` インストラクションは `Player.spendMana` で積まれたイベントを取り出して配置する。  
+   - `attachEnemyActAnimations`: 手札追加がある場合のダメージ待機を 0ms に固定し、状態異常カードは stage=`create-state-card`、記憶カードは stage=`memory-card` で出力。ダメージや撃破は各エンティティの `takeDamage` が直接キューに積んだ情報を利用する。  
+   - `attachSimpleEntryAnimation`: `start-player-turn` で `turn-start` + `deck-draw` を差し込み、`player-event` (mana) は stage=`mana`、`state-event` は `escape` のみ特殊処理し、それ以外は snapshot 更新に任せる。
 
 3. **ActionLogエントリ列の整合性**  
    - `appendImmediateEnemyActEntries` で `executeInterruptEnemyActions` を呼び出し、被虐のオーラ直後にも `enemy-act` を挿入。  
@@ -93,7 +94,7 @@ enemy-act時のAnimationInstructionの生成例を示します。
 
 4. **テスト & フィクスチャ更新**  
    - `LOG_BATTLE_SAMPLE*_SUMMARY=1` ＋ `scripts/updateActionLogFixtures.mjs` で期待ActionLogを再生成し、`tests/integration/battleSample*.spec.ts` で全ケースが緑になるまで更新。  
-   - `tests/domain/battle/operationRunnerInstructions.spec.ts` 等に `deck-draw`・`state-update`・`escape` の単体テストを追加し、View未実装でも挙動がわかるようにする。  
+   - `tests/domain/battle/operationRunnerInstructions.spec.ts` 等に `deck-draw`・`create-state-card`・`memory-card`・`escape` の単体テストを追加し、View未実装でも挙動がわかるようにする。  
    - 付随ドキュメント（`enemy_turn_animation.md`, `INTEGRATION_TEST_FORMAT.md`）も新stageと生成手順で同期させ、将来の実装者が迷わないようにする。
 
 ## 実装TODOリスト
@@ -108,9 +109,9 @@ enemy-act時のAnimationInstructionの生成例を示します。
    - `queueInterruptEnemyAction` / `executeInterruptEnemyActions` でプレイヤーターン中の敵行動をActionLogに変換する。
 
 3. **OperationRunner調整**
-   - `attachPlayCardAnimations` に `mana` ステージを差し込み、ダメージ無しスキルで `damage` が生成されないよう分岐を明確化。
-   - `attachEnemyActAnimations` を `card-create` 前提に更新し、手札追加時の待機時間0msを徹底。
-   - `attachSimpleEntryAnimation` で `state-event` → `escape`/`state-update`、`player-event` → `mana`/`state-update` へ振り分ける。
+   - `attachPlayCardAnimations` で `card-trash / card-eliminate`・`deck-draw`・`mana`・`create-state-card`・`memory-card` のキューを順番に取り出し、不要な stage を生成しないよう分岐を整理する。
+   - `attachEnemyActAnimations` を `create-state-card` / `memory-card` 前提に更新し、手札追加時の待機時間0msを徹底。
+   - `attachSimpleEntryAnimation` で `state-event` → `escape` のみ特殊処理し、それ以外は snapshot 差分に任せる方針へ揃える。
 
 4. **ActionLog生成フロー**
    - `appendImmediateEnemyActEntries` を `play-card` 実行後に呼び出し、`executeInterruptEnemyActions` から割り込み行動をActionLogへ追加する。

@@ -92,8 +92,7 @@ function resolveAnimationBatches(entry) {
       snapshot: batch.snapshot,
       instructions: (batch.instructions ?? []).map((instruction) => ({
         waitMs: instruction.waitMs,
-        metadata: instruction.metadata,
-        damageOutcomes: instruction.damageOutcomes,
+        metadata: mergeDamageOutcomes(instruction.metadata, instruction.damageOutcomes),
       })),
     }))
   }
@@ -102,11 +101,11 @@ function resolveAnimationBatches(entry) {
     entry.animations.forEach((animation) => {
       const batchId = animation.batchId ?? 'legacy-batch'
       const existing = batches.get(batchId)
+      const metadata = mergeDamageOutcomes(animation.metadata, animation.damageOutcomes)
       if (existing) {
         existing.instructions.push({
           waitMs: animation.waitMs,
-          metadata: animation.metadata,
-          damageOutcomes: animation.damageOutcomes,
+          metadata,
         })
       } else {
         batches.set(batchId, {
@@ -115,8 +114,7 @@ function resolveAnimationBatches(entry) {
           instructions: [
             {
               waitMs: animation.waitMs,
-              metadata: animation.metadata,
-              damageOutcomes: animation.damageOutcomes,
+              metadata,
             },
           ],
         })
@@ -132,7 +130,6 @@ function flattenAnimationBatches(batches) {
     batch.instructions.map((instruction) => ({
       waitMs: instruction.waitMs,
       metadata: instruction.metadata,
-      damageOutcomes: instruction.damageOutcomes,
       batchId: batch.batchId,
       snapshot: batch.snapshot,
     })),
@@ -190,9 +187,9 @@ function describeEntry(entry, context, enemyNames, cardNameMap) {
       const highlight = animations.find((anim) => anim.metadata?.stage === 'enemy-highlight')
       const enemyId = highlight?.metadata?.enemyId
       const enemyName = enemyId !== undefined ? enemyNames[enemyId] ?? `敵${enemyId}` : '敵'
-      const actionId = highlight?.metadata?.actionId ?? '行動'
+      const actionName = highlight?.metadata?.actionName ?? '行動'
       const skipped = highlight?.metadata?.skipped ? '（行動不能）' : ''
-      return `敵フェイズ：${enemyName}が${actionId}を実行${skipped}`
+      return `敵フェイズ：${enemyName}が${actionName}を実行${skipped}`
     }
     case 'player-event':
       return `プレイヤーイベント解決（${entry.eventId ?? 'event'}）`
@@ -215,38 +212,35 @@ function stageComment(stage, metadata) {
     case 'battle-start':
       return '[バトル開始] 初期手札と盤面を描画'
     case 'turn-start':
-      return '[ターン開始] ドロー後の手札/山札を反映'
-    case 'card-move':
-      return `[カード移動] ${describeCardFromMetadata(metadata)} の移動`
+      return '[ターン開始] フェーズ開始を通知'
     case 'card-trash':
       return `[カード廃棄] ${(describeCardList(metadata) || describeCardFromMetadata(metadata))} を捨て札へ移動`
+    case 'card-eliminate':
+      return `[カード除外] ${(describeCardList(metadata) || describeCardFromMetadata(metadata))} を消費`
     case 'damage':
       return `[ダメージ演出] ${describeCardFromMetadata(metadata)} の攻撃結果`
     case 'player-damage':
       return `[被ダメージ] プレイヤーへの攻撃結果`
     case 'enemy-highlight':
       return '[敵行動ハイライト] 敵の行動を強調'
-    case 'card-create':
-      return `[手札追加] 敵攻撃の記憶カード (${describeCardList(metadata) || '不明'}) を手札へ`
     case 'deck-draw':
       return '[ドロー] 山札から手札にカードを追加'
     case 'turn-end':
       return '[ターン終了] 敵ターン移行直前'
     case 'mana':
       return '[マナ] マナゲージを変化'
-    case 'state-event':
-      return '[ステートイベント] 状態効果を反映'
+    case 'create-state-card':
+      return `[状態異常カード生成] ${(describeCardList(metadata) || '不明カード')} を手札へ`
+    case 'memory-card':
+      return `[記憶カード生成] ${(describeCardList(metadata) || '不明カード')} を手札へ`
+    case 'audio':
+      return `[サウンド] soundId=${metadata?.soundId ?? 'unknown'} を再生`
     case 'defeat':
       return '[撃破演出] 撃破された敵を退場'
     case 'escape':
       return '[逃走] 敵カードを退場'
     case 'victory':
       return '[勝利] リザルトオーバーレイを表示'
-    case 'state-update':
-      if (metadata?.enemyStates) {
-        return '[状態更新] 敵ステータスを反映'
-      }
-      return '[状態更新] アニメーションなしで盤面を更新'
     default:
       return `[${stage ?? '不明'}] アニメーション`
   }
@@ -256,6 +250,15 @@ function buildConstName(index, type) {
   const idx = String(index + 1).padStart(2, '0')
   const typeSlug = type.replace(/-/g, '_').toUpperCase()
   return `ACTION_LOG_ENTRY_${idx}_${typeSlug}`
+}
+
+function mergeDamageOutcomes(metadata, damageOutcomes) {
+  if (!damageOutcomes || damageOutcomes.length === 0) {
+    return metadata ? { ...metadata } : metadata
+  }
+  const base = metadata ? { ...metadata } : {}
+  base.damageOutcomes = damageOutcomes
+  return base
 }
 
 function formatScenario({ logPath, marker, output, enemyNames }) {
@@ -301,9 +304,6 @@ function formatScenario({ logPath, marker, output, enemyNames }) {
         lines.push(`          waitMs: ${instruction.waitMs},`)
         if (instruction.metadata) {
           lines.push(`          metadata: ${toInlineObject(instruction.metadata)},`)
-        }
-        if (instruction.damageOutcomes) {
-          lines.push(`          damageOutcomes: ${toInlineObject(instruction.damageOutcomes)},`)
         }
         lines.push('        },')
       })

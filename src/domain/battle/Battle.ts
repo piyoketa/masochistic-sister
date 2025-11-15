@@ -163,7 +163,11 @@ export class Battle {
   private pendingCardTrashAnimationEvents: Array<{ cardIds: number[] }> = []
   private pendingManaAnimationEvents: Array<{ amount: number }> = []
   private pendingDefeatAnimationEvents: number[] = []
-  private pendingDrawAnimationEvents: Array<{ cardIds: number[] }> = []
+  private pendingDrawAnimationEvents: Array<{
+    cardIds: number[]
+    drawnCount?: number
+    handOverflow?: boolean
+  }> = []
   private pendingStateCardAnimationEvents: Array<{
     stateId?: string
     stateName?: string
@@ -487,8 +491,12 @@ export class Battle {
       }
     }
 
-    if (drawnCardIds.length > 0) {
-      this.pendingDrawAnimationEvents.push({ cardIds: drawnCardIds })
+    if (drawnCardIds.length > 0 || skippedDueToHandLimit) {
+      this.pendingDrawAnimationEvents.push({
+        cardIds: drawnCardIds,
+        drawnCount: drawn,
+        handOverflow: skippedDueToHandLimit,
+      })
     }
 
     return { drawn, skippedDueToHandLimit }
@@ -747,7 +755,7 @@ export class Battle {
     return events
   }
 
-  consumeDrawAnimationEvents(): Array<{ cardIds: number[] }> {
+  consumeDrawAnimationEvents(): Array<{ cardIds: number[]; drawnCount?: number; handOverflow?: boolean }> {
     const events = this.pendingDrawAnimationEvents
     this.pendingDrawAnimationEvents = []
     return events
@@ -958,10 +966,7 @@ export class Battle {
       case 'start-player-turn':
         this.startPlayerTurn()
         if (entry.draw && entry.draw > 0) {
-          const drawResult = this.drawForPlayer(entry.draw)
-          if (drawResult.skippedDueToHandLimit) {
-            entry.handOverflow = true
-          }
+          this.drawForPlayer(entry.draw)
         }
         this.resolveEvents()
         this.enemyTeam.planUpcomingActions(this)

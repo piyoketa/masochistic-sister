@@ -13,7 +13,6 @@ export type OperationLogEntryConfig = Parameters<OperationLog['push']>[0]
 export interface AnimationBatchInstructionSummary {
   waitMs: number
   metadata?: AnimationInstruction['metadata']
-  damageOutcomes?: AnimationInstruction['damageOutcomes']
 }
 
 export interface AnimationBatchSummary {
@@ -70,7 +69,6 @@ function summarizeAnimationBatches(batches: AnimationBatch[]): AnimationBatchSum
     instructions: (batch.instructions ?? []).map((instruction) => ({
       waitMs: instruction.waitMs,
       metadata: deepClone(instruction.metadata),
-      damageOutcomes: instruction.damageOutcomes?.map((outcome) => ({ ...outcome })),
     })),
   }))
 }

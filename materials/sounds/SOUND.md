@@ -56,6 +56,11 @@ materials/sounds/spit より
 materials/sounds/poison より
 - 全てのダメージ: on-jin_nukarumu01.mp3
 
+# スキルの音
+
+## 被虐のオーラ
+- skills/kurage-kosho_teleport01.mp3
+
 # それぞれのSEの取得元
 - 小森平
   - taira-komori_punch2a.mp3: [軽打2a](https://taira-komori.net/sound/attack01/punch2a.mp3)
@@ -72,3 +77,4 @@ materials/sounds/poison より
   - 商用利用無料
   - kurage-kosho_gun-fire02.mp3 [銃器・発砲02](http://www.kurage-kosho.info/battle.html)
   - kurage-kosho_poison3.mp3 [毒３](http://www.kurage-kosho.info/battle.html)
+  - kurage-kosho_teleport01.mp3 [テレポート01](http://www.kurage-kosho.info/battle.html)

@@ -206,7 +206,6 @@ function normalizeEntryForComparison(entry: ActionLogEntrySummary): ActionLogEnt
       instructions: batch.instructions.map((instruction) => ({
         waitMs: instruction.waitMs,
         metadata: instruction.metadata,
-        damageOutcomes: instruction.damageOutcomes,
       })),
     }))
   }
