@@ -8,6 +8,12 @@ const env = { ...process.env }
 if (!env.VITE_DEBUG_ANIMATION_LOG) {
   env.VITE_DEBUG_ANIMATION_LOG = 'true'
 }
+if (!env.VITE_DEBUG_CARD_ELIMINATE) {
+  env.VITE_DEBUG_CARD_ELIMINATE = 'true'
+}
+if (!env.VITE_DEBUG_HAND_ANIMATION) {
+  env.VITE_DEBUG_HAND_ANIMATION = 'true'
+}
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {

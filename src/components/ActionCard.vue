@@ -284,66 +284,80 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 </script>
 
 <template>
-  <article
-    class="action-card"
-    :class="[typeClass, stateClasses]"
-    :style="cardStyleVars"
-    :tabindex="tabIndex"
-    :role="cardRole"
-    :aria-disabled="props.disabled || isFrameVariant ? 'true' : 'false'"
-    @mouseenter="handleEnter"
-    @mouseleave="handleLeave"
-    @focusin="handleEnter"
-    @focusout="handleLeave"
-  >
-    <template v-if="!isFrameVariant">
-      <span :class="costClasses">{{ props.cost }}</span>
+  <div class="action-card-shell">
+    <article
+      class="action-card"
+      :class="[typeClass, stateClasses]"
+      :style="cardStyleVars"
+      :tabindex="tabIndex"
+      :role="cardRole"
+      :aria-disabled="props.disabled || isFrameVariant ? 'true' : 'false'"
+      @mouseenter="handleEnter"
+      @mouseleave="handleLeave"
+      @focusin="handleEnter"
+      @focusout="handleLeave"
+    >
+      <template v-if="!isFrameVariant">
+        <span :class="costClasses">{{ props.cost }}</span>
 
-      <header class="card-header">
-        <h4>{{ props.title }}</h4>
-        <div v-if="primaryTagText" class="primary-tag-text">
-          {{ primaryTagText }}
-        </div>
-      </header>
+        <header class="card-header">
+          <h4>{{ props.title }}</h4>
+          <div v-if="primaryTagText" class="primary-tag-text">
+            {{ primaryTagText }}
+          </div>
+        </header>
 
-      <section class="card-body">
-        <div v-if="showDamagePanel" class="damage-panel">
-          <span :class="damageAmountClasses">
-            {{ props.damageAmount }}
-            <span class="damage-unit">ダメージ</span>
-          </span>
-          <span
-            v-if="props.damageCount && props.damageCount > 1"
-            :class="damageCountClasses"
-          >
-            ×{{ props.damageCount }}
-          </span>
-        </div>
-        <p class="card-description">
-          <template v-if="props.descriptionSegments && props.descriptionSegments.length">
-            <template v-for="(segment, index) in props.descriptionSegments" :key="index">
-              <br v-if="segment.text === '\n'" />
-              <span
-                v-else
-                :class="{ 'value--boosted': segment.highlighted }"
-                @mouseenter="(event) => handleSegmentEnter(event, `segment-${index}`, segment.tooltip)"
-                @mousemove="(event) => handleSegmentMove(event, `segment-${index}`, segment.tooltip)"
-                @mouseleave="() => handleSegmentLeave(`segment-${index}`, segment.tooltip)"
-              >
-                {{ segment.text }}
-              </span>
+        <section class="card-body">
+          <div v-if="showDamagePanel" class="damage-panel">
+            <span :class="damageAmountClasses">
+              {{ props.damageAmount }}
+              <span class="damage-unit">ダメージ</span>
+            </span>
+            <span
+              v-if="props.damageCount && props.damageCount > 1"
+              :class="damageCountClasses"
+            >
+              ×{{ props.damageCount }}
+            </span>
+          </div>
+          <p class="card-description">
+            <template v-if="props.descriptionSegments && props.descriptionSegments.length">
+              <template v-for="(segment, index) in props.descriptionSegments" :key="index">
+                <br v-if="segment.text === '\n'" />
+                <span
+                  v-else
+                  :class="{ 'value--boosted': segment.highlighted }"
+                  @mouseenter="(event) => handleSegmentEnter(event, `segment-${index}`, segment.tooltip)"
+                  @mousemove="(event) => handleSegmentMove(event, `segment-${index}`, segment.tooltip)"
+                  @mouseleave="() => handleSegmentLeave(`segment-${index}`, segment.tooltip)"
+                >
+                  {{ segment.text }}
+                </span>
+              </template>
             </template>
-          </template>
-          <template v-else>
-            <template v-for="(line, index) in props.description.split('\n')" :key="index">
-              <span>{{ line }}</span>
-              <br v-if="index < props.description.split('\n').length - 1" />
+            <template v-else>
+              <template v-for="(line, index) in props.description.split('\n')" :key="index">
+                <span>{{ line }}</span>
+                <br v-if="index < props.description.split('\n').length - 1" />
+              </template>
             </template>
-          </template>
-        </p>
-        <div v-if="effectTagList.length" class="tag-list tag-list--effect">
+          </p>
+          <div v-if="effectTagList.length" class="tag-list tag-list--effect">
+            <span
+              v-for="tag in effectTagList"
+              :key="tag.id"
+              @mouseenter="(event) => handleTagEnter(event, tag)"
+              @mousemove="(event) => handleTagMove(event, tag)"
+              @mouseleave="() => handleTagLeave(tag)"
+            >
+              {{ tag.label }}
+            </span>
+          </div>
+        </section>
+
+        <div v-if="categoryTagList.length" class="category-tag-list">
           <span
-            v-for="tag in effectTagList"
+            v-for="tag in categoryTagList"
             :key="tag.id"
             @mouseenter="(event) => handleTagEnter(event, tag)"
             @mousemove="(event) => handleTagMove(event, tag)"
@@ -352,32 +366,46 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
             {{ tag.label }}
           </span>
         </div>
-      </section>
-
-      <div v-if="categoryTagList.length" class="category-tag-list">
-        <span
-          v-for="tag in categoryTagList"
-          :key="tag.id"
-          @mouseenter="(event) => handleTagEnter(event, tag)"
-          @mousemove="(event) => handleTagMove(event, tag)"
-          @mouseleave="() => handleTagLeave(tag)"
-        >
-          {{ tag.label }}
-        </span>
-      </div>
-    </template>
-  </article>
+      </template>
+    </article>
+  </div>
 </template>
 
 <style scoped>
+.action-card-shell {
+  --card-shell-width: var(--action-card-width, 120px);
+  --card-shell-height: var(--action-card-height, 170px);
+  --card-shell-pad-top: var(--action-card-shell-pad-top, 12px);
+  --card-shell-pad-side: var(--action-card-shell-pad-side, 8px);
+  --card-shell-pad-bottom: var(--action-card-shell-pad-bottom, 8px);
+  position: relative;
+  display: inline-flex;
+  width: var(--card-shell-width);
+  height: var(--card-shell-height);
+  padding: var(--card-shell-pad-top) var(--card-shell-pad-side) var(--card-shell-pad-bottom);
+  margin-top: calc(var(--card-shell-pad-top) * -1);
+  margin-bottom: calc(var(--card-shell-pad-bottom) * -1);
+  margin-left: calc(var(--card-shell-pad-side) * -1);
+  margin-right: calc(var(--card-shell-pad-side) * -1);
+  box-sizing: content-box;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.action-card-shell > .action-card {
+  pointer-events: auto;
+  width: 100%;
+  height: 100%;
+}
+
 .action-card {
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   box-sizing: border-box;
-  width: 120px;
-  height: 170px;
+  width: 100%;
+  height: 100%;
   padding: 5px 12px 12px;
   border-radius: 12px;
   background: var(

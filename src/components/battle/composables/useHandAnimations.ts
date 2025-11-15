@@ -1,6 +1,6 @@
-import { reactive, ref, type Ref } from 'vue'
-import type { CardInfo } from '@/types/battle'
-import { spawnCardAshOverlay } from '@/utils/cardAshOverlay'
+import { reactive, ref, type Ref, type ComponentPublicInstance } from 'vue'
+import type { CardInfo, CardType } from '@/types/battle'
+import { useCardEliminateOverlays } from './useCardEliminateOverlays'
 import type { HandEntry } from './useHandPresentation'
 
 export interface FloatingCardAnimation {
@@ -26,23 +26,39 @@ interface UseHandAnimationsOptions {
   findHandEntryByCardId: (cardId: number) => HandEntry | undefined
 }
 
-const ACTION_CARD_WIDTH = 94
-const ACTION_CARD_HEIGHT = 140
+const ACTION_CARD_WIDTH = 120
+const ACTION_CARD_HEIGHT = 170
 const DRAW_ANIMATION_FALLBACK_MS = 600
 const DRAW_ANIMATION_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
 const DRAW_ANIMATION_CLEANUP_BUFFER_MS = 100
 const CARD_CREATE_MATERIALIZE_DURATION_MS = 1000
 const CARD_CREATE_TRAVEL_DURATION_MS = 500
 const CARD_CREATE_CLEANUP_BUFFER_MS = 120
-const CARD_ELIMINATE_DURATION_MS = 1000
+const CARD_ELIMINATE_DURATION_MS = 720
 const CARD_ELIMINATE_CLEANUP_BUFFER_MS = 120
+const CARD_TYPE_PARTICLE_COLORS: Record<CardType, string> = {
+  attack: 'rgba(255, 210, 120, 0.95)',
+  skill: 'rgba(255, 230, 150, 0.9)',
+  status: 'rgba(255, 150, 190, 0.95)',
+}
+const DEFAULT_PARTICLE_COLOR = 'rgba(235, 235, 235, 0.9)'
+const ASH_SHORT_PRESET = {
+  motionScale: 0.6,
+  durationScale: 0.6,
+  horizontalSpreadScale: 0.6,
+  initialXRange: { min: 0.15, max: 0.85 },
+}
+const ENABLE_HAND_ANIMATION_DEBUG =
+  typeof import.meta !== 'undefined' ? import.meta.env.VITE_DEBUG_HAND_ANIMATION === 'true' : false
+const ENABLE_HAND_CARD_DEBUG =
+  typeof import.meta !== 'undefined' ? import.meta.env.VITE_DEBUG_CARD_ELIMINATE === 'true' : false
 
 export function useHandAnimations(options: UseHandAnimationsOptions) {
-  const hiddenCardIds = ref<Set<number>>(new Set())
-  const visibleCardIds = ref<Set<number>>(new Set())
-  const floatingCards = reactive<FloatingCardAnimation[]>([])
-  const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
-  const cardElementRefs = new Map<number, HTMLElement>()
+const hiddenCardIds = ref<Set<number>>(new Set())
+const visibleCardIds = ref<Set<number>>(new Set())
+const floatingCards = reactive<FloatingCardAnimation[]>([])
+const pendingRemovalTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
+const cardElementRefs = new Map<number, HTMLElement>()
   const drawAnimationCleanupTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
   const drawAnimationStartTimers = new Map<number, ReturnType<typeof window.setTimeout>>()
   const cardCreateAnimationTimers = new Map<
@@ -50,6 +66,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     { travelTimer?: ReturnType<typeof window.setTimeout>; cleanupTimer?: ReturnType<typeof window.setTimeout> }
   >()
   const activeCreateCardIds = ref<Set<number>>(new Set())
+  const { overlays: eliminateOverlays, spawnOverlay: spawnEliminateOverlay } = useCardEliminateOverlays()
 
   function ensureVisibleCardId(cardId: number | undefined): void {
     if (cardId === undefined || hiddenCardIds.value.has(cardId) || visibleCardIds.value.has(cardId)) {
@@ -201,6 +218,39 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     const cardElement = cardElementRefs.get(cardId)
     const zoneElement = options.handZoneRef.value
     const targetElement = variant === 'trash' ? options.discardCounterRef.value : options.handZoneRef.value
+    if (ENABLE_HAND_CARD_DEBUG) {
+      logHandAnimationDebug('startCardRemovalAnimation invoked', {
+        cardId,
+        variant,
+        hasCardElement: Boolean(cardElement),
+        hasZoneElement: Boolean(zoneElement),
+        attempt,
+      })
+    }
+    if (variant === 'eliminate') {
+      if (!cardElement) {
+        if (ENABLE_HAND_CARD_DEBUG) {
+          logHandAnimationDebug('card-eliminate skipped: card DOM missing', { cardId })
+        }
+        return
+      }
+      const sourceRect = cardElement.getBoundingClientRect()
+      hideCard(cardId)
+      spawnEliminateOverlay({
+        entry: {
+          info: entry?.info ?? buildFallbackCardInfo(cardId, config.fallbackTitle ?? 'カード'),
+          operations: entry?.operations ?? [],
+          affordable: entry?.affordable ?? true,
+        },
+        rect: sourceRect,
+        duration: CARD_ELIMINATE_DURATION_MS,
+        particleColor:
+          CARD_TYPE_PARTICLE_COLORS[entry?.info.type ?? 'skill'] ?? DEFAULT_PARTICLE_COLOR,
+        animationPreset: ASH_SHORT_PRESET,
+      })
+      return
+    }
+
     if (!cardElement || !zoneElement || !targetElement) {
       if (attempt < 5) {
         const timer = window.setTimeout(
@@ -223,6 +273,14 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
             height: sourceRect.height,
           }
     hideCard(cardId)
+    if (ENABLE_HAND_CARD_DEBUG) {
+      logHandAnimationDebug('spawnFloatingCard payload', {
+        fromRect: sourceRect,
+        toRect: targetRect,
+        zoneRect,
+        variant: options.variant,
+      })
+    }
     spawnFloatingCard({
       cardInfo: entry?.info ?? buildFallbackCardInfo(cardId, config.fallbackTitle ?? 'カード'),
       operations: entry?.operations ?? [],
@@ -258,8 +316,8 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     const fromCenterY = options.fromRect.top + options.fromRect.height / 2
     const toCenterX = options.toRect.left + options.toRect.width / 2
     const toCenterY = options.toRect.top + options.toRect.height / 2
-    const width = ACTION_CARD_WIDTH
-    const height = ACTION_CARD_HEIGHT
+    const width = options.fromRect.width || ACTION_CARD_WIDTH
+    const height = options.fromRect.height || ACTION_CARD_HEIGHT
     const startLeft = fromCenterX - width / 2 - options.zoneRect.left
     const startTop = fromCenterY - height / 2 - options.zoneRect.top
     const deltaX = toCenterX - fromCenterX
@@ -282,7 +340,13 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     })
     floatingCards.push(card)
     const removeAshOverlay =
-      options.variant === 'eliminate' ? spawnCardAshOverlay(options.fromRect) : undefined
+      options.variant === 'eliminate'
+        ? spawnCardAshOverlay(options.fromRect, {
+            ...ASH_SHORT_PRESET,
+            particleColor:
+              CARD_TYPE_PARTICLE_COLORS[options.cardInfo.type ?? 'skill'] ?? DEFAULT_PARTICLE_COLOR,
+          })
+        : undefined
     let revealed = false
     const reveal = () => {
       if (revealed) {
@@ -303,17 +367,29 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
       }
       removeAshOverlay?.()
       reveal()
+      if (ENABLE_HAND_CARD_DEBUG) {
+        logHandAnimationDebug('floating card cleanup', { variant: options.variant })
+      }
     }, cleanupDelay)
   }
 
-  function registerCardElement(cardId: number | undefined, title: string, el: Element | null): void {
+  function registerCardElement(
+    cardId: number | undefined,
+    title: string,
+    el: Element | ComponentPublicInstance | null,
+  ): void {
     if (cardId === undefined) {
       return
     }
     if (el) {
-      const wrapper = el as HTMLElement
+      const element = isComponentInstance(el) ? (el.$el as Element | null) : (el as Element | null)
+      if (!element) {
+        return
+      }
+      const wrapper = element as HTMLElement
+      const shell = wrapper.querySelector<HTMLElement>('.action-card-shell')
       const actionCard = wrapper.querySelector<HTMLElement>('.action-card')
-      const target = actionCard ?? wrapper
+      const target = shell ?? actionCard ?? wrapper
       target.dataset.cardTitle = title
       cardElementRefs.set(cardId, target)
       ensureVisibleCardId(cardId)
@@ -427,7 +503,14 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     visibleCardIds,
     markCardsVisible,
     isCardInCreateAnimation,
+    eliminateOverlays,
   }
+}
+
+function isComponentInstance(
+  value: Element | ComponentPublicInstance | null,
+): value is ComponentPublicInstance {
+  return Boolean(value && typeof value === 'object' && '$el' in value)
 }
 
 function applyDrawTransform(cardElement: HTMLElement, deckElement: HTMLElement, duration: number): void {
@@ -502,7 +585,7 @@ function buildFallbackCardInfo(cardId: number, title: string): CardInfo {
 }
 
 function logHandAnimationDebug(message: string, payload?: Record<string, unknown>): void {
-  if (typeof console === 'undefined') {
+  if (!ENABLE_HAND_ANIMATION_DEBUG || typeof console === 'undefined') {
     return
   }
   console.info(`[BattleHandArea][animation] ${message}`, payload ?? '')

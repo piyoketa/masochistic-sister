@@ -27,6 +27,7 @@ import { useHandPresentation, type HandEntry } from './composables/useHandPresen
 import { useHandInteraction } from './composables/useHandInteraction'
 import { useHandAnimations } from './composables/useHandAnimations'
 import { useHandStageEvents } from './composables/useHandStageEvents'
+import HandCardEliminateOverlay from './HandCardEliminateOverlay.vue'
 
 const props = defineProps<{
   snapshot: BattleSnapshot | undefined
@@ -91,6 +92,7 @@ const {
   cleanup: cleanupAnimations,
   markCardsVisible,
   isCardInCreateAnimation,
+  eliminateOverlays,
 } = useHandAnimations({
   handZoneRef,
   deckCounterRef,
@@ -120,6 +122,15 @@ const { handOverflowOverlayMessage, dispose: disposeStageEvents } = useHandStage
   startCardCreateAnimation,
   startCardRemovalAnimation,
 })
+
+watch(
+  () => props.stageEvent,
+  (event) => {
+    if ((event?.metadata as { stage?: string } | undefined)?.stage === 'card-eliminate') {
+      resetSelection()
+    }
+  },
+)
 
 const {
   hoveredCardKey,
@@ -190,6 +201,7 @@ defineExpose({ resetSelection, cancelSelection })
           isCardInCreateAnimation(entry) ? 'hand-card-wrapper--create' : '',
           selectionWrapperClass(entry),
         ]"
+        :data-card-id="entry.id ?? ''"
         :ref="(el) => registerCardElement(entry.id, entry.info.title, el)"
       >
         <ActionCard
@@ -230,6 +242,13 @@ defineExpose({ resetSelection, cancelSelection })
           variant="frame"
         />
       </div>
+    </div>
+    <div class="hand-eliminate-overlay-layer" aria-hidden="true">
+      <HandCardEliminateOverlay
+        v-for="overlay in eliminateOverlays"
+        :key="overlay.id"
+        :overlay="overlay"
+      />
     </div>
     <transition name="hand-overlay">
       <div v-if="handOverflowOverlayMessage" class="hand-overlay">

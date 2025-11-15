@@ -63,6 +63,7 @@ type PlayCardOperations = Extract<
 
 export class OperationRunner {
   private static readonly CARD_CREATE_ANIMATION_DURATION_MS = 1500
+  private static readonly CARD_ELIMINATE_ANIMATION_DURATION_MS = 720
 
   private readonly battle: Battle
   private readonly actionLog: ActionLog
@@ -359,10 +360,13 @@ export class OperationRunner {
       cardId !== undefined
         ? this.buildCardMoveSnapshot(before, after, cardId)
         : { snapshot: this.cloneBattleSnapshot(after), destination: undefined }
-    const cardMoveStage = destination === 'discard' ? 'card-trash' : 'card-move'
+    const cardMoveStage =
+      destination === 'discard' ? 'card-trash' : destination === 'exile' ? 'card-eliminate' : 'card-move'
+    const cardMoveWaitMs =
+      cardMoveStage === 'card-eliminate' ? OperationRunner.CARD_ELIMINATE_ANIMATION_DURATION_MS : 0
     const cardTitle = this.findCardTitle(before, cardId)
     animations.push(
-      this.createInstruction(cardMoveSnapshot, 0, {
+      this.createInstruction(cardMoveSnapshot, cardMoveWaitMs, {
         stage: cardMoveStage,
         cardId,
         cardTitle,

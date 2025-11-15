@@ -35,9 +35,13 @@ const actionCardStub = defineComponent({
   ],
   emits: ['click'],
   template: `
-    <button class="action-card-stub" :disabled="disabled" @click="$emit('click')">
-      {{ title }}
-    </button>
+    <div class="action-card-shell">
+      <article class="action-card" :class="{ 'action-card--disabled': disabled }">
+        <button class="action-card-stub" :disabled="disabled" @click="$emit('click')">
+          {{ title }}
+        </button>
+      </article>
+    </div>
   `,
 })
 
@@ -157,15 +161,57 @@ describe('BattleHandArea コンポーネント', () => {
           TransitionGroup: false,
         },
       },
-    })
+  })
 
-    await wrapper.get('.action-card-stub').trigger('click')
-    await flushPromises()
+  await wrapper.get('.action-card-stub').trigger('click')
+  await flushPromises()
 
     const emitted = wrapper.emitted('play-card')
     expect(emitted).toHaveLength(1)
     expect((emitted?.[0]?.[0] as { cardId: number; operations: CardOperation[] }).cardId).toBe(1)
     expect(requestEnemyTarget).not.toHaveBeenCalled()
+  })
+
+  it('card-eliminate stage で砂化アニメーション用クラスが付与される', async () => {
+    const eliminateCard = new Card({ action: new HeavenChainAction() })
+    eliminateCard.assignId(77)
+
+    const wrapper = mount(BattleHandArea, {
+      props: {
+        snapshot: createSnapshot([eliminateCard]),
+        hoveredEnemyId: null,
+        isInitializing: false,
+        errorMessage: null,
+        isPlayerTurn: true,
+        isInputLocked: false,
+        viewManager: createViewManagerStub(createBattleStub([eliminateCard])),
+        requestEnemyTarget: vi.fn(),
+        cancelEnemySelection: vi.fn(),
+        stageEvent: null,
+      },
+      global: {
+        stubs: {
+          ActionCard: actionCardStub,
+          TransitionGroup: false,
+        },
+      },
+    })
+
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
+      cb(0)
+      return 0
+    })
+
+    await wrapper.setProps({
+      stageEvent: createStageEvent({ stage: 'card-eliminate', cardIds: [eliminateCard.id] }),
+    })
+    await flushPromises()
+
+    const overlay = wrapper.find('.hand-eliminate-overlay')
+    expect(overlay.exists()).toBe(true)
+    expect(overlay.classes()).toContain('hand-eliminate-overlay--active')
+
+    rafSpy.mockRestore()
   })
 
   it('敵ターゲットが必要なカードではrequestEnemyTargetを経由する', async () => {

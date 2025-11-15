@@ -41,7 +41,13 @@ const leaveTransitionName = 'card-ash'
 
 const handleLeaveBefore = (el: Element) => {
   const rect = el.getBoundingClientRect()
-  spawnCardAshOverlay(rect)
+  spawnCardAshOverlay(rect, {
+    motionScale: 0.6,
+    durationScale: 0.6,
+    horizontalSpreadScale: 0.6,
+    initialXRange: { min: 0.15, max: 0.85 },
+    particleColor: 'rgba(255, 230, 150, 0.9)',
+  })
 }
 
 // ---- Method A: FLIP ----

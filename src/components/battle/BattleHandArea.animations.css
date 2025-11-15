@@ -5,6 +5,12 @@
   z-index: 6;
 }
 
+:global(:root) {
+  --hand-ash-base-duration: 1200ms;
+  --hand-ash-duration: calc(var(--hand-ash-base-duration) * 0.6);
+  --hand-ash-ease: cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
 .hand-floating-card {
   position: absolute;
   display: block;
@@ -12,54 +18,63 @@
   opacity: 0;
   transform: translate3d(0, 0, 0);
   transition: transform 0.3s ease-out, opacity 0.25s ease-out;
-  width: 94px;
-  height: 140px;
+  width: 120px;
+  height: 170px;
 }
 
 .hand-floating-card--active {
   opacity: 1;
 }
 
-.hand-floating-card--trash,
-.hand-floating-card--eliminate {
+.hand-floating-card--trash {
   opacity: 1;
 }
 
 .hand-floating-card--trash.hand-floating-card--active {
   opacity: 0;
 }
-.hand-floating-card--eliminate.hand-floating-card--active {
+
+.hand-floating-card :deep(.action-card-shell) {
+  width: 120px;
+  height: 170px;
+  pointer-events: none;
+}
+
+.hand-eliminate-overlay-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.hand-eliminate-overlay {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 80ms ease;
+}
+
+.hand-eliminate-overlay--active {
   opacity: 1;
 }
 
-.hand-floating-card--eliminate {
-  overflow: visible;
-}
-
-.hand-floating-card--eliminate :deep(.action-card) {
+.hand-eliminate-overlay :deep(.action-card-shell) {
   position: relative;
   overflow: visible;
-  -webkit-mask-image: linear-gradient(to top, transparent 0 35%, #000 45% 100%);
-  mask-image: linear-gradient(to top, transparent 0 35%, #000 45% 100%);
+  width: 120px;
+  height: 170px;
+  -webkit-mask-image: linear-gradient(to top, transparent 0 32%, rgba(0, 0, 0, 0.95) 38% 100%);
+  mask-image: linear-gradient(to top, transparent 0 32%, rgba(0, 0, 0, 0.95) 38% 100%);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 260%;
   mask-size: 100% 260%;
   -webkit-mask-position: 50% 0%;
   mask-position: 50% 0%;
-  will-change: mask-position, opacity, transform;
-}
-
-.hand-floating-card--eliminate.hand-floating-card--active :deep(.action-card) {
   animation:
-    hand-card-ash-mask 1000ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards,
-    hand-card-ash-fade 1000ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
-}
-
-.hand-floating-card :deep(.action-card) {
-  width: 94px;
-  height: 140px;
-  pointer-events: none;
+    hand-card-ash-mask var(--hand-ash-duration) var(--hand-ash-ease) forwards,
+    hand-card-ash-fade var(--hand-ash-duration) var(--hand-ash-ease) forwards;
+  will-change: mask-position, opacity, transform;
 }
 
 .hand-card-wrapper--create {

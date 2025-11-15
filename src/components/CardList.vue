@@ -97,16 +97,6 @@ function handleClick(card: CardInfo): void {
   emit('card-click', card)
 }
 
-function playableCard(card: CardInfo): CardInfo {
-  if (!props.forcePlayable) {
-    return card
-  }
-  return {
-    ...card,
-    affordable: true,
-    disabled: false,
-  }
-}
 </script>
 
 <template>
@@ -126,7 +116,11 @@ function playableCard(card: CardInfo): CardInfo {
           @mouseleave="handleMouseLeave(card)"
           @click="handleClick(card)"
         >
-          <ActionCard v-bind="playableCard(card)" />
+          <ActionCard
+            v-bind="card"
+            :affordable="props.forcePlayable ? true : card.affordable"
+            :disabled="props.forcePlayable ? false : card.disabled"
+          />
         </div>
       </div>
     </div>
