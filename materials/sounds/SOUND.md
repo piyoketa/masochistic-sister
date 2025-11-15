@@ -1,7 +1,27 @@
 # 効果音計画
 ## DamageEffects.vue
 DamageEffects.vueは、DamageOutcome[]を受け取り、それを効果音を含めたダメージ演出に変換する役割を持つコンポーネントである。
-DamageOutcomeは'slash'などの `effectTypeを持つ。effectTypeとダメージ量によって、再生する効果音を変える。
+DamageOutcomeは `effectType` を持つ。`effectType` とダメージ量によって、再生する効果音を変える。
+
+- `src/utils/damageSounds.ts` に `damageSoundAssets` / `resolveDamageSound` を定義
+- `src/utils/audioPreloader.ts` で効果音を事前にロード（`DamageEffects` 初期化時に実行）
+- `/demo/damage-effects` で複数シナリオを切り替え、効果音の組み合わせを確認できる
+
+effectTypeが指定されていない、もしくは音声ファイルが存在しない場合は
+デフォルト音声として、一回攻撃(type: single)なら effectType: slam を、連続攻撃なら effectType: slash と同じ音声を流す。
+
+| effectType | damage区分 | ファイル |
+|------------|------------|----------|
+| slash | 0~10未満 | public/sounds/slash/taira-komori_punch2a.mp3 |
+| slash | 10~15未満 | public/sounds/slash/taira-komori_medium_punch1.mp3 |
+| slash | 15~20未満 | public/sounds/slash/taira-komori_heavy_punch1.mp3 |
+| slash | 20以上 | public/sounds/slash/taira-komori_kick1.mp3 |
+| slam | 0~10未満 | public/sounds/slam/taira-komori_punch2a.mp3 |
+| slam | 10~20未満 | public/sounds/slam/on-jin_punch04.mp3 |
+| slam | 20~30未満 | public/sounds/slam/soundeffect-lab_punch3.mp3 |
+| slam | 30以上 | public/sounds/slam/kurage-kosho_gun-fire02.mp3 |
+| spit | 全て | public/sounds/spit/on-jin_nukarumu01.mp3 |
+| poison | 全て | public/sounds/poison/kurage-kosho_poison3.mp3 |
 
 ### effectType: slash
 現状では、「乱れ突き」などの連続攻撃は全て effectType: slash である。

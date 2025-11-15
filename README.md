@@ -53,3 +53,8 @@ npm run test:unit
 npm run lint
 ```
 
+## Audio Asset Workflow
+
+- 効果音を追加する前に `scripts/audio-tools/README.md` の手順で音量ノーマライズ/無音カットを実施してください。
+- `materials/sounds/` 以下に配置後、`materials/sounds/SOUND.md` の対応表へ追記します。
+- `/demo/damage-effects` で効果音が正しく再生されるかを確認してからコミットしてください。

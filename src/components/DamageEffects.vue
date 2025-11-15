@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
+import { getPreloadedAudio, preloadAudioAssets } from '@/utils/audioPreloader'
+import { damageSoundAssets, resolveDamageSound, resolveDefaultSound } from '@/utils/damageSounds'
 
-const HIT_SOUND_URL = new URL('../../materials/sounds/振り回す1.mp3', import.meta.url).href
 const AUDIO_SUPPORTED = typeof window !== 'undefined' && typeof window.Audio === 'function'
 
 const props = defineProps<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   (event: 'sequence-start'): void
   (event: 'damage-step', payload: { amount: number; index: number }): void
   (event: 'sequence-end'): void
+  (event: 'audio-ready-change', ready: boolean): void
 }>()
 
 type DamageEntry = {
@@ -28,6 +30,37 @@ const entries = ref<DamageEntry[]>([])
 const timers: number[] = []
 let displayedCount = 0
 const activeSounds = new Set<HTMLAudioElement>()
+const preloadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
+const preloadError = ref<string | null>(null)
+const logs = ref<string[]>([])
+const isReady = computed(() => preloadState.value === 'ready')
+
+function appendLog(message: string): void {
+  const timestamp = new Date().toLocaleTimeString()
+  logs.value = [...logs.value.slice(-30), `[${timestamp}] ${message}`]
+}
+
+async function ensureAudioPreloaded(): Promise<void> {
+  if (!AUDIO_SUPPORTED) {
+    return
+  }
+  if (preloadState.value === 'ready' || preloadState.value === 'loading') {
+    console.info('[DamageEffects] preload skipped, state=', preloadState.value)
+    return
+  }
+  try {
+    preloadState.value = 'loading'
+    console.info('[DamageEffects] preload start')
+    await preloadAudioAssets(damageSoundAssets)
+    preloadState.value = 'ready'
+    preloadError.value = null
+    console.info('[DamageEffects] preload ready')
+  } catch (error) {
+    preloadState.value = 'error'
+    preloadError.value = error instanceof Error ? error.message : String(error)
+    console.error('[DamageEffects] preload error', error)
+  }
+}
 
 function reset(): void {
   while (timers.length > 0) {
@@ -51,11 +84,18 @@ function reset(): void {
   activeSounds.clear()
 }
 
-function playHitSound(): void {
+function playHitSound(outcome: DamageOutcome): void {
   if (!AUDIO_SUPPORTED) {
     return
   }
-  const audio = new Audio(HIT_SOUND_URL)
+  const sound =
+    outcome.effectType !== undefined
+      ? resolveDamageSound(outcome)
+      : resolveDefaultSound(outcome.damage)
+  console.info('[DamageEffects] play sound', sound)
+
+  const baseAudio = getPreloadedAudio(sound.id)
+  const audio = baseAudio ? (baseAudio.cloneNode(true) as HTMLAudioElement) : new Audio(sound.src)
   audio.volume = 0.8
   audio.addEventListener(
     'ended',
@@ -76,16 +116,21 @@ function playHitSound(): void {
     try {
       const playResult = audio.play()
       if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(() => {
+        playResult.catch((error) => {
+          console.error('[DamageEffects] audio play rejected', error)
           activeSounds.delete(audio)
         })
       }
-    } catch {
+    } catch (error) {
+      console.error('[DamageEffects] audio play error', error)
       activeSounds.delete(audio)
     }
   } else {
     activeSounds.delete(audio)
   }
+  audio.addEventListener('error', (event) => {
+    console.error('[DamageEffects] audio error event', event)
+  })
 }
 
 function scheduleRemoval(entryId: number, delay: number, totalEntries: number): void {
@@ -100,6 +145,7 @@ function scheduleRemoval(entryId: number, delay: number, totalEntries: number): 
 
 function play(): void {
   reset()
+  ensureAudioPreloaded().catch(() => {})
   if (props.outcomes.length === 0) {
     emit('sequence-end')
     return
@@ -118,14 +164,36 @@ function play(): void {
       entries.value = [...entries.value, entry]
       displayedCount += 1
       emit('damage-step', { amount: outcome.damage, index })
-      playHitSound()
+      playHitSound(outcome)
+      appendLog(`damage=${outcome.damage} effectType=${outcome.effectType}`)
       scheduleRemoval(entry.id, props.duration ?? 800, props.outcomes.length)
     }, appearDelay)
     timers.push(timer)
   })
 }
 
-defineExpose({ play })
+defineExpose({ play, isReady })
+onMounted(() => {
+  console.info('[DamageEffects] mounted, starting preload')
+  ensureAudioPreloaded().catch((error) => {
+    console.error('[DamageEffects] preload failure', error)
+  })
+  watch(
+    () => preloadState.value,
+    (state) => {
+      console.info('[DamageEffects] preloadState changed', state)
+    },
+    { immediate: true },
+  )
+  watch(
+    () => isReady.value,
+    (ready) => {
+      console.info('[DamageEffects] isReady computed', ready)
+      emit('audio-ready-change', ready)
+    },
+    { immediate: true },
+  )
+})
 onBeforeUnmount(() => reset())
 </script>
 
@@ -142,6 +210,13 @@ onBeforeUnmount(() => reset())
     >
       {{ entry.amount }}
     </span>
+    <div class="damage-effects__log">
+      <p>
+        効果音: <strong>{{ preloadState }}</strong>
+        <span v-if="preloadError"> ({{ preloadError }})</span>
+      </p>
+      <p v-for="line in logs" :key="line">{{ line }}</p>
+    </div>
   </div>
 </template>
 
@@ -150,6 +225,18 @@ onBeforeUnmount(() => reset())
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+.preload-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 14px;
+  pointer-events: auto;
+  z-index: 5;
 }
 
 .damage-effects__item {
@@ -169,6 +256,18 @@ onBeforeUnmount(() => reset())
 
 .damage-effects__item--guarded {
   color: #88d8ff;
+}
+
+.damage-effects__log {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  pointer-events: auto;
+  max-height: 100px;
+  overflow: auto;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: left;
 }
 
 @keyframes damage-rise {

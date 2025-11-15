@@ -1,16 +1,63 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import DamageEffects from '@/components/DamageEffects.vue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 
 const maxHp = 120
 const currentHp = ref(maxHp)
-const outcomes = ref<DamageOutcome[]>([
-  { damage: 12, effectType: 'slash' },
-  { damage: 18, effectType: 'slash' },
-  { damage: 24, effectType: 'slash' },
-])
+interface Scenario {
+  id: string
+  label: string
+  description: string
+  outcomes: DamageOutcome[]
+}
+
+const scenarios: Scenario[] = [
+  {
+    id: 'slash',
+    label: 'Slash Combo',
+    description: '連続攻撃（slash）4段',
+    outcomes: [
+      { damage: 8, effectType: 'slash' },
+      { damage: 12, effectType: 'slash' },
+      { damage: 18, effectType: 'slash' },
+      { damage: 24, effectType: 'slash' },
+    ],
+  },
+  {
+    id: 'slam',
+    label: 'Slam Heavy',
+    description: '単発たいあたり（slam）',
+    outcomes: [{ damage: 28, effectType: 'slam' }],
+  },
+  {
+    id: 'spit',
+    label: 'Spit / Acid',
+    description: '粘液・酸タイプ（spit）',
+    outcomes: [
+      { damage: 10, effectType: 'spit' },
+      { damage: 6, effectType: 'spit' },
+    ],
+  },
+  {
+    id: 'poison',
+    label: 'Poison Sting',
+    description: '毒攻撃（poison）',
+    outcomes: [{ damage: 5, effectType: 'poison' }],
+  },
+  {
+    id: 'default',
+    label: 'Fallback (no effectType)',
+    description: 'effectType 未指定のデフォルト動作',
+    outcomes: [{ damage: 14 }, { damage: 6 }],
+  },
+]
+
+const selectedScenarioId = ref(scenarios[0]?.id ?? '')
+const selectedScenario = computed(() => scenarios.find((scenario) => scenario.id === selectedScenarioId.value) ?? scenarios[0])
+
+const outcomes = ref<DamageOutcome[]>(selectedScenario.value?.outcomes ?? [])
 
 const effectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 
@@ -22,22 +69,72 @@ function playSequence(): void {
   currentHp.value = maxHp
   effectsRef.value?.play()
 }
+
+const audioSupported = typeof window !== 'undefined' && typeof window.Audio === 'function'
+console.info('[DamageEffectsDemo] audioSupported=', audioSupported)
+const exposedReady = ref(false)
+
+watch(
+  () => effectsRef.value,
+  (value) => {
+    console.info('[DamageEffectsDemo] effectsRef changed', Boolean(value))
+    if (value?.isReady) {
+      console.info('[DamageEffectsDemo] effectsRef expose isReady value', value.isReady.value)
+    }
+  },
+  { immediate: true },
+)
+
+const handleAudioReadyChange = (ready: boolean) => {
+  console.info('[DamageEffectsDemo] audio-ready-change event', ready)
+  exposedReady.value = ready
+}
+
+const isAudioReady = computed(() => {
+  if (!audioSupported) {
+    return true
+  }
+  return exposedReady.value
+})
+
+watch(
+  selectedScenario,
+  (scenario) => {
+    if (scenario) {
+      outcomes.value = scenario.outcomes
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <div class="damage-demo">
     <header class="demo-header">
       <h1>Damage Effects Demo</h1>
-      <p>コンポーネントをクリックすると、被ダメージ演出が再生されます。</p>
+      <p>シナリオを選択して再生すると、ダメージ演出と効果音の組み合わせを確認できます。</p>
     </header>
-    <div class="demo-stage" @click="playSequence">
+    <section class="scenario-panel">
+      <h2>Scenarios</h2>
+      <ul class="scenario-list">
+        <li
+          v-for="scenario in scenarios"
+          :key="scenario.id"
+          :class="['scenario-entry', scenario.id === selectedScenarioId ? 'scenario-entry--active' : '']"
+        >
+          <button type="button" @click="selectedScenarioId = scenario.id">
+            <strong>{{ scenario.label }}</strong>
+            <span>{{ scenario.description }}</span>
+          </button>
+        </li>
+      </ul>
+    </section>
+    <div class="demo-stage">
       <HpGauge :current="currentHp" :max="maxHp" />
-      <DamageEffects
-        ref="effectsRef"
-        :outcomes="outcomes"
-        @damage-step="handleDamageStep"
-      />
-      <button type="button" class="play-button">Play</button>
+      <DamageEffects ref="effectsRef" :outcomes="outcomes" @damage-step="handleDamageStep" @audio-ready-change="handleAudioReadyChange" />
+      <button type="button" class="play-button" :disabled="!isAudioReady" @click="playSequence">
+        {{ isAudioReady ? 'Play' : 'Loading...' }}
+      </button>
     </div>
   </div>
 </template>
@@ -61,6 +158,41 @@ function playSequence(): void {
   color: rgba(255, 255, 255, 0.8);
 }
 
+.scenario-panel {
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.scenario-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.scenario-entry button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.35);
+  color: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.scenario-entry--active button {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .demo-stage {
   position: relative;
   height: 220px;
@@ -70,7 +202,6 @@ function playSequence(): void {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  cursor: pointer;
   overflow: hidden;
 }
 
