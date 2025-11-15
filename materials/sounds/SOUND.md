@@ -78,3 +78,8 @@ materials/sounds/poison より
   - kurage-kosho_gun-fire02.mp3 [銃器・発砲02](http://www.kurage-kosho.info/battle.html)
   - kurage-kosho_poison3.mp3 [毒３](http://www.kurage-kosho.info/battle.html)
   - kurage-kosho_teleport01.mp3 [テレポート01](http://www.kurage-kosho.info/battle.html)
+  - kurage-kosho_status03.mp3 [テレポート01](http://www.kurage-kosho.info/battle.html)
+  - public/sounds/skills/kurage-kosho_button45.mp3[ボタン45](http://www.kurage-kosho.info/system.html)
+- [OtoLogic](https://otologic.jp/free/license.html)
+  - クレジットを表記すれば無料
+  - public/sounds/skills/OtoLogic_Electric-Shock02-Short.mp3[電撃02](https://otologic.jp/free/se/electric-shock01.html#google_vignette)
