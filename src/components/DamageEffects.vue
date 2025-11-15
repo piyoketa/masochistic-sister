@@ -5,11 +5,16 @@ import { getPreloadedAudio, preloadAudioAssets } from '@/utils/audioPreloader'
 import { damageSoundAssets, resolveDamageSound, resolveDefaultSound } from '@/utils/damageSounds'
 
 const AUDIO_SUPPORTED = typeof window !== 'undefined' && typeof window.Audio === 'function'
+const debugEnv =
+  typeof import.meta !== 'undefined' &&
+  typeof import.meta.env !== 'undefined' &&
+  import.meta.env?.VITE_DEBUG_DAMAGE_EFFECTS === 'true'
 
 const props = defineProps<{
   outcomes: DamageOutcome[]
   interval?: number
   duration?: number
+  debug?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -34,8 +39,12 @@ const preloadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
 const preloadError = ref<string | null>(null)
 const logs = ref<string[]>([])
 const isReady = computed(() => preloadState.value === 'ready')
+const debugEnabled = computed(() => debugEnv || Boolean(props.debug))
 
 function appendLog(message: string): void {
+  if (!debugEnabled.value) {
+    return
+  }
   const timestamp = new Date().toLocaleTimeString()
   logs.value = [...logs.value.slice(-30), `[${timestamp}] ${message}`]
 }
@@ -45,20 +54,28 @@ async function ensureAudioPreloaded(): Promise<void> {
     return
   }
   if (preloadState.value === 'ready' || preloadState.value === 'loading') {
-    console.info('[DamageEffects] preload skipped, state=', preloadState.value)
+    if (debugEnabled.value) {
+      console.info('[DamageEffects] preload skipped, state=', preloadState.value)
+    }
     return
   }
   try {
     preloadState.value = 'loading'
-    console.info('[DamageEffects] preload start')
+    if (debugEnabled.value) {
+      console.info('[DamageEffects] preload start')
+    }
     await preloadAudioAssets(damageSoundAssets)
     preloadState.value = 'ready'
     preloadError.value = null
-    console.info('[DamageEffects] preload ready')
+    if (debugEnabled.value) {
+      console.info('[DamageEffects] preload ready')
+    }
   } catch (error) {
     preloadState.value = 'error'
     preloadError.value = error instanceof Error ? error.message : String(error)
-    console.error('[DamageEffects] preload error', error)
+    if (debugEnabled.value) {
+      console.error('[DamageEffects] preload error', error)
+    }
   }
 }
 
@@ -92,7 +109,9 @@ function playHitSound(outcome: DamageOutcome): void {
     outcome.effectType !== undefined
       ? resolveDamageSound(outcome)
       : resolveDefaultSound(outcome.damage)
-  console.info('[DamageEffects] play sound', sound)
+  if (debugEnabled.value) {
+    console.info('[DamageEffects] play sound', sound)
+  }
 
   const baseAudio = getPreloadedAudio(sound.id)
   const audio = baseAudio ? (baseAudio.cloneNode(true) as HTMLAudioElement) : new Audio(sound.src)
@@ -117,19 +136,25 @@ function playHitSound(outcome: DamageOutcome): void {
       const playResult = audio.play()
       if (playResult && typeof playResult.catch === 'function') {
         playResult.catch((error) => {
-          console.error('[DamageEffects] audio play rejected', error)
+          if (debugEnabled.value) {
+            console.error('[DamageEffects] audio play rejected', error)
+          }
           activeSounds.delete(audio)
         })
       }
     } catch (error) {
-      console.error('[DamageEffects] audio play error', error)
+      if (debugEnabled.value) {
+        console.error('[DamageEffects] audio play error', error)
+      }
       activeSounds.delete(audio)
     }
   } else {
     activeSounds.delete(audio)
   }
   audio.addEventListener('error', (event) => {
-    console.error('[DamageEffects] audio error event', event)
+    if (debugEnabled.value) {
+      console.error('[DamageEffects] audio error event', event)
+    }
   })
 }
 
@@ -174,21 +199,29 @@ function play(): void {
 
 defineExpose({ play, isReady })
 onMounted(() => {
-  console.info('[DamageEffects] mounted, starting preload')
+  if (debugEnabled.value) {
+    console.info('[DamageEffects] mounted, starting preload')
+  }
   ensureAudioPreloaded().catch((error) => {
-    console.error('[DamageEffects] preload failure', error)
+    if (debugEnabled.value) {
+      console.error('[DamageEffects] preload failure', error)
+    }
   })
   watch(
     () => preloadState.value,
     (state) => {
-      console.info('[DamageEffects] preloadState changed', state)
+      if (debugEnabled.value) {
+        console.info('[DamageEffects] preloadState changed', state)
+      }
     },
     { immediate: true },
   )
   watch(
     () => isReady.value,
     (ready) => {
-      console.info('[DamageEffects] isReady computed', ready)
+      if (debugEnabled.value) {
+        console.info('[DamageEffects] isReady computed', ready)
+      }
       emit('audio-ready-change', ready)
     },
     { immediate: true },
@@ -210,7 +243,7 @@ onBeforeUnmount(() => reset())
     >
       {{ entry.amount }}
     </span>
-    <div class="damage-effects__log">
+    <div v-if="debugEnabled || false" class="damage-effects__log">
       <p>
         効果音: <strong>{{ preloadState }}</strong>
         <span v-if="preloadError"> ({{ preloadError }})</span>
