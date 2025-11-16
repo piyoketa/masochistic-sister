@@ -416,7 +416,7 @@ export const ACTION_LOG_ENTRY_14_PLAY_CARD: ActionLogEntrySummary = {
       instructions: [
         // [撃破演出] 撃破された敵を退場
         {
-          waitMs: 1000,
+          waitMs: 500,
           metadata: {stage:'defeat',defeatedEnemyIds:[3],cardId:11,cardTitle:'たいあたり'},
         },
       ],
@@ -487,7 +487,7 @@ export const ACTION_LOG_ENTRY_16_PLAY_CARD: ActionLogEntrySummary = {
       instructions: [
         // [撃破演出] 撃破された敵を退場
         {
-          waitMs: 1000,
+          waitMs: 500,
           metadata: {stage:'defeat',defeatedEnemyIds:[2],cardId:13,cardTitle:'粘液飛ばし'},
         },
       ],
@@ -728,7 +728,7 @@ export const ACTION_LOG_ENTRY_25_PLAY_CARD: ActionLogEntrySummary = {
       instructions: [
         // [撃破演出] 撃破された敵を退場
         {
-          waitMs: 1000,
+          waitMs: 500,
           metadata: {stage:'defeat',defeatedEnemyIds:[0],cardId:14,cardTitle:'乱れ突き'},
         },
       ],
@@ -769,7 +769,7 @@ export const ACTION_LOG_ENTRY_26_PLAY_CARD: ActionLogEntrySummary = {
       instructions: [
         // [撃破演出] 撃破された敵を退場
         {
-          waitMs: 1000,
+          waitMs: 500,
           metadata: {stage:'defeat',defeatedEnemyIds:[1],cardId:15,cardTitle:'乱れ突き'},
         },
       ],

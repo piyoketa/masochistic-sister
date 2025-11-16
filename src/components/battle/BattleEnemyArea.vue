@@ -59,6 +59,8 @@ type EnemyDamageStageMetadata = Extract<StageEventMetadata, { stage: 'enemy-dama
 type PlayerDamageStageMetadata = Extract<StageEventMetadata, { stage: 'player-damage' }>
 type DamageStageMetadata = EnemyDamageStageMetadata | PlayerDamageStageMetadata
 type AlreadyActedStageMetadata = Extract<StageEventMetadata, { stage: 'already-acted-enemy' }>
+type DefeatStageMetadata = Extract<StageEventMetadata, { stage: 'defeat' }>
+type EscapeStageMetadata = Extract<StageEventMetadata, { stage: 'escape' }>
 let actingTimer: number | null = null
 type EnemyCardInstance = InstanceType<typeof EnemyCard>
 const enemyCardRefs = new Map<number, EnemyCardInstance>()
@@ -157,6 +159,12 @@ watch(
       case 'player-damage':
         // プレイヤー被弾時の演出は BattleView 側で扱うため、敵カードでは特別な処理を行わない
         break
+      case 'defeat':
+        handleDefeatStage(metadata)
+        break
+      case 'escape':
+        handleEscapeStage(metadata)
+        break
       default:
         break
     }
@@ -213,6 +221,26 @@ function resolveEnemyIdFromStage(event: StageEventPayload, metadata: DamageStage
 function handleAlreadyActedStage(metadata: AlreadyActedStageMetadata): void {
   const enemyId = typeof metadata.enemyId === 'number' ? metadata.enemyId : null
   triggerEnemyHighlight(enemyId)
+}
+
+function handleDefeatStage(metadata: DefeatStageMetadata): void {
+  const defeatedIds = Array.isArray(metadata.defeatedEnemyIds) ? metadata.defeatedEnemyIds : []
+  defeatedIds.forEach((enemyId) => {
+    const target = enemyCardRefs.get(enemyId)
+    target?.playEnemySound?.('defeat')
+  })
+}
+
+function handleEscapeStage(metadata: EscapeStageMetadata): void {
+  if (metadata.subject !== 'enemy') {
+    return
+  }
+  const enemyId = typeof metadata.subjectId === 'number' ? metadata.subjectId : undefined
+  if (enemyId === undefined) {
+    return
+  }
+  const target = enemyCardRefs.get(enemyId)
+  target?.playEnemySound?.('escape')
 }
 
 function extractEnemyIdFromResolvedEntry(

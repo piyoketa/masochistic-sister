@@ -396,7 +396,7 @@ export const ACTION_LOG_ENTRY_14_PLAY_CARD: ActionLogEntrySummary = {
       instructions: [
         // [撃破演出] 撃破された敵を退場
         {
-          waitMs: 1000,
+          waitMs: 500,
           metadata: {stage:'defeat',defeatedEnemyIds:[2],cardId:11,cardTitle:'乱れ突き'},
         },
       ],
@@ -507,7 +507,7 @@ export const ACTION_LOG_ENTRY_17_PLAY_CARD: ActionLogEntrySummary = {
       instructions: [
         // [撃破演出] 撃破された敵を退場
         {
-          waitMs: 1000,
+          waitMs: 500,
           metadata: {stage:'defeat',defeatedEnemyIds:[0],cardId:12,cardTitle:'乱れ突き'},
         },
       ],
@@ -756,7 +756,7 @@ export const ACTION_LOG_ENTRY_26_PLAY_CARD: ActionLogEntrySummary = {
       instructions: [
         // [撃破演出] 撃破された敵を退場
         {
-          waitMs: 1000,
+          waitMs: 500,
           metadata: {stage:'defeat',defeatedEnemyIds:[1],cardId:11,cardTitle:'乱れ突き'},
         },
       ],

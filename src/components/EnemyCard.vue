@@ -9,6 +9,7 @@
  */
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
+import { useAudioCue } from '@/composables/useAudioCue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { EnemyInfo, EnemySkill, EnemyTrait } from '@/types/battle'
 import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
@@ -36,6 +37,7 @@ const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updateP
 let activeTooltip: { key: string; text: string } | null = null
 const damageOutcomes = ref<DamageOutcome[]>([])
 const damageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
+const { play: playAudioCue } = useAudioCue()
 
 interface ActionChipEntry {
   key: string
@@ -223,7 +225,13 @@ async function playDamage(outcomes: readonly DamageOutcome[]): Promise<void> {
   damageEffectsRef.value?.play()
 }
 
-defineExpose({ playDamage })
+function playEnemySound(effect: 'defeat' | 'escape'): void {
+  const soundId =
+    effect === 'defeat' ? 'sounds/defeat/maou_se_battle18.mp3' : 'sounds/escape/kurage-kosho_esc01.mp3'
+  playAudioCue(soundId)
+}
+
+defineExpose({ playDamage, playEnemySound })
 </script>
 
 <template>

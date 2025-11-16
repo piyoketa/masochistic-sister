@@ -1137,7 +1137,7 @@ export class OperationRunner {
     return [
       this.createBatch(snapshot, [
         {
-          waitMs: 1000,
+          waitMs: 500,
           metadata: {
             stage: 'defeat',
             defeatedEnemyIds: uniqueIds,
