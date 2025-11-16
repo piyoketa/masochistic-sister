@@ -2,6 +2,7 @@ import type {
   AnimationBatch,
   AnimationInstruction,
   BattleActionLogEntry,
+  BattleSnapshotPatch,
   ValueFactory,
 } from '@/domain/battle/ActionLog'
 import { OperationLog } from '@/domain/battle/OperationLog'
@@ -18,12 +19,8 @@ export interface AnimationBatchInstructionSummary {
 export interface AnimationBatchSummary {
   batchId: string
   snapshot: unknown
+  patch?: BattleSnapshotPatch
   instructions: AnimationBatchInstructionSummary[]
-}
-
-export interface AnimationInstructionSummary extends AnimationBatchInstructionSummary {
-  batchId: string
-  snapshot: unknown
 }
 
 export interface ActionLogEntrySummary {
@@ -31,7 +28,6 @@ export interface ActionLogEntrySummary {
   card?: number | ValueFactory<number>
   operations?: CardOperation[]
   animationBatches?: AnimationBatchSummary[]
-  animations?: AnimationInstructionSummary[]
   eventId?: string
 }
 
@@ -51,7 +47,6 @@ export function summarizeActionLogEntry(entry: BattleActionLogEntry): ActionLogE
   const animationBatches = summarizeAnimationBatches(entry.animationBatches ?? [])
   if (animationBatches.length > 0) {
     summary.animationBatches = animationBatches
-    summary.animations = flattenAnimationBatches(animationBatches)
   }
   return summary
 }
@@ -66,21 +61,12 @@ function summarizeAnimationBatches(batches: AnimationBatch[]): AnimationBatchSum
   return batches.map((batch) => ({
     batchId: batch.batchId,
     snapshot: deepClone(batch.snapshot),
+    patch: batch.patch ? deepClone(batch.patch) : undefined,
     instructions: (batch.instructions ?? []).map((instruction) => ({
       waitMs: instruction.waitMs,
       metadata: deepClone(instruction.metadata),
     })),
   }))
-}
-
-function flattenAnimationBatches(batches: AnimationBatchSummary[]): AnimationInstructionSummary[] {
-  return batches.flatMap((batch) =>
-    batch.instructions.map((instruction) => ({
-      ...instruction,
-      batchId: batch.batchId,
-      snapshot: batch.snapshot,
-    })),
-  )
 }
 
 function deepClone<T>(value: T): T {

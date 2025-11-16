@@ -23,6 +23,7 @@ import {
   ActionLog,
   type AnimationInstruction,
   type BattleActionLogEntry,
+  type BattleSnapshotPatch,
 } from '@/domain/battle/ActionLog'
 import {
   type ResolvedBattleActionLogEntry,
@@ -68,6 +69,12 @@ export type AnimationCommand =
   | {
       type: 'update-snapshot'
       snapshot: BattleSnapshot
+      resolvedEntry?: ResolvedBattleActionLogEntry
+    }
+  | {
+      type: 'apply-patch'
+      patch: BattleSnapshotPatch
+      snapshot?: BattleSnapshot
       resolvedEntry?: ResolvedBattleActionLogEntry
     }
   | { type: 'wait'; duration: number }
@@ -370,6 +377,18 @@ export class ViewManager {
     let stateChanged = false
 
     switch (command.type) {
+      case 'apply-patch': {
+        const nextSnapshot = this.applySnapshotPatch(
+          this.stateValue.snapshot,
+          command.patch,
+          command.snapshot,
+        )
+        this.stateValue.previousSnapshot = this.stateValue.snapshot
+        this.stateValue.snapshot = nextSnapshot
+        this.stateValue.lastResolvedEntry = command.resolvedEntry ?? this.stateValue.lastResolvedEntry
+        stateChanged = true
+        break
+      }
       case 'update-snapshot': {
         this.stateValue.previousSnapshot = this.stateValue.snapshot
         this.stateValue.snapshot = command.snapshot
@@ -395,6 +414,52 @@ export class ViewManager {
     for (const command of commands) {
       this.applyAnimationCommand(command)
     }
+  }
+
+  private applySnapshotPatch(
+    baseSnapshot: BattleSnapshot | undefined,
+    patch: BattleSnapshotPatch,
+    fallback?: BattleSnapshot,
+  ): BattleSnapshot {
+    const base =
+      baseSnapshot ??
+      fallback ??
+      ((patch.changes as BattleSnapshot | undefined) ??
+        (() => {
+          throw new Error('Patch から再構築できませんでした')
+        })())
+    const target = this.cloneSnapshot(base)
+    this.mergeSnapshotPatch(target as Record<string, unknown>, patch.changes as Record<string, unknown>)
+    return target
+  }
+
+  private mergeSnapshotPatch(target: Record<string, unknown>, patch: Record<string, unknown>): void {
+    Object.entries(patch).forEach(([key, value]) => {
+      if (value === undefined) {
+        return
+      }
+      if (Array.isArray(value)) {
+        target[key] = this.cloneValue(value)
+        return
+      }
+      if (value !== null && typeof value === 'object') {
+        const current = target[key]
+        if (!current || typeof current !== 'object') {
+          target[key] = {}
+        }
+        this.mergeSnapshotPatch(target[key] as Record<string, unknown>, value as Record<string, unknown>)
+        return
+      }
+      target[key] = value
+    })
+  }
+
+  private cloneSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
+    return this.cloneValue(snapshot)
+  }
+
+  private cloneValue<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value)) as T
   }
 
   completeCurrentAnimation(scriptId: string): void {
@@ -830,6 +895,19 @@ export class ViewManager {
 
     batches.forEach((batch) => {
       const instructions = batch.instructions ?? []
+      if (batch.patch) {
+        commands.push({
+          type: 'apply-patch',
+          patch: batch.patch,
+          snapshot: batch.snapshot,
+          resolvedEntry,
+        })
+      } else {
+        commands.push({
+          type: 'update-snapshot',
+          snapshot: batch.snapshot,
+        })
+      }
       instructions.forEach((instruction) => {
         commands.push({
           type: 'stage-event',
@@ -843,10 +921,6 @@ export class ViewManager {
       if (batchWait > 0) {
         commands.push({ type: 'wait', duration: batchWait })
       }
-      commands.push({
-        type: 'update-snapshot',
-        snapshot: batch.snapshot,
-      })
     })
 
     if (entry.postEntrySnapshot && batches.length > 0) {

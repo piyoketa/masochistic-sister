@@ -9,6 +9,17 @@ import type { DamageOutcome } from '../entities/Damages'
 
 type ValueFactory<T> = T | ((battle: Battle) => T)
 
+type SnapshotPatch<T> = T extends Array<infer U>
+  ? U[]
+  : T extends object
+    ? { [K in keyof T]?: SnapshotPatch<T[K]> }
+    : T
+
+export interface BattleSnapshotPatch {
+  changes: SnapshotPatch<BattleSnapshot>
+  uiHints?: Record<string, unknown>
+}
+
 export interface AnimationInstruction {
   waitMs: number
   metadata?: AnimationStageMetadata
@@ -17,6 +28,7 @@ export interface AnimationInstruction {
 export interface AnimationBatch {
   batchId: string
   snapshot: BattleSnapshot
+  patch?: BattleSnapshotPatch
   instructions: AnimationInstruction[]
 }
 

@@ -37,7 +37,14 @@ const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updateP
 let activeTooltip: { key: string; text: string } | null = null
 const damageOutcomes = ref<DamageOutcome[]>([])
 const damageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
-const { play: playAudioCue } = useAudioCue()
+const { play: playAudioCue, preload: preloadAudioCue } = useAudioCue()
+
+const ENEMY_AUDIO_CUES = {
+  defeat: 'sounds/defeat/maou_se_battle18.mp3',
+  escape: 'sounds/escape/kurage-kosho_esc01.mp3',
+} as const
+
+preloadEnemyCues()
 
 interface ActionChipEntry {
   key: string
@@ -225,10 +232,12 @@ async function playDamage(outcomes: readonly DamageOutcome[]): Promise<void> {
   damageEffectsRef.value?.play()
 }
 
+function preloadEnemyCues(): void {
+  Object.values(ENEMY_AUDIO_CUES).forEach((soundId) => preloadAudioCue(soundId))
+}
+
 function playEnemySound(effect: 'defeat' | 'escape'): void {
-  const soundId =
-    effect === 'defeat' ? 'sounds/defeat/maou_se_battle18.mp3' : 'sounds/escape/kurage-kosho_esc01.mp3'
-  playAudioCue(soundId)
+  playAudioCue(ENEMY_AUDIO_CUES[effect])
 }
 
 defineExpose({ playDamage, playEnemySound })

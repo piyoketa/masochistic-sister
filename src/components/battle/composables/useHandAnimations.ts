@@ -113,15 +113,25 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     visibleCardIds.value = nextVisible
   }
 
-  function startDeckDrawAnimation(cardId: number, config?: { durationMs?: number; delayMs?: number }): void {
+  function startDeckDrawAnimation(
+    cardId: number,
+    config?: { durationMs?: number; delayMs?: number },
+    attempt = 0,
+  ): void {
     const cardElement = cardElementRefs.get(cardId)
     const deckElement = options.deckCounterRef.value
     if (!cardElement || !deckElement) {
-      console.error('[BattleHandArea][deck-draw] 必要なDOM要素を取得できずアニメーションを省略しました', {
-        cardId,
-        hasCardElement: Boolean(cardElement),
-        hasDeckElement: Boolean(deckElement),
-      })
+      if (attempt >= 3) {
+        console.error('[BattleHandArea][deck-draw] 必要なDOM要素を取得できずアニメーションを省略しました', {
+          cardId,
+          hasCardElement: Boolean(cardElement),
+          hasDeckElement: Boolean(deckElement),
+        })
+        return
+      }
+      const retryDelay = 50 * (attempt + 1)
+      const startTimer = window.setTimeout(() => startDeckDrawAnimation(cardId, config, attempt + 1), retryDelay)
+      drawAnimationStartTimers.set(cardId, startTimer)
       return
     }
     const duration = normalizeDuration(config?.durationMs)

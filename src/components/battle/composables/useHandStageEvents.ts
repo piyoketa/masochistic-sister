@@ -1,15 +1,7 @@
-import { ref, watch, nextTick, type ComputedRef, type Ref } from 'vue'
+import { ref, watch, nextTick, type ComputedRef } from 'vue'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { HandEntry } from './useHandPresentation'
-
-type PendingCreateRequest = {
-  batchId: string
-  remainingCount: number
-  cardIds: number[]
-  stage: 'create-state-card' | 'memory-card'
-  useSimpleAnimation: boolean
-}
 
 interface UseHandStageEventsOptions {
   stageEvent: () => StageEventPayload | null
@@ -36,62 +28,61 @@ type AlreadyActedStageMetadata = Extract<StageEventMetadata, { stage: 'already-a
 
 export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const handOverflowOverlayMessage = ref<string | null>(null)
-  const pendingDrawCardIds = ref<Set<number>>(new Set())
-  const previousHandIds = ref<Set<number>>(new Set())
-  const pendingDrawAnimationOptions = new Map<number, { durationMs?: number; delayMs?: number }>()
-  const pendingCreateQueue: PendingCreateRequest[] = []
-  const snapshotCreateQueue = () =>
-    pendingCreateQueue.map((request) => ({
-      batchId: request.batchId,
-      remainingCount: request.remainingCount,
-      cardIds: [...request.cardIds],
-    }))
   const processedStageBatchIds = new Set<string>()
+  const previousHandIds = ref<Set<number>>(new Set())
+  const pendingDeckAnimations = new Map<number, { durationMs?: number; delayMs?: number }>()
+  const pendingCreateAnimations = new Map<number, { simple: boolean }>()
   let handOverflowTimer: number | null = null
+
+  const handleStageEvent = (event: StageEventPayload | null) => {
+    if (!event || !event.batchId) {
+      return
+    }
+    if (processedStageBatchIds.has(event.batchId)) {
+      return
+    }
+    processedStageBatchIds.add(event.batchId)
+    if (processedStageBatchIds.size > 500) {
+      processedStageBatchIds.clear()
+      processedStageBatchIds.add(event.batchId)
+    }
+    const metadata = event.metadata
+    if (!metadata) {
+      return
+    }
+    switch (metadata.stage) {
+      case 'deck-draw':
+        ;(async () => handleDeckDrawStage(event, metadata))()
+        break
+      case 'card-trash':
+        handleCardTrashStage(metadata)
+        break
+      case 'card-eliminate':
+        handleCardEliminateStage(metadata)
+        break
+      case 'create-state-card':
+        ;(async () => handleCreateStateCardStage(metadata, true))()
+        break
+      case 'memory-card':
+        ;(async () => handleCreateStateCardStage(metadata, false))()
+        break
+      case 'audio':
+        handleAudioStage(metadata)
+        break
+      case 'already-acted-enemy':
+        handleAlreadyActedStage(metadata)
+        break
+      default:
+        break
+    }
+  }
 
   watch(
     () => options.stageEvent(),
     (event) => {
-      if (!event || !event.batchId || processedStageBatchIds.has(event.batchId)) {
-        return
-      }
-      processedStageBatchIds.add(event.batchId)
-      if (processedStageBatchIds.size > 500) {
-        processedStageBatchIds.clear()
-        processedStageBatchIds.add(event.batchId)
-      }
-      const metadata = event.metadata
-      if (!metadata) {
-        return
-      }
-      switch (metadata.stage) {
-        case 'deck-draw':
-          handleDeckDrawStage(event, metadata)
-          break
-        case 'card-trash':
-          handleCardTrashStage(event, metadata)
-          break
-        case 'card-eliminate':
-          handleCardEliminateStage(event, metadata)
-          break
-        case 'create-state-card':
-          handleCreateStateCardStage(event, metadata)
-          break
-        case 'memory-card':
-          handleMemoryCardStage(event, metadata)
-          break
-        case 'audio':
-          handleAudioStage(metadata)
-          break
-        case 'already-acted-enemy':
-          handleAlreadyActedStage(metadata)
-          break
-        default:
-          break
-      }
+      handleStageEvent(event)
     },
   )
-
   watch(
     () =>
       options
@@ -100,138 +91,63 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         .filter((id): id is number => typeof id === 'number'),
     async (handIds = []) => {
       await nextTick()
-      const currentSet = new Set(handIds)
-      const prevSet = previousHandIds.value
-      const newlyAdded = handIds.filter((id) => !prevSet.has(id))
-      processNewHandCards(newlyAdded)
-      previousHandIds.value = currentSet
+      await nextTick()
+      const prev = previousHandIds.value
+      const current = new Set(handIds)
+      const newlyAdded = handIds.filter((id) => !prev.has(id))
+      newlyAdded.forEach((cardId) => {
+        const deckAnim = pendingDeckAnimations.get(cardId)
+        if (deckAnim) {
+          pendingDeckAnimations.delete(cardId)
+          startDeckDrawAnimationWithCleanup(cardId, deckAnim)
+        }
+        const createAnim = pendingCreateAnimations.get(cardId)
+        if (createAnim) {
+          pendingCreateAnimations.delete(cardId)
+          options.startCardCreateAnimation(cardId, { simple: createAnim.simple })
+        }
+      })
+      previousHandIds.value = current
     },
     { immediate: true },
   )
 
-  function processNewHandCards(newlyAdded: number[]): void {
-    if (newlyAdded.length === 0) {
+  function handleDeckDrawStage(_event: StageEventPayload, metadata: DeckDrawStageMetadata): void {
+    const cardIds = metadata.cardIds ?? []
+    if (cardIds.length === 0) {
       return
     }
-    for (const cardId of newlyAdded) {
-      if (pendingDrawCardIds.value.has(cardId)) {
-        removeFromSet(pendingDrawCardIds, cardId)
-        const animationOptions = pendingDrawAnimationOptions.get(cardId)
-        pendingDrawAnimationOptions.delete(cardId)
-        options.startDeckDrawAnimation(cardId, animationOptions)
-        continue
-      }
-      if (pendingCreateQueue.length > 0) {
-        logCardCreateDebug('Snapshot検知: card生成対象カードを割り当て', {
-          cardId,
-          snapshot: snapshotCreateQueue(),
-        })
-        assignCardToCreateQueue(cardId)
-        continue
-      }
-    }
-  }
-
-  function handleDeckDrawStage(event: StageEventPayload, metadata: DeckDrawStageMetadata): void {
-    const cardIds = metadata.cardIds ?? []
     const durationMs = extractDurationMs(metadata)
+    const currentHandIds = collectHandIds(options.snapshot())
     cardIds.forEach((id, index) => {
-      addToSet(pendingDrawCardIds, id)
       const delayMs = index * DRAW_STAGGER_DELAY_MS
-      pendingDrawAnimationOptions.set(id, { durationMs, delayMs })
+      const config = { durationMs, delayMs }
+      if (currentHandIds.has(id)) {
+        triggerDeckAnimation(id, config)
+      } else {
+        pendingDeckAnimations.set(id, config)
+      }
     })
     if (metadata.handOverflow) {
       showHandOverflowOverlay()
     }
   }
 
-  function handleCreateStateCardStage(event: StageEventPayload, metadata: CreateStateCardStageMetadata): void {
-    enqueueCreateAnimation(event, metadata, {
-      stage: 'create-state-card',
-      simpleMode: true,
-    })
-  }
-
-  function handleMemoryCardStage(event: StageEventPayload, metadata: MemoryCardStageMetadata): void {
-    enqueueCreateAnimation(event, metadata, {
-      stage: 'memory-card',
-      simpleMode: false,
-    })
-  }
-
-  function assignCardToCreateQueue(cardId: number): void {
-    for (const request of pendingCreateQueue) {
-      const index = request.cardIds.indexOf(cardId)
-      if (index !== -1) {
-        request.cardIds.splice(index, 1)
-        triggerCardCreateAnimation(request, cardId)
-        if (request.remainingCount <= 0) {
-          const requestIndex = pendingCreateQueue.indexOf(request)
-          if (requestIndex >= 0) {
-            pendingCreateQueue.splice(requestIndex, 1)
-          }
-        }
-        return
-      }
-    }
-    while (pendingCreateQueue.length > 0) {
-      const current = pendingCreateQueue[0]
-      if (!current) {
-        pendingCreateQueue.shift()
-        continue
-      }
-      if (current.remainingCount <= 0) {
-        pendingCreateQueue.shift()
-        continue
-      }
-      triggerCardCreateAnimation(current, cardId)
-      if (current.remainingCount <= 0) {
-        pendingCreateQueue.shift()
-      }
+  async function handleCreateStateCardStage(
+    metadata: CreateStateCardStageMetadata | MemoryCardStageMetadata,
+    simpleMode: boolean,
+  ): Promise<void> {
+    const cardIds = resolveCardIds(metadata)
+    if (cardIds.length === 0) {
       return
     }
-    console.error('[BattleHandArea][card-create] 対応する生成キューが見つからずアニメーションに失敗しました', {
-      cardId,
-      snapshot: snapshotCreateQueue(),
-    })
-  }
-
-  function triggerCardCreateAnimation(request: PendingCreateRequest, cardId: number): void {
-    request.remainingCount = Math.max(0, request.remainingCount - 1)
-    logCardCreateDebug('card-create アニメーション開始', {
-      cardId,
-      batchId: request.batchId,
-      remainingCount: request.remainingCount,
-      stage: request.stage,
-      simple: request.useSimpleAnimation,
-    })
-    options.startCardCreateAnimation(cardId, {
-      simple: request.useSimpleAnimation,
-    })
-  }
-  function enqueueCreateAnimation(
-    event: StageEventPayload,
-    metadata: CardCountMetadata,
-    options: { stage: 'create-state-card' | 'memory-card'; simpleMode: boolean },
-  ): void {
-    const cardIds = metadata.cardIds ?? resolveCardIds(metadata)
-    const declaredCount = (metadata.cardCount ?? cardIds.length) || 1
-    const remainingCount = Math.max(cardIds.length, declaredCount)
-    if (remainingCount <= 0) {
-      return
-    }
-    pendingCreateQueue.push({
-      batchId: event.batchId,
-      remainingCount,
-      cardIds: [...cardIds],
-      stage: options.stage,
-      useSimpleAnimation: options.simpleMode,
-    })
-    logCardCreateDebug(`stage event 受信: ${options.stage} を待機キューへ追加`, {
-      batchId: event.batchId,
-      cardIds,
-      declaredCount,
-      snapshot: snapshotCreateQueue(),
+    const currentHandIds = collectHandIds(options.snapshot())
+    cardIds.forEach((cardId) => {
+      if (currentHandIds.has(cardId)) {
+        triggerCreateAnimation(cardId, simpleMode)
+      } else {
+        pendingCreateAnimations.set(cardId, { simple: simpleMode })
+      }
     })
   }
 
@@ -243,7 +159,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     // 行動済み敵のハイライトも EnemyArea 側で表現するため、ここでは何もしない
   }
 
-  function handleCardTrashStage(event: StageEventPayload, metadata: CardTrashStageMetadata): void {
+  function handleCardTrashStage(metadata: CardTrashStageMetadata): void {
     const cardIds = metadata.cardIds ?? []
     const titles = metadata.cardTitles ?? []
     cardIds.forEach((id, index) => {
@@ -253,7 +169,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     })
   }
 
-  function handleCardEliminateStage(event: StageEventPayload, metadata: CardEliminateStageMetadata): void {
+  function handleCardEliminateStage(metadata: CardEliminateStageMetadata): void {
     const cardIds = metadata.cardIds ?? []
     const titles = metadata.cardTitles ?? []
     cardIds.forEach((id, index) => {
@@ -279,14 +195,36 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       window.clearTimeout(handOverflowTimer)
       handOverflowTimer = null
     }
-    pendingDrawCardIds.value = new Set()
-    pendingDrawAnimationOptions.clear()
-    pendingCreateQueue.length = 0
   }
 
   return {
     handOverflowOverlayMessage,
     dispose,
+  }
+
+  function triggerDeckAnimation(cardId: number, config: { durationMs?: number; delayMs?: number }): void {
+    void nextTick(() =>
+      nextTick(() => {
+        pendingDeckAnimations.delete(cardId)
+        startDeckDrawAnimationWithCleanup(cardId, config)
+      }),
+    )
+  }
+
+  function triggerCreateAnimation(cardId: number, simpleMode: boolean): void {
+    void nextTick(() =>
+      nextTick(() => {
+        pendingCreateAnimations.delete(cardId)
+        options.startCardCreateAnimation(cardId, { simple: simpleMode })
+      }),
+    )
+  }
+
+  function startDeckDrawAnimationWithCleanup(
+    cardId: number,
+    config: { durationMs?: number; delayMs?: number },
+  ): void {
+    options.startDeckDrawAnimation(cardId, config)
   }
 }
 
@@ -317,62 +255,12 @@ function resolveCardIds(metadata: CardIdentifierMetadata): number[] {
   return []
 }
 
-type CardCountMetadata = StageEventMetadata & {
-  cardCount?: number
-  cardIds?: number[]
-  cardTitles?: unknown[]
-  cards?: unknown[]
-}
-
-function extractCardCreateCount(metadata: CardCountMetadata | undefined): number {
-  if (!metadata) {
-    return 0
+function collectHandIds(snapshot?: BattleSnapshot): Set<number> {
+  if (!snapshot) {
+    return new Set()
   }
-  if (typeof metadata.cardCount === 'number') {
-    return metadata.cardCount
-  }
-  if (Array.isArray(metadata.cardIds)) {
-    return metadata.cardIds.length
-  }
-  if (Array.isArray((metadata as { cardTitles?: unknown }).cardTitles)) {
-    return (metadata as { cardTitles?: unknown[] }).cardTitles?.length ?? 0
-  }
-  if (Array.isArray(metadata.cards)) {
-    return metadata.cards.length
-  }
-  return 1
-}
-
-function addToSet(target: Ref<Set<number>>, value: number): void {
-  const current = target.value
-  if (current.has(value)) {
-    return
-  }
-  const clone = new Set(current)
-  clone.add(value)
-  target.value = clone
-}
-
-function removeFromSet(target: Ref<Set<number>>, value: number): void {
-  const current = target.value
-  if (!current.has(value)) {
-    return
-  }
-  const clone = new Set(current)
-  clone.delete(value)
-  target.value = clone
-}
-function logCardCreateDebug(message: string, payload?: Record<string, unknown>): void {
-  if (typeof console === 'undefined') {
-    return
-  }
-  let serialized: unknown = ''
-  if (payload) {
-    try {
-      serialized = JSON.parse(JSON.stringify(payload))
-    } catch {
-      serialized = payload
-    }
-  }
-  console.info(`[BattleHandArea][card-create] ${message}`, serialized)
+  const ids = snapshot.hand
+    .map((card) => card.id)
+    .filter((id): id is number => typeof id === 'number')
+  return new Set(ids)
 }

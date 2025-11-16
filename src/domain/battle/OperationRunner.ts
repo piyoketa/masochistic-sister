@@ -14,6 +14,7 @@ import type {
   AnimationBatch,
   BattleActionLogEntry,
   EnemyActEntryMetadata,
+  BattleSnapshotPatch,
 } from './ActionLog'
 import { ActionLog } from './ActionLog'
 import type { Card } from '../entities/Card'
@@ -1229,10 +1230,25 @@ export class OperationRunner {
       }
     })
     const firstStage = normalizedInstructions[0]?.metadata?.stage
+    const clonedSnapshot = this.cloneBattleSnapshot(snapshot)
     return {
       batchId: batchId ?? this.nextBatchId(typeof firstStage === 'string' ? firstStage : 'instruction'),
-      snapshot: this.cloneBattleSnapshot(snapshot),
+      snapshot: clonedSnapshot,
+      patch: this.createSnapshotPatch(clonedSnapshot),
       instructions: normalizedInstructions,
+    }
+  }
+
+  private createSnapshotPatch(snapshot: BattleSnapshot): BattleSnapshotPatch {
+    const clone = this.cloneBattleSnapshot(snapshot)
+    return {
+      changes: {
+        player: clone.player,
+        hand: clone.hand,
+        deck: clone.deck,
+        discardPile: clone.discardPile,
+        exilePile: clone.exilePile,
+      },
     }
   }
 

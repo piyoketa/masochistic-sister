@@ -115,6 +115,7 @@ function resolveAnimationBatches(entry) {
     return entry.animationBatches.map((batch) => ({
       batchId: batch.batchId,
       snapshot: batch.snapshot,
+      patch: batch.patch,
       instructions: (batch.instructions ?? []).map((instruction) => ({
         waitMs: instruction.waitMs,
         metadata: mergeDamageOutcomes(instruction.metadata, instruction.damageOutcomes),
@@ -136,6 +137,7 @@ function resolveAnimationBatches(entry) {
         batches.set(batchId, {
           batchId,
           snapshot: animation.snapshot,
+          patch: animation.patch,
           instructions: [
             {
               waitMs: animation.waitMs,
@@ -880,6 +882,9 @@ function formatScenario({ logPath, marker, output, enemyNames }) {
         const snapshotLine = toInlineObject(batch.snapshot)
         const snapshotComment = buildSnapshotComment(batch.snapshot, enemyNames)
         lines.push(`      snapshot: ${snapshotLine}, ${snapshotComment}`)
+      }
+      if (batch.patch) {
+        lines.push(`      patch: ${toInlineObject(batch.patch)},`)
       }
       lines.push('      instructions: [')
       batch.instructions.forEach((instruction) => {

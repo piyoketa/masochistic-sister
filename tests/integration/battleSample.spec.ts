@@ -278,11 +278,40 @@ function normalizeEntryForComparison(entry: ActionLogEntrySummary): ActionLogEnt
     normalized.animationBatches = entry.animationBatches.map((batch) => ({
       batchId: batch.batchId,
       snapshot: undefined,
+      patch: sanitizePatch(batch.patch),
       instructions: batch.instructions.map((instruction) => ({
         waitMs: instruction.waitMs,
         metadata: instruction.metadata,
       })),
     }))
   }
+  if (entry.animations) {
+    normalized.animations = entry.animations.map((instruction) => ({
+      batchId: instruction.batchId,
+      waitMs: instruction.waitMs,
+      metadata: instruction.metadata,
+      snapshot: undefined,
+    }))
+  }
   return normalized
+}
+
+function deepClone<T>(value: T): T {
+  if (value === undefined || value === null) {
+    return value
+  }
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
+function sanitizePatch<T>(patch: T | undefined): T | undefined {
+  if (!patch) {
+    return patch
+  }
+  const clone = deepClone(patch)
+  const changes = (clone as { changes?: Record<string, unknown> }).changes
+  if (changes && typeof changes === 'object') {
+    delete changes.events
+    delete changes.log
+  }
+  return clone
 }
