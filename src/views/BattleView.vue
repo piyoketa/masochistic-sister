@@ -159,7 +159,7 @@ onUnmounted(() => {
   }
 })
 
-const portraitSrc = '/assets/characters/sister.jpg'
+const portraitSrc = '/assets/characters/sister.png'
 const defaultFooterMessage = '対象にカーソルを合わせて操作を確認'
 const footerMessage = ref(defaultFooterMessage)
 let relicFooterTimer: number | null = null
@@ -1046,7 +1046,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
+  object-position: left;
 }
 
 .damage-overlay {
@@ -1069,7 +1069,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background: linear-gradient(180deg, rgba(12, 12, 22, 0.6), rgba(1, 1, 2, 0.85));
+  /* background: linear-gradient(180deg, rgba(12, 12, 22, 0.6), rgba(1, 1, 2, 0.85)); */
   box-sizing: border-box;
 }
 
