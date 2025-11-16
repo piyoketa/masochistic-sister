@@ -3,9 +3,9 @@ title: AnimationBatch / ActionLog 構造の現状整理
 ---
 
 ## AnimationInstruction.damageOutcomes
-- **現状**: `AnimationInstruction` が `damageOutcomes` を持ち、`stage === 'damage' | 'player-damage'` の際に `BattleView` / `DamageEffects` へ結果を渡している（例: `src/views/BattleView.vue:191`）。
+- **現状**: `AnimationInstruction` が `damageOutcomes` を持ち、`stage === 'enemy-damage' | 'player-damage'` の際に `BattleView` / `DamageEffects` へ結果を渡している（例: `src/views/BattleView.vue:191`）。
 - **課題**: ステージ metadata と別フィールドに同一情報が分離しており、ActionLogFixtures でも値が重複して記録される。
-- **対応済み**: `AnimationStageMetadata`（`stage: 'damage' | 'player-damage'`）に `damageOutcomes` を含める形へ移行。View 側は event.metadata をそのまま参照するため `AnimationInstruction` からは `damageOutcomes` を削除した。
+- **対応済み**: `AnimationStageMetadata`（`stage: 'enemy-damage' | 'player-damage'`）に `damageOutcomes` を含める形へ移行。View 側は event.metadata をそのまま参照するため `AnimationInstruction` からは `damageOutcomes` を削除した。
 
 ## BattleActionLogEntry
 - `start-player-turn.handOverflow`

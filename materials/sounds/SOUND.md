@@ -79,7 +79,10 @@ materials/sounds/poison より
   - kurage-kosho_poison3.mp3 [毒３](http://www.kurage-kosho.info/battle.html)
   - kurage-kosho_teleport01.mp3 [テレポート01](http://www.kurage-kosho.info/battle.html)
   - kurage-kosho_status03.mp3 [テレポート01](http://www.kurage-kosho.info/battle.html)
-  - public/sounds/skills/kurage-kosho_button45.mp3[ボタン45](http://www.kurage-kosho.info/system.html)
+  - kurage-kosho_button45.mp3[ボタン45](http://www.kurage-kosho.info/system.html)
+  - kurage-kosho_esc01.mp3[逃走](http://www.kurage-kosho.info/battle.html)
 - [OtoLogic](https://otologic.jp/free/license.html)
   - クレジットを表記すれば無料
   - public/sounds/skills/OtoLogic_Electric-Shock02-Short.mp3[電撃02](https://otologic.jp/free/se/electric-shock01.html#google_vignette)
+- 魔王魂
+  - public/sounds/defeat/maou_se_battle18.mp3[戦闘18](https://maou.audio/se_battle18/#google_vignette) 撃破の音

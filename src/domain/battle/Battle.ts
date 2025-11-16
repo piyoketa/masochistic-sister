@@ -4,7 +4,7 @@ import type { CardOperation } from '../entities/operations'
 import type { Player } from '../entities/Player'
 import type { Enemy, EnemyQueueSnapshot, EnemyStatus } from '../entities/Enemy'
 import type { EnemyTeam } from '../entities/EnemyTeam'
-import type { Action } from '../entities/Action'
+import type { Action, ActionAudioCue, ActionContext } from '../entities/Action'
 import type { State } from '../entities/State'
 import { Hand } from './Hand'
 import { Deck } from './Deck'
@@ -81,6 +81,23 @@ export interface EnemyStateDiff {
   states: Array<{ id: string; magnitude?: number }>
 }
 
+interface BaseCardAnimationEvent {
+  stateId?: string
+  stateName?: string
+  cardId?: number
+  cardIds?: number[]
+  cardTitle?: string
+  cardTitles?: string[]
+  cardCount?: number
+  enemyId?: number | null
+}
+
+export interface StateCardAnimationEvent extends BaseCardAnimationEvent {}
+
+export interface MemoryCardAnimationEvent extends BaseCardAnimationEvent {
+  soundId?: string
+}
+
 export interface EnemyActAnimationContext {
   damageEvents: DamageAnimationEvent[]
   cardAdditions: EnemyTurnActionCardGain[]
@@ -98,6 +115,8 @@ export interface EnemyTurnActionSummary {
   damageToPlayer?: number
   cardsAddedToPlayerHand: EnemyTurnActionCardGain[]
   animation?: EnemyActAnimationContext
+  stateCardEvents?: StateCardAnimationEvent[]
+  memoryCardEvents?: MemoryCardAnimationEvent[]
   snapshotAfter: BattleSnapshot
   metadata?: Record<string, unknown>
 }
@@ -138,6 +157,8 @@ export interface DamageAnimationEvent {
 
 export interface PlayCardAnimationContext {
   cardId?: number
+  audio?: ActionAudioCue
+  cardTags?: string[]
 }
 
 export class Battle {
@@ -168,27 +189,8 @@ export class Battle {
     drawnCount?: number
     handOverflow?: boolean
   }> = []
-  private pendingStateCardAnimationEvents: Array<{
-    stateId?: string
-    stateName?: string
-    cardId?: number
-    cardIds?: number[]
-    cardTitle?: string
-    cardTitles?: string[]
-    cardCount?: number
-    enemyId?: number
-  }> = []
-  private pendingMemoryCardAnimationEvents: Array<{
-    stateId?: string
-    stateName?: string
-    cardId?: number
-    cardIds?: number[]
-    cardTitle?: string
-    cardTitles?: string[]
-    cardCount?: number
-    enemyId?: number
-    soundId?: string
-  }> = []
+  private pendingStateCardAnimationEvents: StateCardAnimationEvent[] = []
+  private pendingMemoryCardAnimationEvents: MemoryCardAnimationEvent[] = []
   private interruptEnemyActionQueue: QueuedInterruptEnemyAction[] = []
   private lastPlayCardAnimationContext?: PlayCardAnimationContext
   private pendingEntrySnapshotOverride?: BattleSnapshot
@@ -512,9 +514,6 @@ export class Battle {
       throw new Error(`Card ${cardId} not found in hand`)
     }
     card.play(this, operations)
-    this.lastPlayCardAnimationContext = {
-      cardId,
-    }
   }
 
   endPlayerTurn(): void {
@@ -545,6 +544,8 @@ export class Battle {
     const damageToPlayer = Math.max(0, playerHpBefore - this.playerValue.currentHp)
     const cardsAddedToHand = this.extractNewHandCards(handBefore, handAfter)
     const damageAnimationEvents = this.consumeDamageAnimationEvents()
+    const stateCardEvents = this.consumeStateCardAnimationEvents()
+    const memoryCardEvents = this.consumeMemoryCardAnimationEvents()
     const stateDiffs = this.diffEnemyStates(enemyStatesBefore)
     const playerDefeated = this.playerValue.currentHp <= 0
     const snapshotAfter = this.cloneBattleSnapshot(this.captureFullSnapshot().snapshot)
@@ -562,6 +563,10 @@ export class Battle {
         skipReason: (lastActionMetadata?.skipReason as EnemyTurnSkipReason | undefined) ?? 'no-target',
         cardsAddedToPlayerHand: cardsAddedToHand,
         damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+        stateCardEvents:
+          stateCardEvents.length > 0 ? this.cloneStateCardAnimationEvents(stateCardEvents) : undefined,
+        memoryCardEvents:
+          memoryCardEvents.length > 0 ? this.cloneMemoryCardAnimationEvents(memoryCardEvents) : undefined,
         animation: {
           damageEvents: [],
           cardAdditions: [],
@@ -584,6 +589,10 @@ export class Battle {
         skipped: false,
         cardsAddedToPlayerHand: cardsAddedToHand,
         damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+        stateCardEvents:
+          stateCardEvents.length > 0 ? this.cloneStateCardAnimationEvents(stateCardEvents) : undefined,
+        memoryCardEvents:
+          memoryCardEvents.length > 0 ? this.cloneMemoryCardAnimationEvents(memoryCardEvents) : undefined,
         animation: {
           damageEvents: damageAnimationEvents,
           cardAdditions: cardsAddedToHand,
@@ -602,6 +611,10 @@ export class Battle {
         skipReason: hadActedBeforeCall ? 'already-acted' : 'no-action',
         cardsAddedToPlayerHand: cardsAddedToHand,
         damageToPlayer: damageToPlayer > 0 ? damageToPlayer : undefined,
+        stateCardEvents:
+          stateCardEvents.length > 0 ? this.cloneStateCardAnimationEvents(stateCardEvents) : undefined,
+        memoryCardEvents:
+          memoryCardEvents.length > 0 ? this.cloneMemoryCardAnimationEvents(memoryCardEvents) : undefined,
         animation: {
           damageEvents: damageAnimationEvents,
           cardAdditions: cardsAddedToHand,
@@ -635,6 +648,8 @@ export class Battle {
           skipped: true,
           skipReason: 'defeated',
           cardsAddedToPlayerHand: [],
+          stateCardEvents: undefined,
+          memoryCardEvents: undefined,
           snapshotAfter: this.cloneBattleSnapshot(this.captureFullSnapshot().snapshot),
         })
         continue
@@ -676,31 +691,20 @@ export class Battle {
     this.pendingDefeatAnimationEvents.push(enemyId)
   }
 
-  recordStateCardAnimation(event: {
-    stateId?: string
-    stateName?: string
-    cardId?: number
-    cardIds?: number[]
-    cardTitle?: string
-    cardTitles?: string[]
-    cardCount?: number
-    enemyId?: number
-  }): void {
-    this.pendingStateCardAnimationEvents.push({ ...event })
+  recordStateCardAnimation(event: StateCardAnimationEvent): void {
+    this.pendingStateCardAnimationEvents.push({
+      ...event,
+      cardIds: event.cardIds ? [...event.cardIds] : undefined,
+      cardTitles: event.cardTitles ? [...event.cardTitles] : undefined,
+    })
   }
 
-  recordMemoryCardAnimation(event: {
-    stateId?: string
-    stateName?: string
-    cardId?: number
-    cardIds?: number[]
-    cardTitle?: string
-    cardTitles?: string[]
-    cardCount?: number
-    enemyId?: number
-    soundId?: string
-  }): void {
-    this.pendingMemoryCardAnimationEvents.push({ ...event })
+  recordMemoryCardAnimation(event: MemoryCardAnimationEvent): void {
+    this.pendingMemoryCardAnimationEvents.push({
+      ...event,
+      cardIds: event.cardIds ? [...event.cardIds] : undefined,
+      cardTitles: event.cardTitles ? [...event.cardTitles] : undefined,
+    })
   }
 
   consumeLastPlayCardAnimationContext(): PlayCardAnimationContext | undefined {
@@ -709,10 +713,24 @@ export class Battle {
     return context
   }
 
+  recordPlayCardAnimationContext(context: PlayCardAnimationContext): void {
+    this.lastPlayCardAnimationContext = {
+      cardId: context.cardId,
+      audio: context.audio,
+      cardTags: context.cardTags ? [...context.cardTags] : undefined,
+    }
+  }
+
   private cloneEnemyActionSummary(action: EnemyTurnActionSummary): EnemyTurnActionSummary {
     return {
       ...action,
       cardsAddedToPlayerHand: action.cardsAddedToPlayerHand.map((card) => ({ ...card })),
+      stateCardEvents: action.stateCardEvents
+        ? this.cloneStateCardAnimationEvents(action.stateCardEvents)
+        : undefined,
+      memoryCardEvents: action.memoryCardEvents
+        ? this.cloneMemoryCardAnimationEvents(action.memoryCardEvents)
+        : undefined,
       animation: action.animation
         ? {
             damageEvents: action.animation.damageEvents.map((event) => ({
@@ -761,32 +779,13 @@ export class Battle {
     return events
   }
 
-  consumeStateCardAnimationEvents(): Array<{
-    stateId?: string
-    stateName?: string
-    cardId?: number
-    cardIds?: number[]
-    cardTitle?: string
-    cardTitles?: string[]
-    cardCount?: number
-    enemyId?: number
-  }> {
+  consumeStateCardAnimationEvents(): StateCardAnimationEvent[] {
     const events = this.pendingStateCardAnimationEvents
     this.pendingStateCardAnimationEvents = []
     return events
   }
 
-  consumeMemoryCardAnimationEvents(): Array<{
-    stateId?: string
-    stateName?: string
-    cardId?: number
-    cardIds?: number[]
-    cardTitle?: string
-    cardTitles?: string[]
-    cardCount?: number
-    enemyId?: number
-    soundId?: string
-  }> {
+  consumeMemoryCardAnimationEvents(): MemoryCardAnimationEvent[] {
     const events = this.pendingMemoryCardAnimationEvents
     this.pendingMemoryCardAnimationEvents = []
     return events
@@ -1074,6 +1073,22 @@ export class Battle {
 
   private isMemoryCard(card: Card): boolean {
     return (card.cardTags ?? []).some((tag) => tag.id === 'tag-memory')
+  }
+
+  private cloneStateCardAnimationEvents(events: StateCardAnimationEvent[]): StateCardAnimationEvent[] {
+    return events.map((event) => ({
+      ...event,
+      cardIds: event.cardIds ? [...event.cardIds] : undefined,
+      cardTitles: event.cardTitles ? [...event.cardTitles] : undefined,
+    }))
+  }
+
+  private cloneMemoryCardAnimationEvents(events: MemoryCardAnimationEvent[]): MemoryCardAnimationEvent[] {
+    return events.map((event) => ({
+      ...event,
+      cardIds: event.cardIds ? [...event.cardIds] : undefined,
+      cardTitles: event.cardTitles ? [...event.cardTitles] : undefined,
+    }))
   }
 
   private cloneBattleSnapshot(source: BattleSnapshot): BattleSnapshot {

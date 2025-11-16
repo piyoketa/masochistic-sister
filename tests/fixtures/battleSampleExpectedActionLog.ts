@@ -401,7 +401,7 @@ export const ACTION_LOG_ENTRY_14_PLAY_CARD: ActionLogEntrySummary = {
         // [ダメージ演出] たいあたり の攻撃結果
         {
           waitMs: 0,
-          metadata: {stage:'damage',cardId:11,cardTitle:'たいあたり',damageOutcomes:[{damage:10,effectType:'slam'}]},
+          metadata: {stage:'enemy-damage',cardId:11,cardTitle:'たいあたり',damageOutcomes:[{damage:10,effectType:'slam'}]},
         },
       ],
     },
@@ -442,7 +442,7 @@ export const ACTION_LOG_ENTRY_15_PLAY_CARD: ActionLogEntrySummary = {
         // [ダメージ演出] 酸を吐く の攻撃結果
         {
           waitMs: 0,
-          metadata: {stage:'damage',cardId:10,cardTitle:'酸を吐く',damageOutcomes:[{damage:5,effectType:'spit'}]},
+          metadata: {stage:'enemy-damage',cardId:10,cardTitle:'酸を吐く',damageOutcomes:[{damage:5,effectType:'spit'}]},
         },
       ],
     },
@@ -472,7 +472,7 @@ export const ACTION_LOG_ENTRY_16_PLAY_CARD: ActionLogEntrySummary = {
         // [ダメージ演出] 粘液飛ばし の攻撃結果
         {
           waitMs: 0,
-          metadata: {stage:'damage',cardId:13,cardTitle:'粘液飛ばし',damageOutcomes:[{damage:20,effectType:'spit'}]},
+          metadata: {stage:'enemy-damage',cardId:13,cardTitle:'粘液飛ばし',damageOutcomes:[{damage:20,effectType:'spit'}]},
         },
       ],
     },
@@ -696,7 +696,7 @@ export const ACTION_LOG_ENTRY_25_PLAY_CARD: ActionLogEntrySummary = {
         // [ダメージ演出] 乱れ突き の攻撃結果
         {
           waitMs: 600,
-          metadata: {stage:'damage',cardId:14,cardTitle:'乱れ突き',damageOutcomes:[{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'}]},
+          metadata: {stage:'enemy-damage',cardId:14,cardTitle:'乱れ突き',damageOutcomes:[{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'}]},
         },
       ],
     },
@@ -737,7 +737,7 @@ export const ACTION_LOG_ENTRY_26_PLAY_CARD: ActionLogEntrySummary = {
         // [ダメージ演出] 乱れ突き の攻撃結果
         {
           waitMs: 600,
-          metadata: {stage:'damage',cardId:15,cardTitle:'乱れ突き',damageOutcomes:[{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'}]},
+          metadata: {stage:'enemy-damage',cardId:15,cardTitle:'乱れ突き',damageOutcomes:[{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'},{damage:10,effectType:'slash'}]},
         },
       ],
     },

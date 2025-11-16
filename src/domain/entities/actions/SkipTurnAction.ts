@@ -15,6 +15,11 @@ export class SkipTurnAction extends Action {
         type: new SkipTypeCardTag(),
         cost: 0,
       },
+      audioCue: {
+        soundId: 'skills/OtoLogic_Electric-Shock02-Short.mp3',
+        waitMs: 500,
+        durationMs: 500,
+      },
     })
 
     if (typeof message === 'function') {

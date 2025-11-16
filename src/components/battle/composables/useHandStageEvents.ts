@@ -3,10 +3,12 @@ import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { HandEntry } from './useHandPresentation'
 
-interface PendingCreateRequest {
+type PendingCreateRequest = {
   batchId: string
   remainingCount: number
   cardIds: number[]
+  stage: 'create-state-card' | 'memory-card'
+  useSimpleAnimation: boolean
 }
 
 interface UseHandStageEventsOptions {
@@ -15,7 +17,7 @@ interface UseHandStageEventsOptions {
   cardTitleMap: ComputedRef<Map<number, string>>
   findHandEntryByCardId: (cardId: number) => HandEntry | undefined
   startDeckDrawAnimation: (cardId: number, options?: { durationMs?: number }) => void
-  startCardCreateAnimation: (cardId: number) => void
+  startCardCreateAnimation: (cardId: number, options?: { simple?: boolean }) => void
   startCardRemovalAnimation: (
     cardId: number,
     entry: HandEntry | undefined,
@@ -29,6 +31,8 @@ type CardTrashStageMetadata = Extract<StageEventMetadata, { stage: 'card-trash' 
 type CardEliminateStageMetadata = Extract<StageEventMetadata, { stage: 'card-eliminate' }>
 type CreateStateCardStageMetadata = Extract<StageEventMetadata, { stage: 'create-state-card' }>
 type MemoryCardStageMetadata = Extract<StageEventMetadata, { stage: 'memory-card' }>
+type AudioStageMetadata = Extract<StageEventMetadata, { stage: 'audio' }>
+type AlreadyActedStageMetadata = Extract<StageEventMetadata, { stage: 'already-acted-enemy' }>
 
 export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const handOverflowOverlayMessage = ref<string | null>(null)
@@ -75,6 +79,12 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
           break
         case 'memory-card':
           handleMemoryCardStage(event, metadata)
+          break
+        case 'audio':
+          handleAudioStage(metadata)
+          break
+        case 'already-acted-enemy':
+          handleAlreadyActedStage(metadata)
           break
         default:
           break
@@ -136,24 +146,16 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   }
 
   function handleCreateStateCardStage(event: StageEventPayload, metadata: CreateStateCardStageMetadata): void {
-    const cardIds = resolveCardIds(metadata)
-    const declaredCount = (metadata.cardCount ?? cardIds.length) || 1
-    enqueueCardCreateRequest({
+    enqueueCreateAnimation(event, metadata, {
       stage: 'create-state-card',
-      batchId: event.batchId,
-      cardIds,
-      declaredCount,
+      simpleMode: true,
     })
   }
 
   function handleMemoryCardStage(event: StageEventPayload, metadata: MemoryCardStageMetadata): void {
-    const cardIds = metadata.cardIds ?? resolveCardIds(metadata)
-    const declaredCount = (metadata.cardCount ?? cardIds.length) || 1
-    enqueueCardCreateRequest({
+    enqueueCreateAnimation(event, metadata, {
       stage: 'memory-card',
-      batchId: event.batchId,
-      cardIds,
-      declaredCount,
+      simpleMode: false,
     })
   }
 
@@ -200,30 +202,45 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       cardId,
       batchId: request.batchId,
       remainingCount: request.remainingCount,
+      stage: request.stage,
+      simple: request.useSimpleAnimation,
     })
-    options.startCardCreateAnimation(cardId)
+    options.startCardCreateAnimation(cardId, {
+      simple: request.useSimpleAnimation,
+    })
   }
-  function enqueueCardCreateRequest(params: {
-    stage: string
-    batchId: string
-    cardIds: number[]
-    declaredCount: number
-  }): void {
-    const remainingCount = Math.max(params.cardIds.length, params.declaredCount)
+  function enqueueCreateAnimation(
+    event: StageEventPayload,
+    metadata: CardCountMetadata,
+    options: { stage: 'create-state-card' | 'memory-card'; simpleMode: boolean },
+  ): void {
+    const cardIds = metadata.cardIds ?? resolveCardIds(metadata)
+    const declaredCount = (metadata.cardCount ?? cardIds.length) || 1
+    const remainingCount = Math.max(cardIds.length, declaredCount)
     if (remainingCount <= 0) {
       return
     }
     pendingCreateQueue.push({
-      batchId: params.batchId,
+      batchId: event.batchId,
       remainingCount,
-      cardIds: [...params.cardIds],
+      cardIds: [...cardIds],
+      stage: options.stage,
+      useSimpleAnimation: options.simpleMode,
     })
-    logCardCreateDebug(`stage event 受信: ${params.stage} を待機キューへ追加`, {
-      batchId: params.batchId,
-      cardIds: params.cardIds,
-      declaredCount: params.declaredCount,
+    logCardCreateDebug(`stage event 受信: ${options.stage} を待機キューへ追加`, {
+      batchId: event.batchId,
+      cardIds,
+      declaredCount,
       snapshot: snapshotCreateQueue(),
     })
+  }
+
+  function handleAudioStage(_metadata: AudioStageMetadata): void {
+    // 音声の再生は BattleView 側で完結するため、手札エリアでは実質処理なし
+  }
+
+  function handleAlreadyActedStage(_metadata: AlreadyActedStageMetadata): void {
+    // 行動済み敵のハイライトも EnemyArea 側で表現するため、ここでは何もしない
   }
 
   function handleCardTrashStage(event: StageEventPayload, metadata: CardTrashStageMetadata): void {

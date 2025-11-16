@@ -38,6 +38,7 @@ export type AnimationStageMetadata =
       payload?: unknown
     }
   | { stage: 'enemy-highlight'; enemyId: number; actionName?: string; skipped: boolean }
+  | { stage: 'already-acted-enemy'; enemyId: number }
   | {
       stage: 'create-state-card'
       durationMs?: number
@@ -48,7 +49,7 @@ export type AnimationStageMetadata =
       cardTitle?: string
       cardTitles?: string[]
       cardCount?: number
-      enemyId?: number
+      enemyId?: number | null
     }
   | {
       stage: 'memory-card'
@@ -60,13 +61,19 @@ export type AnimationStageMetadata =
       cardTitle?: string
       cardTitles?: string[]
       cardCount?: number
-      enemyId?: number
+      enemyId?: number | null
       soundId?: string
     }
-  | { stage: 'damage'; cardId?: number; cardTitle?: string; damageOutcomes?: readonly DamageOutcome[] }
+  | {
+      stage: 'enemy-damage'
+      cardId?: number
+      cardTitle?: string
+      enemyId?: number
+      damageOutcomes?: readonly DamageOutcome[]
+    }
   | {
       stage: 'player-damage'
-      enemyId?: number
+      enemyId?: number | null
       actionName?: string
       cardId?: number
       cardTitle?: string

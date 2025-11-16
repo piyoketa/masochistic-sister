@@ -1,4 +1,4 @@
-import type { Action, ActionContext } from './Action'
+import type { Action, ActionContext, ActionAudioCue } from './Action'
 import type { CardTag } from './CardTag'
 import { CardCategoryTag } from './CardTag'
 import type { State } from './State'
@@ -182,6 +182,7 @@ export class Card {
       battle.player.spendMana(this.cost, { battle })
       battle.player.removeState(state.id)
       battle.exilePile.add(this)
+      battle.recordPlayCardAnimationContext({ cardId: this.id })
       return
     }
 
@@ -203,7 +204,31 @@ export class Card {
 
     action.execute(context)
 
+    battle.recordPlayCardAnimationContext({
+      cardId: this.id,
+      audio: this.extractAudioCueFromContext(context),
+      cardTags: Array.isArray(context.metadata.cardTags)
+        ? [...(context.metadata.cardTags as string[])]
+        : undefined,
+    })
+
     this.moveToNextZone(battle)
+  }
+
+  private extractAudioCueFromContext(context: ActionContext): ActionAudioCue | undefined {
+    const metadata = context.metadata
+    if (!metadata || typeof metadata !== 'object') {
+      return undefined
+    }
+    const candidate = (metadata as { audio?: ActionAudioCue | undefined }).audio
+    if (!candidate || typeof candidate.soundId !== 'string') {
+      return undefined
+    }
+    return {
+      soundId: candidate.soundId,
+      waitMs: typeof candidate.waitMs === 'number' ? candidate.waitMs : undefined,
+      durationMs: typeof candidate.durationMs === 'number' ? candidate.durationMs : undefined,
+    }
   }
 
   copyWith(overrides: Partial<CardProps>): Card {

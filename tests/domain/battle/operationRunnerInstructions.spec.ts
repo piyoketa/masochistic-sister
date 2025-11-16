@@ -118,12 +118,12 @@ describe('OperationRunner ActionLog / wait metadata', () => {
       return value
     }
     const cardTrashAnimation = ensureAnimation(animations[0], 'card-trash')
-    const damageAnimation = ensureAnimation(animations[2], 'damage')
+    const damageAnimation = ensureAnimation(animations[2], 'enemy-damage')
     const defeatAnimation = ensureAnimation(animations[3], 'defeat')
     expect(animations.map((payload) => payload.instruction.metadata?.stage)).toEqual([
       'card-trash',
       'mana',
-      'damage',
+      'enemy-damage',
       'defeat',
     ])
     expect(animations.map((payload) => payload.instruction.waitMs)).toEqual([0, 0, 800, 1000])

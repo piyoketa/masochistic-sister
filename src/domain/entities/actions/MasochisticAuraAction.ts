@@ -16,6 +16,11 @@ export class MasochisticAuraAction extends Skill {
         cost: 1,
         categoryTags: [new ArcaneCardTag()],
       },
+      audioCue: {
+        soundId: 'skills/kurage-kosho_teleport01.mp3',
+        waitMs: 500,
+        durationMs: 500,
+      },
     })
   }
 

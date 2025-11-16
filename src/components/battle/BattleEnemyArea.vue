@@ -55,7 +55,10 @@ interface EnemySlot {
 
 const actingEnemyId = ref<number | null>(null)
 const processedStageBatchIds = new Set<string>()
-type DamageStageMetadata = Extract<StageEventMetadata, { stage: 'player-damage' }>
+type EnemyDamageStageMetadata = Extract<StageEventMetadata, { stage: 'enemy-damage' }>
+type PlayerDamageStageMetadata = Extract<StageEventMetadata, { stage: 'player-damage' }>
+type DamageStageMetadata = EnemyDamageStageMetadata | PlayerDamageStageMetadata
+type AlreadyActedStageMetadata = Extract<StageEventMetadata, { stage: 'already-acted-enemy' }>
 let actingTimer: number | null = null
 type EnemyCardInstance = InstanceType<typeof EnemyCard>
 const enemyCardRefs = new Map<number, EnemyCardInstance>()
@@ -139,16 +142,21 @@ watch(
     if (!metadata) {
       return
     }
-      switch (metadata.stage) {
-        case 'enemy-highlight': {
-          const enemyId =
-            typeof metadata.enemyId === 'number' ? metadata.enemyId : null
-          triggerEnemyHighlight(enemyId)
-          break
-        }
-        case 'player-damage':
-          handleDamageStage(event, metadata)
-          break
+    switch (metadata.stage) {
+      case 'enemy-highlight': {
+        const enemyId = typeof metadata.enemyId === 'number' ? metadata.enemyId : null
+        triggerEnemyHighlight(enemyId)
+        break
+      }
+      case 'already-acted-enemy':
+        handleAlreadyActedStage(metadata)
+        break
+      case 'enemy-damage':
+        handleEnemyDamageStage(event, metadata)
+        break
+      case 'player-damage':
+        // プレイヤー被弾時の演出は BattleView 側で扱うため、敵カードでは特別な処理を行わない
+        break
       default:
         break
     }
@@ -180,7 +188,7 @@ onBeforeUnmount(() => {
   }
 })
 
-function handleDamageStage(event: StageEventPayload, metadata: DamageStageMetadata): void {
+function handleEnemyDamageStage(event: StageEventPayload, metadata: EnemyDamageStageMetadata): void {
   const enemyId = resolveEnemyIdFromStage(event, metadata)
   if (enemyId === null) {
     return
@@ -200,6 +208,11 @@ function resolveEnemyIdFromStage(event: StageEventPayload, metadata: DamageStage
   }
   const resolved = event.resolvedEntry
   return extractEnemyIdFromResolvedEntry(resolved)
+}
+
+function handleAlreadyActedStage(metadata: AlreadyActedStageMetadata): void {
+  const enemyId = typeof metadata.enemyId === 'number' ? metadata.enemyId : null
+  triggerEnemyHighlight(enemyId)
 }
 
 function extractEnemyIdFromResolvedEntry(

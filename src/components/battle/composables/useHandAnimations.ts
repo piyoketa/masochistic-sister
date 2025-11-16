@@ -34,6 +34,7 @@ const DRAW_ANIMATION_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
 const DRAW_ANIMATION_CLEANUP_BUFFER_MS = 100
 const CARD_CREATE_MATERIALIZE_DURATION_MS = 1000
 const CARD_CREATE_TRAVEL_DURATION_MS = 500
+const CARD_CREATE_SIMPLE_DURATION_MS = 500
 const CARD_CREATE_CLEANUP_BUFFER_MS = 120
 const CARD_ELIMINATE_DURATION_MS = 720
 const CARD_ELIMINATE_CLEANUP_BUFFER_MS = 120
@@ -148,17 +149,38 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     }
   }
 
-  function startCardCreateAnimation(cardId: number): void {
+  function startCardCreateAnimation(cardId: number, config?: { simple?: boolean }): void {
+    startCardCreateAnimationInternal(cardId, config, 0)
+  }
+
+  function startCardCreateAnimationInternal(
+    cardId: number,
+    config: { simple?: boolean } | undefined,
+    attempt: number,
+  ): void {
     const cardElement = cardElementRefs.get(cardId)
     if (!cardElement) {
-      console.error('[BattleHandArea][card-create] カードDOMが見つからずアニメーションを省略しました', {
-        cardId,
-      })
-      retryCardCreateAnimation(cardId, 1)
+      if (attempt === 0) {
+        console.error('[BattleHandArea][card-create] カードDOMが見つからずアニメーションを省略しました', {
+          cardId,
+        })
+      }
+      if (attempt >= 3) {
+        return
+      }
+      window.setTimeout(() => startCardCreateAnimationInternal(cardId, config, attempt + 1), 50 * (attempt + 1))
       return
     }
     cleanupCardCreateAnimation(cardId)
     addCreateCardId(cardId)
+    if (config?.simple) {
+      runSimpleCardCreateAnimation(cardId, cardElement)
+      return
+    }
+    runComplexCardCreateAnimation(cardId, cardElement)
+  }
+
+  function runComplexCardCreateAnimation(cardId: number, cardElement: HTMLElement): void {
     const cardRect = cardElement.getBoundingClientRect()
     const viewportCenterX =
       typeof window !== 'undefined' ? window.innerWidth / 2 : cardRect.left + cardRect.width / 2
@@ -201,22 +223,32 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     cardCreateAnimationTimers.set(cardId, { travelTimer, cleanupTimer })
   }
 
-  function retryCardCreateAnimation(cardId: number, attempt: number): void {
-    if (attempt > 3) {
-      return
-    }
-    window.setTimeout(() => {
-      const cardElement = cardElementRefs.get(cardId)
-      if (!cardElement) {
-        console.error('[BattleHandArea][card-create] リトライでもカードDOMが見つからずアニメーションを中断しました', {
-          cardId,
-          attempt,
-        })
-        retryCardCreateAnimation(cardId, attempt + 1)
-        return
-      }
-      startCardCreateAnimation(cardId)
-    }, 50 * attempt)
+  function runSimpleCardCreateAnimation(cardId: number, cardElement: HTMLElement): void {
+    cardElement.style.transition = 'none'
+    cardElement.style.transformOrigin = 'center center'
+    cardElement.style.transform = 'scale(0.85)'
+    cardElement.style.opacity = '0'
+    cardElement.style.filter = 'blur(8px)'
+    cardElement.style.willChange = 'transform, opacity, filter'
+    cardElement.style.zIndex = '6'
+
+    requestAnimationFrame(() => {
+      logHandAnimationDebug('card-create simple materialize開始', { cardId })
+      cardElement.style.transition = [
+        `transform ${CARD_CREATE_SIMPLE_DURATION_MS}ms ${DRAW_ANIMATION_EASING}`,
+        `opacity ${CARD_CREATE_SIMPLE_DURATION_MS}ms ${DRAW_ANIMATION_EASING}`,
+        `filter ${CARD_CREATE_SIMPLE_DURATION_MS}ms ${DRAW_ANIMATION_EASING}`,
+      ].join(', ')
+      cardElement.style.transform = 'scale(1)'
+      cardElement.style.opacity = '1'
+      cardElement.style.filter = 'blur(0)'
+    })
+
+    const cleanupTimer = window.setTimeout(() => {
+      cleanupCardCreateAnimation(cardId)
+    }, CARD_CREATE_SIMPLE_DURATION_MS + CARD_CREATE_CLEANUP_BUFFER_MS)
+
+    cardCreateAnimationTimers.set(cardId, { cleanupTimer })
   }
 
   function startCardRemovalAnimation(

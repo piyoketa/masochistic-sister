@@ -24,7 +24,7 @@
 | `card-eliminate` | カードを除外（消費）ゾーンへ送る | [消費]カードの`play-card` |
 | `create-state-card` | 敵から受けた状態異常カードを生成し手札へ追加 | `Player.addState` |
 | `memory-card` | 敵攻撃の記憶カードを生成し手札へ追加 | `Player.rememberEnemyAttack` |
-| `damage` | 敵に対するダメージ演出 | `play-card` |
+| `enemy-damage` | 敵に対するダメージ演出 | `play-card` |
 | `player-damage` | プレイヤーに対するダメージ演出 | `enemy-act` |
 | `defeat` | 敵カードのフェードアウト（撃破） | `play-card` |
 | `escape` | 敵カードのフェードアウト（逃走） | `event`（例: trait-coward） |
@@ -55,7 +55,7 @@ play-card時のAnimationInstructionの生成例を示します。
    - マナを消費（マイナス）または獲得（プラス）した値を示す。
 2. **[1] `card-trash` / `card-eliminate`**  
    - 使用カードが移動した直後の snapshot。手札→捨て札の場合は `card-trash`、消費カードは `card-eliminate`（除外演出は 720ms 固定）。
-3. **[2] `damage`**  
+3. **[2] `enemy-damage`**  
    - ダメージを伴う場合のみ生成。`metadata.damageOutcomes` にヒット配列を含め、待機時間は (ヒット数-1)×0.2s。
 4. **[3] `defeat`**  
    - 撃破された敵がいる場合のみ追加。1sかけて EnemyCard を透過させる。
@@ -125,7 +125,7 @@ enemy-act時のAnimationInstructionの生成例を示します。
 ## Damage / Defeat / Mana イベントの発火タイミング
 
 1. **プレイヤー被ダメージ**  
-   - `Player.takeDamage` 内で `Battle.recordDamageAnimation` を呼び出し、`DamageAnimationEvent` をペイロード付きで積む。OperationRunner はこのバッファを `damage` ステージに変換するだけに留め、発生源を意識しない。
+   - `Player.takeDamage` 内で `Battle.recordDamageAnimation` を呼び出し、`DamageAnimationEvent` をペイロード付きで積む。OperationRunner はこのバッファを `player-damage` ステージに変換するだけに留め、発生源を意識しない。
 
 2. **敵被ダメージ・撃破**  
    - `Enemy.takeDamage` でHP下降を処理したタイミングで、撃破が確定した場合は `Battle.recordDefeatAnimation(enemyId)` のようなAPI（新規）を呼び出し、`defeat` ステージ用のフラグを積む。OperationRunnerは `consumeDefeatAnimationEvents`（新設）で取得して `defeat` 指示を生成する。

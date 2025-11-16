@@ -37,19 +37,28 @@ export interface ActionContext {
   operations?: Operation[]
 }
 
+export interface ActionAudioCue {
+  soundId: string
+  waitMs?: number
+  durationMs?: number
+}
+
 export interface BaseActionProps {
   name: string
   cardDefinition: CardDefinition
   gainStates?: Array<() => State>
+  audioCue?: ActionAudioCue
 }
 
 export abstract class Action {
   protected readonly props: BaseActionProps
   private readonly gainStateFactories: Array<() => State>
+  private readonly audioCue?: ActionAudioCue
 
   protected constructor(props: BaseActionProps) {
     this.props = props
     this.gainStateFactories = props.gainStates ? [...props.gainStates] : []
+    this.audioCue = props.audioCue
   }
 
   abstract get type(): ActionType
@@ -112,6 +121,13 @@ export abstract class Action {
     }
 
     context.target = this.resolveTarget(context)
+    const audioCue = this.getAudioCue(context)
+    if (audioCue) {
+      context.metadata = {
+        ...(context.metadata ?? {}),
+        audio: { ...audioCue },
+      }
+    }
 
     return context
   }
@@ -148,6 +164,10 @@ export abstract class Action {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected perform(_context: ActionContext): void {}
+
+  protected getAudioCue(_context: ActionContext): ActionAudioCue | undefined {
+    return this.audioCue
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   canUse(_context: { battle: Battle; source: Player | Enemy }): boolean {

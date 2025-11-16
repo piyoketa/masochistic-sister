@@ -15,6 +15,16 @@ if (!env.VITE_DEBUG_HAND_ANIMATION) {
   env.VITE_DEBUG_HAND_ANIMATION = 'true'
 }
 
+// ファイル変更検知のためのポーリング設定
+// https://chatgpt.com/c/69185d47-8d0c-8321-8cf3-eaa5ab78bf96
+if (!env.VITE_DEBUG_HAND_ANIMATION) {
+  env.CHOKIDAR_USEPOLLING = 'true'
+}
+if (!env.VITE_DEBUG_HAND_ANIMATION) {
+  env.WATCHPACK_POLLING = 'true'
+}
+
+
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {
   stdio: 'inherit',
