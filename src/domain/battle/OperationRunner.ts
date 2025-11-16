@@ -42,7 +42,7 @@ interface DrainedAnimationEvents {
   manaEvents: Array<{ amount: number }>
   damageEvents: DamageAnimationEvent[]
   defeatEvents: number[]
-  cardTrashEvents: Array<{ cardIds: number[] }>
+  cardTrashEvents: Array<{ cardIds: number[]; variant?: 'trash' | 'eliminate' }>
   stateCardEvents: StateCardAnimationEvent[]
   memoryCardEvents: MemoryCardAnimationEvent[]
 }
@@ -474,7 +474,7 @@ export class OperationRunner {
   }
 
   private buildCardMovementInstructionsFromEvents(
-    events: Array<{ cardIds: number[] }> = [],
+    events: Array<{ cardIds: number[]; cardTitles?: string[]; variant?: 'trash' | 'eliminate' }> = [],
     snapshot: BattleSnapshot,
   ): AnimationInstruction[] {
     if (!events.length) {
@@ -483,11 +483,14 @@ export class OperationRunner {
     return events.map((event) => ({
       waitMs: 0,
       metadata: {
-        stage: 'card-trash',
+        stage: event.variant === 'eliminate' ? 'card-eliminate' : 'card-trash',
         cardIds: event.cardIds,
-        cardTitles: event.cardIds
-          .map((id) => this.findCardTitle(snapshot, id))
-          .filter((title): title is string => Boolean(title)),
+        cardTitles:
+          event.cardTitles && event.cardTitles.length === event.cardIds.length
+            ? [...event.cardTitles]
+            : event.cardIds
+                .map((id) => this.findCardTitle(snapshot, id))
+                .filter((title): title is string => Boolean(title)),
       },
     }))
   }

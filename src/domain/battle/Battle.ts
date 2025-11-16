@@ -181,7 +181,11 @@ export class Battle {
   private resolvedEventsBuffer: BattleEvent[] = []
   private stateEventBuffer: StateEventLogEntry[] = []
   private pendingDamageAnimationEvents: DamageAnimationEvent[] = []
-  private pendingCardTrashAnimationEvents: Array<{ cardIds: number[] }> = []
+  private pendingCardTrashAnimationEvents: Array<{
+    cardIds: number[]
+    cardTitles?: string[]
+    variant?: 'trash' | 'eliminate'
+  }> = []
   private pendingManaAnimationEvents: Array<{ amount: number }> = []
   private pendingDefeatAnimationEvents: number[] = []
   private pendingDrawAnimationEvents: Array<{
@@ -672,12 +676,21 @@ export class Battle {
     })
   }
 
-  recordCardTrashAnimation(event: { cardIds: number[] }): void {
+  recordCardTrashAnimation(event: {
+    cardIds: number[]
+    cardTitles?: string[]
+    variant?: 'trash' | 'eliminate'
+  }): void {
     if (!event.cardIds || event.cardIds.length === 0) {
       return
     }
     const uniqueIds = Array.from(new Set(event.cardIds))
-    this.pendingCardTrashAnimationEvents.push({ cardIds: uniqueIds })
+    const titles = event.cardTitles && event.cardTitles.length > 0 ? [...event.cardTitles] : undefined
+    this.pendingCardTrashAnimationEvents.push({
+      cardIds: uniqueIds,
+      cardTitles: titles,
+      variant: event.variant ?? 'trash',
+    })
   }
 
   recordManaAnimation(event: { amount: number }): void {
@@ -767,10 +780,18 @@ export class Battle {
     return events
   }
 
-  consumeCardTrashAnimationEvents(): Array<{ cardIds: number[] }> {
+  consumeCardTrashAnimationEvents(): Array<{
+    cardIds: number[]
+    cardTitles?: string[]
+    variant?: 'trash' | 'eliminate'
+  }> {
     const events = this.pendingCardTrashAnimationEvents
     this.pendingCardTrashAnimationEvents = []
-    return events
+    return events.map((event) => ({
+      cardIds: [...event.cardIds],
+      cardTitles: event.cardTitles ? [...event.cardTitles] : undefined,
+      variant: event.variant,
+    }))
   }
 
   consumeDrawAnimationEvents(): Array<{ cardIds: number[]; drawnCount?: number; handOverflow?: boolean }> {

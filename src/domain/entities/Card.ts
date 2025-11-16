@@ -276,8 +276,22 @@ export class Card {
 
     if (isExhaust) {
       battle.exilePile.add(this)
+      if (this.id !== undefined) {
+        battle.recordCardTrashAnimation({
+          cardIds: [this.id],
+          cardTitles: [this.title],
+          variant: 'eliminate',
+        })
+      }
     } else {
       battle.discardPile.add(this)
+      if (this.id !== undefined) {
+        battle.recordCardTrashAnimation({
+          cardIds: [this.id],
+          cardTitles: [this.title],
+          variant: 'trash',
+        })
+      }
     }
   }
 

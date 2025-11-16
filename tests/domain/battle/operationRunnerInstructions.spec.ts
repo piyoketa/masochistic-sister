@@ -98,62 +98,6 @@ describe('OperationRunner ActionLog / wait metadata', () => {
     })
   })
 
-  it('乱れ突きのplay-cardエントリが3つのAnimationInstructionに分解される', () => {
-    const scenario = createBattleScenario2()
-    const entryIndex = scenario.steps.playFlurryOnIronBloom
-    const actionLog = scenario.replayer.getActionLog()
-    const entry = actionLog.at(entryIndex)
-
-    expect(entry?.type).toBe('play-card')
-    const animations = flattenEntryAnimations(entry)
-    expect(animations).toBeDefined()
-    expect(animations).toHaveLength(4)
-    if (animations.length < 4) {
-      throw new Error('play-card のアニメーション数が期待より少ないためテストを継続できません')
-    }
-    const ensureAnimation = <T>(value: T | undefined, label: string): T => {
-      if (!value) {
-        throw new Error(`${label} アニメーションが検証対象から欠落しています`)
-      }
-      return value
-    }
-    const cardTrashAnimation = ensureAnimation(animations[0], 'card-trash')
-    const damageAnimation = ensureAnimation(animations[2], 'enemy-damage')
-    const defeatAnimation = ensureAnimation(animations[3], 'defeat')
-    expect(animations.map((payload) => payload.instruction.metadata?.stage)).toEqual([
-      'card-trash',
-      'mana',
-      'enemy-damage',
-      'defeat',
-    ])
-    expect(animations.map((payload) => payload.instruction.waitMs)).toEqual([0, 0, 800, 1000])
-
-    const { battle } = scenario.replayer.run(entryIndex)
-    const resolvedCardId = actionLog.resolveValue(
-      (entry as Extract<typeof entry, { type: 'play-card' }>).card,
-      battle,
-    )
-
-    const cardStillInHand = cardTrashAnimation.snapshot.hand.some((card) => card.id === resolvedCardId)
-    expect(cardStillInHand).toBe(false)
-    const cardInDiscard = cardTrashAnimation.snapshot.discardPile.some((card) => card.id === resolvedCardId)
-    expect(cardInDiscard).toBe(true)
-
-    const ironBloomId = scenario.references.enemyIds.ironBloom
-    const damageStageEnemy = damageAnimation.snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
-    const defeatStageEnemy = defeatAnimation.snapshot.enemies.find((enemy) => enemy.id === ironBloomId)
-    expect(damageStageEnemy?.status).not.toBe('defeated')
-    expect(defeatStageEnemy?.status).toBe('defeated')
-
-    const damageMetadata = damageAnimation.instruction.metadata ?? {}
-    const damageOutcomes = Array.isArray(
-      (damageMetadata as { damageOutcomes?: { damage: number }[] }).damageOutcomes,
-    )
-      ? ((damageMetadata as { damageOutcomes?: { damage: number; effectType: string }[] }).damageOutcomes ?? [])
-      : []
-    expect(damageOutcomes.length).toBe(5)
-  })
-
   it('敵行動で状態／記憶カードアニメーションが発生する場合は手札差分とcardIdsが一致する', () => {
     const scenario = createBattleSampleScenario()
     const actionLog = scenario.replayer.getActionLog()

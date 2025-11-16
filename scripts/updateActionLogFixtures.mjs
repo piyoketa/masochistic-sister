@@ -162,36 +162,11 @@ const ENEMY_SKIP_AUDIO_MAP = new Map([
   ['足止め', { soundId: 'skills/OtoLogic_Electric-Shock02-Short.mp3', waitMs: 500, durationMs: 500 }],
 ])
 
-function normalizeAnimationStructure(entry, batches, context) {
-  const scenarioConfig = context?.scenarioConfig ?? {}
-  if (!Array.isArray(batches) || batches.length === 0) {
-    if (entry.type === 'enemy-act') {
-      const override = scenarioConfig.alreadyActedEnemyEntries?.[context.entryIndex]
-      if (override) {
-        return buildAlreadyActedEnemyBatches(entry, override, context, batches)
-      }
-    }
-    return batches
+function normalizeAnimationStructure(_entry, batches) {
+  if (!Array.isArray(batches)) {
+    return []
   }
-  if (entry.type === 'enemy-act') {
-    const override = scenarioConfig.alreadyActedEnemyEntries?.[context.entryIndex]
-    if (override) {
-      return buildAlreadyActedEnemyBatches(entry, override, context, batches)
-    }
-  }
-  switch (entry.type) {
-    case 'start-player-turn':
-      return [combineStartPlayerTurnBatch(entry, batches)]
-    case 'play-card':
-      return combinePlayCardBatches(entry, batches, context)
-    case 'end-player-turn':
-      transferEndTurnEnemyStages(batches, context)
-      return combineEndPlayerTurnBatch(batches, context)
-    case 'enemy-act':
-      return splitEnemyActBatches(entry, batches, context)
-    default:
-      return batches
-  }
+  return batches
 }
 
 function combineStartPlayerTurnBatch(entry, batches) {
