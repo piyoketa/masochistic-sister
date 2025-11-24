@@ -26,9 +26,14 @@ type MemoryCardStageMetadata = Extract<StageEventMetadata, { stage: 'memory-card
 type AudioStageMetadata = Extract<StageEventMetadata, { stage: 'audio' }>
 type AlreadyActedStageMetadata = Extract<StageEventMetadata, { stage: 'already-acted-enemy' }>
 
+const DRAW_STAGGER_DELAY_MS = 100
+const ENABLE_HAND_STAGE_DEBUG =
+  typeof import.meta !== 'undefined' ? import.meta.env.VITE_DEBUG_HAND_STAGE_EVENTS === 'true' : false
+
 export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const handOverflowOverlayMessage = ref<string | null>(null)
   const processedStageBatchIds = new Set<string>()
+  const processedStageInstructionIds = new Set<string>()
   const previousHandIds = ref<Set<number>>(new Set())
   const pendingDeckAnimations = new Map<number, { durationMs?: number; delayMs?: number }>()
   const pendingCreateAnimations = new Map<number, { simple: boolean }>()
@@ -38,21 +43,32 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     if (!event || !event.batchId) {
       return
     }
-    if (processedStageBatchIds.has(event.batchId)) {
+    const stageKey = buildStageKey(event, event.metadata)
+    if (processedStageBatchIds.has(event.batchId) && processedStageInstructionIds.has(stageKey)) {
       return
     }
+    processedStageInstructionIds.add(stageKey)
     processedStageBatchIds.add(event.batchId)
     if (processedStageBatchIds.size > 500) {
       processedStageBatchIds.clear()
       processedStageBatchIds.add(event.batchId)
     }
+    if (processedStageInstructionIds.size > 1000) {
+      processedStageInstructionIds.clear()
+    }
     const metadata = event.metadata
     if (!metadata) {
       return
     }
+    logHandStageDebug('StageEvent受信', {
+      batchId: event.batchId,
+      entryType: event.entryType,
+      stage: metadata.stage,
+      metadata,
+    })
     switch (metadata.stage) {
       case 'deck-draw':
-        ;(async () => handleDeckDrawStage(event, metadata))()
+        void handleDeckDrawStage(metadata)
         break
       case 'card-trash':
         handleCardTrashStage(metadata)
@@ -61,10 +77,10 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         handleCardEliminateStage(metadata)
         break
       case 'create-state-card':
-        ;(async () => handleCreateStateCardStage(metadata, true))()
+        void handleCreateStateCardStage(metadata, true)
         break
       case 'memory-card':
-        ;(async () => handleCreateStateCardStage(metadata, false))()
+        void handleCreateStateCardStage(metadata, false)
         break
       case 'audio':
         handleAudioStage(metadata)
@@ -79,10 +95,9 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
 
   watch(
     () => options.stageEvent(),
-    (event) => {
-      handleStageEvent(event)
-    },
+    (event) => handleStageEvent(event),
   )
+
   watch(
     () =>
       options
@@ -91,10 +106,16 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         .filter((id): id is number => typeof id === 'number'),
     async (handIds = []) => {
       await nextTick()
-      await nextTick()
       const prev = previousHandIds.value
       const current = new Set(handIds)
       const newlyAdded = handIds.filter((id) => !prev.has(id))
+      if (newlyAdded.length > 0) {
+        logHandStageDebug('snapshot手札差分', {
+          newlyAdded,
+          pendingDeck: [...pendingDeckAnimations.keys()],
+          pendingCreate: [...pendingCreateAnimations.keys()],
+        })
+      }
       newlyAdded.forEach((cardId) => {
         const deckAnim = pendingDeckAnimations.get(cardId)
         if (deckAnim) {
@@ -112,11 +133,12 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     { immediate: true },
   )
 
-  function handleDeckDrawStage(_event: StageEventPayload, metadata: DeckDrawStageMetadata): void {
+  async function handleDeckDrawStage(metadata: DeckDrawStageMetadata): Promise<void> {
     const cardIds = metadata.cardIds ?? []
     if (cardIds.length === 0) {
       return
     }
+    await nextTick()
     const durationMs = extractDurationMs(metadata)
     const currentHandIds = collectHandIds(options.snapshot())
     cardIds.forEach((id, index) => {
@@ -126,6 +148,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         triggerDeckAnimation(id, config)
       } else {
         pendingDeckAnimations.set(id, config)
+        logHandStageDebug('deck-draw pending', { cardId: id, config })
       }
     })
     if (metadata.handOverflow) {
@@ -141,12 +164,14 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     if (cardIds.length === 0) {
       return
     }
+    await nextTick()
     const currentHandIds = collectHandIds(options.snapshot())
     cardIds.forEach((cardId) => {
       if (currentHandIds.has(cardId)) {
         triggerCreateAnimation(cardId, simpleMode)
       } else {
         pendingCreateAnimations.set(cardId, { simple: simpleMode })
+        logHandStageDebug('card-create pending', { cardId, simpleMode })
       }
     })
   }
@@ -203,21 +228,19 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   }
 
   function triggerDeckAnimation(cardId: number, config: { durationMs?: number; delayMs?: number }): void {
-    void nextTick(() =>
-      nextTick(() => {
-        pendingDeckAnimations.delete(cardId)
-        startDeckDrawAnimationWithCleanup(cardId, config)
-      }),
-    )
+    void nextTick(() => {
+      pendingDeckAnimations.delete(cardId)
+      startDeckDrawAnimationWithCleanup(cardId, config)
+      logHandStageDebug('deck-draw即時適用', { cardId, config })
+    })
   }
 
   function triggerCreateAnimation(cardId: number, simpleMode: boolean): void {
-    void nextTick(() =>
-      nextTick(() => {
-        pendingCreateAnimations.delete(cardId)
-        options.startCardCreateAnimation(cardId, { simple: simpleMode })
-      }),
-    )
+    void nextTick(() => {
+      pendingCreateAnimations.delete(cardId)
+      options.startCardCreateAnimation(cardId, { simple: simpleMode })
+      logHandStageDebug('card-create即時適用', { cardId, simpleMode })
+    })
   }
 
   function startDeckDrawAnimationWithCleanup(
@@ -237,8 +260,6 @@ function extractDurationMs(metadata: DurationAwareMetadata | undefined): number 
   const durationCandidate = metadata.durationMs ?? metadata.animationDurationMs
   return typeof durationCandidate === 'number' && durationCandidate > 0 ? durationCandidate : undefined
 }
-
-const DRAW_STAGGER_DELAY_MS = 100
 
 type CardIdentifierMetadata = {
   cardIds?: number[]
@@ -263,4 +284,17 @@ function collectHandIds(snapshot?: BattleSnapshot): Set<number> {
     .map((card) => card.id)
     .filter((id): id is number => typeof id === 'number')
   return new Set(ids)
+}
+
+function logHandStageDebug(message: string, payload?: Record<string, unknown>): void {
+  if (!ENABLE_HAND_STAGE_DEBUG || typeof console === 'undefined') {
+    return
+  }
+  // eslint-disable-next-line no-console
+  console.info(`[BattleHandArea][stage-events] ${message}`, payload ?? '')
+}
+
+function buildStageKey(event: StageEventPayload, metadata?: StageEventMetadata): string {
+  const stage = metadata?.stage ?? 'unknown'
+  return `${event.batchId}:${stage}:${event.issuedAt}`
 }

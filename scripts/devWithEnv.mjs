@@ -24,6 +24,7 @@ if (!env.VITE_DEBUG_HAND_ANIMATION) {
   env.WATCHPACK_POLLING = 'true'
 }
 
+env.VITE_DEBUG_HAND_STAGE_EVENTS='true'
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {
