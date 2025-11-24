@@ -249,16 +249,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   subscriptions.forEach((dispose) => dispose())
-  if (relicFooterTimer) {
-    window.clearTimeout(relicFooterTimer)
-    relicFooterTimer = null
-  }
   clearErrorOverlayTimer()
 })
-
-const defaultFooterMessage = '対象にカーソルを合わせて操作を確認'
-const footerMessage = ref(defaultFooterMessage)
-let relicFooterTimer: number | null = null
 
 const playerName = computed(() => snapshot.value?.player.name ?? '？？？')
 const turnLabel = computed(() => {
@@ -424,17 +416,8 @@ function handleHandPlayCard(payload: { cardId: number; operations: CardOperation
   resetErrorMessage()
 }
 
-function handleHandFooterUpdate(message: string): void {
-  footerMessage.value = message
-}
-
-function handleHandFooterReset(): void {
-  footerMessage.value = defaultFooterMessage
-}
-
 function handleHandError(message: string): void {
   if (message === '敵選択がキャンセルされました') {
-    footerMessage.value = defaultFooterMessage
     return
   }
   showTransientError(message)
@@ -442,17 +425,6 @@ function handleHandError(message: string): void {
 
 function handleHandHideOverlay(): void {
   hideDescriptionOverlay()
-}
-
-function setTemporaryFooterMessage(message: string, duration = 1600): void {
-  footerMessage.value = message
-  if (relicFooterTimer) {
-    window.clearTimeout(relicFooterTimer)
-  }
-  relicFooterTimer = window.setTimeout(() => {
-    footerMessage.value = defaultFooterMessage
-    relicFooterTimer = null
-  }, duration)
 }
 
 function handleRelicHover(event: MouseEvent | FocusEvent, relic: Relic): void {
@@ -475,10 +447,8 @@ function handleRelicLeave(): void {
 
 function handleRelicClick(relic: Relic): void {
   if (relic.usageType !== 'active') {
-    setTemporaryFooterMessage(`${relic.name}：永続効果のレリックです`, 1400)
     return
   }
-  setTemporaryFooterMessage(`${relic.name} の起動効果は今後実装されます`, 1800)
 }
 
 function handleEnemySelectionHints(hints: TargetEnemyAvailabilityEntry[]): void {
@@ -598,7 +568,6 @@ function resetUiStateAfterTimelineChange(): void {
   playerDamageOutcomes.value = []
   currentAnimationId.value = null
   resetErrorMessage()
-  footerMessage.value = defaultFooterMessage
   viewResetToken.value += 1
 }
 
@@ -792,11 +761,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
               <div class="sidebar-overlay-container">
                 <div class="sidebar-overlay">
                   <HpGauge :current="playerHpGauge.current" :max="playerHpGauge.max" />
-                  <div class="mana-pop" :key="manaPulseKey" aria-label="現在のマナ">
-                    <span class="mana-pop__current">{{ playerMana.current }}</span>
-                    <span class="mana-pop__slash" aria-hidden="true"></span>
-                    <span class="mana-pop__max">{{ playerMana.max }}</span>
-                  </div>
                   <div class="overlay-row" style="display: none;">
                     <span class="overlay-label">プレイヤー</span>
                     <span class="overlay-value">{{ playerName }}</span>
@@ -806,14 +770,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
                     <span class="overlay-value">{{ pendingInputCount }}</span>
                   </div>
                 </div>
-                <button
-                  class="end-turn-button sidebar-action"
-                  type="button"
-                  :disabled="isInputLocked"
-                  @click="handleEndTurnClick"
-                >
-                  ターン終了
-                </button>
               </div>
             </div>
           </aside>
@@ -834,6 +790,28 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
               @cancel-selection="handleEnemySelectionCanceled"
             />
 
+            <div class="battle-main__overlay">
+              <div class="battle-main__overlay-inner">
+                <div class="battle-main__overlay-left">
+                  <div class="mana-pop" :key="manaPulseKey" aria-label="現在のマナ">
+                    <span class="mana-pop__current">{{ playerMana.current }}</span>
+                    <span class="mana-pop__slash" aria-hidden="true"></span>
+                    <span class="mana-pop__max">{{ playerMana.max }}</span>
+                  </div>
+                </div>
+                <div class="battle-main__overlay-right">
+                  <button
+                    class="end-turn-button"
+                    type="button"
+                    :disabled="isInputLocked"
+                    @click="handleEndTurnClick"
+                  >
+                    ターン終了
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <BattleHandArea
               :key="`hand-area-${viewResetToken}`"
               ref="handAreaRef"
@@ -847,8 +825,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
               :request-enemy-target="requestEnemyTarget"
               :cancel-enemy-selection="cancelEnemySelectionInternal"
               @play-card="handleHandPlayCard"
-              @update-footer="handleHandFooterUpdate"
-              @reset-footer="handleHandFooterReset"
               @error="handleHandError"
               @hide-overlay="handleHandHideOverlay"
               @show-enemy-selection-hints="handleEnemySelectionHints"
@@ -874,9 +850,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
           {{ descriptionOverlay.text }}
         </div>
 
-        <footer class="battle-footer">
-          <span class="footer-message">{{ footerMessage }}</span>
-        </footer>
       </div>
     </template>
     <template #instructions>
@@ -1083,12 +1056,14 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 }
 
 .battle-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, rgba(28, 28, 48, 0.75), rgba(18, 18, 24, 0.85));
   gap: 0;
   flex: 1;
   min-height: 0;
+  --enemy-zone-height: 320px;
 }
 
 .enemy-area-wrapper {
@@ -1108,8 +1083,8 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 }
 
 :deep(.enemy-zone) {
-  flex: 0 0 320px;
-  max-height: 320px;
+  flex: 0 0 var(--enemy-zone-height);
+  max-height: var(--enemy-zone-height);
   padding: 0 16px;
 }
 
@@ -1198,19 +1173,20 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   position: relative;
   display: flex;
   padding: 0;
-  background: #0e0e18;
+  /* background: #0e0e18; */
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   box-sizing: border-box;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .portrait {
   flex: 1;
   display: flex;
-  align-items: stretch;
-  justify-content: stretch;
+  align-items: flex-end;
+  justify-content: flex-start;
   position: relative;
+  overflow: visible;
 }
 
 .portrait-image {
@@ -1240,8 +1216,9 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  /* background: linear-gradient(180deg, rgba(12, 12, 22, 0.6), rgba(1, 1, 2, 0.85)); */
   box-sizing: border-box;
+  bottom: 120px;
+  z-index: 2;
 }
 
 .sidebar-overlay {
@@ -1249,10 +1226,10 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   flex-direction: column;
   gap: 14px;
   padding: 16px;
-  border-radius: 16px;
-  background: rgba(12, 12, 24, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 18px 28px rgba(0, 0, 0, 0.35);
+  /* border-radius: 16px; */
+  /* background: rgba(12, 12, 24, 0.82); */
+  /* border: 1px solid rgba(255, 255, 255, 0.14); */
+  /* box-shadow: 0 18px 28px rgba(0, 0, 0, 0.35); */
 }
 
 .mana-pop {
@@ -1398,22 +1375,27 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   box-shadow: none;
 }
 
-.battle-footer {
-  height: 50px;
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  background: rgba(12, 12, 20, 0.85);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.9);
-  letter-spacing: 0.04em;
-  font-size: 14px;
-  box-sizing: border-box;
+.battle-main__overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--enemy-zone-height);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 8;
 }
 
-.footer-message {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.battle-main__overlay-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  gap: 16px;
 }
+
+.battle-main__overlay-left,
+.battle-main__overlay-right {
+  pointer-events: auto;
+}
+
 </style>

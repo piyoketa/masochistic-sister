@@ -98,7 +98,6 @@ describe('BattleView', () => {
     expect(enemyCards).toHaveLength(4)
     expect(actionCards).toHaveLength(5)
     expect(wrapper.html()).toContain('ターン')
-    expect(wrapper.html()).toContain('対象にカーソルを合わせて操作を確認')
   })
 
   it('アニメーションの update-snapshot コマンドで表示を更新する', async () => {
@@ -203,10 +202,7 @@ describe('BattleView', () => {
 
     const card = wrapper.find('.action-card-stub')
     await card.trigger('mouseenter')
-    expect(wrapper.html()).toContain('左クリック：使用　右クリック：詳細')
-
     await card.trigger('mouseleave')
-    expect(wrapper.html()).toContain('対象にカーソルを合わせて操作を確認')
   })
 
   it('Retryボタンで戦闘を初期状態に戻す', async () => {
@@ -332,7 +328,6 @@ describe('BattleView', () => {
     await cardEl.trigger('click')
     await flushPromises()
 
-    expect(wrapper.html()).toContain('対象の敵を選択')
     expect(cardEl.attributes()['data-selected']).toBe('true')
 
     const enemyEl = wrapper.findAll('.enemy-card-stub')[0]!
@@ -346,8 +341,6 @@ describe('BattleView', () => {
       cardId: snapshot!.hand[targetIndex]!.id,
       operations: [{ type: TargetEnemyOperation.TYPE, payload: enemyId }],
     })
-    expect(wrapper.html()).toContain('対象にカーソルを合わせて操作を確認')
-
     queueSpy.mockRestore()
   })
 
@@ -375,14 +368,11 @@ describe('BattleView', () => {
     const cardEl = wrapper.findAll('.action-card-stub')[targetIndex]!
     await cardEl.trigger('click')
     await flushPromises()
-    expect(wrapper.html()).toContain('対象の敵を選択')
-
     const layout = wrapper.find('.battle-layout')
     await layout.trigger('contextmenu')
     await flushPromises()
 
     expect(queueSpy).not.toHaveBeenCalled()
-    expect(wrapper.html()).toContain('対象にカーソルを合わせて操作を確認')
     expect(cardEl.attributes()['data-selected']).toBe('false')
 
     queueSpy.mockRestore()
