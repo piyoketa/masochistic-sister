@@ -48,12 +48,16 @@ const resolvedImageSrc = computed(() => {
   return buildImageSrc(frame)
 })
 
+const selectionThemeActive = computed(
+  () => props.isSelectingEnemy || (props.selectionTheme !== undefined && props.selectionTheme !== 'default'),
+)
+
 const faceDiffSrc = computed(() => {
   if (props.faceDiffOverride === 'damaged') {
     const damaged = FACE_DIFF_SOURCES.damaged
     return damaged ?? null
   }
-  if (!props.isSelectingEnemy) {
+  if (!selectionThemeActive.value) {
     return null
   }
   const theme = props.selectionTheme ?? 'default'
@@ -154,7 +158,7 @@ function handleImageLoad(src: string): void {
 </script>
 
 <template>
-  <div class="player-image" :class="{ 'player-image--selecting': props.isSelectingEnemy }" :style="styleVars">
+  <div class="player-image" :class="{ 'player-image--selecting': selectionThemeActive }" :style="styleVars">
     <div class="player-image__frame">
       <img
         class="player-image__img"

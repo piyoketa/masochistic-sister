@@ -228,7 +228,7 @@ function startSequence(): void {
       emit('damage-step', { amount: outcome.damage, index })
       playHitSound(outcome)
       appendLog(`damage=${outcome.damage} effectType=${outcome.effectType}`)
-      scheduleRemoval(entry.id, props.duration ?? 800, props.outcomes.length)
+      scheduleRemoval(entry.id, props.duration ?? 1500, props.outcomes.length)
     }, appearDelay)
     timers.push(timer)
   })
@@ -276,7 +276,7 @@ onBeforeUnmount(() => reset())
       :class="[
         entry.effectType === 'guarded' ? 'damage-effects__item--guarded' : '',
       ]"
-      :style="{ transform: `translate(calc(-50% + ${entry.offsetX}px), 0)` }"
+      :style="{ '--offset-x': `${entry.offsetX}px` }"
     >
       {{ entry.amount }}
     </span>
@@ -313,15 +313,15 @@ onBeforeUnmount(() => reset())
   position: absolute;
   left: 50%;
   bottom: 0;
-  transform: translateX(-50%);
+  --offset-x: 0px;
   color: #8b1c1c;
-  font-size: 48px;
+  font-size: 72px;
   font-weight: 700;
   text-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.65),
-    0 0 2px rgba(0, 0, 0, 0.8);
-  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.5);
-  animation: damage-rise 0.8s ease forwards;
+    0 2px 8px rgba(0, 0, 0, 0.7),
+    0 0 4px rgba(0, 0, 0, 0.85);
+  -webkit-text-stroke: 2px #ffffff;
+  animation: damage-rise 0.7s cubic-bezier(0.25, 0.8, 0.3, 1.05) forwards;
 }
 
 .damage-effects__item--guarded {
@@ -343,11 +343,15 @@ onBeforeUnmount(() => reset())
 @keyframes damage-rise {
   0% {
     opacity: 1;
-    transform: translate(-50%, 0) scale(1.2);
+    transform: translate(calc(-50% + var(--offset-x, 0px)), 0) scale(1.2);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--offset-x, 0px) + 24px), -68px) scale(1.05);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -60px) scale(0.85);
+    transform: translate(calc(-50% + var(--offset-x, 0px) + 44px), 88px) scale(0.85);
   }
 }
 </style>

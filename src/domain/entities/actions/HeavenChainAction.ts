@@ -23,6 +23,16 @@ export class HeavenChainAction extends Skill {
         effectTags: [new ExhaustCardTag()],
         categoryTags: [new SacredCardTag()],
       },
+      audioCue: {
+        soundId: 'skills/Onoma-Flash02.mp3',
+        waitMs: 500,
+        durationMs: 500,
+      },
+      cutInCue: {
+        src: '/assets/cut_ins/HeavenChainAction.png',
+        waitMs: 800,
+        durationMs: 800,
+      },      
     })
   }
 

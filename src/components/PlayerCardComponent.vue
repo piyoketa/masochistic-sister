@@ -1,7 +1,7 @@
 <!--
 PlayerCardComponent の責務:
 - プレイヤー立ち絵・HPバー・ダメージ演出を一体化し、表示用HPの更新を一元管理する。
-- ダメージ演出(DamageEffects)のヒット完了に合わせて displayHp を段階的に減少させ、HpGauge/PlayerImageComponent の表示を同期させる。
+- ダメージ演出(DamageEffects)の開始と完了に合わせて displayHp を制御し、HpGauge/PlayerImageComponent の表示を同期させる。
 - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。
 
 非責務:
@@ -12,7 +12,7 @@ PlayerCardComponent の責務:
 - props:
   - preHp / postHp: { current, max } 事前/適用後のHP。受傷アニメの開始値と終了値に利用する。
   - outcomes: DamageOutcome[] （DamageEffectsへそのまま渡す）
-  - isSelectingEnemy / selectionTheme: 表情差分選択用
+  - selectionTheme: 表情差分選択用
   - show: 表示の有無（外部リセット時の切替を許容）
 - emits: なし（内部で完結）
 -->
@@ -33,7 +33,6 @@ const props = withDefaults(
     preHp: { current: number; max: number }
     postHp: { current: number; max: number }
     outcomes: DamageOutcome[]
-    isSelectingEnemy?: boolean
     selectionTheme?: EnemySelectionTheme
     show?: boolean
   }>(),
@@ -91,44 +90,22 @@ function resetDisplayHp(): void {
 function startDamageSequence(): void {
   const pre = baseHpStart.value
   const post = baseHpEnd.value
-  const totalDamage = Math.max(0, pre.current - post.current)
-  const summedOutcome = props.outcomes.reduce((sum, o) => sum + Math.max(0, o.damage), 0)
-  // preSnapshot が無いケースで post + totalOutcome から開始HPを推定する fallback
-  if (pre.current === 0 && totalDamage === 0 && summedOutcome > 0) {
-    displayHp.current = Math.min(post.max, post.current + summedOutcome)
-    displayHp.max = post.max
-  } else {
-    displayHp.current = pre.current
-    displayHp.max = pre.max
-  }
+  displayHp.current = pre.current
+  displayHp.max = pre.max
   isTakingDamage.value = true
   if (debugEnabled) {
     // eslint-disable-next-line no-console
     console.info('[PlayerCard] startDamageSequence', {
       pre,
       post,
-      summedOutcome,
       displayHp: { ...displayHp },
     })
   }
   nextTick(() => damageRef.value?.play())
 }
 
-function handleDamageStep(payload: { amount: number; index: number }): void {
-  // 演出表示開始。HP減少は damage-step-complete で行う。
-}
-
-function handleDamageStepComplete(payload: { amount: number; index: number }): void {
-  const nextHp = Math.max(0, displayHp.current - Math.max(0, payload.amount))
-  displayHp.current = nextHp
-  if (debugEnabled) {
-    // eslint-disable-next-line no-console
-    console.info('[PlayerCard] damage-step-complete', { payload, displayHp: { ...displayHp } })
-  }
-}
-
 function handleSequenceEnd(): void {
-  // 演出完了後、postHp に揃える
+  // 演出完了後、postHp に揃える（段階的なヒット完了イベントは扱わない）
   displayHp.current = baseHpEnd.value.current
   displayHp.max = baseHpEnd.value.max
   isTakingDamage.value = false
@@ -153,7 +130,6 @@ onMounted(() => {
       <PlayerImageComponent
         :current-hp="displayHp.current"
         :max-hp="displayHp.max"
-        :is-selecting-enemy="isSelectingEnemy"
         :selection-theme="selectionTheme"
         :face-diff-override="faceDiffOverride"
       >
@@ -166,8 +142,6 @@ onMounted(() => {
         class="damage-overlay damage-overlay--player"
         :outcomes="outcomes"
         @sequence-start="isTakingDamage = true"
-        @damage-step="handleDamageStep"
-        @damage-step-complete="handleDamageStepComplete"
         @sequence-end="handleSequenceEnd"
       />      
     </div>

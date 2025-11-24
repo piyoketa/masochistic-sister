@@ -102,6 +102,7 @@ const playbackSpeed = computed(() => managerState.playback.speed)
 const isInputLocked = computed(() => managerState.input.locked)
 const pendingInputCount = computed(() => managerState.input.queued.length)
 const isPlayerTurn = computed(() => snapshot.value?.turn.activeSide === 'player')
+const canPlayerAct = computed(() => isPlayerTurn.value && !isInputLocked.value)
 const enemySelectionRequest = ref<EnemySelectionRequest | null>(null)
 const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
@@ -286,6 +287,15 @@ watch(
 )
 
 watch(
+  () => canPlayerAct.value,
+  (canAct, prev) => {
+    if (canAct && !prev && !isSelectingEnemy.value) {
+      resetEnemySelectionTheme()
+    }
+  },
+)
+
+watch(
   () => latestStageEvent.value,
   async (event) => {
     if (!event) {
@@ -374,7 +384,6 @@ function resolveEnemySelection(enemyId: number): void {
   pending.resolve(enemyId)
   enemySelectionRequest.value = null
   enemySelectionHints.value = []
-  resetEnemySelectionTheme()
 }
 
 function cancelEnemySelection(reason?: string): void {
@@ -762,7 +771,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
                 "
                 :post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
                 :outcomes="playerDamageOutcomes"
-                :is-selecting-enemy="isSelectingEnemy"
                 :selection-theme="enemySelectionTheme"
               />
             </div>
