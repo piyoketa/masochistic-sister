@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import type { CardType, AttackStyle, CardTagInfo, DescriptionSegment } from '@/types/battle'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
 
 const CARD_TYPE_THEMES: Record<
   CardType,
@@ -69,6 +71,7 @@ const props = defineProps<{
   categoryTags?: CardTagInfo[]
   operations?: string[]
   selected?: boolean
+  selectionTheme?: EnemySelectionTheme
   disabled?: boolean
   affordable?: boolean
   damageAmount?: number
@@ -107,6 +110,8 @@ const cardStyleVars = computed(() => {
   const theme = CARD_TYPE_THEMES[props.type] ?? CARD_TYPE_THEMES.skill
   const tagBg =
     props.type === 'status' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)'
+  const selectionTheme = props.selectionTheme ?? 'default'
+  const palette = SELECTION_THEME_COLORS[selectionTheme] ?? SELECTION_THEME_COLORS.default
   const vars: Record<string, string> = {
     '--card-bg-start': theme.bgStart,
     '--card-bg-end': theme.bgEnd,
@@ -115,6 +120,8 @@ const cardStyleVars = computed(() => {
     '--card-accent-color': theme.accent,
     '--card-border-color': isPlayable.value ? BORDER_COLORS.playable : BORDER_COLORS.blocked,
     '--card-tag-bg': tagBg,
+    '--card-selection-accent': palette.strong,
+    '--card-selection-shadow': palette.shadowStrong,
   }
   if (theme.background) {
     vars['--card-background'] = theme.background
@@ -442,12 +449,12 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 }
 
 .action-card--selected {
-  box-shadow: 0 18px 36px rgba(255, 74, 109, 0.5);
-  border-color: #ff4d6d;
+  box-shadow: 0 18px 36px var(--card-selection-shadow, rgba(255, 74, 109, 0.5));
+  border-color: var(--card-selection-accent, #ff4d6d);
 }
 
 .action-card--selected .card-header h4 {
-  color: #ff4d6d;
+  color: var(--card-selection-accent, #ff4d6d);
 }
 
 .action-card--disabled {

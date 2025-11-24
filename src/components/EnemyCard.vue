@@ -16,6 +16,8 @@ import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import DamageEffects from '@/components/DamageEffects.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
 
 const props = defineProps<{
   enemy: EnemyInfo
@@ -24,6 +26,7 @@ const props = defineProps<{
   hovered?: boolean
   acting?: boolean
   blockedReason?: string
+  selectionTheme?: EnemySelectionTheme
 }>()
 
 const emit = defineEmits<{
@@ -63,6 +66,17 @@ const classes = computed(() => ({
   'enemy-card--hovered': props.hovered ?? false,
   'enemy-card--acting': props.acting ?? false,
 }))
+
+const selectionStyleVars = computed(() => {
+  const theme = props.selectionTheme ?? 'default'
+  const palette = SELECTION_THEME_COLORS[theme] ?? SELECTION_THEME_COLORS.default
+  return {
+    '--enemy-selection-border': palette.border,
+    '--enemy-selection-strong': palette.strong,
+    '--enemy-selection-shadow': palette.shadow,
+    '--enemy-selection-shadow-strong': palette.shadowStrong,
+  }
+})
 
 const displayName = computed(() => props.enemy.name.replace('（短剣）', '')) // TODO: 削除
 
@@ -244,7 +258,14 @@ defineExpose({ playDamage, playEnemySound })
 </script>
 
 <template>
-  <article class="enemy-card" :class="classes" role="button" @mouseenter="handleEnter" @mouseleave="handleLeave">
+  <article
+    class="enemy-card"
+    :class="classes"
+    :style="selectionStyleVars"
+    role="button"
+    @mouseenter="handleEnter"
+    @mouseleave="handleLeave"
+  >
     <header class="enemy-card__header">
       <div class="enemy-card__title">{{ displayName }}</div>
       <div class="enemy-card__hp">
@@ -318,21 +339,25 @@ defineExpose({ playDamage, playEnemySound })
   transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
   cursor: default;
   overflow: hidden;
+  --enemy-selection-border: rgba(255, 116, 116, 0.45);
+  --enemy-selection-strong: #ff4d6d;
+  --enemy-selection-shadow: rgba(255, 116, 116, 0.45);
+  --enemy-selection-shadow-strong: rgba(255, 116, 116, 0.5);
 }
 
 .enemy-card--selectable {
   cursor: pointer;
-  border-color: rgba(255, 116, 116, 0.45);
+  border-color: var(--enemy-selection-border);
 }
 
 .enemy-card--hovered.enemy-card--selectable {
   transform: translateY(-6px);
-  box-shadow: 0 24px 48px rgba(255, 116, 116, 0.45);
+  box-shadow: 0 24px 48px var(--enemy-selection-shadow);
 }
 
 .enemy-card--selected {
-  border-color: rgba(255, 116, 116, 0.9);
-  box-shadow: 0 20px 42px rgba(255, 116, 116, 0.5);
+  border-color: var(--enemy-selection-strong);
+  box-shadow: 0 20px 42px var(--enemy-selection-shadow-strong);
 }
 
 .enemy-card--acting {

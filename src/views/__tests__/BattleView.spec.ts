@@ -12,13 +12,14 @@ function createGlobalStubs() {
       template: '<div class="game-layout-stub"><slot name="window" /><slot name="instructions" /></div>',
     },
     EnemyCard: {
-      props: ['enemy', 'selectable', 'hovered', 'selected'],
+      props: ['enemy', 'selectable', 'hovered', 'selected', 'selectionTheme'],
       emits: ['hover-start', 'hover-end'],
       template: `
         <div
           class="enemy-card-stub"
           :data-selectable="selectable"
           :data-hovered="hovered"
+          :data-selection-theme="selectionTheme"
           @mouseenter="$emit('hover-start')"
           @mouseleave="$emit('hover-end')"
         >
@@ -27,19 +28,33 @@ function createGlobalStubs() {
       `,
     },
     ActionCard: {
-      props: ['title', 'selected', 'disabled', 'affordable', 'damageAmount', 'damageCount', 'variant'],
+      props: [
+        'title',
+        'selected',
+        'disabled',
+        'affordable',
+        'damageAmount',
+        'damageCount',
+        'variant',
+        'selectionTheme',
+      ],
       emits: ['hover-start', 'hover-end'],
       template: `
         <div
           class="action-card-stub"
           :data-selected="selected"
           :data-disabled="disabled"
+          :data-selection-theme="selectionTheme"
           @mouseenter="$emit('hover-start')"
           @mouseleave="$emit('hover-end')"
         >
           {{ title }}
         </div>
       `,
+    },
+    PlayerImageComponent: {
+      props: ['currentHp', 'maxHp', 'isSelectingEnemy', 'selectionTheme'],
+      template: '<div class="player-image-stub"><slot /></div>',
     },
     HpGauge: {
       props: ['current', 'max'],

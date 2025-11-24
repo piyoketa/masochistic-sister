@@ -6,6 +6,7 @@ import {
   type TargetEnemyAvailabilityEntry,
   type OperationContext,
 } from '@/domain/entities/operations'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import type { HandEntry } from './useHandPresentation'
 
 export interface HandSelectionRequest {
@@ -20,7 +21,7 @@ export interface UseHandInteractionOptions {
   props: {
     isPlayerTurn: boolean
     isInputLocked: boolean
-    requestEnemyTarget: () => Promise<number>
+    requestEnemyTarget: (theme: EnemySelectionTheme) => Promise<number>
     cancelEnemySelection: () => void
   }
   emit: {
@@ -36,6 +37,7 @@ export interface UseHandInteractionOptions {
     selectedCardKey: string | null
     selectedCardId: number | null
     isAwaitingEnemy: boolean
+    selectionTheme: EnemySelectionTheme
   }
   buildOperationContext: () => OperationContext | null
 }
@@ -108,6 +110,7 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
 
     options.interactionState.selectedCardKey = entry.key
     options.interactionState.selectedCardId = entry.id
+    options.interactionState.selectionTheme = deriveEnemySelectionTheme(entry)
 
     if (entry.operations.length === 0) {
       options.emit('play-card', { cardId: entry.id, operations: [] })
@@ -167,13 +170,14 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
         }
         options.emit('update-footer', '対象の敵を選択：左クリックで決定　右クリックでキャンセル')
         try {
-          const enemyId = await options.props.requestEnemyTarget()
+          const enemyId = await options.props.requestEnemyTarget(options.interactionState.selectionTheme)
           collectedOperations.push({
             type: TargetEnemyOperation.TYPE,
             payload: enemyId,
           })
         } finally {
           options.interactionState.isAwaitingEnemy = false
+          options.interactionState.selectionTheme = 'default'
           options.emit('reset-footer')
           options.emit('clear-enemy-selection-hints')
         }
@@ -202,6 +206,7 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
 
   function resetSelection(optionsArg?: { keepSelection?: boolean }): void {
     options.interactionState.isAwaitingEnemy = false
+    options.interactionState.selectionTheme = 'default'
     if (!optionsArg?.keepSelection) {
       options.interactionState.selectedCardKey = null
       options.interactionState.selectedCardId = null
@@ -217,6 +222,18 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
       options.props.cancelEnemySelection()
     }
     resetSelection()
+  }
+
+  function deriveEnemySelectionTheme(entry: HandEntry): EnemySelectionTheme {
+    const tags = entry.card.categoryTags ?? []
+    const hasTag = (tagId: string) => tags.some((tag) => tag.id === tagId)
+    if (hasTag('tag-arcane')) {
+      return 'arcane'
+    }
+    if (hasTag('tag-sacred')) {
+      return 'sacred'
+    }
+    return 'default'
   }
 
   function gatherEnemySelectionHints(entry: HandEntry): TargetEnemyAvailabilityEntry[] {

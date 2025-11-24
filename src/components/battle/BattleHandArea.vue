@@ -27,6 +27,7 @@ import { useHandPresentation, type HandEntry } from './composables/useHandPresen
 import { useHandInteraction } from './composables/useHandInteraction'
 import { useHandAnimations } from './composables/useHandAnimations'
 import { useHandStageEvents } from './composables/useHandStageEvents'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
 const props = defineProps<{
   snapshot: BattleSnapshot | undefined
@@ -35,7 +36,7 @@ const props = defineProps<{
   isPlayerTurn: boolean
   isInputLocked: boolean
   viewManager: ViewManager
-  requestEnemyTarget: () => Promise<number>
+  requestEnemyTarget: (theme: EnemySelectionTheme) => Promise<number>
   cancelEnemySelection: () => void
   stageEvent: StageEventPayload | null
 }>()
@@ -54,10 +55,12 @@ const interactionState = reactive<{
   selectedCardKey: string | null
   selectedCardId: number | null
   isAwaitingEnemy: boolean
+  selectionTheme: EnemySelectionTheme
 }>({
   selectedCardKey: null,
   selectedCardId: null,
   isAwaitingEnemy: false,
+  selectionTheme: 'default',
 })
 
 const handZoneRef = ref<HTMLElement | null>(null)
@@ -205,6 +208,7 @@ defineExpose({ resetSelection, cancelSelection })
           :operations="entry.operations"
           :affordable="entry.affordable"
           :selected="interactionState.selectedCardKey === entry.key"
+          :selection-theme="interactionState.selectionTheme"
           :disabled="isCardDisabled(entry)"
           @click="handleCardClick(entry)"
           @mouseenter="() => handleCardHoverStart(entry)"

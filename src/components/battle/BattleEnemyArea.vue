@@ -23,6 +23,7 @@ import type { EnemyInfo, EnemyTrait, EnemyActionHint } from '@/types/battle'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
 interface EnemySelectionHint {
   enemyId: number
@@ -37,6 +38,7 @@ const props = defineProps<{
   hoveredEnemyId: number | null
   stageEvent: StageEventPayload | null
   selectionHints?: EnemySelectionHint[]
+  selectionTheme?: EnemySelectionTheme
 }>()
 
 const emit = defineEmits<{
@@ -317,6 +319,7 @@ function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
           :selectable="isEnemySelectable(slot.enemy.id)"
           :hovered="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
           :selected="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
+          :selection-theme="props.selectionTheme"
           :acting="slot.enemy ? actingEnemyId === slot.enemy.id : false"
           :blocked-reason="blockedReason(slot.enemy.id)"
           @mouseenter="() => emit('hover-start', slot.enemy!.id)"

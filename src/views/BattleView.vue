@@ -47,6 +47,8 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
 import { useAudioCue } from '@/composables/useAudioCue'
 import { BATTLE_AUDIO_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
+import PlayerImageComponent from '@/components/PlayerImageComponent.vue'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
 declare global {
   interface Window {
@@ -110,6 +112,7 @@ const playerDamageOutcomes = ref<DamageOutcome[]>([])
 const currentCutInSrc = ref<string>(BATTLE_CUTIN_ASSETS[0] ?? '/assets/cut_ins/MasochisticAuraAction.png')
 const manaPulseKey = ref(0)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
+const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
 const playerRelics = DEFAULT_PLAYER_RELICS
 const { play: playAudioCueInternal, preload: preloadAudioCue } = useAudioCue()
@@ -253,7 +256,6 @@ onUnmounted(() => {
   clearErrorOverlayTimer()
 })
 
-const portraitSrc = '/assets/characters/sister.png'
 const defaultFooterMessage = '対象にカーソルを合わせて操作を確認'
 const footerMessage = ref(defaultFooterMessage)
 let relicFooterTimer: number | null = null
@@ -315,12 +317,13 @@ const canUndo = computed(() => {
   return viewManager.hasUndoableAction()
 })
 
-function requestEnemyTarget(): Promise<number> {
+function requestEnemyTarget(theme: EnemySelectionTheme): Promise<number> {
   if (enemySelectionRequest.value) {
     return Promise.reject(new Error('敵選択が既に進行中です'))
   }
 
   hoveredEnemyId.value = null
+  enemySelectionTheme.value = theme
 
   return new Promise((resolve, reject) => {
     enemySelectionRequest.value = {
@@ -370,6 +373,7 @@ function resolveEnemySelection(enemyId: number): void {
   pending.resolve(enemyId)
   enemySelectionRequest.value = null
   enemySelectionHints.value = []
+  resetEnemySelectionTheme()
 }
 
 function cancelEnemySelection(reason?: string): void {
@@ -380,6 +384,7 @@ function cancelEnemySelection(reason?: string): void {
   pending.reject(new Error(reason ?? '敵選択がキャンセルされました'))
   enemySelectionRequest.value = null
   enemySelectionHints.value = []
+  resetEnemySelectionTheme()
 }
 
 function handleEnemyHoverStart(enemyId: number): void {
@@ -408,6 +413,10 @@ function cancelEnemySelectionInternal(reason?: string): void {
 function handleEnemySelectionCanceled(): void {
   cancelEnemySelectionInternal('敵選択がキャンセルされました')
   handAreaRef.value?.cancelSelection()
+}
+
+function resetEnemySelectionTheme(): void {
+  enemySelectionTheme.value = 'default'
 }
 
 function handleHandPlayCard(payload: { cardId: number; operations: CardOperation[] }): void {
@@ -584,6 +593,7 @@ function resetUiStateAfterTimelineChange(): void {
   hideDescriptionOverlay()
   hoveredEnemyId.value = null
   enemySelectionHints.value = []
+  resetEnemySelectionTheme()
   latestStageEvent.value = null
   playerDamageOutcomes.value = []
   currentAnimationId.value = null
@@ -763,57 +773,22 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         </header>
 
         <div class="battle-body">
-          <main class="battle-main">
-            <BattleEnemyArea
-              :key="`enemy-area-${viewResetToken}`"
-              :snapshot="snapshot"
-              :is-initializing="isInitializing"
-              :stage-event="latestStageEvent"
-              :is-selecting-enemy="isSelectingEnemy"
-              :hovered-enemy-id="hoveredEnemyId"
-              :selection-hints="enemySelectionHints"
-              @hover-start="handleEnemyHoverStart"
-              @hover-end="handleEnemyHoverEnd"
-              @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
-              @cancel-selection="handleEnemySelectionCanceled"
-            />
-
-            <BattleHandArea
-              :key="`hand-area-${viewResetToken}`"
-              ref="handAreaRef"
-              :snapshot="snapshot"
-              :hovered-enemy-id="hoveredEnemyId"
-              :is-initializing="isInitializing"
-              :stage-event="latestStageEvent"
-              :is-player-turn="isPlayerTurn"
-              :is-input-locked="isInputLocked"
-              :view-manager="viewManager"
-              :request-enemy-target="requestEnemyTarget"
-              :cancel-enemy-selection="cancelEnemySelectionInternal"
-              @play-card="handleHandPlayCard"
-              @update-footer="handleHandFooterUpdate"
-              @reset-footer="handleHandFooterReset"
-              @error="handleHandError"
-              @hide-overlay="handleHandHideOverlay"
-              @show-enemy-selection-hints="handleEnemySelectionHints"
-              @clear-enemy-selection-hints="handleClearEnemySelectionHints"
-            />
-          </main>
-
           <aside class="battle-sidebar">
             <div class="portrait">
-              <img
-                :src="portraitSrc"
-                alt="聖女の立ち絵"
-                class="portrait-image"
-                decoding="async"
-              />
-              <DamageEffects
-                :key="`player-damage-${viewResetToken}`"
-                ref="playerDamageEffectsRef"
-                class="damage-overlay damage-overlay--player"
-                :outcomes="playerDamageOutcomes"
-              />
+              <PlayerImageComponent
+                :key="`player-image-${viewResetToken}`"
+                :current-hp="playerHpGauge.current"
+                :max-hp="playerHpGauge.max"
+                :is-selecting-enemy="isSelectingEnemy"
+                :selection-theme="enemySelectionTheme"
+              >
+                <DamageEffects
+                  :key="`player-damage-${viewResetToken}`"
+                  ref="playerDamageEffectsRef"
+                  class="damage-overlay damage-overlay--player"
+                  :outcomes="playerDamageOutcomes"
+                />
+              </PlayerImageComponent>
               <div class="sidebar-overlay-container">
                 <div class="sidebar-overlay">
                   <HpGauge :current="playerHpGauge.current" :max="playerHpGauge.max" />
@@ -842,6 +817,44 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
               </div>
             </div>
           </aside>
+
+          <main class="battle-main">
+            <BattleEnemyArea
+              :key="`enemy-area-${viewResetToken}`"
+              :snapshot="snapshot"
+              :is-initializing="isInitializing"
+              :stage-event="latestStageEvent"
+              :is-selecting-enemy="isSelectingEnemy"
+              :hovered-enemy-id="hoveredEnemyId"
+              :selection-hints="enemySelectionHints"
+              :selection-theme="enemySelectionTheme"
+              @hover-start="handleEnemyHoverStart"
+              @hover-end="handleEnemyHoverEnd"
+              @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
+              @cancel-selection="handleEnemySelectionCanceled"
+            />
+
+            <BattleHandArea
+              :key="`hand-area-${viewResetToken}`"
+              ref="handAreaRef"
+              :snapshot="snapshot"
+              :hovered-enemy-id="hoveredEnemyId"
+              :is-initializing="isInitializing"
+              :stage-event="latestStageEvent"
+              :is-player-turn="isPlayerTurn"
+              :is-input-locked="isInputLocked"
+              :view-manager="viewManager"
+              :request-enemy-target="requestEnemyTarget"
+              :cancel-enemy-selection="cancelEnemySelectionInternal"
+              @play-card="handleHandPlayCard"
+              @update-footer="handleHandFooterUpdate"
+              @reset-footer="handleHandFooterReset"
+              @error="handleHandError"
+              @hide-overlay="handleHandHideOverlay"
+              @show-enemy-selection-hints="handleEnemySelectionHints"
+              @clear-enemy-selection-hints="handleClearEnemySelectionHints"
+            />
+          </main>
           <transition name="result-overlay">
             <div v-if="isGameOver" class="battle-gameover-overlay">
               <div class="gameover-text">GAME OVER</div>
@@ -1043,7 +1056,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 
 .battle-body {
   display: grid;
-  grid-template-columns: 1fr 200px;
+  grid-template-columns: 240px 1fr;
   flex: 1;
   min-height: 0;
   position: relative;
@@ -1186,7 +1199,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   display: flex;
   padding: 0;
   background: #0e0e18;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   box-sizing: border-box;
   min-height: 0;
   overflow: hidden;
