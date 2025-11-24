@@ -573,10 +573,17 @@ export class ViewManager {
     const clampedIndex =
       this.operationLog.length === 0 ? -1 : Math.min(targetOperationIndex, this.operationLog.length - 1)
 
+    // handleRunnerEntryAppended からのアニメーション生成を一時停止し、
+    // 過去ログの再適用中に二重で Script が積まれないようにする。
     this.suspendRunnerEvents = true
     try {
       const battle = this.createBattle()
       const actionLog = new ActionLog()
+
+      // プレイヤー操作適用時、ViewManager.applyOperation → executeOperationWithRunner から runner.playCard / runner.endPlayerTurn などを呼びます。initializeIfNeeded でも battle-start / start-player-turn を差し込むために同じ経路を通ります。
+      // これらのメソッドは最終的に appendEntry を呼び、ActionLog に BattleActionLogEntry を push し、スナップショットやアニメーション情報を付与します。
+      // appendEntry の末尾で emitEntryAppended が実行され、onEntryAppended(entry, { index, waitMs, groupId }) を即時呼び出します。waitMs はアニメーションの想定待ち時間を計算した値です。
+      // ViewManager 側では rebuildFromOperations 中に suspendRunnerEvents = true にしているため、リプレイ中に渡ってきた呼び出しは handleRunnerEntryAppended 内で無視されます。リプレイ完了後や通常プレイ時はそのまま受け取り、アニメーションスクリプトを組み立ててキューに積みます。
       const runner = new OperationRunner({
         battle,
         actionLog,
@@ -790,6 +797,9 @@ export class ViewManager {
     return `animation-script-${this.animationSequence}`
   }
 
+  // OperationRunner が ActionLog にエントリを追記した瞬間に呼ばれる。
+  // rebuildFromOperations で初期化した onEntryAppended からの唯一の入口で、
+  // ここで UI 向けの解決情報と AnimationScript を生成しキューへ積む。
   private handleRunnerEntryAppended(entry: BattleActionLogEntry, _context: EntryAppendContext): void {
     if (this.suspendRunnerEvents) {
       return
@@ -832,7 +842,7 @@ export class ViewManager {
     this.stateValue.playback.status = 'playing'
     this.setInputLock(true)
     this.notifyState()
-    this.logAnimationDebug('エントリ再生開始', {
+    this.logAnimationDebug('startNextAnimation', {
       entryIndex: next.entryIndex,
       entryType: next.metadata?.entryType ?? 'unknown',
       commandCount: next.commands.length,

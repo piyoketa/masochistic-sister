@@ -166,53 +166,53 @@ export class OperationRunner {
   }
 
   private appendEntry(entry: BattleActionLogEntry, options?: AppendOptions): number {
-    let index = -1
-    const needsBeforeSnapshot = entry.type === 'play-card'
-    const snapshotBefore = needsBeforeSnapshot ? this.battle.captureFullSnapshot() : undefined
+    let index = -1 // ActionLog 上の挿入位置を初期化
+    const needsBeforeSnapshot = entry.type === 'play-card' // play-card の場合のみ前スナップショットが必要
+    const snapshotBefore = needsBeforeSnapshot ? this.battle.captureFullSnapshot() : undefined // 前スナップショットを取得
     try {
-      index = this.actionLog.push(entry)
-      this.battle.executeActionLog(this.actionLog, index)
+      index = this.actionLog.push(entry) // ActionLog にエントリを追記してインデックスを得る
+      this.battle.executeActionLog(this.actionLog, index) // 追記したエントリを Battle に適用して状態を進める
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      throw new OperationRunnableError(message, { actionEntry: entry, cause: error })
+      const message = error instanceof Error ? error.message : String(error) // 例外メッセージを整形
+      throw new OperationRunnableError(message, { actionEntry: entry, cause: error }) // 実行文脈付き例外で上位に通知
     }
 
-    const appendedEntry = this.actionLog.at(index)
-    const snapshotAfter = this.battle.captureFullSnapshot()
-    const entrySnapshotOverride = this.battle.consumeEntrySnapshotOverride()
+    const appendedEntry = this.actionLog.at(index) // 直近に追加されたエントリを再取得
+    const snapshotAfter = this.battle.captureFullSnapshot() // 適用後のフルスナップショットを取得
+    const entrySnapshotOverride = this.battle.consumeEntrySnapshotOverride() // Battle 側が指示したスナップショット差し替えを取得
 
-    const drainedEvents = this.drainAnimationEvents()
+    const drainedEvents = this.drainAnimationEvents() // Battle が蓄えた演出イベントを回収
 
-    if (appendedEntry) {
-      if (appendedEntry.type === 'enemy-act') {
-        const summary = this.pendingEnemyActSummaries.shift()
-        const summarySnapshot = summary?.snapshotAfter ?? entrySnapshotOverride ?? snapshotAfter.snapshot
-        const clonedSnapshot = this.cloneBattleSnapshot(summarySnapshot)
-        appendedEntry.postEntrySnapshot = clonedSnapshot
-        this.attachEnemyActAnimations(appendedEntry, clonedSnapshot, drainedEvents, summary)
-      } else {
-        const baseSnapshot = entrySnapshotOverride ?? snapshotAfter.snapshot
-        const clonedSnapshot = this.cloneBattleSnapshot(baseSnapshot)
-        appendedEntry.postEntrySnapshot = clonedSnapshot
-        if (appendedEntry.type === 'play-card' && snapshotBefore) {
-          this.attachPlayCardAnimations(appendedEntry, snapshotBefore.snapshot, clonedSnapshot, drainedEvents)
-        } else {
-          this.attachSimpleEntryAnimation(appendedEntry, clonedSnapshot, drainedEvents)
+    if (appendedEntry) { // エントリが存在する場合のみ後続処理
+      if (appendedEntry.type === 'enemy-act') { // 敵行動エントリ専用の処理
+        const summary = this.pendingEnemyActSummaries.shift() // 事前に蓄えた行動サマリを取得
+        const summarySnapshot = summary?.snapshotAfter ?? entrySnapshotOverride ?? snapshotAfter.snapshot // スナップショットの決定順を定義
+        const clonedSnapshot = this.cloneBattleSnapshot(summarySnapshot) // UI に渡す用にディープコピー
+        appendedEntry.postEntrySnapshot = clonedSnapshot // エントリに結果スナップショットを紐付け
+        this.attachEnemyActAnimations(appendedEntry, clonedSnapshot, drainedEvents, summary) // 敵行動用のアニメーション指示を付与
+      } else { // それ以外のエントリ共通処理
+        const baseSnapshot = entrySnapshotOverride ?? snapshotAfter.snapshot // スナップショット基準を決定
+        const clonedSnapshot = this.cloneBattleSnapshot(baseSnapshot) // UI 用にコピー
+        appendedEntry.postEntrySnapshot = clonedSnapshot // 結果スナップショットを付与
+        if (appendedEntry.type === 'play-card' && snapshotBefore) { // カードプレイ時のみ前後比較付き演出を付ける
+          this.attachPlayCardAnimations(appendedEntry, snapshotBefore.snapshot, clonedSnapshot, drainedEvents) // カード演出を付与
+        } else { // シンプルなエントリは単純演出を付与
+          this.attachSimpleEntryAnimation(appendedEntry, clonedSnapshot, drainedEvents) // 基本的な演出を付与
         }
       }
     }
 
-    this.emitEntryAppended(entry, index)
+    this.emitEntryAppended(entry, index) // ActionLog 追記を外部へ通知（ViewManager などが受信）
 
-    this.appendImmediateEnemyActEntries()
+    this.appendImmediateEnemyActEntries() // 連鎖して追加すべき敵行動エントリを即時差し込む
 
-    if (!options?.suppressFlush) {
-      this.flushResolvedEvents()
-      this.flushStateEvents()
-      this.appendBattleOutcomeIfNeeded()
+    if (!options?.suppressFlush) { // flush を抑制しない場合
+      this.flushResolvedEvents() // 確定した演出イベントを ActionLog に反映
+      this.flushStateEvents() // 状態カード等の演出イベントを反映
+      this.appendBattleOutcomeIfNeeded() // 勝敗が決まっていればエントリを追加
     }
 
-    return index
+    return index // 最終的な ActionLog インデックスを返す
   }
 
   private drainAnimationEvents(): DrainedAnimationEvents {
