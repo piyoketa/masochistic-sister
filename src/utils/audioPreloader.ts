@@ -11,7 +11,12 @@ export interface AudioAsset {
   src: string
 }
 
-const loadedAudios = new Map<string, HTMLAudioElement>()
+type LoadedAudioEntry = {
+  element: HTMLAudioElement
+  objectUrl?: string
+}
+
+const loadedAudios = new Map<string, LoadedAudioEntry>()
 
 export interface AudioPreloadReport {
   id: string
@@ -23,24 +28,45 @@ export async function preloadAudioAssets(assets: AudioAsset[]): Promise<AudioPre
   await Promise.all(
     assets.map(async (asset) => {
       if (loadedAudios.has(asset.id)) {
-        reports.push({ id: asset.id, element: loadedAudios.get(asset.id)! })
+        reports.push({ id: asset.id, element: loadedAudios.get(asset.id)!.element })
         return
       }
-      const audio = new Audio(asset.src)
-      audio.preload = 'auto'
-      const decodable = audio as HTMLAudioElement & { decode?: () => Promise<void> }
       try {
+        // ネットワーク経由で取得し、オブジェクトURL化してキャッシュすることで
+        // cloneNode してもネットワークを叩かずメモリ上のデータを再利用できる。
+        const response = await fetch(asset.src)
+        if (!response.ok) {
+          throw new Error(`Failed to preload audio: ${asset.src} (${response.status})`)
+        }
+        const blob = await response.blob()
+        const objectUrl = URL.createObjectURL(blob)
+        const audio = new Audio(objectUrl)
+        audio.preload = 'auto'
+        const decodable = audio as HTMLAudioElement & { decode?: () => Promise<void> }
         await decodable.decode?.()
-      } catch {
-        // ブラウザによって decode が存在しないため無視
+        loadedAudios.set(asset.id, { element: audio, objectUrl })
+        reports.push({ id: asset.id, element: audio })
+      } catch (error) {
+        // フェッチに失敗した場合は従来どおり直接パスを使うが、decode の有無は環境依存。
+        const fallback = new Audio(asset.src)
+        fallback.preload = 'auto'
+        const decodable = fallback as HTMLAudioElement & { decode?: () => Promise<void> }
+        try {
+          await decodable.decode?.()
+        } catch {
+          // decode が存在しない場合は無視
+        }
+        loadedAudios.set(asset.id, { element: fallback })
+        reports.push({ id: asset.id, element: fallback })
+        if (import.meta.env?.DEV) {
+          console.warn('[audioPreloader] fetch failed, fallback to direct src', asset.src, error)
+        }
       }
-      loadedAudios.set(asset.id, audio)
-      reports.push({ id: asset.id, element: audio })
     }),
   )
   return reports
 }
 
 export function getPreloadedAudio(id: string): HTMLAudioElement | undefined {
-  return loadedAudios.get(id)
+  return loadedAudios.get(id)?.element
 }

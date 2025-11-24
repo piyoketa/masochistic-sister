@@ -10,7 +10,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { getPreloadedAudio, preloadAudioAssets } from '@/utils/audioPreloader'
-import { damageSoundAssets, resolveDamageSound, resolveDefaultSound } from '@/utils/damageSounds'
+import { resolveDamageSound, resolveDefaultSound } from '@/utils/damageSounds'
+import { DAMAGE_EFFECT_AUDIO_ASSETS } from '@/assets/preloadManifest'
 
 const AUDIO_SUPPORTED = typeof window !== 'undefined' && typeof window.Audio === 'function'
 const debugEnv =
@@ -62,6 +63,7 @@ async function ensureAudioPreloaded(): Promise<void> {
     return
   }
   if (preloadState.value === 'ready' || preloadState.value === 'loading') {
+    console.info('[DamageEffects] ensureAudioPreloaded skip', preloadState.value)
     if (debugEnabled.value) {
       console.info('[DamageEffects] preload skipped, state=', preloadState.value)
     }
@@ -69,12 +71,14 @@ async function ensureAudioPreloaded(): Promise<void> {
   }
   try {
     preloadState.value = 'loading'
+    console.info('[DamageEffects] preload start (damage sounds)')
     if (debugEnabled.value) {
       console.info('[DamageEffects] preload start')
     }
-    await preloadAudioAssets(damageSoundAssets)
+    await preloadAudioAssets([...DAMAGE_EFFECT_AUDIO_ASSETS])
     preloadState.value = 'ready'
     preloadError.value = null
+    console.info('[DamageEffects] preload ready (audio assets pre-decoded)')
     if (debugEnabled.value) {
       console.info('[DamageEffects] preload ready')
     }
@@ -122,6 +126,12 @@ function playHitSound(outcome: DamageOutcome): void {
   }
 
   const baseAudio = getPreloadedAudio(sound.id)
+  console.info('[DamageEffects] playHitSound resolved asset', {
+    id: sound.id,
+    src: sound.src,
+    preloaded: Boolean(baseAudio),
+    preloadState: preloadState.value,
+  })
   const audio = baseAudio ? (baseAudio.cloneNode(true) as HTMLAudioElement) : new Audio(sound.src)
   audio.volume = 0.8
   audio.addEventListener(
@@ -178,7 +188,20 @@ function scheduleRemoval(entryId: number, delay: number, totalEntries: number): 
 
 function play(): void {
   reset()
-  ensureAudioPreloaded().catch(() => {})
+  // 効果音がプリロード完了するまで待ってから再生を開始することで、
+  // 再生時に new Audio で都度ロードされるのを防ぐ。
+  ensureAudioPreloaded()
+    .catch(() => {
+      // プリロード失敗時も演出を継続し、再生側でフォールバックさせる
+      console.warn('[DamageEffects] preload failed, fallback to on-demand audio load')
+    })
+    .finally(() => {
+      console.info('[DamageEffects] startSequence after preload', preloadState.value)
+      startSequence()
+    })
+}
+
+function startSequence(): void {
   if (props.outcomes.length === 0) {
     emit('sequence-end')
     return

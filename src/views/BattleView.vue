@@ -41,10 +41,12 @@ import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
+import CutInOverlay from '@/components/CutInOverlay.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
 import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
 import { useAudioCue } from '@/composables/useAudioCue'
+import { BATTLE_AUDIO_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 
 declare global {
   interface Window {
@@ -103,12 +105,14 @@ const hoveredEnemyId = ref<number | null>(null)
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
 const playerDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
+const cutInRef = ref<InstanceType<typeof CutInOverlay> | null>(null)
 const playerDamageOutcomes = ref<DamageOutcome[]>([])
+const currentCutInSrc = ref<string>(BATTLE_CUTIN_ASSETS[0] ?? '/assets/cut_ins/MasochisticAuraAction.png')
 const manaPulseKey = ref(0)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const viewResetToken = ref(0)
 const playerRelics = DEFAULT_PLAYER_RELICS
-const { play: playAudioCueInternal } = useAudioCue()
+const { play: playAudioCueInternal, preload: preloadAudioCue } = useAudioCue()
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
@@ -126,6 +130,61 @@ const descriptionOverlayStyle = computed(() => {
     top: `${offsetY}px`,
   }
 })
+
+let battleAssetPreloadPromise: Promise<void> | null = null
+
+function preloadBattleAssets(): Promise<void> {
+  if (battleAssetPreloadPromise) {
+    return battleAssetPreloadPromise
+  }
+  battleAssetPreloadPromise = Promise.allSettled([
+    preloadAudioAssetsFromManifest(),
+    preloadCutInImagesFromManifest(),
+  ]).then(() => undefined)
+  return battleAssetPreloadPromise
+}
+
+function preloadAudioAssetsFromManifest(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return Promise.resolve()
+  }
+  BATTLE_AUDIO_ASSETS.forEach((soundId) => preloadAudioCue(soundId))
+  return Promise.resolve()
+}
+
+function preloadCutInImagesFromManifest(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return Promise.resolve()
+  }
+  const unique = new Set(BATTLE_CUTIN_ASSETS)
+  const tasks = Array.from(unique).map(
+    (src) =>
+      new Promise<void>((resolve, reject) => {
+        const normalized = normalizeCutInPath(src)
+        const img = new Image()
+        img.src = normalized
+        if (img.complete) {
+          resolve()
+          return
+        }
+        img.onload = () => resolve()
+        img.onerror = (event) => reject(event instanceof ErrorEvent ? event.error : event)
+      }),
+  )
+  return Promise.allSettled(tasks).then(() => undefined)
+}
+
+function normalizeCutInPath(src: string): string {
+  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+  const normalizeBase = base.endsWith('/') ? base.slice(0, -1) : base
+  if (/^https?:\/\//i.test(src)) {
+    return src
+  }
+  if (src.startsWith('/')) {
+    return `${normalizeBase}${src}`
+  }
+  return `${normalizeBase}/${src.replace(/^\/+/, '')}`
+}
 
 function clearErrorOverlayTimer(): void {
   if (!errorOverlayTimer) {
@@ -172,6 +231,11 @@ function handleManagerEvent(event: ViewManagerEvent) {
 subscriptions.push(viewManager.subscribe(handleManagerEvent))
 
 onMounted(() => {
+  preloadBattleAssets().catch((error) => {
+    if (import.meta.env.DEV) {
+      console.warn('[BattleView] preloadBattleAssets failed', error)
+    }
+  })
   viewManager
     .initialize()
     .catch((error) => {
@@ -233,6 +297,8 @@ watch(
       manaPulseKey.value += 1
     } else if (metadata?.stage === 'audio') {
       handleAudioStage(metadata)
+    } else if (metadata?.stage === 'cutin') {
+      await handleCutInStage(metadata)
     }
   },
 )
@@ -277,7 +343,16 @@ function handleAudioStage(metadata: Extract<StageEventMetadata, { stage: 'audio'
   }
   playAudioCue(soundId)
 }
+
 async function handleCutInStage(metadata: Extract<StageEventMetadata, { stage: 'cutin' }> | undefined) {
+  const src = metadata?.src
+  if (!src) {
+    return
+  }
+  currentCutInSrc.value = src
+  await nextTick()
+  cutInRef.value?.play()
+}
 
 function playAudioCue(soundId: string): void {
   if (!soundId) {
@@ -632,6 +707,12 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
             {{ errorMessage }}
           </div>
         </transition>
+        <CutInOverlay
+          :key="`battle-cutin-${viewResetToken}`"
+          ref="cutInRef"
+          class="battle-cutin-overlay"
+          :src="currentCutInSrc"
+        />
         <header class="battle-header">
           <div class="header-relics">
             <span class="relic-label">レリック</span>
@@ -807,6 +888,13 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   border-radius: 0;
   border: none;
   overflow: hidden;
+}
+
+.battle-cutin-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
 }
 
 .battle-error-overlay {
