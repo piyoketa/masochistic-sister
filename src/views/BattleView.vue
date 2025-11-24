@@ -44,6 +44,7 @@ import DamageEffects from '@/components/DamageEffects.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
 import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
+import { useAudioCue } from '@/composables/useAudioCue'
 
 declare global {
   interface Window {
@@ -107,6 +108,7 @@ const manaPulseKey = ref(0)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const viewResetToken = ref(0)
 const playerRelics = DEFAULT_PLAYER_RELICS
+const { play: playAudioCueInternal } = useAudioCue()
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
@@ -280,10 +282,8 @@ function playAudioCue(soundId: string): void {
   if (!soundId) {
     return
   }
-  if (typeof window !== 'undefined') {
-    // eslint-disable-next-line no-console
-    console.info('[AudioStage] 効果音を再生します', soundId)
-  }
+  // 実際に効果音を再生する。useAudioCue 側で window 非存在時は何もしないためここではガード不要。
+  playAudioCueInternal(soundId)
 }
 
 function resolveEnemySelection(enemyId: number): void {
@@ -438,7 +438,11 @@ async function ensureEntryDuration(script: AnimationScript, startedAt: number): 
 }
 
 async function executeCommand(command: AnimationCommand): Promise<void> {
-  console.log('executeCommand:', command)
+  // アニメーションデバッグ時のみ詳細ログを出す。通常プレイではコンソールを汚さない。
+  if (animationDebugLoggingEnabled && typeof console !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.log('[AnimationDebug] executeCommand', command)
+  }
   switch (command.type) {
     case 'stage-event':
       latestStageEvent.value = {

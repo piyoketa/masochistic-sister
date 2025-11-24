@@ -82,12 +82,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       case 'memory-card':
         void handleCreateStateCardStage(metadata, false)
         break
-      case 'audio':
-        handleAudioStage(metadata)
-        break
-      case 'already-acted-enemy':
-        handleAlreadyActedStage(metadata)
-        break
       default:
         break
     }
@@ -174,14 +168,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         logHandStageDebug('card-create pending', { cardId, simpleMode })
       }
     })
-  }
-
-  function handleAudioStage(_metadata: AudioStageMetadata): void {
-    // 音声の再生は BattleView 側で完結するため、手札エリアでは実質処理なし
-  }
-
-  function handleAlreadyActedStage(_metadata: AlreadyActedStageMetadata): void {
-    // 行動済み敵のハイライトも EnemyArea 側で表現するため、ここでは何もしない
   }
 
   function handleCardTrashStage(metadata: CardTrashStageMetadata): void {

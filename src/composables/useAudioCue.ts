@@ -74,16 +74,19 @@ export function useAudioCue() {
 }
 
 function normalizeSoundPath(soundId: string): string {
+  // Vite の base パス（例: GitHub Pages のサブディレクトリ配信）でも動くよう、常に BASE_URL を起点にする。
+  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+  const normalizeBase = base.endsWith('/') ? base.slice(0, -1) : base
   if (/^https?:\/\//i.test(soundId)) {
     return soundId
   }
   if (soundId.startsWith('/')) {
-    return soundId
+    return `${normalizeBase}${soundId}`
   }
-  if (soundId.startsWith('sounds/')) {
-    return `/${soundId}`
-  }
-  return `/sounds/${soundId.replace(/^\/+/, '')}`
+  const relativePath = soundId.startsWith('sounds/')
+    ? soundId
+    : `sounds/${soundId.replace(/^\/+/, '')}`
+  return `${normalizeBase}/${relativePath}`
 }
 
 function ensureAudioElement(soundId: string): HTMLAudioElement | null {
