@@ -33,7 +33,6 @@ const props = defineProps<{
   snapshot: BattleSnapshot | undefined
   hoveredEnemyId: number | null
   isInitializing: boolean
-  errorMessage: string | null
   isPlayerTurn: boolean
   isInputLocked: boolean
   viewManager: ViewManager
@@ -113,7 +112,7 @@ watch(
   (ids) => markCardsVisible(ids),
 )
 
-const { handOverflowOverlayMessage, dispose: disposeStageEvents } = useHandStageEvents({
+const { dispose: disposeStageEvents } = useHandStageEvents({
   stageEvent: () => props.stageEvent,
   snapshot: () => props.snapshot,
   cardTitleMap,
@@ -121,6 +120,7 @@ const { handOverflowOverlayMessage, dispose: disposeStageEvents } = useHandStage
   startDeckDrawAnimation,
   startCardCreateAnimation,
   startCardRemovalAnimation,
+  notifyError: (message: string) => emit('error', message),
 })
 
 watch(
@@ -180,10 +180,7 @@ defineExpose({ resetSelection, cancelSelection })
 
 <template>
   <section ref="handZoneRef" class="hand-zone" @contextmenu="handleHandContextMenu">
-    <div v-if="errorMessage" class="zone-message zone-message--error">
-      {{ errorMessage }}
-    </div>
-    <div v-else-if="isInitializing" class="zone-message">カード情報を読み込み中...</div>
+    <div v-if="isInitializing" class="zone-message">カード情報を読み込み中...</div>
     <div v-else-if="!hasCards" class="zone-message">手札は空です</div>
     <transition name="hand-selection-banner">
       <div v-if="handSelectionRequest" class="hand-selection-banner">
@@ -250,11 +247,6 @@ defineExpose({ resetSelection, cancelSelection })
         :overlay="overlay"
       />
     </div>
-    <transition name="hand-overlay">
-      <div v-if="handOverflowOverlayMessage" class="hand-overlay">
-        {{ handOverflowOverlayMessage }}
-      </div>
-    </transition>
     <div ref="discardCounterRef" class="hand-counter hand-counter--discard hand-pile">
       <span class="pile-icon pile-icon--discard" aria-hidden="true"></span>
       <span class="pile-label">捨て札 {{ discardCount }}</span>
@@ -333,32 +325,6 @@ defineExpose({ resetSelection, cancelSelection })
 
 .hand-pile--hand .pile-label {
   font-weight: 600;
-}
-
-.hand-overlay {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  padding: 16px 32px;
-  border-radius: 18px;
-  background: rgba(16, 16, 26, 0.86);
-  color: #fff7ea;
-  font-size: 18px;
-  letter-spacing: 0.08em;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
-}
-
-.hand-overlay-enter-active,
-.hand-overlay-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.hand-overlay-enter-from,
-.hand-overlay-leave-to {
-  opacity: 0;
 }
 
 .pile-icon {
@@ -475,12 +441,6 @@ defineExpose({ resetSelection, cancelSelection })
   color: #f5f0f7;
   font-size: 14px;
   letter-spacing: 0.08em;
-}
-
-.zone-message--error {
-  background: rgba(210, 48, 87, 0.18);
-  border: 1px solid rgba(210, 48, 87, 0.4);
-  color: #ff9fb3;
 }
 </style>
 <style scoped src="./BattleHandArea.animations.css"></style>

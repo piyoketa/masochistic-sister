@@ -33,7 +33,6 @@ interface EnemySelectionHint {
 const props = defineProps<{
   snapshot: BattleSnapshot | undefined
   isInitializing: boolean
-  errorMessage: string | null
   isSelectingEnemy: boolean
   hoveredEnemyId: number | null
   stageEvent: StageEventPayload | null
@@ -302,10 +301,7 @@ function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
 
 <template>
   <section class="enemy-zone">
-    <div v-if="errorMessage" class="zone-message zone-message--error">
-      {{ errorMessage }}
-    </div>
-    <div v-else-if="isInitializing" class="zone-message">読み込み中...</div>
+    <div v-if="isInitializing" class="zone-message">読み込み中...</div>
     <div v-else-if="!hasVisibleEnemies" class="zone-message">表示できる敵がありません</div>
     <TransitionGroup v-else name="enemy-card" tag="div" class="enemy-grid">
       <div
@@ -378,11 +374,5 @@ function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
   color: #f5f0f7;
   font-size: 14px;
   letter-spacing: 0.08em;
-}
-
-.zone-message--error {
-  background: rgba(210, 48, 87, 0.18);
-  border: 1px solid rgba(210, 48, 87, 0.4);
-  color: #ff9fb3;
 }
 </style>

@@ -62,6 +62,8 @@ type BattlePresetKey =
 
 type BattleViewProps = { viewManager?: ViewManager; preset?: BattlePresetKey; teamId?: string }
 
+const ERROR_OVERLAY_DURATION_MS = 2000
+
 const props = defineProps<BattleViewProps>()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -72,6 +74,7 @@ const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
 const managerState = viewManager.state
 const errorMessage = ref<string | null>(null)
 const currentAnimationId = ref<string | null>(null)
+let errorOverlayTimer: number | null = null
 
 const subscriptions: Array<() => void> = []
 
@@ -122,10 +125,33 @@ const descriptionOverlayStyle = computed(() => {
   }
 })
 
+function clearErrorOverlayTimer(): void {
+  if (!errorOverlayTimer) {
+    return
+  }
+  window.clearTimeout(errorOverlayTimer)
+  errorOverlayTimer = null
+}
+
+// 致命的でないエラーは UI を塞がずに短時間だけ通知したいので、オーバーレイ表示に統一する。
+function showTransientError(message: string): void {
+  errorMessage.value = message
+  clearErrorOverlayTimer()
+  errorOverlayTimer = window.setTimeout(() => {
+    errorMessage.value = null
+    errorOverlayTimer = null
+  }, ERROR_OVERLAY_DURATION_MS)
+}
+
+function resetErrorMessage(): void {
+  clearErrorOverlayTimer()
+  errorMessage.value = null
+}
+
 function handleManagerEvent(event: ViewManagerEvent) {
   switch (event.type) {
     case 'error':
-      errorMessage.value = event.error.message
+      showTransientError(event.error.message)
       break
     case 'animation-start':
       currentAnimationId.value = event.script.id
@@ -147,7 +173,8 @@ onMounted(() => {
   viewManager
     .initialize()
     .catch((error) => {
-      errorMessage.value = error instanceof Error ? error.message : String(error)
+      const message = error instanceof Error ? error.message : String(error)
+      showTransientError(message)
     })
 })
 
@@ -157,6 +184,7 @@ onUnmounted(() => {
     window.clearTimeout(relicFooterTimer)
     relicFooterTimer = null
   }
+  clearErrorOverlayTimer()
 })
 
 const portraitSrc = '/assets/characters/sister.png'
@@ -308,7 +336,7 @@ function handleEnemySelectionCanceled(): void {
 
 function handleHandPlayCard(payload: { cardId: number; operations: CardOperation[] }): void {
   viewManager.queuePlayerAction({ type: 'play-card', cardId: payload.cardId, operations: payload.operations })
-  errorMessage.value = null
+  resetErrorMessage()
 }
 
 function handleHandFooterUpdate(message: string): void {
@@ -324,7 +352,7 @@ function handleHandError(message: string): void {
     footerMessage.value = defaultFooterMessage
     return
   }
-  errorMessage.value = message
+  showTransientError(message)
 }
 
 function handleHandHideOverlay(): void {
@@ -385,13 +413,13 @@ async function runAnimation(script: AnimationScript): Promise<void> {
     await ensureEntryDuration(script, startedAt)
   } catch (unknownError) {
     const error = unknownError instanceof Error ? unknownError : new Error(String(unknownError))
-    errorMessage.value = error.message
+    showTransientError(error.message)
   } finally {
     try {
       viewManager.completeCurrentAnimation(script.id)
     } catch (unknownError) {
       const error = unknownError instanceof Error ? unknownError : new Error(String(unknownError))
-      errorMessage.value = error.message
+      showTransientError(error.message)
     }
   }
 }
@@ -479,7 +507,7 @@ function resetUiStateAfterTimelineChange(): void {
   latestStageEvent.value = null
   playerDamageOutcomes.value = []
   currentAnimationId.value = null
-  errorMessage.value = null
+  resetErrorMessage()
   footerMessage.value = defaultFooterMessage
   viewResetToken.value += 1
 }
@@ -594,6 +622,11 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   <GameLayout>
     <template #window>
       <div ref="layoutRef" class="battle-layout" @contextmenu.prevent="handleContextMenu">
+        <transition name="battle-error">
+          <div v-if="errorMessage" class="battle-error-overlay" role="alert">
+            {{ errorMessage }}
+          </div>
+        </transition>
         <header class="battle-header">
           <div class="header-relics">
             <span class="relic-label">レリック</span>
@@ -649,7 +682,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
               :key="`enemy-area-${viewResetToken}`"
               :snapshot="snapshot"
               :is-initializing="isInitializing"
-              :error-message="errorMessage"
               :stage-event="latestStageEvent"
               :is-selecting-enemy="isSelectingEnemy"
               :hovered-enemy-id="hoveredEnemyId"
@@ -666,7 +698,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
               :snapshot="snapshot"
               :hovered-enemy-id="hoveredEnemyId"
               :is-initializing="isInitializing"
-              :error-message="errorMessage"
               :stage-event="latestStageEvent"
               :is-player-turn="isPlayerTurn"
               :is-input-locked="isInputLocked"
@@ -771,6 +802,33 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   border-radius: 0;
   border: none;
   overflow: hidden;
+}
+
+.battle-error-overlay {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(210, 48, 87, 0.92);
+  color: #fff7fb;
+  box-shadow: 0 12px 28px rgba(210, 48, 87, 0.35);
+  letter-spacing: 0.04em;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 24;
+}
+
+.battle-error-enter-active,
+.battle-error-leave-active {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.battle-error-enter-from,
+.battle-error-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -8px);
 }
 
 .battle-header {
@@ -1232,21 +1290,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
-}
-
-.zone-message {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 16px;
-  letter-spacing: 0.04em;
-  text-align: center;
-}
-
-.zone-message--error {
-  color: #ff9a9a;
 }
 
 .battle-footer {
