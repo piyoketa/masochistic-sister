@@ -47,6 +47,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
 import { useAudioCue } from '@/composables/useAudioCue'
 import { BATTLE_AUDIO_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
+import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import PlayerImageComponent from '@/components/PlayerImageComponent.vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
@@ -275,6 +276,14 @@ const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
 }))
+const previousSnapshot = ref<typeof snapshot.value | null>(null)
+watch(
+  () => snapshot.value,
+  (next, prev) => {
+    previousSnapshot.value = prev ?? null
+  },
+  { flush: 'sync' },
+)
 
 watch(
   () => latestStageEvent.value,
@@ -744,33 +753,18 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         <div class="battle-body">
           <aside class="battle-sidebar">
             <div class="portrait">
-              <PlayerImageComponent
-                :key="`player-image-${viewResetToken}`"
-                :current-hp="playerHpGauge.current"
-                :max-hp="playerHpGauge.max"
+              <PlayerCardComponent
+                :key="`player-card-${viewResetToken}`"
+                :pre-hp="
+                  previousSnapshot?.player
+                    ? { current: previousSnapshot.player.currentHp, max: previousSnapshot.player.maxHp }
+                    : { current: playerHpGauge.current, max: playerHpGauge.max }
+                "
+                :post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
+                :outcomes="playerDamageOutcomes"
                 :is-selecting-enemy="isSelectingEnemy"
                 :selection-theme="enemySelectionTheme"
-              >
-                <DamageEffects
-                  :key="`player-damage-${viewResetToken}`"
-                  ref="playerDamageEffectsRef"
-                  class="damage-overlay damage-overlay--player"
-                  :outcomes="playerDamageOutcomes"
-                />
-              </PlayerImageComponent>
-              <div class="sidebar-overlay-container">
-                <div class="sidebar-overlay">
-                  <HpGauge :current="playerHpGauge.current" :max="playerHpGauge.max" />
-                  <div class="overlay-row" style="display: none;">
-                    <span class="overlay-label">プレイヤー</span>
-                    <span class="overlay-value">{{ playerName }}</span>
-                  </div>
-                  <div v-if="pendingInputCount > 0" class="overlay-row">
-                    <span class="overlay-label">操作キュー</span>
-                    <span class="overlay-value">{{ pendingInputCount }}</span>
-                  </div>
-                </div>
-              </div>
+              />
             </div>
           </aside>
 
@@ -1172,6 +1166,8 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 .battle-sidebar {
   position: relative;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   padding: 0;
   /* background: #0e0e18; */
   border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -1183,8 +1179,10 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 .portrait {
   flex: 1;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start;
+  padding: 12px 12px 0 12px;
   position: relative;
   overflow: visible;
 }

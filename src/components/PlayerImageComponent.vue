@@ -20,6 +20,7 @@ const props = defineProps<{
   maxHp: number
   isSelectingEnemy?: boolean
   selectionTheme?: EnemySelectionTheme
+  faceDiffOverride?: 'damaged' | null
 }>()
 
 const PLAYER_FRAME_VALUES = [
@@ -28,10 +29,14 @@ const PLAYER_FRAME_VALUES = [
 
 const preloadedSrcs = new Set<string>()
 let preloadPromise: Promise<void> | null = null
-const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme, string>> = {
+const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme | 'damaged', string>> = {
   arcane: buildFaceDiffSrc('ArcaneCardTag.png'),
   sacred: buildFaceDiffSrc('SacredCardTag.png'),
+  damaged: buildFaceDiffSrc('damaged.png'),
 }
+const debugEnabled =
+  (typeof import.meta !== 'undefined' && import.meta.env?.DEV === true) ||
+  import.meta.env?.VITE_DEBUG_PLAYER_IMAGE === 'true'
 
 const resolvedImageSrc = computed(() => {
   const boundedHp = Math.max(0, Math.floor(props.currentHp ?? 0))
@@ -44,6 +49,10 @@ const resolvedImageSrc = computed(() => {
 })
 
 const faceDiffSrc = computed(() => {
+  if (props.faceDiffOverride === 'damaged') {
+    const damaged = FACE_DIFF_SOURCES.damaged
+    return damaged ?? null
+  }
   if (!props.isSelectingEnemy) {
     return null
   }
@@ -126,18 +135,43 @@ function preloadImage(src: string): Promise<void> {
     img.onerror = (event) => reject(event instanceof ErrorEvent ? event.error : event)
   })
 }
+
+function handleImageError(src: string): void {
+  if (!debugEnabled) {
+    return
+  }
+  // eslint-disable-next-line no-console
+  console.warn('[PlayerImageComponent] 画像の読み込みに失敗しました', src)
+}
+
+function handleImageLoad(src: string): void {
+  if (!debugEnabled) {
+    return
+  }
+  // eslint-disable-next-line no-console
+  console.info('[PlayerImageComponent] 画像を読み込みました', src)
+}
 </script>
 
 <template>
   <div class="player-image" :class="{ 'player-image--selecting': props.isSelectingEnemy }" :style="styleVars">
     <div class="player-image__frame">
-      <img class="player-image__img" :src="resolvedImageSrc" alt="聖女の立ち絵" decoding="async" />
+      <img
+        class="player-image__img"
+        :src="resolvedImageSrc"
+        alt="聖女の立ち絵"
+        decoding="async"
+        @load="handleImageLoad(resolvedImageSrc)"
+        @error="handleImageError(resolvedImageSrc)"
+      />
       <img
         v-if="faceDiffSrc"
         class="player-image__img player-image__img--face"
         :src="faceDiffSrc"
         alt="聖女の表情差分"
         decoding="async"
+        @load="handleImageLoad(faceDiffSrc)"
+        @error="handleImageError(faceDiffSrc)"
       />
       <div class="player-image__overlay">
         <slot />
@@ -163,7 +197,6 @@ function preloadImage(src: string): Promise<void> {
 }
 
 .player-image__frame {
-  /* クロップ枠をはみ出し許容の外側コンテナとは別に持つ */
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -178,7 +211,7 @@ function preloadImage(src: string): Promise<void> {
   object-fit: none;
   object-position: top left;
   transform-origin: top left;
-  transform: translate(-80px, -75px) scale(0.58);
+  transform: translate(-100px, -75px) scale(0.58);
   display: block;
   z-index: 1;
 }

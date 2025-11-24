@@ -29,6 +29,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'sequence-start'): void
   (event: 'damage-step', payload: { amount: number; index: number }): void
+  (event: 'damage-step-complete', payload: { amount: number; index: number }): void
   (event: 'sequence-end'): void
   (event: 'audio-ready-change', ready: boolean): void
 }>()
@@ -178,7 +179,12 @@ function playHitSound(outcome: DamageOutcome): void {
 
 function scheduleRemoval(entryId: number, delay: number, totalEntries: number): void {
   const timer = window.setTimeout(() => {
+    const removed = entries.value.find((entry) => entry.id === entryId)
     entries.value = entries.value.filter((entry) => entry.id !== entryId)
+    if (removed) {
+      const removedIndex = Math.max(0, displayedCount - entries.value.length - 1)
+      emit('damage-step-complete', { amount: removed.amount, index: removedIndex })
+    }
     if (entries.value.length === 0 && displayedCount >= totalEntries) {
       emit('sequence-end')
     }
