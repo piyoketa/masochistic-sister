@@ -92,14 +92,14 @@ describe('BattleHandArea: Animation batches と手札演出の同期', () => {
     expect(floatingCard.exists()).toBe(true)
   })
 
-  it('ACTION_LOG_ENTRY_24_PLAY_CARD の card-eliminate stage で砂化オーバーレイが展開される', async () => {
+  it('ACTION_LOG_ENTRY_24_PLAY_CARD の card-eliminate stage でカードが砂化しつつ即座に退場する', async () => {
     /**
      * - 対象エントリ: ACTION_LOG_ENTRY_24_PLAY_CARD
      * - 対象stage: batch player-action, stage:'card-eliminate', cardIds:[8], cardTitles:['疼き']
-     * - 期待: HandCardEliminateOverlay が生成され、`.hand-eliminate-overlay` が active 状態になる。
-     * - 想定課題: handZone / discard 要素の Rect が取得できない場合 overlay が spawn できず、カード除外が
-     *            画面フィードバック無しになる懸念がある。
+     * - 期待: 手札カードの DOM が即座に取り除かれ、粒子演出（card-ash-overlay）のみが残る。フローティングカードは生成されない。
+     * - 想定課題: handZone / discard 要素の Rect が取得できない場合でも card-ash-overlay のみで最低限のフィードバックを担保する。
      */
+    vi.useFakeTimers()
     const acheCard = createNamedCard(8, '疼き')
     const wrapper = mountHandArea([acheCard])
     const eliminateEvent = buildStageEventFromEntry(ACTION_LOG_ENTRY_24_PLAY_CARD, 'card-eliminate')
@@ -107,9 +107,14 @@ describe('BattleHandArea: Animation batches と手札演出の同期', () => {
     await flushAll(wrapper)
 
     await waitForAnimationFrame()
-    const overlay = wrapper.find('.hand-eliminate-overlay')
-    expect(overlay.exists()).toBe(true)
-    expect(overlay.classes()).toContain('hand-eliminate-overlay--active')
+    expect(wrapper.find('.hand-floating-card--eliminate').exists()).toBe(false)
+
+    const cardWrapper = wrapper.find(`[data-card-id="${acheCard.id ?? ''}"]`)
+    expect(cardWrapper.exists()).toBe(false)
+    await vi.advanceTimersByTimeAsync(900)
+    await flushAll(wrapper)
+    expect(wrapper.find(`[data-card-id="${acheCard.id ?? ''}"]`).exists()).toBe(false)
+    vi.useRealTimers()
   })
 
   it('ACTION_LOG_ENTRY_04_ENEMY_ACT の memory-card stage で生成カードが hand-card-wrapper--create を経由する', async () => {

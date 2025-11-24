@@ -27,7 +27,6 @@ import { useHandPresentation, type HandEntry } from './composables/useHandPresen
 import { useHandInteraction } from './composables/useHandInteraction'
 import { useHandAnimations } from './composables/useHandAnimations'
 import { useHandStageEvents } from './composables/useHandStageEvents'
-import HandCardEliminateOverlay from './HandCardEliminateOverlay.vue'
 
 const props = defineProps<{
   snapshot: BattleSnapshot | undefined
@@ -91,7 +90,6 @@ const {
   cleanup: cleanupAnimations,
   markCardsVisible,
   isCardInCreateAnimation,
-  eliminateOverlays,
 } = useHandAnimations({
   handZoneRef,
   deckCounterRef,
@@ -239,13 +237,6 @@ defineExpose({ resetSelection, cancelSelection })
           variant="frame"
         />
       </div>
-    </div>
-    <div class="hand-eliminate-overlay-layer" aria-hidden="true">
-      <HandCardEliminateOverlay
-        v-for="overlay in eliminateOverlays"
-        :key="overlay.id"
-        :overlay="overlay"
-      />
     </div>
     <div ref="discardCounterRef" class="hand-counter hand-counter--discard hand-pile">
       <span class="pile-icon pile-icon--discard" aria-hidden="true"></span>

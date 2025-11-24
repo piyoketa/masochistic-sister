@@ -40,43 +40,6 @@
   pointer-events: none;
 }
 
-.hand-eliminate-overlay-layer {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 20;
-}
-
-.hand-eliminate-overlay {
-  position: absolute;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 80ms ease;
-}
-
-.hand-eliminate-overlay--active {
-  opacity: 1;
-}
-
-.hand-eliminate-overlay :deep(.action-card-shell) {
-  position: relative;
-  overflow: visible;
-  width: 120px;
-  height: 170px;
-  -webkit-mask-image: linear-gradient(to top, transparent 0 32%, rgba(0, 0, 0, 0.95) 38% 100%);
-  mask-image: linear-gradient(to top, transparent 0 32%, rgba(0, 0, 0, 0.95) 38% 100%);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 260%;
-  mask-size: 100% 260%;
-  -webkit-mask-position: 50% 0%;
-  mask-position: 50% 0%;
-  animation:
-    hand-card-ash-mask var(--hand-ash-duration) var(--hand-ash-ease) forwards,
-    hand-card-ash-fade var(--hand-ash-duration) var(--hand-ash-ease) forwards;
-  will-change: mask-position, opacity, transform;
-}
-
 .hand-card-wrapper--create {
   pointer-events: none;
 }
@@ -99,28 +62,6 @@
   opacity: 0;
   animation: hand-card-create-halo 1s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
-}
-
-@keyframes hand-card-ash-mask {
-  0% {
-    -webkit-mask-position: 50% 0%;
-    mask-position: 50% 0%;
-  }
-  100% {
-    -webkit-mask-position: 50% 120%;
-    mask-position: 50% 120%;
-  }
-}
-
-@keyframes hand-card-ash-fade {
-  0% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(2px);
-  }
 }
 
 @keyframes hand-card-create-halo {

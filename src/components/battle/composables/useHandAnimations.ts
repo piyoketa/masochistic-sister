@@ -1,6 +1,5 @@
 import { reactive, ref, type Ref, type ComponentPublicInstance } from 'vue'
 import type { CardInfo, CardType } from '@/types/battle'
-import { useCardEliminateOverlays } from './useCardEliminateOverlays'
 import { spawnCardAshOverlay } from '@/utils/cardAshOverlay'
 import type { HandEntry } from './useHandPresentation'
 
@@ -78,7 +77,6 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     { travelTimer?: TimerId; cleanupTimer?: TimerId }
   >()
   const activeCreateCardIds = ref<Set<number>>(new Set())
-  const { overlays: eliminateOverlays, spawnOverlay: spawnEliminateOverlay } = useCardEliminateOverlays()
 
   function ensureVisibleCardId(cardId: number | undefined): void {
     if (cardId === undefined || hiddenCardIds.value.has(cardId) || visibleCardIds.value.has(cardId)) {
@@ -289,17 +287,11 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
       }
       const sourceRect = cardElement.getBoundingClientRect()
       hideCard(cardId)
-      spawnEliminateOverlay({
-        entry: {
-          info: entry?.info ?? buildFallbackCardInfo(cardId, config.fallbackTitle ?? 'カード'),
-          operations: entry?.operations ?? [],
-          affordable: entry?.affordable ?? true,
-        },
-        rect: sourceRect,
-        duration: CARD_ELIMINATE_DURATION_MS,
-        particleColor:
-          CARD_TYPE_PARTICLE_COLORS[entry?.info.type ?? 'skill'] ?? DEFAULT_PARTICLE_COLOR,
-        animationPreset: ASH_SHORT_PRESET,
+      cardElement.remove()
+      cardElementRefs.delete(cardId)
+      spawnCardAshOverlay(sourceRect, {
+        ...ASH_SHORT_PRESET,
+        particleColor: CARD_TYPE_PARTICLE_COLORS[entry?.info.type ?? 'skill'] ?? DEFAULT_PARTICLE_COLOR,
       })
       return
     }
@@ -558,7 +550,6 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     visibleCardIds,
     markCardsVisible,
     isCardInCreateAnimation,
-    eliminateOverlays,
   }
 }
 
