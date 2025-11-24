@@ -424,42 +424,96 @@ export class ViewManager {
     const base =
       baseSnapshot ??
       fallback ??
-      ((patch.changes as BattleSnapshot | undefined) ??
-        (() => {
-          throw new Error('Patch から再構築できませんでした')
-        })())
-    const target = this.cloneSnapshot(base)
-    this.mergeSnapshotPatch(target as Record<string, unknown>, patch.changes as Record<string, unknown>)
-    return target
+      ((patch.changes as BattleSnapshot | undefined) ?? (() => {
+        throw new Error('Patch から再構築できませんでした')
+      })())
+    // ルートは新しいオブジェクトを返しつつ、未変更の深い参照は極力共有してクラスインスタンスを温存する
+    return this.mergeSnapshotPatch(base, patch.changes as Record<string, unknown>, { forceNewObject: true }) as BattleSnapshot
   }
 
-  private mergeSnapshotPatch(target: Record<string, unknown>, patch: Record<string, unknown>): void {
-    Object.entries(patch).forEach(([key, value]) => {
-      if (value === undefined) {
-        return
+  private mergeSnapshotPatch(
+    baseValue: unknown,
+    patch: Record<string, unknown>,
+    options: { forceNewObject?: boolean } = {},
+  ): unknown {
+    const forceNewObject = options.forceNewObject === true
+    const baseObject = this.isPlainObject(baseValue) ? (baseValue as Record<string, unknown>) : {}
+    const result: Record<string, unknown> = forceNewObject ? {} : { ...baseObject }
+    let changed = forceNewObject
+
+    for (const [key, patchValue] of Object.entries(patch)) {
+      if (patchValue === undefined) {
+        continue
       }
-      if (Array.isArray(value)) {
-        target[key] = this.cloneValue(value)
-        return
+      const mergedValue = this.mergeNode(baseObject[key], patchValue)
+      if (mergedValue !== baseObject[key]) {
+        changed = true
       }
-      if (value !== null && typeof value === 'object') {
-        const current = target[key]
-        if (!current || typeof current !== 'object') {
-          target[key] = {}
+      result[key] = mergedValue
+    }
+
+    if (forceNewObject) {
+      for (const [key, baseChild] of Object.entries(baseObject)) {
+        if (!(key in patch)) {
+          result[key] = baseChild
         }
-        this.mergeSnapshotPatch(target[key] as Record<string, unknown>, value as Record<string, unknown>)
-        return
       }
-      target[key] = value
-    })
+    }
+
+    return changed ? result : baseValue
   }
 
-  private cloneSnapshot(snapshot: BattleSnapshot): BattleSnapshot {
-    return this.cloneValue(snapshot)
+  private mergeNode(baseValue: unknown, patchValue: unknown): unknown {
+    if (patchValue === undefined) {
+      return baseValue
+    }
+
+    if (Array.isArray(patchValue)) {
+      // 配列は差し替え。要素は参照を維持するため浅いコピーに留める
+      return patchValue.slice()
+    }
+
+    if (!this.isPlainObject(patchValue)) {
+      // プリミティブやクラスインスタンスはそのまま置き換える。プロトタイプを保持するためクローンしない
+      return patchValue
+    }
+
+    if (!this.isPlainObject(baseValue)) {
+      // ベースがプレーンでなければ、新規オブジェクトを構築
+      const merged: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(patchValue)) {
+        if (value !== undefined) {
+          merged[key] = this.mergeNode(undefined, value)
+        }
+      }
+      return merged
+    }
+
+    // プレーンオブジェクト同士をマージ。変更が無ければ元参照を返す
+    const baseObject = baseValue as Record<string, unknown>
+    const result: Record<string, unknown> = { ...baseObject }
+    let changed = false
+
+    for (const [key, value] of Object.entries(patchValue)) {
+      if (value === undefined) {
+        continue
+      }
+      const mergedValue = this.mergeNode(baseObject[key], value)
+      if (mergedValue !== baseObject[key]) {
+        changed = true
+      }
+      result[key] = mergedValue
+    }
+
+    return changed ? result : baseValue
   }
 
-  private cloneValue<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value)) as T
+  private isPlainObject(value: unknown): value is Record<string, unknown> {
+    if (value === null || typeof value !== 'object') {
+      return false
+    }
+    const proto = Object.getPrototypeOf(value)
+    return proto === Object.prototype || proto === null
   }
 
   completeCurrentAnimation(scriptId: string): void {
@@ -905,6 +959,15 @@ export class ViewManager {
 
     batches.forEach((batch) => {
       const instructions = batch.instructions ?? []
+      instructions.forEach((instruction) => {
+        commands.push({
+          type: 'stage-event',
+          batchId: batch.batchId,
+          entryType: entry.type,
+          metadata: this.buildStageMetadata(instruction),
+          resolvedEntry,
+        })
+      })
       if (batch.patch) {
         commands.push({
           type: 'apply-patch',
@@ -917,16 +980,7 @@ export class ViewManager {
           type: 'update-snapshot',
           snapshot: batch.snapshot,
         })
-      }
-      instructions.forEach((instruction) => {
-        commands.push({
-          type: 'stage-event',
-          batchId: batch.batchId,
-          entryType: entry.type,
-          metadata: this.buildStageMetadata(instruction),
-          resolvedEntry,
-        })
-      })
+      }      
       const batchWait = instructions.reduce((max, instruction) => Math.max(max, Math.max(0, instruction.waitMs)), 0)
       if (batchWait > 0) {
         commands.push({ type: 'wait', duration: batchWait })

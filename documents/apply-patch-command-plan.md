@@ -30,7 +30,7 @@ updated: 2025-11-16
 
 ## 不明点・要確認事項
 - `apply-patch` 処理後に `nextTick` を入れるのが適切か（`update-snapshot` と揃える案を推奨）。 -> `update-snapshot` と揃える
-- `apply-patch` と `update-snapshot` を同一分岐にまとめるか、個別に書くかのスタイル。推奨は共通処理で明確化。 -> 共通処理で明確化
+- `apply-patch` と `update-snapshot` を同一分岐にまとめるか、個別に書くかのスタイル。推奨は共通処理で明確化。 -> 個別に書く。apply-patchは、あくまでsnapshotの一部分のみを更新するため、指定のない要素は更新しないように気を付ける必要がある。
 
 ## 推奨選択肢
 - `nextTick` を挟む（推奨）: 手札差分ウォッチャ等の描画依存処理が安定する。

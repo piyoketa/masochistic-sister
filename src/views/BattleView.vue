@@ -410,6 +410,7 @@ async function ensureEntryDuration(script: AnimationScript, startedAt: number): 
 }
 
 async function executeCommand(command: AnimationCommand): Promise<void> {
+  console.log('executeCommand:', command)
   switch (command.type) {
     case 'stage-event':
       latestStageEvent.value = {
@@ -431,6 +432,12 @@ async function executeCommand(command: AnimationCommand): Promise<void> {
       await waitFor(duration)
       break
     }
+    case 'apply-patch':
+      // apply-patch は snapshot の一部のみを差し替えるので、欠けているプロパティは ViewManager 側で既存値を保持する。
+      // 描画系のwatcherを確実に発火させるため update-snapshot と同様に nextTick を待つ。
+      viewManager.applyAnimationCommand(command)
+      await nextTick()
+      break
     case 'update-snapshot':
     case 'set-input-lock':
       viewManager.applyAnimationCommand(command)
