@@ -1,4 +1,4 @@
-import type { Action, ActionContext, ActionAudioCue } from './Action'
+import type { Action, ActionContext, ActionAudioCue, ActionCutInCue } from './Action'
 import type { CardTag } from './CardTag'
 import { CardCategoryTag } from './CardTag'
 import type { State } from './State'
@@ -207,6 +207,7 @@ export class Card {
     battle.recordPlayCardAnimationContext({
       cardId: this.id,
       audio: this.extractAudioCueFromContext(context),
+      cutin: this.extractCutInCueFromContext(context),
       cardTags: Array.isArray(context.metadata.cardTags)
         ? [...(context.metadata.cardTags as string[])]
         : undefined,
@@ -226,6 +227,22 @@ export class Card {
     }
     return {
       soundId: candidate.soundId,
+      waitMs: typeof candidate.waitMs === 'number' ? candidate.waitMs : undefined,
+      durationMs: typeof candidate.durationMs === 'number' ? candidate.durationMs : undefined,
+    }
+  }
+
+  private extractCutInCueFromContext(context: ActionContext): ActionCutInCue | undefined {
+    const metadata = context.metadata
+    if (!metadata || typeof metadata !== 'object') {
+      return undefined
+    }
+    const candidate = (metadata as { cutin?: ActionCutInCue | undefined }).cutin
+    if (!candidate || typeof candidate.src !== 'string' || candidate.src.length === 0) {
+      return undefined
+    }
+    return {
+      src: candidate.src,
       waitMs: typeof candidate.waitMs === 'number' ? candidate.waitMs : undefined,
       durationMs: typeof candidate.durationMs === 'number' ? candidate.durationMs : undefined,
     }

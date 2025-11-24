@@ -31,6 +31,7 @@
 | `enemy-highlight` | 行動中の敵カードを強調 | `enemy-act` |
 | `mana` | マナ加算/消費エフェクト | `player-event` (mana), `play-card` |
 | `audio` | 効果音の再生トリガー | `play-card`, `enemy-act`, サウンドイベント |
+| `cutin` | カットイン画像の再生トリガー | `play-card`（Action CutInCue） |
 | `turn-end` | プレイヤーターン終了状態 | `end-player-turn` |
 | `victory` / `gameover` | リザルトオーバーレイ | それぞれの終端エントリ |
 

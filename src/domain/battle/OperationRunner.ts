@@ -18,7 +18,7 @@ import type {
 } from './ActionLog'
 import { ActionLog } from './ActionLog'
 import type { Card } from '../entities/Card'
-import type { ActionAudioCue } from '../entities/Action'
+import type { ActionAudioCue, ActionCutInCue } from '../entities/Action'
 import type { DamageOutcome } from '../entities/Damages'
 
 export interface EntryAppendContext {
@@ -436,6 +436,9 @@ export class OperationRunner {
     if (context?.audio) {
       actionInstructions.push(this.buildAudioInstruction(context.audio))
     }
+    if (context?.cutin) {
+      actionInstructions.push(this.buildCutInInstruction(context.cutin))
+    }
 
     const damageInstruction = this.buildEnemyDamageInstruction(drainedEvents.damageEvents, cardId, cardTitle)
     if (damageInstruction) {
@@ -535,6 +538,21 @@ export class OperationRunner {
         stage: 'audio',
         soundId: audio.soundId,
         durationMs: audio.durationMs ?? audio.waitMs ?? 500,
+      },
+    }
+  }
+
+  private buildCutInInstruction(cutin: ActionCutInCue): AnimationInstruction {
+    if (!cutin.src) {
+      throw new Error('cutin instruction requires src')
+    }
+    const waitMs = Math.max(0, cutin.waitMs ?? 800)
+    return {
+      waitMs,
+      metadata: {
+        stage: 'cutin',
+        src: cutin.src,
+        durationMs: cutin.durationMs ?? cutin.waitMs ?? 800,
       },
     }
   }

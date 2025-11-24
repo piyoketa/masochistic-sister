@@ -4,7 +4,7 @@ import type { CardOperation } from '../entities/operations'
 import type { Player } from '../entities/Player'
 import type { Enemy, EnemyQueueSnapshot, EnemyStatus } from '../entities/Enemy'
 import type { EnemyTeam } from '../entities/EnemyTeam'
-import type { Action, ActionAudioCue, ActionContext } from '../entities/Action'
+import type { Action, ActionAudioCue, ActionContext, ActionCutInCue } from '../entities/Action'
 import type { State } from '../entities/State'
 import { Hand } from './Hand'
 import { Deck } from './Deck'
@@ -158,6 +158,7 @@ export interface DamageAnimationEvent {
 export interface PlayCardAnimationContext {
   cardId?: number
   audio?: ActionAudioCue
+  cutin?: ActionCutInCue
   cardTags?: string[]
 }
 
@@ -730,6 +731,7 @@ export class Battle {
     this.lastPlayCardAnimationContext = {
       cardId: context.cardId,
       audio: context.audio,
+      cutin: context.cutin,
       cardTags: context.cardTags ? [...context.cardTags] : undefined,
     }
   }

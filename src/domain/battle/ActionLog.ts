@@ -92,6 +92,7 @@ export type AnimationStageMetadata =
       damageOutcomes?: readonly DamageOutcome[]
     }
   | { stage: 'audio'; soundId: string; durationMs?: number }
+  | { stage: 'cutin'; src: string; durationMs?: number }
   | { stage: 'defeat'; defeatedEnemyIds: number[]; cardId?: number; cardTitle?: string }
 
 export type EnemyActEntryMetadata = Omit<EnemyTurnActionSummary, 'snapshotAfter'> & {

@@ -277,6 +277,7 @@ function handleAudioStage(metadata: Extract<StageEventMetadata, { stage: 'audio'
   }
   playAudioCue(soundId)
 }
+async function handleCutInStage(metadata: Extract<StageEventMetadata, { stage: 'cutin' }> | undefined) {
 
 function playAudioCue(soundId: string): void {
   if (!soundId) {

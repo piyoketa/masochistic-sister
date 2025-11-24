@@ -11,10 +11,13 @@ Skill.ts の責務:
 - `ActionBase.ts` の `Action` クラス: 継承して `type` を `'skill'` に固定し、その他の機能はすべて親へ委譲する。
 - `BaseActionProps`: 親クラスへ渡す初期化引数を流用し、スキル固有の追加プロパティは持たない（`SkillProps` は現在のところ `BaseActionProps` そのもの）。
 */
-import type { BaseActionProps } from './ActionBase'
+import type { ActionCutInCue, BaseActionProps } from './ActionBase'
 import { Action } from './ActionBase'
 
-export interface SkillProps extends BaseActionProps {}
+// cutInCue は BaseActionProps に含まれるが、スキル文脈で明示しておく
+export interface SkillProps extends BaseActionProps {
+  cutInCue?: ActionCutInCue
+}
 
 export abstract class Skill extends Action {
   protected constructor(props: SkillProps) {

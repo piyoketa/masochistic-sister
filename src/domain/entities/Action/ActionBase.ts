@@ -43,22 +43,31 @@ export interface ActionAudioCue {
   durationMs?: number
 }
 
+export interface ActionCutInCue {
+  src: string
+  waitMs?: number
+  durationMs?: number
+}
+
 export interface BaseActionProps {
   name: string
   cardDefinition: CardDefinition
   gainStates?: Array<() => State>
   audioCue?: ActionAudioCue
+  cutInCue?: ActionCutInCue
 }
 
 export abstract class Action {
   protected readonly props: BaseActionProps
   private readonly gainStateFactories: Array<() => State>
   private readonly audioCue?: ActionAudioCue
+  private readonly cutInCue?: ActionCutInCue
 
   protected constructor(props: BaseActionProps) {
     this.props = props
     this.gainStateFactories = props.gainStates ? [...props.gainStates] : []
     this.audioCue = props.audioCue
+    this.cutInCue = props.cutInCue
   }
 
   abstract get type(): ActionType
@@ -128,6 +137,13 @@ export abstract class Action {
         audio: { ...audioCue },
       }
     }
+    const cutInCue = this.getCutInCue(context)
+    if (cutInCue) {
+      context.metadata = {
+        ...(context.metadata ?? {}),
+        cutin: { ...cutInCue },
+      }
+    }
 
     return context
   }
@@ -167,6 +183,10 @@ export abstract class Action {
 
   protected getAudioCue(_context: ActionContext): ActionAudioCue | undefined {
     return this.audioCue
+  }
+
+  protected getCutInCue(_context: ActionContext): ActionCutInCue | undefined {
+    return this.cutInCue
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
