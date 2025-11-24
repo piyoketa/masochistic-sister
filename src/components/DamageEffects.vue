@@ -1,3 +1,11 @@
+<!--
+  Component: DamageEffects
+  責務: ダメージ演出の数字と効果音をまとめて再生し、表示タイミングを管理する。外部から渡された DamageOutcome 配列を順に処理し、視覚・聴覚的なフィードバックを提供する。
+  非責務: 戦闘ロジックの判断やダメージ計算の変更は行わない。DamageOutcome の生成やバリデーションは親側で完結させる。
+  主な通信相手とインターフェース:
+    - 親コンポーネント: props.outcomes(DamageOutcome[])を受け取り、emit で sequence-start / damage-step({amount:number,index:number}) / sequence-end / audio-ready-change(boolean) を通知する。DamageOutcome は effectType? と damage:number を含む値で、描画と効果音の決定に使う。類似する型として Battle 内部の Damages などがあるが、本コンポーネントでは描画に必要な最小限のみ参照し、状態遷移は扱わない。
+    - オーディオプリローダ: preloadAudioAssets / getPreloadedAudio を呼び出し、音声の準備状況を管理する。ここではプリロードの成否のみを扱い、実際の戦闘進行には影響を与えない。
+-->
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
@@ -267,7 +275,7 @@ onBeforeUnmount(() => reset())
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
-  font-size: 14px;
+  font-size: 21px;
   pointer-events: auto;
   z-index: 5;
 }
@@ -277,8 +285,8 @@ onBeforeUnmount(() => reset())
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
-  color: #ffdf85;
-  font-size: 32px;
+  color: #8b1c1c;
+  font-size: 48px;
   font-weight: 700;
   text-shadow:
     0 2px 6px rgba(0, 0, 0, 0.65),
@@ -298,7 +306,7 @@ onBeforeUnmount(() => reset())
   pointer-events: auto;
   max-height: 100px;
   overflow: auto;
-  font-size: 12px;
+  font-size: 18px;
   color: rgba(255, 255, 255, 0.75);
   text-align: left;
 }

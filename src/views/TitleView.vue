@@ -48,6 +48,11 @@ const demoLinks: LinkEntry[] = [
     to: '/demo/damage-effects',
   },
   {
+    label: 'Cut-in Demo',
+    description: 'カットイン画像の再生実験ページ',
+    to: '/demo/cut-in',
+  },
+  {
     label: 'ActionCard実験場',
     description: 'カード配色の比較実験ページ',
     to: '/lab/action-cards',

@@ -38,6 +38,11 @@ const router = createRouter({
       component: () => import('@/views/DamageEffectsDemoView.vue'),
     },
     {
+      path: '/demo/cut-in',
+      name: 'cut-in-demo',
+      component: () => import('@/views/CutInDemoView.vue'),
+    },
+    {
       path: '/deck',
       name: 'deck-view',
       component: () => import('@/views/DeckView.vue'),
