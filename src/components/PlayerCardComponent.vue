@@ -24,9 +24,7 @@ import PlayerImageComponent from '@/components/PlayerImageComponent.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
-const debugEnabled =
-  (typeof import.meta !== 'undefined' && import.meta.env?.DEV === true) ||
-  import.meta.env?.VITE_DEBUG_PLAYER_CARD === 'true'
+const debugEnabled = false;
 
 const props = withDefaults(
   defineProps<{

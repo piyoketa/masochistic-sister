@@ -14,8 +14,9 @@ env.WATCHPACK_POLLING = 'true'
 // env.VITE_DEBUG_ANIMATION_LOG = 'true'
 // env.VITE_DEBUG_CARD_ELIMINATE = 'true'
 // env.VITE_DEBUG_HAND_ANIMATION = 'true'
-// env.VITE_DEBUG_HAND_STAGE_EVENTS='true'
-// env.VITE_DEBUG_PLAYER_IMAGE='true'
+env.VITE_DEBUG_HAND_STAGE_EVENTS='false'
+env.VITE_DEBUG_PLAYER_IMAGE='false'
+env.VITE_DEBUG_PLAYER_CARDS='false'
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {
