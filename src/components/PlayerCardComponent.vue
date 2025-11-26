@@ -3,6 +3,7 @@ PlayerCardComponent の責務:
 - プレイヤー立ち絵・HPバー・ダメージ演出を一体化し、表示用HPの更新を一元管理する。
 - ダメージ演出(DamageEffects)の開始と完了に合わせて displayHp を制御し、HpGauge/PlayerImageComponent の表示を同期させる。
 - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。
+ - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。プレイヤー状態による差分も重ねる。
 
 非責務:
 - 戦闘ロジックやダメージ計算は扱わない。pre/post HP は親から渡される値を信頼する。
@@ -13,6 +14,7 @@ PlayerCardComponent の責務:
   - preHp / postHp: { current, max } 事前/適用後のHP。受傷アニメの開始値と終了値に利用する。
   - outcomes: DamageOutcome[] （DamageEffectsへそのまま渡す）
   - selectionTheme: 表情差分選択用
+  - states?: string[] プレイヤーに付与されている状態のID（差分表示用）
   - show: 表示の有無（外部リセット時の切替を許容）
 - emits: なし（内部で完結）
 -->
@@ -32,6 +34,7 @@ const props = withDefaults(
     postHp: { current: number; max: number }
     outcomes: DamageOutcome[]
     selectionTheme?: EnemySelectionTheme
+    states?: string[]
     show?: boolean
   }>(),
   {
@@ -43,7 +46,12 @@ const damageRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 const displayHp = reactive<{ current: number; max: number }>({ current: 0, max: 0 })
 const isTakingDamage = ref(false)
 
-const faceDiffOverride = computed(() => (isTakingDamage.value ? 'damaged' : null))
+const faceDiffOverride = computed<'damaged-arcane' | 'damaged-normal' | null>(() => {
+  if (!isTakingDamage.value) {
+    return null
+  }
+  return props.selectionTheme === 'arcane' ? 'damaged-arcane' : 'damaged-normal'
+})
 
 const baseHpStart = computed(() => sanitizeHp(props.preHp))
 const baseHpEnd = computed(() => sanitizeHp(props.postHp))
@@ -129,6 +137,7 @@ onMounted(() => {
         :current-hp="displayHp.current"
         :max-hp="displayHp.max"
         :selection-theme="selectionTheme"
+        :states="states"
         :face-diff-override="faceDiffOverride"
       >
       </PlayerImageComponent>

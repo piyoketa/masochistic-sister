@@ -48,7 +48,6 @@ import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
 import { useAudioCue } from '@/composables/useAudioCue'
 import { BATTLE_AUDIO_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
-import PlayerImageComponent from '@/components/PlayerImageComponent.vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
 declare global {
@@ -277,6 +276,17 @@ const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
 }))
+const playerStates = computed(() => {
+  const ids = new Set<string>()
+  const hand = snapshot.value?.hand ?? []
+  for (const card of hand) {
+    const stateId = (card as { state?: { id?: string } } | undefined)?.state?.id
+    if (stateId) {
+      ids.add(stateId)
+    }
+  }
+  return Array.from(ids)
+})
 const previousSnapshot = ref<typeof snapshot.value | null>(null)
 watch(
   () => snapshot.value,
@@ -772,6 +782,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
                 :post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
                 :outcomes="playerDamageOutcomes"
                 :selection-theme="enemySelectionTheme"
+                :states="playerStates"
               />
             </div>
           </aside>

@@ -2,13 +2,14 @@
 PlayerImageComponent の責務:
 - プレイヤーの現在HPに応じた立ち絵画像を表示し、TargetEnemyOperation 中は背景色をテーマ色（Arcane/Sacred/Default）で強調する。
 - 立ち絵画像をコンポーネント初期化時にプリロードし、以降の状態変化でリロードさせない。
+- プレイヤーの状態（腐食/鈍化など）や表情差分を重ねて表示する。指定された差分数だけ重ね描画する。
 
 責務ではないこと:
 - 戦闘ロジックやHP計算の決定は行わない（渡された currentHp/maxHp に従う）。
 - ダメージ演出の制御や操作受付は持たず、スロット経由で渡されたオーバーレイを重ねるだけに留める。
 
 主な通信相手とインターフェース:
-- BattleView: props で HP・選択状態・テーマ色を受け取り、背景色を同期する。ダメージ演出などは slot を通じて子要素として受ける。
+- BattleView / PlayerCardComponent: props で HP・選択状態・テーマ色・プレイヤー状態を受け取り、背景色と差分表示を同期する。ダメージ演出などは slot を通じて子要素として受ける。
 -->
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
@@ -20,19 +21,25 @@ const props = defineProps<{
   maxHp: number
   isSelectingEnemy?: boolean
   selectionTheme?: EnemySelectionTheme
-  faceDiffOverride?: 'damaged' | null
+  faceDiffOverride?: 'damaged-arcane' | 'damaged-normal' | null
+  states?: string[]
 }>()
 
 const PLAYER_FRAME_VALUES = [
-  0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100, 105, 110, 120, 130, 140, 145, 150,
+  0, 30, 60, 90, 120, 150,
 ]
 
 const preloadedSrcs = new Set<string>()
 let preloadPromise: Promise<void> | null = null
-const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme | 'damaged', string>> = {
+const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme | 'damaged-arcane' | 'damaged-normal', string>> = {
   arcane: buildFaceDiffSrc('ArcaneCardTag.png'),
   sacred: buildFaceDiffSrc('SacredCardTag.png'),
-  damaged: buildFaceDiffSrc('damaged.png'),
+  'damaged-arcane': buildFaceDiffSrc('damaged_ArcaneCardTag.png'),
+  'damaged-normal': buildFaceDiffSrc('damaged_normal.png'),
+}
+const STATUS_DIFF_SOURCES: Partial<Record<string, string>> = {
+  'state-corrosion': buildStatusDiffSrc('CorrosionState.png'),
+  'state-sticky': buildStatusDiffSrc('StickyState.png'),
 }
 const debugEnabled =
   (typeof import.meta !== 'undefined' && import.meta.env?.DEV === true) ||
@@ -53,8 +60,8 @@ const selectionThemeActive = computed(
 )
 
 const faceDiffSrc = computed(() => {
-  if (props.faceDiffOverride === 'damaged') {
-    const damaged = FACE_DIFF_SOURCES.damaged
+  if (props.faceDiffOverride) {
+    const damaged = FACE_DIFF_SOURCES[props.faceDiffOverride]
     return damaged ?? null
   }
   if (!selectionThemeActive.value) {
@@ -62,6 +69,18 @@ const faceDiffSrc = computed(() => {
   }
   const theme = props.selectionTheme ?? 'default'
   return FACE_DIFF_SOURCES[theme] ?? null
+})
+
+const statusDiffSrcList = computed(() => {
+  const ids = props.states ?? []
+  const collected: string[] = []
+  for (const id of ids) {
+    const src = STATUS_DIFF_SOURCES[id]
+    if (src) {
+      collected.push(src)
+    }
+  }
+  return collected
 })
 
 const styleVars = computed(() => {
@@ -76,6 +95,9 @@ const styleVars = computed(() => {
 onMounted(() => {
   void preloadAllFrames()
   Object.values(FACE_DIFF_SOURCES)
+    .filter(Boolean)
+    .forEach((src) => void preloadImage(src as string).catch(() => undefined))
+  Object.values(STATUS_DIFF_SOURCES)
     .filter(Boolean)
     .forEach((src) => void preloadImage(src as string).catch(() => undefined))
 })
@@ -100,6 +122,12 @@ function buildFaceDiffSrc(fileName: string): string {
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
   const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
   return `${normalizedBase}/assets/players/face_diffs/${fileName}`
+}
+
+function buildStatusDiffSrc(fileName: string): string {
+  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
+  return `${normalizedBase}/assets/players/diffs/${fileName}`
 }
 
 function preloadAllFrames(): Promise<void> {
@@ -177,6 +205,16 @@ function handleImageLoad(src: string): void {
         @load="handleImageLoad(faceDiffSrc)"
         @error="handleImageError(faceDiffSrc)"
       />
+      <img
+        v-for="src in statusDiffSrcList"
+        :key="src"
+        class="player-image__img player-image__img--status"
+        :src="src"
+        alt="状態異常の差分"
+        decoding="async"
+        @load="handleImageLoad(src)"
+        @error="handleImageError(src)"
+      />
       <div class="player-image__overlay">
         <slot />
       </div>
@@ -221,9 +259,14 @@ function handleImageLoad(src: string): void {
 }
 
 .player-image__img--face {
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
   /* ベース画像と同じクロップ・スケールで重ねる */
+}
+
+.player-image__img--status {
+  z-index: 2;
+  pointer-events: none;
 }
 
 .player-image__overlay {
