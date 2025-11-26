@@ -3,6 +3,8 @@ export type EnemySkill = {
   detail: string
 }
 
+export type EnemyStatus = 'active' | 'defeated' | 'escaped'
+
 export type EnemyTrait = {
   name: string
   detail: string
@@ -42,6 +44,7 @@ export type EnemyInfo = {
   id: number
   name: string
   image: string
+  status: EnemyStatus
   hp: {
     current: number
     max: number

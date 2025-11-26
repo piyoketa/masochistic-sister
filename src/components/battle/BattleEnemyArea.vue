@@ -19,7 +19,7 @@ import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
-import type { EnemyInfo, EnemyTrait, EnemyActionHint } from '@/types/battle'
+import type { EnemyInfo, EnemyTrait, EnemyActionHint, EnemyStatus } from '@/types/battle'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
@@ -50,7 +50,8 @@ const emit = defineEmits<{
 
 interface EnemySlot {
   id: number
-  isActive: boolean
+  status: EnemyStatus
+  isDefeated: boolean
   enemy?: EnemyInfo
 }
 
@@ -82,12 +83,16 @@ const enemySlots = computed<EnemySlot[]>(() => {
   }
 
   return current.enemies.map((enemySnapshot) => {
-    const isActive = enemySnapshot.status === 'active' && enemySnapshot.currentHp > 0
+    // 撃破直後に HP ゲージが 0 になる描画を出すため、escaped 以外は表示対象とする
+    const isDefeated = enemySnapshot.status === 'defeated'
+    const isEscaped = enemySnapshot.status === 'escaped'
+    const shouldDisplay = !isEscaped
     const baseNextActions: EnemyActionHint[] = enemySnapshot.nextActions ?? []
-    const enemyInfo = isActive
+    const enemyInfo = shouldDisplay
       ? {
           id: enemySnapshot.id,
           name: enemySnapshot.name,
+          status: enemySnapshot.status,
           image: enemySnapshot.image ?? '',
           hp: {
             current: enemySnapshot.currentHp,
@@ -100,16 +105,43 @@ const enemySlots = computed<EnemySlot[]>(() => {
       : undefined
     return {
       id: enemySnapshot.id,
-      isActive,
+      status: enemySnapshot.status,
+      isDefeated,
       enemy: enemyInfo,
     }
   })
 })
 
-const hasVisibleEnemies = computed(() => enemySlots.value.some((slot) => slot.isActive))
+const hasVisibleEnemies = computed(() => enemySlots.value.some((slot) => Boolean(slot.enemy)))
+
+const enemyStateMap = computed(() => {
+  const map = new Map<number, { status: EnemyStatus; currentHp: number }>()
+  const current = props.snapshot
+  if (!current) {
+    return map
+  }
+  current.enemies.forEach((enemySnapshot) => {
+    map.set(enemySnapshot.id, { status: enemySnapshot.status, currentHp: enemySnapshot.currentHp })
+  })
+  return map
+})
+
+function isEnemyAlive(enemyId: number | undefined): boolean {
+  if (enemyId === undefined) {
+    return false
+  }
+  const state = enemyStateMap.value.get(enemyId)
+  if (!state) {
+    return false
+  }
+  return state.status === 'active' && state.currentHp > 0
+}
 
 function isEnemySelectable(enemyId: number | undefined): boolean {
   if (!props.isSelectingEnemy || enemyId === undefined) {
+    return false
+  }
+  if (!isEnemyAlive(enemyId)) {
     return false
   }
   const hint = selectionHintMap.value.get(enemyId)
@@ -120,7 +152,7 @@ function isEnemySelectable(enemyId: number | undefined): boolean {
 }
 
 function blockedReason(enemyId: number | undefined): string | undefined {
-  if (!props.isSelectingEnemy || enemyId === undefined) {
+  if (!props.isSelectingEnemy || enemyId === undefined || !isEnemyAlive(enemyId)) {
     return undefined
   }
   const hint = selectionHintMap.value.get(enemyId)
@@ -281,11 +313,25 @@ function handleEnemyClick(enemy: EnemyInfo): void {
 }
 
 function handleContextMenu(enemy: EnemyInfo, event: MouseEvent): void {
-  if (!props.isSelectingEnemy) {
+  if (!props.isSelectingEnemy || !isEnemyAlive(enemy.id)) {
     return
   }
   event.preventDefault()
   emit('cancel-selection')
+}
+
+function handleHoverStart(enemyId: number): void {
+  if (!isEnemyAlive(enemyId)) {
+    return
+  }
+  emit('hover-start', enemyId)
+}
+
+function handleHoverEnd(enemyId: number): void {
+  if (!isEnemyAlive(enemyId)) {
+    return
+  }
+  emit('hover-end', enemyId)
 }
 
 function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
@@ -310,20 +356,23 @@ function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
         v-for="slot in enemySlots"
         :key="slot.id"
         class="enemy-slot"
-        :class="{ 'enemy-slot--spacer': !slot.isActive }"
+        :class="{
+          'enemy-slot--spacer': !slot.enemy,
+          'enemy-slot--defeated': slot.isDefeated,
+        }"
       >
         <EnemyCard
           v-if="slot.enemy"
           :ref="(el) => registerEnemyCardRef(slot.enemy!.id, el as EnemyCardInstance | null)"
           :enemy="slot.enemy"
           :selectable="isEnemySelectable(slot.enemy.id)"
-          :hovered="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
-          :selected="isSelectingEnemy && hoveredEnemyId === slot.enemy.id"
+          :hovered="isSelectingEnemy && isEnemySelectable(slot.enemy.id) && hoveredEnemyId === slot.enemy.id"
+          :selected="isSelectingEnemy && isEnemySelectable(slot.enemy.id) && hoveredEnemyId === slot.enemy.id"
           :selection-theme="props.selectionTheme"
           :acting="slot.enemy ? actingEnemyId === slot.enemy.id : false"
           :blocked-reason="blockedReason(slot.enemy.id)"
-          @mouseenter="() => emit('hover-start', slot.enemy!.id)"
-          @mouseleave="() => emit('hover-end', slot.enemy!.id)"
+          @mouseenter="() => handleHoverStart(slot.enemy!.id)"
+          @mouseleave="() => handleHoverEnd(slot.enemy!.id)"
           @click="() => handleEnemyClick(slot.enemy!)"
           @contextmenu.prevent="handleContextMenu(slot.enemy!, $event)"
         />
@@ -345,10 +394,17 @@ function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 16px;
+  margin-bottom: 60px;
 }
 
 .enemy-slot {
   min-height: 200px;
+}
+
+.enemy-slot--defeated {
+  opacity: 0.7;
+  filter: grayscale(0.4);
+  pointer-events: none;
 }
 
 .enemy-slot--spacer {

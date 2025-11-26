@@ -1077,6 +1077,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   flex: 1;
   min-height: 0;
   --enemy-zone-height: 320px;
+  --enemy-zone-offset: 0px; /* 敵ゾーンを画面上部に寄せてヘッダーとの距離を詰める視覚オフセット */
 }
 
 .enemy-area-wrapper {
@@ -1099,6 +1100,8 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   flex: 0 0 var(--enemy-zone-height);
   max-height: var(--enemy-zone-height);
   padding: 0 16px;
+  transform: translateY(var(--enemy-zone-offset));
+  margin-bottom: var(--enemy-zone-offset); /* オフセット分で下側に不要な余白が生まれないよう補正 */
 }
 
 :deep(.hand-zone) {
@@ -1396,7 +1399,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   position: absolute;
   left: 0;
   right: 0;
-  top: var(--enemy-zone-height);
+  top: calc(var(--enemy-zone-height) + var(--enemy-zone-offset)); /* 敵ゾーンの視覚位置に合わせてオーバーレイのアンカーも移動 */
   transform: translateY(-50%);
   pointer-events: none;
   z-index: 8;

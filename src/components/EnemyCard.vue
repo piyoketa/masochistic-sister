@@ -65,6 +65,7 @@ const classes = computed(() => ({
   'enemy-card--selected': props.selected ?? false,
   'enemy-card--hovered': props.hovered ?? false,
   'enemy-card--acting': props.acting ?? false,
+  'enemy-card--defeated': props.enemy.status === 'defeated',
 }))
 
 const selectionStyleVars = computed(() => {
@@ -263,6 +264,7 @@ defineExpose({ playDamage, playEnemySound })
     :class="classes"
     :style="selectionStyleVars"
     role="button"
+    :aria-disabled="!props.selectable || props.enemy.status === 'defeated' ? 'true' : undefined"
     @mouseenter="handleEnter"
     @mouseleave="handleLeave"
   >
@@ -364,6 +366,13 @@ defineExpose({ playDamage, playEnemySound })
   border-color: rgba(255, 214, 111, 0.85);
   box-shadow: 0 0 24px rgba(255, 214, 111, 0.55);
   animation: enemy-card-acting 0.6s ease;
+}
+
+.enemy-card--defeated {
+  opacity: 0.7;
+  filter: grayscale(0.45);
+  cursor: default;
+  pointer-events: none;
 }
 
 @keyframes enemy-card-acting {

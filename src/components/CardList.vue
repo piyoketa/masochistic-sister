@@ -15,6 +15,7 @@ CardList.vue の責務:
 import { computed, ref } from 'vue'
 import ActionCard from '@/components/ActionCard.vue'
 import type { CardInfo } from '@/types/battle'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
 const props = withDefaults(
   defineProps<{
@@ -97,6 +98,18 @@ function handleClick(card: CardInfo): void {
   emit('card-click', card)
 }
 
+function resolveSelectionTheme(card: CardInfo): EnemySelectionTheme {
+  const tags = card.categoryTags ?? []
+  const hasTag = (id: string) => tags.some((tag) => tag.id === id)
+  if (hasTag('tag-arcane')) {
+    return 'arcane'
+  }
+  if (hasTag('tag-sacred')) {
+    return 'sacred'
+  }
+  return 'default'
+}
+
 </script>
 
 <template>
@@ -118,6 +131,8 @@ function handleClick(card: CardInfo): void {
         >
           <ActionCard
             v-bind="card"
+            :selected="props.selectable && props.selectedCardId === card.id"
+            :selection-theme="resolveSelectionTheme(card)"
             :affordable="props.forcePlayable ? true : card.affordable"
             :disabled="props.forcePlayable ? false : card.disabled"
           />

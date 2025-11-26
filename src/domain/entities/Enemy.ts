@@ -186,7 +186,7 @@ export class Enemy {
     if (options?.battle && options.animation) {
       const event: DamageAnimationEvent = {
         ...options.animation,
-        targetId: options.animation.targetId ?? this.id,
+        targetId: options.animation.targetId ?? this.id ?? -1,
       }
       options.battle.recordDamageAnimation(event)
     }

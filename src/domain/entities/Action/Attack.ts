@@ -103,7 +103,7 @@ export abstract class Attack extends Action {
     const animationEvent =
       resolvedOutcomes.length > 0
         ? {
-            targetId: this.isPlayer(defender) ? undefined : defender.id,
+            targetId: this.isPlayer(defender) ? undefined : defender.id ?? -1,
             outcomes: resolvedOutcomes.map((outcome) => ({ ...outcome })),
             effectType: this.effectType,
             hitCount: this.baseProfile.count,

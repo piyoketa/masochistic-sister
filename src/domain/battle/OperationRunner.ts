@@ -1124,8 +1124,9 @@ export class OperationRunner {
     events: DamageAnimationEvent[],
     defaultStage: 'enemy-damage' | 'player-damage',
   ): 'enemy-damage' | 'player-damage' {
-    if (events.some((event) => event.targetId === undefined)) {
-      return 'player-damage'
+    // プレイヤー攻撃（enemy-damage）時は targetId が欠落していても敵ダメージとして扱う。
+    if (defaultStage === 'enemy-damage') {
+      return 'enemy-damage'
     }
     return defaultStage
   }
