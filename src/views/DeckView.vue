@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import GameLayout from '@/components/GameLayout.vue'
 import CardList from '@/components/CardList.vue'
 import type { CardInfo, CardTagInfo, DescriptionSegment } from '@/types/battle'
 import {
@@ -92,6 +91,11 @@ function handleCardClick(card: CardInfo): void {
   selectedCardId.value = selectedCardId.value === card.id ? null : card.id
   syncAttackEditor()
 }
+
+const playerHp = computed(() => ({
+  current: playerStore.hp,
+  max: playerStore.maxHp,
+}))
 
 function selectedIndex(): number {
   const id = selectedCardId.value
@@ -249,74 +253,78 @@ function isSupportedCardType(type: CardInfo['type']): boolean {
 </script>
 
 <template>
-  <GameLayout>
-    <template #window>
-      <section class="deck-view">
-        <header class="deck-header">
-          <h1>所持デッキ</h1>
-          <p>プレイヤーストアに保存されている現在のデッキを表示します。</p>
-        </header>
-        <div class="deck-actions">
-          <div class="add-row">
-            <label class="add-label" for="add-card">カードを追加</label>
-            <select id="add-card" v-model="newCardType" class="add-select">
-              <option v-for="opt in addableOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
-            <button type="button" class="deck-button" @click="addCard">追加</button>
-          </div>
-          <div class="edit-row">
-            <button
-              type="button"
-              class="deck-button"
-              :disabled="!selectedCardId"
-              @click="duplicateSelected"
-            >
-              選択カードを複製
-            </button>
-            <button
-              type="button"
-              class="deck-button deck-button--danger"
-              :disabled="!selectedCardId"
-              @click="removeSelected"
-            >
-              選択カードを削除
-            </button>
-          </div>
-        </div>
-        <CardList
-          :cards="deckCards"
-          title="デッキ"
-          :no-height-limit="true"
-          :force-playable="true"
-          selectable
-          :selected-card-id="selectedCardId"
-          @card-click="handleCardClick"
-        />
-        <div v-if="selectedCardIsAttack" class="attack-edit">
-          <h3>攻撃カード設定</h3>
-          <div class="attack-edit__row">
-            <label>攻撃力</label>
-            <input v-model.number="editAmount" type="number" min="0" />
-          </div>
-          <div class="attack-edit__row">
-            <label>攻撃回数</label>
-            <input v-model.number="editCount" type="number" min="1" />
-          </div>
-          <button type="button" class="deck-button" @click="applyAttackOverride" :disabled="!selectedCardIsAttack">
-            上記の値を適用
-          </button>
-        </div>
-      </section>
-    </template>
-  </GameLayout>
+  <div class="deck-view">
+    <header class="deck-header">
+      <h1>所持デッキ</h1>
+      <p>プレイヤーストアに保存されている現在のデッキを表示します。</p>
+      <div class="hp-summary">
+        <span class="hp-label">HP</span>
+        <span class="hp-value">{{ playerHp.current }} / {{ playerHp.max }}</span>
+      </div>
+    </header>
+    <div class="deck-actions">
+      <div class="add-row">
+        <label class="add-label" for="add-card">カードを追加</label>
+        <select id="add-card" v-model="newCardType" class="add-select">
+          <option v-for="opt in addableOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+        <button type="button" class="deck-button" @click="addCard">追加</button>
+      </div>
+      <div class="edit-row">
+        <button
+          type="button"
+          class="deck-button"
+          :disabled="!selectedCardId"
+          @click="duplicateSelected"
+        >
+          選択カードを複製
+        </button>
+        <button
+          type="button"
+          class="deck-button deck-button--danger"
+          :disabled="!selectedCardId"
+          @click="removeSelected"
+        >
+          選択カードを削除
+        </button>
+      </div>
+    </div>
+    <CardList
+      :cards="deckCards"
+      title="デッキ"
+      :no-height-limit="true"
+      :force-playable="true"
+      :gap="20"
+      selectable
+      :selected-card-id="selectedCardId"
+      @card-click="handleCardClick"
+    />
+    <div v-if="selectedCardIsAttack" class="attack-edit">
+      <h3>攻撃カード設定</h3>
+      <div class="attack-edit__row">
+        <label>攻撃力</label>
+        <input v-model.number="editAmount" type="number" min="0" />
+      </div>
+      <div class="attack-edit__row">
+        <label>攻撃回数</label>
+        <input v-model.number="editCount" type="number" min="1" />
+      </div>
+      <button type="button" class="deck-button" @click="applyAttackOverride" :disabled="!selectedCardIsAttack">
+        上記の値を適用
+      </button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
 .deck-view {
-  padding: 24px clamp(16px, 5vw, 48px);
+  min-height: 100vh;
+  padding: 40px clamp(20px, 5vw, 64px);
   color: #f4f1ff;
+  background: radial-gradient(circle at top, rgba(34, 28, 63, 0.95), rgba(9, 9, 14, 0.95));
+  box-sizing: border-box;
 }
 
 .deck-header {
@@ -333,6 +341,26 @@ function isSupportedCardType(type: CardInfo['type']): boolean {
   margin: 0;
   color: rgba(244, 241, 255, 0.78);
   font-size: 14px;
+}
+
+.hp-summary {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-weight: 700;
+}
+
+.hp-label {
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.hp-value {
+  color: #ffe27a;
 }
 
 .deck-actions {

@@ -188,12 +188,13 @@ function resolveSelectionTheme(card: CardInfo): EnemySelectionTheme {
 .card-list__grid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--card-list-gap, 16px);
+  margin: calc(var(--card-list-gap, 16px) / -2);
 }
 
 .card-list__item {
   width: 94px;
   flex: 0 0 auto;
+  margin: calc(var(--card-list-gap, 16px) / 2);
   transition: transform 120ms ease, filter 120ms ease;
 }
 
