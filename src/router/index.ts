@@ -48,6 +48,11 @@ const router = createRouter({
       component: () => import('@/views/DeckView.vue'),
     },
     {
+      path: '/field',
+      name: 'field-view',
+      component: () => import('@/views/FieldView.vue'),
+    },
+    {
       path: '/lab/action-cards',
       name: 'action-card-lab',
       component: () => import('@/views/ActionCardLabView.vue'),
@@ -71,6 +76,16 @@ const router = createRouter({
       path: '/lab/card-glow',
       name: 'card-glow-lab',
       component: () => import('@/views/CardGlowLabView.vue'),
+    },
+    {
+      path: '/demo/victory-reward',
+      name: 'victory-reward-demo',
+      component: () => import('@/views/VictoryRewardDemoView.vue'),
+    },
+    {
+      path: '/field/card-reward',
+      name: 'card-reward',
+      component: () => import('@/views/CardRewardView.vue'),
     },
   ],
 })

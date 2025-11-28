@@ -34,7 +34,7 @@ export class NonViolencePrayerAction extends Skill {
   }
 
   protected override description(): string {
-    return '手札のアタックを捨て札へ送り、失ったマナを取り戻す'
+    return '手札のアタックを捨て札へ送る。+1マナ'
   }
 
   protected override buildOperations(): Operation[] {

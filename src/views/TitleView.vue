@@ -77,6 +77,19 @@ const demoLinks: LinkEntry[] = [
     description: 'ActionCardの縁を光らせるアニメーション実験',
     to: '/lab/card-glow',
   },
+  {
+    label: 'Victory Reward Demo',
+    description: '勝利報酬モーダルのデモ',
+    to: '/demo/victory-reward',
+  },
+]
+
+const fieldLinks: LinkEntry[] = [
+  {
+    label: 'フィールドに出る',
+    description: '次の戦闘へ進むためのフィールド画面',
+    to: '/field',
+  },
 ]
 </script>
 
@@ -115,6 +128,18 @@ const demoLinks: LinkEntry[] = [
       <h2>敵チーム（/battle/[enemy-team-id]）</h2>
       <ul class="link-grid">
         <li v-for="link in enemyTeamLinks" :key="link.label">
+          <RouterLink class="link-card" :to="link.to">
+            <span class="link-label">{{ link.label }}</span>
+            <span class="link-description">{{ link.description }}</span>
+          </RouterLink>
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>フィールド</h2>
+      <ul class="link-grid">
+        <li v-for="link in fieldLinks" :key="link.label">
           <RouterLink class="link-card" :to="link.to">
             <span class="link-label">{{ link.label }}</span>
             <span class="link-description">{{ link.description }}</span>

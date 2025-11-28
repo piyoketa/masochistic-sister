@@ -15,6 +15,7 @@ PlayerCardComponent の責務:
   - outcomes: DamageOutcome[] （DamageEffectsへそのまま渡す）
   - selectionTheme: 表情差分選択用
   - states?: string[] プレイヤーに付与されている状態のID（差分表示用）
+  - showHpGauge?: HPゲージ表示を切り替えるフラグ（デフォルト true）
   - show: 表示の有無（外部リセット時の切替を許容）
 - emits: なし（内部で完結）
 -->
@@ -35,9 +36,11 @@ const props = withDefaults(
     outcomes: DamageOutcome[]
     selectionTheme?: EnemySelectionTheme
     states?: string[]
+    showHpGauge?: boolean
     show?: boolean
   }>(),
   {
+    showHpGauge: true,
     show: true,
   },
 )
@@ -143,7 +146,7 @@ onMounted(() => {
       </PlayerImageComponent>
     </div>
     <div class="player-card__hp">
-      <HpGauge :current="displayHp.current" :max="displayHp.max" />
+      <HpGauge v-if="showHpGauge" :current="displayHp.current" :max="displayHp.max" />
       <DamageEffects
         ref="damageRef"
         class="damage-overlay damage-overlay--player"

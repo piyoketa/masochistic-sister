@@ -11,7 +11,7 @@ import { Card } from '../Card'
 import { Attack } from '../Action'
 import { Damages } from '../Damages'
 import type { State } from '../State'
-import { MemoryCardTag } from '../cardTags'
+import { MemoryCardTag, NewlyCreatedCardTag } from '../cardTags'
 import type { CardRepository } from '../../repository/CardRepository'
 import type { Battle } from '../../battle/Battle'
 
@@ -48,12 +48,13 @@ export class MemoryManager {
   private buildMemoryOverrides(baseAttack: Attack, damages: Damages) {
     const baseDefinition = baseAttack.createCardDefinition()
     const memoryTag = new MemoryCardTag()
+    const newTag = new NewlyCreatedCardTag()
     if (baseDefinition.cardType !== 'attack') {
       throw new Error('Memory cards can only be created from attack definitions')
     }
 
     const baseCategoryTags = baseDefinition.categoryTags ?? []
-    const categoryTags = [...baseCategoryTags, memoryTag]
+    const categoryTags = [...baseCategoryTags, memoryTag, newTag]
 
     return {
       name: baseAttack.name,

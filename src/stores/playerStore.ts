@@ -86,6 +86,7 @@ export const usePlayerStore = defineStore('player', {
   state: () => ({
     hp: 150,
     maxHp: 150,
+    gold: 0,
     deck: [] as DeckCardBlueprint[],
     initialized: false,
   }),
@@ -99,6 +100,7 @@ export const usePlayerStore = defineStore('player', {
       const repository = new CardRepository()
       const { deck } = buildDefaultDeck(repository)
       this.deck = deck.map((card) => cardToBlueprint(card))
+      this.gold = 0
       this.initialized = true
     },
     setDeck(blueprints: DeckCardBlueprint[]): void {
@@ -158,6 +160,30 @@ export const usePlayerStore = defineStore('player', {
         overrideCount: overrides.count ?? target.overrideCount,
       }
       this.deck = next
+    },
+    addGold(amount: number): void {
+      const gain = Math.max(0, Math.floor(amount))
+      if (gain <= 0) {
+        return
+      }
+      this.gold += gain
+    },
+    spendGold(amount: number): void {
+      const cost = Math.max(0, Math.floor(amount))
+      if (cost <= 0) {
+        return
+      }
+      this.gold = Math.max(0, this.gold - cost)
+    },
+    setGold(amount: number): void {
+      this.gold = Math.max(0, Math.floor(amount))
+    },
+    healHp(amount: number): void {
+      const heal = Math.max(0, Math.floor(amount))
+      if (heal <= 0) {
+        return
+      }
+      this.hp = Math.min(this.maxHp, this.hp + heal)
     },
   },
 })

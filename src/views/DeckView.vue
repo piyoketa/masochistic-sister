@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import CardList from '@/components/CardList.vue'
 import type { CardInfo, CardTagInfo, DescriptionSegment } from '@/types/battle'
 import {
@@ -26,6 +27,7 @@ import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { Damages } from '@/domain/entities/Damages'
 
+const router = useRouter()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 
@@ -96,6 +98,8 @@ const playerHp = computed(() => ({
   current: playerStore.hp,
   max: playerStore.maxHp,
 }))
+
+const playerGold = computed(() => playerStore.gold)
 
 function selectedIndex(): number {
   const id = selectedCardId.value
@@ -260,6 +264,11 @@ function isSupportedCardType(type: CardInfo['type']): boolean {
       <div class="hp-summary">
         <span class="hp-label">HP</span>
         <span class="hp-value">{{ playerHp.current }} / {{ playerHp.max }}</span>
+        <span class="hp-label">Gold</span>
+        <span class="hp-value">{{ playerGold }}</span>
+        <button type="button" class="deck-button deck-button--link" @click="router.push('/field')">
+          フィールドへ戻る
+        </button>
       </div>
     </header>
     <div class="deck-actions">
@@ -420,6 +429,11 @@ function isSupportedCardType(type: CardInfo['type']): boolean {
 .deck-button--danger {
   background: rgba(220, 90, 120, 0.92);
   color: #fff7fb;
+}
+
+.deck-button--link {
+  background: rgba(120, 205, 255, 0.95);
+  color: #0d1a2f;
 }
 
 .attack-edit {

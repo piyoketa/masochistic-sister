@@ -148,8 +148,8 @@ function resolveSelectionTheme(card: CardInfo): EnemySelectionTheme {
   flex-direction: column;
   gap: 12px;
   padding: 12px 0;
-  --card-list-gap: 16px;
-  --card-list-max-height: 360px;
+  --card-list-gap: 50px;
+  --card-list-max-height: 420px;
 }
 
 .card-list__header {
@@ -174,7 +174,7 @@ function resolveSelectionTheme(card: CardInfo): EnemySelectionTheme {
 .card-list__body {
   overflow-y: auto;
   max-height: var(--card-list-max-height, 360px);
-  padding-right: 8px;
+  padding: 30px 8px;
 }
 
 .card-list__body--no-limit {
@@ -188,14 +188,16 @@ function resolveSelectionTheme(card: CardInfo): EnemySelectionTheme {
 .card-list__grid {
   display: flex;
   flex-wrap: wrap;
-  margin: calc(var(--card-list-gap, 16px) / -2);
+  margin: 30px;
 }
 
 .card-list__item {
   width: 94px;
   flex: 0 0 auto;
-  margin: calc(var(--card-list-gap, 16px) / 2);
+  margin: calc(var(--card-list-gap, 50px) / 2);
   transition: transform 120ms ease, filter 120ms ease;
+  position: relative;
+  z-index: 1;
 }
 
 .card-list__item--hoverable.card-list__item--hovered {
@@ -204,6 +206,7 @@ function resolveSelectionTheme(card: CardInfo): EnemySelectionTheme {
 
 .card-list__item--selectable.card-list__item--selected {
   filter: drop-shadow(0 0 12px rgba(255, 208, 0, 0.45));
+  z-index: 5;
 }
 
 .card-list__item--selectable:not(.card-list__item--selected) {

@@ -1,0 +1,239 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { usePlayerStore } from '@/stores/playerStore'
+import { useFieldStore } from '@/stores/fieldStore'
+import type { FieldNode } from '@/fields/domains/FieldNode'
+
+const playerStore = usePlayerStore()
+playerStore.ensureInitialized()
+const fieldStore = useFieldStore()
+
+const router = useRouter()
+
+const playerStatus = computed(() => ({
+  hp: playerStore.hp,
+  maxHp: playerStore.maxHp,
+  deckCount: playerStore.deck.length,
+  gold: playerStore.gold,
+}))
+
+const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
+const levels = computed(() => fieldStore.field.levels)
+
+function nodeLabel(node: FieldNode): string {
+  if (node.label) {
+    return node.label
+  }
+  if (node.type === 'start') {
+    return `スタート (Lv.${node.level})`
+  }
+  if (node.type === 'enemy') {
+    return `敵: ${node.enemyTeamId}`
+  }
+  return `Lv.${node.level}`
+}
+
+function isReachable(levelIndex: number, nodeIndex: number): boolean {
+  if (levelIndex !== fieldStore.nextLevelIndex) {
+    return false
+  }
+  return fieldStore.reachableNextNodes().some((entry) => entry.index === nodeIndex)
+}
+
+async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: number): Promise<void> {
+  if (!isReachable(levelIndex, nodeIndex) || fieldStore.isNodeCleared(node.id)) {
+    return
+  }
+  fieldStore.selectNextNode(nodeIndex)
+  if (node.type === 'enemy') {
+    await router.push({ path: `/battle/${node.enemyTeamId}` })
+    return
+  }
+  if (node.type === 'card-reward') {
+    await router.push({ path: '/field/card-reward' })
+    return
+  }
+}
+</script>
+
+<template>
+  <div class="field-view">
+    <header class="field-header">
+      <h1>フィールド</h1>
+      <div class="status">
+        <span>HP: {{ playerStatus.hp }} / {{ playerStatus.maxHp }}</span>
+        <span>デッキ枚数: {{ playerStatus.deckCount }}</span>
+        <span>所持金: {{ playerStatus.gold }}</span>
+        <span>現在Lv: {{ currentLevel }}</span>
+        <button type="button" class="deck-button" @click="router.push('/deck')">デッキ確認</button>
+      </div>
+    </header>
+
+    <section class="field-section">
+      <h2>現在のマス (Lv.{{ currentLevel }})</h2>
+      <div v-if="fieldStore.currentNode" class="node-card node-card--current">
+        <div class="node-title">{{ nodeLabel(fieldStore.currentNode) }}</div>
+        <div class="node-state">状態: {{ fieldStore.isNodeCleared(fieldStore.currentNode.id) ? 'クリア' : '未クリア' }}</div>
+      </div>
+    </section>
+
+    <section class="field-section">
+      <h2>全レベル</h2>
+      <div class="level-list">
+        <div v-for="(level, levelIdx) in levels" :key="level.level" class="level-block">
+          <div class="level-title">Lv.{{ level.level }}</div>
+          <div class="node-list">
+            <div
+              v-for="(node, idx) in level.nodes"
+              :key="node.id"
+              class="node-card"
+              :class="{
+                'node-card--reachable': isReachable(levelIdx, idx),
+                'node-card--cleared': fieldStore.isNodeCleared(node.id),
+                'node-card--current': levelIdx === fieldStore.currentLevelIndex && idx === fieldStore.currentNodeIndex,
+              }"
+            >
+              <div class="node-title">{{ nodeLabel(node) }}</div>
+              <div class="node-state">
+                状態: {{ fieldStore.isNodeCleared(node.id) ? 'クリア' : '未クリア' }}
+              </div>
+              <button
+                type="button"
+                class="enter-button"
+                :disabled="!isReachable(levelIdx, idx) || fieldStore.isNodeCleared(node.id)"
+                @click="handleEnter(node, levelIdx, idx)"
+              >
+                進む
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<style scoped>
+.field-view {
+  min-height: 100vh;
+  padding: 32px clamp(20px, 5vw, 64px);
+  background: radial-gradient(circle at top, rgba(34, 28, 63, 0.95), rgba(9, 9, 14, 0.95));
+  color: #f5f2ff;
+  box-sizing: border-box;
+}
+
+.field-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.field-header h1 {
+  margin: 0;
+  letter-spacing: 0.12em;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 14px;
+  color: rgba(245, 242, 255, 0.85);
+}
+
+.deck-button {
+  background: rgba(255, 227, 115, 0.9);
+  color: #2d1a0f;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.field-section {
+  margin-top: 16px;
+}
+
+.level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.level-block {
+  background: rgba(14, 12, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.level-title {
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: 0.08em;
+}
+
+.node-list {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.node-card {
+  background: rgba(18, 16, 28, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 220px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.node-card--current {
+  border-color: rgba(255, 227, 115, 0.8);
+  box-shadow: 0 10px 28px rgba(255, 227, 115, 0.25);
+}
+
+.node-card--reachable {
+  border-color: rgba(140, 200, 255, 0.8);
+}
+
+.node-card--cleared {
+  opacity: 0.6;
+}
+
+.node-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.node-state {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: rgba(245, 242, 255, 0.8);
+}
+
+.enter-button {
+  background: rgba(255, 227, 115, 0.9);
+  color: #2d1a0f;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.enter-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.enter-button:not(:disabled):hover,
+.enter-button:not(:disabled):focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+</style>
