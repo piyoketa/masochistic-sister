@@ -24,9 +24,10 @@ const router = useRouter()
 playerStore.ensureInitialized()
 
 const selectedCardId = ref<string | null>(null)
-const claimed = ref(false)
+const rewardsState = ref({ hp: false, gold: false, card: false })
 
 const reward = computed(() => rewardStore.pending)
+const missingReward = computed(() => reward.value === null)
 
 const playerStatus = computed(() => ({
   hp: playerStore.hp,
@@ -36,14 +37,10 @@ const playerStatus = computed(() => ({
 }))
 
 const cardSelectionRequired = computed(() => (reward.value?.cards.length ?? 0) > 0)
-const claimDisabled = computed(
-  () => !reward.value || (cardSelectionRequired.value && !selectedCardId.value) || claimed.value,
-)
+const allClaimed = computed(() => rewardsState.value.hp && rewardsState.value.gold && (!cardSelectionRequired.value || rewardsState.value.card))
 
 onMounted(() => {
-  // 報酬がない状態で来た場合はフィールドへ戻す。
   if (!reward.value) {
-    router.replace('/field')
     return
   }
   const firstCard = reward.value.cards[0]
@@ -51,34 +48,41 @@ onMounted(() => {
 })
 
 function handleCardClick(cardId: string): void {
-  if (claimed.value) return
+  if (rewardsState.value.card) return
   selectedCardId.value = selectedCardId.value === cardId ? null : cardId
 }
 
-function applyRewards(): void {
+function handleHeal(): void {
   const pending = reward.value
-  if (!pending || claimed.value) return
-
+  if (!pending || rewardsState.value.hp) return
   if (pending.hpHeal > 0) {
     playerStore.healHp(pending.hpHeal)
   }
+  rewardsState.value.hp = true
+}
+
+function handleGold(): void {
+  const pending = reward.value
+  if (!pending || rewardsState.value.gold) return
   if (pending.gold > 0) {
     playerStore.addGold(pending.gold)
   }
+  rewardsState.value.gold = true
+}
 
-  if (pending.cards.length > 0 && selectedCardId.value) {
-    const entry = pending.cards.find((card) => card.id === selectedCardId.value)
-    if (entry?.deckType) {
-      playerStore.addCard(entry.deckType)
-    }
+function handleCardClaim(): void {
+  const pending = reward.value
+  if (!pending || rewardsState.value.card) return
+  if (!selectedCardId.value) return
+  const entry = pending.cards.find((card) => card.id === selectedCardId.value)
+  if (entry?.deckType) {
+    playerStore.addCard(entry.deckType)
   }
-
-  claimed.value = true
+  rewardsState.value.card = true
 }
 
 async function returnToField(): Promise<void> {
-  if (!claimed.value) {
-    // 受け取り漏れ防止のため、未受領なら何もしない。
+  if (!allClaimed.value) {
     return
   }
   fieldStore.markCurrentCleared()
@@ -89,7 +93,7 @@ async function returnToField(): Promise<void> {
 
 <template>
   <GameLayout>
-    <template #default>
+    <template #window>
       <div class="reward-view">
         <header class="reward-header">
           <div>
@@ -108,10 +112,16 @@ async function returnToField(): Promise<void> {
             <div class="reward-item">
               <div class="reward-label">HP回復</div>
               <div class="reward-value">+{{ reward.hpHeal }}</div>
+              <button type="button" class="reward-button" :disabled="rewardsState.hp" @click="handleHeal">
+                {{ rewardsState.hp ? '受取済み' : '受け取る' }}
+              </button>
             </div>
             <div class="reward-item">
               <div class="reward-label">所持金</div>
               <div class="reward-value">+{{ reward.gold }}</div>
+              <button type="button" class="reward-button" :disabled="rewardsState.gold" @click="handleGold">
+                {{ rewardsState.gold ? '受取済み' : '受け取る' }}
+              </button>
             </div>
           </div>
 
@@ -122,25 +132,39 @@ async function returnToField(): Promise<void> {
                 選択後に受け取ると、デッキへ追加されます（[新規]タグは除外）。
               </span>
             </div>
-            <div class="card-list-wrapper" :class="{ 'card-list-wrapper--disabled': claimed }">
+            <div class="card-list-wrapper" :class="{ 'card-list-wrapper--disabled': rewardsState.card }">
               <CardList
                 :cards="reward.cards.map((entry) => entry.info)"
                 title="褒賞カード"
                 :gap="50"
                 selectable
                 :selected-card-id="selectedCardId"
-                :hover-effect="!claimed"
-                @card-click="(card) => handleCardClick(card.id)"
-                @update:selected-card-id="(id) => handleCardClick(id as string)"
+                :hover-effect="!rewardsState.card"
+                @update:selected-card-id="(id) => {
+                  if (rewardsState.card) return
+                  selectedCardId = (id as string) ?? null
+                }"
               />
+              <div class="card-actions">
+                <button
+                  type="button"
+                  class="reward-button"
+                  :disabled="rewardsState.card || !selectedCardId"
+                  @click="handleCardClaim"
+                >
+                  {{ rewardsState.card ? '受取済み' : '選択カードを獲得' }}
+                </button>
+              </div>
             </div>
           </div>
 
           <div class="actions">
-            <button type="button" class="reward-button" :disabled="claimDisabled" @click="applyRewards">
-              受け取る
-            </button>
-            <button type="button" class="reward-button reward-button--secondary" :disabled="!claimed" @click="returnToField">
+            <button
+              type="button"
+              class="reward-button reward-button--secondary"
+              :disabled="!allClaimed"
+              @click="returnToField"
+            >
               フィールドに戻る
             </button>
           </div>
@@ -214,6 +238,22 @@ async function returnToField(): Promise<void> {
   letter-spacing: 0.08em;
 }
 
+.reward-button {
+  margin-top: 8px;
+  background: rgba(255, 227, 115, 0.95);
+  color: #2d1a0f;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reward-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .card-section__header {
   display: flex;
   align-items: baseline;
@@ -239,6 +279,10 @@ async function returnToField(): Promise<void> {
 .card-list-wrapper--disabled {
   pointer-events: none;
   opacity: 0.9;
+}
+
+.card-actions {
+  margin-top: 8px;
 }
 
 .actions {
@@ -273,5 +317,13 @@ async function returnToField(): Promise<void> {
 .reward-button--secondary {
   background: rgba(120, 205, 255, 0.95);
   color: #0d1a2f;
+}
+
+.reward-empty {
+  padding: 16px;
+  background: rgba(18, 16, 28, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: rgba(245, 242, 255, 0.85);
 }
 </style>

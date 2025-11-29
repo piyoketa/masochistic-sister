@@ -16,7 +16,68 @@ const demoReward = {
   hpHeal: 30,
   gold: 50,
   defeatedCount: 1,
-  cards: [],
+  cards: [
+    {
+      id: 'demo-card-1',
+      deckType: 'heaven-chain',
+      info: {
+        id: 'demo-card-1',
+        title: '天の鎖',
+        type: 'skill',
+        cost: 1,
+        illustration: '🂠',
+        description: 'このターン行動が増える',
+        attackStyle: undefined,
+        damageAmount: undefined,
+        damageCount: undefined,
+        primaryTags: [],
+        effectTags: [],
+        categoryTags: [],
+        affordable: true,
+        disabled: false,
+      },
+    },
+    {
+      id: 'demo-card-2',
+      deckType: 'battle-prep',
+      info: {
+        id: 'demo-card-2',
+        title: '戦いの準備',
+        type: 'skill',
+        cost: 1,
+        illustration: '🂠',
+        description: '次のターン開始時マナ+1',
+        attackStyle: undefined,
+        damageAmount: undefined,
+        damageCount: undefined,
+        primaryTags: [],
+        effectTags: [],
+        categoryTags: [],
+        affordable: true,
+        disabled: false,
+      },
+    },
+    {
+      id: 'demo-card-3',
+      deckType: 'tackle',
+      info: {
+        id: 'demo-card-3',
+        title: 'たいあたり',
+        type: 'attack',
+        cost: 1,
+        illustration: '🂠',
+        description: '',
+        attackStyle: 'single',
+        damageAmount: 20,
+        damageCount: 1,
+        primaryTags: [],
+        effectTags: [],
+        categoryTags: [],
+        affordable: true,
+        disabled: false,
+      },
+    },
+  ],
 }
 
 function setRewardAndGo(): void {
@@ -27,7 +88,7 @@ function setRewardAndGo(): void {
 
 <template>
   <GameLayout>
-    <template #default>
+    <template #window>
       <div class="reward-demo">
         <h1>Reward Demo</h1>
         <p>デモ用の報酬データをセットし、報酬画面へ遷移します。</p>
