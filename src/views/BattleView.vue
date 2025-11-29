@@ -155,18 +155,6 @@ function preloadBattleAssets(): Promise<void> {
   return battleAssetPreloadPromise
 }
 
-function normalizeCutInPath(src: string): string {
-  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-  const normalizeBase = base.endsWith('/') ? base.slice(0, -1) : base
-  if (/^https?:\/\//i.test(src)) {
-    return src
-  }
-  if (src.startsWith('/')) {
-    return `${normalizeBase}${src}`
-  }
-  return `${normalizeBase}/${src.replace(/^\/+/, '')}`
-}
-
 function clearErrorOverlayTimer(): void {
   if (!errorOverlayTimer) {
     return
@@ -235,7 +223,6 @@ onUnmounted(() => {
   clearErrorOverlayTimer()
 })
 
-const playerName = computed(() => snapshot.value?.player.name ?? '？？？')
 const turnLabel = computed(() => {
   const currentTurn = snapshot.value?.turn.turnCount
   return currentTurn !== undefined ? `ターン ${currentTurn}` : 'ターン -'

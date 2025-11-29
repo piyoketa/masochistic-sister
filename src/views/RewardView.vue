@@ -16,11 +16,13 @@ import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import { useRewardStore } from '@/stores/rewardStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
+import { useAudioHub } from '@/composables/audioHub'
 
 const rewardStore = useRewardStore()
 const playerStore = usePlayerStore()
 const fieldStore = useFieldStore()
 const router = useRouter()
+const audioHub = useAudioHub()
 
 playerStore.ensureInitialized()
 
@@ -28,7 +30,6 @@ const selectedCardId = ref<string | null>(null)
 const rewardsState = ref({ hp: false, gold: false, card: false })
 
 const reward = computed(() => rewardStore.pending)
-const missingReward = computed(() => reward.value === null)
 
 const playerStatus = computed(() => ({
   hp: playerStore.hp,
@@ -36,9 +37,6 @@ const playerStatus = computed(() => ({
   gold: playerStore.gold,
   deckCount: playerStore.deck.length,
 }))
-
-const cardSelectionRequired = computed(() => (reward.value?.cards.length ?? 0) > 0)
-const allClaimed = computed(() => rewardsState.value.hp && rewardsState.value.gold && (!cardSelectionRequired.value || rewardsState.value.card))
 
 onMounted(() => {
   if (!reward.value) {
@@ -48,16 +46,12 @@ onMounted(() => {
   selectedCardId.value = firstCard?.id ?? null
 })
 
-function handleCardClick(cardId: string): void {
-  if (rewardsState.value.card) return
-  selectedCardId.value = selectedCardId.value === cardId ? null : cardId
-}
-
 function handleHeal(): void {
   const pending = reward.value
   if (!pending || rewardsState.value.hp) return
   if (pending.hpHeal > 0) {
     playerStore.healHp(pending.hpHeal)
+    audioHub.play('/sounds/fields/gain_hp.mp3')
   }
   rewardsState.value.hp = true
 }
@@ -67,6 +61,7 @@ function handleGold(): void {
   if (!pending || rewardsState.value.gold) return
   if (pending.gold > 0) {
     playerStore.addGold(pending.gold)
+    audioHub.play('/sounds/fields/gold.mp3')
   }
   rewardsState.value.gold = true
 }
@@ -83,9 +78,6 @@ function handleCardClaim(): void {
 }
 
 async function returnToField(): Promise<void> {
-  if (!allClaimed.value) {
-    return
-  }
   fieldStore.markCurrentCleared()
   rewardStore.clear()
   await router.push('/field')
@@ -165,7 +157,6 @@ async function returnToField(): Promise<void> {
                   <button
                     type="button"
                     class="reward-button reward-button--secondary"
-                    :disabled="!allClaimed"
                     @click="returnToField"
                   >
                     フィールドに戻る
@@ -300,8 +291,11 @@ async function returnToField(): Promise<void> {
 }
 
 .card-list-wrapper--disabled {
-  pointer-events: none;
   opacity: 0.9;
+}
+
+.card-list-wrapper--disabled :deep(.card-list) {
+  pointer-events: none;
 }
 
 .card-actions {
