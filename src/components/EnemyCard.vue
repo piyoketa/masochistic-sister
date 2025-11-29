@@ -226,7 +226,7 @@ function extractLegacyMagnitude(detail: string): number | undefined {
 }
 
 function formatStateChip(trait: EnemyTrait): { key: string; label: string; description: string } {
-  const magnitude = extractLegacyMagnitude(trait.detail)
+  const magnitude = trait.magnitude
   const label = magnitude !== undefined ? `${trait.name}(${magnitude})` : trait.name
   return {
     key: `${trait.name}-${trait.detail}`,

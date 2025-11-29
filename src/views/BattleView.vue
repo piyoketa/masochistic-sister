@@ -1236,7 +1236,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  padding: 12px 12px 0 12px;
+  padding: 12px 0 0 0;
   position: relative;
   overflow: visible;
 }
