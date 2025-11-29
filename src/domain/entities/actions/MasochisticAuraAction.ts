@@ -1,8 +1,9 @@
-import { Skill, type ActionContext, Attack } from '../Action'
+import { Skill, type ActionContext, type ActionCostContext, Attack } from '../Action'
 import { ArcaneCardTag, EnemySingleTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import type { Enemy } from '../Enemy'
 import { TargetEnemyOperation } from '../operations'
 import type { Operation } from '../operations'
+import { ArcaneAdaptationRelic } from '../relics/ArcaneAdaptationRelic'
 
 export class MasochisticAuraAction extends Skill {
   constructor() {
@@ -46,6 +47,18 @@ export class MasochisticAuraAction extends Skill {
     ]
   }
 
+  override cost(context?: ActionCostContext): number {
+    const base = super.cost()
+    const relics = context?.battle?.getRelicInstances()
+    const adaptation = relics?.find((relic) => relic instanceof ArcaneAdaptationRelic) as
+      | ArcaneAdaptationRelic
+      | undefined
+    if (adaptation && adaptation.isActive()) {
+      return 0
+    }
+    return base
+  }
+
   protected override perform(context: ActionContext): void {
     const target = context.target as Enemy | undefined
 
@@ -60,6 +73,13 @@ export class MasochisticAuraAction extends Skill {
 
     context.battle.markEntrySnapshotBoundary()
     context.battle.queueInterruptEnemyAction(targetId, { trigger: 'card' })
+
+    // コスト軽減 relic は1ターン1回のみ有効。使用後にフラグを立てる。
+    const relics = context.battle.getRelicInstances()
+    const adaptation = relics.find((relic) => relic instanceof ArcaneAdaptationRelic) as
+      | ArcaneAdaptationRelic
+      | undefined
+    adaptation?.markUsed()
   }
 
   private isPlanningAttackAgainstPlayer(enemy: Enemy): boolean {
