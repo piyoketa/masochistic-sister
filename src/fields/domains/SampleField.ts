@@ -6,9 +6,7 @@ import type { CardRewardNode, EnemyNode, FieldNode, RelicRewardNode, StartNode }
  * Level1: StartNode
  * Level2: カード獲得マス
  * Level3: レリック獲得マス（候補: 全レリック）
- * Level4: snail
- * Level5: iron-bloom
- * Level6: hummingbird-scorpion
+ * Level4-6: snail / iron-bloom / hummingbird-scorpion （初期化時にランダム順）
  * Level7: orc-hero-elite
  */
 export class SampleField extends Field {
@@ -69,30 +67,37 @@ function buildLevels(): FieldLevel[] {
     drawCount: 1,
     nextNodeIndices: [0],
   }
-  const level2: EnemyNode = {
-    id: 'enemy-snail',
-    type: 'enemy',
-    level: 4,
-    label: '敵「かたつむり」',
-    enemyTeamId: 'snail',
-    nextNodeIndices: [0],
-  }
-  const level3: EnemyNode = {
-    id: 'enemy-iron-bloom',
-    type: 'enemy',
-    level: 5,
-    label: '敵「鉄花」',
-    enemyTeamId: 'iron-bloom',
-    nextNodeIndices: [0],
-  }
-  const level4: EnemyNode = {
-    id: 'enemy-hummingbird-scorpion',
-    type: 'enemy',
-    level: 6,
-    label: '敵「ハチドリ」',
-    enemyTeamId: 'hummingbird-scorpion',
-    nextNodeIndices: [0],
-  }
+  const midEnemies: EnemyNode[] = [
+    {
+      id: 'enemy-snail',
+      type: 'enemy',
+      level: 4,
+      label: '敵「かたつむり」',
+      enemyTeamId: 'snail',
+      nextNodeIndices: [0],
+    },
+    {
+      id: 'enemy-iron-bloom',
+      type: 'enemy',
+      level: 5,
+      label: '敵「鉄花」',
+      enemyTeamId: 'iron-bloom',
+      nextNodeIndices: [0],
+    },
+    {
+      id: 'enemy-hummingbird-scorpion',
+      type: 'enemy',
+      level: 6,
+      label: '敵「ハチドリ」',
+      enemyTeamId: 'hummingbird-scorpion',
+      nextNodeIndices: [0],
+    },
+  ]
+  // 初期化時に並びをシャッフルし、レベル番号を振り直す
+  midEnemies.sort(() => Math.random() - 0.5)
+  midEnemies.forEach((node, idx) => {
+    node.level = 4 + idx
+  })
   const level5: EnemyNode = {
     id: 'enemy-orc-hero-elite',
     type: 'enemy',
@@ -106,9 +111,9 @@ function buildLevels(): FieldLevel[] {
     [level1],
     [cardReward],
     [relicReward],
-    [level2],
-    [level3],
-    [level4],
+    [midEnemies[0]!],
+    [midEnemies[1]!],
+    [midEnemies[2]!],
     [level5],
   ]
 
