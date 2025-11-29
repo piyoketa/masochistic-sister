@@ -338,7 +338,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
               ×{{ props.damageCount }}
             </span>
           </div>
-          <p v-if="props.type !== 'attack'" class="card-description">
+          <p v-if="props.type === 'attack'" class="card-description">
             <template v-if="props.descriptionSegments && props.descriptionSegments.length">
               <template v-for="(segment, index) in props.descriptionSegments" :key="index">
                 <br v-if="segment.text === '\n'" />
@@ -353,11 +353,11 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
                 </span>
               </template>
             </template>
-            <template v-else>
-              <template v-for="(line, index) in (props.description ?? '').split('\n')" :key="index">
-                <span>{{ line }}</span>
-                <br v-if="index < (props.description ?? '').split('\n').length - 1" />
-              </template>
+          </p>
+          <p v-if="props.type !== 'attack'" class="card-description">
+            <template v-for="(line, index) in (props.description ?? '').split('\n')" :key="index">
+              <span>{{ line }}</span>
+              <br v-if="index < (props.description ?? '').split('\n').length - 1" />
             </template>
           </p>
           <div v-if="effectTagList.length" class="tag-list tag-list--effect">
