@@ -8,6 +8,7 @@ import { NoViolenceRelic } from './NoViolenceRelic'
 import { SlipperyTouchRelic } from './SlipperyTouchRelic'
 import { DevoutBelieverRelic } from './DevoutBelieverRelic'
 import { ArcaneAdaptationRelic } from './ArcaneAdaptationRelic'
+import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
 import { MemorySaintRelic } from './MemorySaintRelic'
 
 export type { Relic } from './Relic'
@@ -23,4 +24,5 @@ export const DEFAULT_PLAYER_RELICS: Relic[] = [
   new SlipperyTouchRelic(),
   new DevoutBelieverRelic(),
   new ArcaneAdaptationRelic(),
+  new ThoroughPreparationRelic(),
 ]

@@ -213,6 +213,23 @@ export class Player {
     return this.aggregateStates([...base, ...relicStates])
   }
 
+  /**
+   * 戦闘開始時の初期ドロー枚数を計算する。
+   * 基本は3枚。入念な準備レリックが有効なら+2枚。
+   */
+  calculateInitialDraw(battle?: Battle): number {
+    let draw = 3
+    if (battle) {
+      const meticulous = battle
+        .getRelicInstances()
+        .find((relic) => relic.id === 'thorough-preparation' && relic.isActive({ battle, player: this }))
+      if (meticulous) {
+        draw += 2
+      }
+    }
+    return draw
+  }
+
   handlePlayerTurnStart(battle: Battle): void {
     for (const relic of battle.getRelicInstances()) {
       relic.onPlayerTurnStart({ battle, player: this })

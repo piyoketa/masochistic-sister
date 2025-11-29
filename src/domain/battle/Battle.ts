@@ -494,7 +494,8 @@ export class Battle {
       phase: 'player-draw',
     })
     this.playerValue.resetMana()
-    this.drawForPlayer(3)
+    const initialDraw = this.playerValue.calculateInitialDraw(this)
+    this.drawForPlayer(initialDraw)
     this.pendingDrawAnimationEvents = []
   }
 
