@@ -49,6 +49,8 @@ const emit = defineEmits<{
   (event: 'hide-overlay'): void
   (event: 'show-enemy-selection-hints', hints: TargetEnemyAvailabilityEntry[]): void
   (event: 'clear-enemy-selection-hints'): void
+  (event: 'open-deck-overlay'): void
+  (event: 'open-discard-overlay'): void
 }>()
 
 const interactionState = reactive<{
@@ -154,6 +156,14 @@ const {
   buildOperationContext,
 })
 
+function handleDeckOverlayRequest(): void {
+  emit('open-deck-overlay')
+}
+
+function handleDiscardOverlayRequest(): void {
+  emit('open-discard-overlay')
+}
+
 onBeforeUnmount(() => {
   cleanupAnimations()
   disposeStageEvents()
@@ -242,11 +252,27 @@ defineExpose({ resetSelection, cancelSelection })
         />
       </div>
     </div>
-    <div ref="discardCounterRef" class="hand-counter hand-counter--discard hand-pile">
+    <div
+      ref="discardCounterRef"
+      class="hand-counter hand-counter--discard hand-pile hand-counter--clickable"
+      role="button"
+      tabindex="0"
+      @click="handleDiscardOverlayRequest"
+      @keydown.enter.prevent="handleDiscardOverlayRequest"
+      @keydown.space.prevent="handleDiscardOverlayRequest"
+    >
       <span class="pile-icon pile-icon--discard" aria-hidden="true"></span>
       <span class="pile-label">捨て札 {{ discardCount }}</span>
     </div>
-    <div ref="deckCounterRef" class="hand-counter hand-counter--deck hand-pile">
+    <div
+      ref="deckCounterRef"
+      class="hand-counter hand-counter--deck hand-pile hand-counter--clickable"
+      role="button"
+      tabindex="0"
+      @click="handleDeckOverlayRequest"
+      @keydown.enter.prevent="handleDeckOverlayRequest"
+      @keydown.space.prevent="handleDeckOverlayRequest"
+    >
       <span class="pile-icon pile-icon--deck" aria-hidden="true"></span>
       <span class="pile-label">山札 {{ deckCount }}</span>
     </div>
@@ -273,6 +299,10 @@ defineExpose({ resetSelection, cancelSelection })
   font-size: 12px;
   letter-spacing: 0.05em;
   z-index: 4;
+}
+
+.hand-counter--clickable {
+  cursor: pointer;
 }
 
 .hand-selection-banner {

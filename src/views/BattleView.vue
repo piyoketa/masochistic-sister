@@ -55,6 +55,8 @@ import { createAudioHub, provideAudioHub } from '@/composables/audioHub'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import RelicList from '@/components/RelicList.vue'
 import { mapSnapshotRelics, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
+import PileOverlay from '@/components/battle/PileOverlay.vue'
+import type { CardInfo } from '@/types/battle'
 
 declare global {
   interface Window {
@@ -125,6 +127,11 @@ const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
 const playerRelics = computed<RelicDisplayEntry[]>(() =>
   mapSnapshotRelics(snapshot.value?.player.relics ?? []),
+)
+const activePile = ref<'deck' | 'discard' | null>(null)
+const deckCardInfos = computed<CardInfo[]>(() => buildCardInfos(snapshot.value?.deck ?? [], 'deck'))
+const discardCardInfos = computed<CardInfo[]>(() =>
+  buildCardInfos(snapshot.value?.discardPile ?? [], 'discard'),
 )
 const audioHub = createAudioHub(SOUND_ASSETS)
 const imageHub = createImageHub()
@@ -447,6 +454,52 @@ function handleEnemySelectionCanceled(): void {
 
 function resetEnemySelectionTheme(): void {
   enemySelectionTheme.value = 'default'
+}
+
+function logPileSnapshot(pile: 'deck' | 'discard'): void {
+  if (!import.meta.env.DEV) return
+  const snap = snapshot.value
+  // デバッグ専用ログ。実際の内容確認用で、本番では出ない。
+  // eslint-disable-next-line no-console
+  console.info('[BattleView] pile overlay open', {
+    pile,
+    deckCount: snap?.deck.length ?? 0,
+    discardCount: snap?.discardPile.length ?? 0,
+    discardTitles: snap?.discardPile?.slice(0, 3).map((card) => card.title),
+  })
+}
+
+function openDeckOverlay(): void {
+  activePile.value = 'deck'
+  logPileSnapshot('deck')
+}
+
+function openDiscardOverlay(): void {
+  activePile.value = 'discard'
+  logPileSnapshot('discard')
+}
+
+function closePileOverlay(): void {
+  activePile.value = null
+}
+
+function buildCardInfos(
+  cards: Array<{ id?: number; title: string; cost: number; type: string; definition?: { image?: string } }>,
+  prefix: string,
+): CardInfo[] {
+  return cards.map((card, index) => ({
+    id: `${prefix}-${card.id ?? index}`,
+    title: card.title,
+    type: card.type as CardInfo['type'],
+    cost: card.cost,
+    illustration: card.definition?.image ?? '🂠',
+    description: (card as { description?: string }).description ?? card.title,
+    affordable: true,
+    disabled: true,
+    primaryTags: [],
+    effectTags: [],
+    categoryTags: [],
+  }))
 }
 
 async function handleOpenReward(): Promise<void> {
@@ -863,6 +916,8 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
               @hide-overlay="handleHandHideOverlay"
               @show-enemy-selection-hints="handleEnemySelectionHints"
               @clear-enemy-selection-hints="handleClearEnemySelectionHints"
+              @open-deck-overlay="openDeckOverlay"
+              @open-discard-overlay="openDiscardOverlay"
             />
           </main>
           <transition name="result-overlay">
@@ -898,6 +953,12 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
       </ol>
     </template>
   </GameLayout>
+  <PileOverlay
+    :active-pile="activePile"
+    :deck-cards="deckCardInfos"
+    :discard-cards="discardCardInfos"
+    @close="closePileOverlay"
+  />
 </template>
 
 <style scoped>
@@ -1014,9 +1075,9 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 .header-status {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 
 .header-actions {
