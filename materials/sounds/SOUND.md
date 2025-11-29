@@ -75,6 +75,7 @@ materials/sounds/poison より
   - soundeffect-lab_punch3.mp3 [打撃3](https://soundeffect-lab.info/sound/battle/)
   - public/sounds/fields/gold.mp3[お金を落とす2](https://soundeffect-lab.info/sound/various/)
   - public/sounds/fields/gain_hp.mp3[ゲージ回復3](https://soundeffect-lab.info/sound/button/)
+  - public/sounds/card-animations/draw.mp3[カードを台の上に出す](https://soundeffect-lab.info/sound/various/various3.html)
 - [くらげ工房](http://www.kurage-kosho.info/battle.html)
   - 商用利用無料
   - kurage-kosho_gun-fire02.mp3 [銃器・発砲02](http://www.kurage-kosho.info/battle.html)

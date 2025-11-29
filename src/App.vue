@@ -1,21 +1,31 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { RouterView } from 'vue-router'
 import { createAudioHub, provideAudioHub } from '@/composables/audioHub'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import { SOUND_ASSETS, IMAGE_ASSETS } from '@/assets/preloadManifest'
 import DescriptionOverlayLayer from '@/components/DescriptionOverlayLayer.vue'
+import { useAudioStore } from '@/stores/audioStore'
 
 // アプリ全体で使い回す Hub を生成し、画面遷移でも破棄されないよう最上位で provide する。
 const appAudioHub = createAudioHub(SOUND_ASSETS)
 const appImageHub = createImageHub()
 provideAudioHub(appAudioHub)
 provideImageHub(appImageHub)
+const audioStore = useAudioStore()
 
 onMounted(() => {
   void appAudioHub.preloadAll().catch(() => undefined)
   void appImageHub.preloadAll(IMAGE_ASSETS).catch(() => undefined)
 })
+
+watch(
+  () => audioStore.bgmVolume,
+  (volume) => {
+    appAudioHub.setBgmVolume(volume)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

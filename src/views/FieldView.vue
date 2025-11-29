@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
@@ -7,6 +7,7 @@ import type { FieldNode } from '@/fields/domains/FieldNode'
 import RelicList from '@/components/RelicList.vue'
 import { mapClassNamesToDisplay } from '@/view/relicDisplayMapper'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
+import { useAudioHub } from '@/composables/audioHub'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -22,6 +23,7 @@ const playerStatus = computed(() => ({
 }))
 const relics = computed(() => mapClassNamesToDisplay(playerStore.relics))
 const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
+const audioHub = useAudioHub()
 
 const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
 const levels = computed(() => fieldStore.field.levels)
@@ -64,6 +66,16 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
     return
   }
 }
+
+audioHub.playBgm('/sounds/bgm/field.mp3')
+
+onMounted(() => {
+  audioHub.playBgm('/sounds/bgm/field.mp3')
+})
+
+// onUnmounted(() => {
+//   audioHub.stopBgm()
+// })
 </script>
 
 <template>

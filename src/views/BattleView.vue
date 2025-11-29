@@ -50,7 +50,7 @@ import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloa
 import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { BattleReward } from '@/domain/battle/BattleReward'
-import { createAudioHub, provideAudioHub } from '@/composables/audioHub'
+import { useAudioHub } from '@/composables/audioHub'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import RelicList from '@/components/RelicList.vue'
 import { mapSnapshotRelics, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
@@ -131,9 +131,8 @@ const deckCardInfos = computed<CardInfo[]>(() => buildCardInfos(snapshot.value?.
 const discardCardInfos = computed<CardInfo[]>(() =>
   buildCardInfos(snapshot.value?.discardPile ?? [], 'discard'),
 )
-const audioHub = createAudioHub(SOUND_ASSETS)
+const audioHub = useAudioHub()
 const imageHub = createImageHub()
-provideAudioHub(audioHub)
 provideImageHub(imageHub)
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
@@ -210,6 +209,7 @@ onMounted(() => {
       console.warn('[BattleView] preloadBattleAssets failed', error)
     }
   })
+  audioHub.playBgm('/sounds/bgm/battle.mp3')
   viewManager
     .initialize()
     .catch((error) => {
@@ -221,6 +221,7 @@ onMounted(() => {
 onUnmounted(() => {
   subscriptions.forEach((dispose) => dispose())
   clearErrorOverlayTimer()
+  audioHub.stopBgm()
 })
 
 const turnLabel = computed(() => {

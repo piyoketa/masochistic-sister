@@ -13,6 +13,9 @@ export interface AudioHub {
   play(id: string | undefined, options?: { volume?: number; playbackRate?: number; loop?: boolean }): void
   stopAll(): void
   ready: Readonly<{ value: boolean }>
+  playBgm(id: string | undefined): void
+  stopBgm(): void
+  setBgmVolume(volume: number): void
 }
 
 export const AUDIO_HUB_KEY = Symbol('audio-hub')
@@ -34,6 +37,7 @@ export function createAudioHub(soundIds: readonly string[]): AudioHub {
   const ready = ref(false)
   let preloadPromise: Promise<void> | null = null
   const howls = new Map<string, Howl>()
+  let bgm: { id: string; howl: Howl } | null = null
 
   async function preloadAll(): Promise<void> {
     if (preloadPromise) return preloadPromise
@@ -65,10 +69,11 @@ export function createAudioHub(soundIds: readonly string[]): AudioHub {
 
   function play(id: string | undefined, options?: { volume?: number; playbackRate?: number; loop?: boolean }): void {
     if (!id || typeof window === 'undefined') return
+    if (import.meta.env.MODE === 'test') return
     const key = normalizeSoundPath(id)
     let howl = howls.get(key)
     if (!howl) {
-      howl = new Howl({ src: [key], preload: true })
+      howl = new Howl({ src: [key], preload: true, onloaderror: () => console.warn(`[AudioHub] failed to load sound: ${key}`) })
       howls.set(key, howl)
     }
     if (options?.volume !== undefined) howl.volume(Math.min(1, Math.max(0, options.volume)))
@@ -77,12 +82,55 @@ export function createAudioHub(soundIds: readonly string[]): AudioHub {
     howl.play()
   }
 
+  function playBgm(id: string | undefined): void {
+    if (!id || typeof window === 'undefined') return
+    if (import.meta.env.MODE === 'test') return
+    const key = normalizeSoundPath(id)
+    // 既存BGMが同一の場合は何もしない（再スタートさせない）
+    if (bgm && bgm.id === key) {
+      return
+    }
+    // 別の曲が鳴っていれば停止してから差し替える
+    if (bgm) {
+      bgm.howl.stop()
+      bgm = null
+    }
+    let howl = howls.get(key)
+    if (!howl) {
+      howl = new Howl({
+        src: [key],
+        preload: true,
+        loop: true,
+        onloaderror: () => console.warn(`[AudioHub] failed to load BGM: ${key}`),
+      })
+      howls.set(key, howl)
+    } else {
+      howl.loop(true)
+    }
+    bgm = { id: key, howl }
+    howl.play()
+  }
+
+  function stopBgm(): void {
+    if (bgm) {
+      bgm.howl.stop()
+      bgm = null
+    }
+  }
+
+  function setBgmVolume(volume: number): void {
+    if (bgm) {
+      bgm.howl.volume(Math.min(1, Math.max(0, volume)))
+    }
+  }
+
   function stopAll(): void {
+    stopBgm()
     howls.forEach((howl) => howl.stop())
     Howler.stop()
   }
 
-  return { preloadAll, play, stopAll, ready }
+  return { preloadAll, play, stopAll, playBgm, stopBgm, setBgmVolume, ready }
 }
 
 export function provideAudioHub(hub: AudioHub): void {
