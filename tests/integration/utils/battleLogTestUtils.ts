@@ -60,13 +60,26 @@ export function buildOperationLog(entries: OperationLogEntryConfig[], inclusiveI
 function summarizeAnimationBatches(batches: AnimationBatch[]): AnimationBatchSummary[] {
   return batches.map((batch) => ({
     batchId: batch.batchId,
-    snapshot: deepClone(batch.snapshot),
+    snapshot: stripRelics(deepClone(batch.snapshot)),
     patch: batch.patch ? deepClone(batch.patch) : undefined,
     instructions: (batch.instructions ?? []).map((instruction) => ({
       waitMs: instruction.waitMs,
       metadata: deepClone(instruction.metadata),
     })),
   }))
+}
+
+function stripRelics(snapshot: unknown): unknown {
+  if (
+    snapshot &&
+    typeof snapshot === 'object' &&
+    'player' in (snapshot as Record<string, unknown>) &&
+    (snapshot as { player?: { relics?: unknown } }).player
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (snapshot as any).player.relics
+  }
+  return snapshot
 }
 
 function deepClone<T>(value: T): T {

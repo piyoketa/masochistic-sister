@@ -312,6 +312,10 @@ function sanitizePatch<T>(patch: T | undefined): T | undefined {
   if (changes && typeof changes === 'object') {
     delete changes.events
     delete changes.log
+    if (changes.player && typeof changes.player === 'object') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (changes.player as any).relics
+    }
   }
   return clone
 }

@@ -20,6 +20,7 @@ import type { ActionType } from '../entities/Action'
 import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
 import type { EnemyActionHint, EnemySkill } from '@/types/battle'
 import { buildEnemyActionHints } from './enemyActionHintBuilder'
+import { instantiateRelic } from '../entities/relics/relicLibrary'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -35,6 +36,7 @@ export interface BattleConfig {
   log?: BattleLog
   turn?: TurnManager
   cardRepository?: CardRepository
+  relicClassNames?: string[]
 }
 
 export interface BattleSnapshot {
@@ -46,6 +48,7 @@ export interface BattleSnapshot {
     maxHp: number
     currentMana: number
     maxMana: number
+    relics: Array<{ className: string; active: boolean }>
   }
   enemies: Array<{
     id: number
@@ -174,6 +177,7 @@ export class Battle {
   private readonly logValue: BattleLog
   private readonly turnValue: TurnManager
   private readonly cardRepositoryValue: CardRepository
+  private relicClassNames: string[]
   private logSequence = 0
   private executedActionLogIndex = -1
   private eventSequence = 0
@@ -212,6 +216,7 @@ export class Battle {
     this.logValue = config.log ?? new BattleLog()
     this.turnValue = config.turn ?? new TurnManager()
     this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
+    this.relicClassNames = [...(config.relicClassNames ?? [])]
     this.playerValue.bindHand(this.handValue)
     this.cardRepositoryValue.bindZones({
       deck: this.deckValue,
@@ -353,6 +358,13 @@ export class Battle {
   }
 
   getSnapshot(): BattleSnapshot {
+    const relicSnapshots =
+      this.relicClassNames.map((className) => {
+        const relic = instantiateRelic(className)
+        const active = relic?.isActive({ battle: this, player: this.playerValue }) ?? false
+        return { className, active }
+      }) ?? []
+
     return {
       id: this.idValue,
       player: {
@@ -362,6 +374,7 @@ export class Battle {
         maxHp: this.playerValue.maxHp,
         currentMana: this.playerValue.currentMana,
         maxMana: this.playerValue.maxMana,
+        relics: relicSnapshots,
       },
       enemies: this.enemyTeamValue.members.map<BattleSnapshot['enemies'][number]>((enemy: Enemy) => {
         const id = enemy.id
@@ -422,6 +435,7 @@ export class Battle {
     this.eventsValue.replace(base.events)
     this.turnValue.setState(base.turn)
     this.logValue.replace(base.log)
+    this.relicClassNames = base.player.relics.map((relic) => relic.className)
 
     const idToEnemy = new Map<number, Enemy>()
     for (const enemy of this.enemyTeamValue.members) {

@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { FieldNode } from '@/fields/domains/FieldNode'
+import RelicList from '@/components/RelicList.vue'
+import { mapClassNamesToDisplay } from '@/view/relicDisplayMapper'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -17,6 +19,7 @@ const playerStatus = computed(() => ({
   deckCount: playerStore.deck.length,
   gold: playerStore.gold,
 }))
+const relics = computed(() => mapClassNamesToDisplay(playerStore.relics))
 
 const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
 const levels = computed(() => fieldStore.field.levels)
@@ -67,6 +70,10 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
         <span>所持金: {{ playerStatus.gold }}</span>
         <span>現在Lv: {{ currentLevel }}</span>
         <button type="button" class="deck-button" @click="router.push('/deck')">デッキ確認</button>
+      </div>
+      <div class="relics">
+        <span class="relics__label">レリック</span>
+        <RelicList :relics="relics" @hover="() => {}" @leave="() => {}" />
       </div>
     </header>
 
@@ -141,6 +148,19 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
   gap: 12px;
   font-size: 14px;
   color: rgba(245, 242, 255, 0.85);
+}
+
+.relics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.relics__label {
+  font-size: 13px;
+  color: rgba(245, 242, 255, 0.7);
+  letter-spacing: 0.06em;
 }
 
 .deck-button {

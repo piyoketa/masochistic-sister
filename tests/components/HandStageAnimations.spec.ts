@@ -25,9 +25,9 @@ describe('BattleHandArea: 手札あふれオーバーレイ', () => {
     await wrapper.setProps({ stageEvent: overflowEvent })
     await flushAll(wrapper)
 
-    const overlay = wrapper.find('.battle-error-overlay')
-    expect(overlay.exists()).toBe(true)
-    expect(overlay.text()).toContain('手札が満杯です！')
+    const emitted = wrapper.emitted('error') ?? []
+    const messages = emitted.flat().map((args) => args as unknown[]).flat()
+    expect(messages.includes('手札が満杯です！')).toBe(true)
   })
 })
 

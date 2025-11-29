@@ -47,13 +47,14 @@ import CutInOverlay from '@/components/CutInOverlay.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRewardStore } from '@/stores/rewardStore'
-import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { BattleReward } from '@/domain/battle/BattleReward'
 import { createAudioHub, provideAudioHub } from '@/composables/audioHub'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
+import RelicList from '@/components/RelicList.vue'
+import { mapSnapshotRelics, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
 
 declare global {
   interface Window {
@@ -122,7 +123,9 @@ const manaPulseKey = ref(0)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
-const playerRelics = DEFAULT_PLAYER_RELICS
+const playerRelics = computed<RelicDisplayEntry[]>(() =>
+  mapSnapshotRelics(snapshot.value?.player.relics ?? []),
+)
 const audioHub = createAudioHub(SOUND_ASSETS)
 const imageHub = createImageHub()
 provideAudioHub(audioHub)
@@ -484,7 +487,7 @@ function handleHandHideOverlay(): void {
   hideDescriptionOverlay()
 }
 
-function handleRelicHover(event: MouseEvent | FocusEvent, relic: Relic): void {
+function handleRelicHover(event: MouseEvent | FocusEvent, relic: RelicDisplayEntry): void {
   let x = 0
   let y = 0
   if ('clientX' in event) {
@@ -495,17 +498,15 @@ function handleRelicHover(event: MouseEvent | FocusEvent, relic: Relic): void {
     x = rect.left + rect.width / 2
     y = rect.top
   }
-  showDescriptionOverlay(`${relic.name}\n${relic.description()}`, { x, y })
+  showDescriptionOverlay(`${relic.name}\n${relic.description}`, { x, y })
 }
 
 function handleRelicLeave(): void {
   hideDescriptionOverlay()
 }
 
-function handleRelicClick(relic: Relic): void {
-  if (relic.usageType !== 'active') {
-    return
-  }
+function handleRelicClick(_relic: RelicDisplayEntry): void {
+  // いまのところクリック発火はなし（パッシブのみ想定）
 }
 
 function handleEnemySelectionHints(hints: TargetEnemyAvailabilityEntry[]): void {
@@ -708,6 +709,7 @@ function createBattleFromPlayerStore(
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
+    relicClassNames: [...playerStore.relics],
   })
 }
 
@@ -753,27 +755,12 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         <header class="battle-header">
           <div class="header-relics">
             <span class="relic-label">レリック</span>
-            <div class="relic-icon-list">
-              <button
-                v-for="relic in playerRelics"
-                :key="relic.id"
-                type="button"
-                class="relic-icon"
-                :class="{
-                  'relic-icon--active': relic.usageType === 'active',
-                  'relic-icon--passive': relic.usageType !== 'active',
-                }"
-                :aria-label="relic.name"
-                :aria-disabled="relic.usageType !== 'active' ? 'true' : undefined"
-                @mouseenter="(event) => handleRelicHover(event, relic)"
-                @focusin="(event) => handleRelicHover(event, relic)"
-                @mouseleave="handleRelicLeave"
-                @focusout="handleRelicLeave"
-                @click="handleRelicClick(relic)"
-              >
-                {{ relic.icon }}
-              </button>
-            </div>
+            <RelicList
+              class="relic-icon-list"
+              :relics="playerRelics"
+              @hover="(relic, event) => handleRelicHover(event, relic)"
+              @leave="handleRelicLeave"
+            />
           </div>
           <div class="header-status">
             <span class="phase-label">{{ phaseLabel }}</span>

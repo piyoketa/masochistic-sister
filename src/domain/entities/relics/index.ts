@@ -8,10 +8,12 @@ import { NoViolenceRelic } from './NoViolenceRelic'
 import { SlipperyTouchRelic } from './SlipperyTouchRelic'
 import { DevoutBelieverRelic } from './DevoutBelieverRelic'
 import { ArcaneAdaptationRelic } from './ArcaneAdaptationRelic'
+import { MemorySaintRelic } from './MemorySaintRelic'
 
 export type { Relic } from './Relic'
 
 export const DEFAULT_PLAYER_RELICS: Relic[] = [
+  new MemorySaintRelic(),
   new SacrificialAwarenessRelic(),
   new AdversityExcitementRelic(),
   new LightweightCombatRelic(),

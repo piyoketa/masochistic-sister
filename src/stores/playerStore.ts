@@ -19,6 +19,7 @@ import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { Damages } from '@/domain/entities/Damages'
 import { Attack, type Action } from '@/domain/entities/Action'
+import { listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
 
 export type DeckCardType =
   | 'heaven-chain'
@@ -49,6 +50,8 @@ interface DeckPreviewEntry {
   description: string
   type: DeckCardType
 }
+
+const DEFAULT_RELICS: string[] = ['MemorySaintRelic']
 
 const cardFactories: Record<DeckCardType, () => Card> = {
   'heaven-chain': () => new Card({ action: new HeavenChainAction() }),
@@ -97,6 +100,7 @@ export const usePlayerStore = defineStore('player', {
     maxHp: 150,
     gold: 0,
     deck: [] as DeckCardBlueprint[],
+    relics: [] as string[],
     initialized: false,
   }),
   actions: {
@@ -110,6 +114,7 @@ export const usePlayerStore = defineStore('player', {
       const { deck } = buildDefaultDeck(repository)
       this.deck = deck.map((card) => cardToBlueprint(card))
       this.gold = 0
+      this.relics = [...DEFAULT_RELICS]
       this.initialized = true
     },
     setDeck(blueprints: DeckCardBlueprint[]): void {
@@ -193,6 +198,17 @@ export const usePlayerStore = defineStore('player', {
         return
       }
       this.hp = Math.min(this.maxHp, this.hp + heal)
+    },
+    setRelics(classNames: string[]): void {
+      this.relics = [...classNames]
+      this.initialized = true
+    },
+    addRelic(className: string): void {
+      const known = listRelicClassNames()
+      if (known.length > 0 && !known.includes(className)) {
+        return
+      }
+      this.relics = [...this.relics, className]
     },
   },
 })

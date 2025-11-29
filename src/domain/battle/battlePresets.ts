@@ -52,6 +52,7 @@ function createBattleFromPreset(preset: BattlePreset): Battle {
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
+    relicClassNames: [],
   })
 }
 

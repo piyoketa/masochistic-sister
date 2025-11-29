@@ -62,6 +62,7 @@ function createSnapshot(): BattleSnapshot {
       maxHp: 40,
       currentMana: 3,
       maxMana: 3,
+      relics: [],
     },
     enemies: [],
     deck: [],
