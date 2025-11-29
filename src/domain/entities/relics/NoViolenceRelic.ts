@@ -10,6 +10,6 @@ export class NoViolenceRelic extends Relic {
   readonly icon = '⛓️'
 
   description(): string {
-    return '永続：「天の鎖」のマナコストを常に0にする。'
+    return 'ターン中１回まで、「天の鎖」のマナコストを０にする'
   }
 }

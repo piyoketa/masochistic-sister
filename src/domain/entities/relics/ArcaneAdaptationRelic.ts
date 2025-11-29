@@ -7,9 +7,9 @@ export class ArcaneAdaptationRelic extends Relic {
   readonly id = 'arcane-adaptation'
   readonly name = '魔への順応'
   readonly usageType = 'passive' as const
-  readonly icon = '🌀'
+  readonly icon = '👿'
 
   description(): string {
-    return '永続：「被虐のオーラ」のマナコストを常に0にする。'
+    return 'ターン中１回まで、「被虐のオーラ」のマナコストを０にする'
   }
 }
