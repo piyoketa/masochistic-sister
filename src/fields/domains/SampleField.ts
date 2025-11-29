@@ -51,7 +51,7 @@ function buildLevels(): FieldLevel[] {
     id: 'enemy-snail',
     type: 'enemy',
     level: 3,
-    label: '敵: snail',
+    label: '敵「かたつむり」',
     enemyTeamId: 'snail',
     nextNodeIndices: [0],
   }
@@ -59,7 +59,7 @@ function buildLevels(): FieldLevel[] {
     id: 'enemy-iron-bloom',
     type: 'enemy',
     level: 4,
-    label: '敵: iron-bloom',
+    label: '敵「鉄花」',
     enemyTeamId: 'iron-bloom',
     nextNodeIndices: [0],
   }
@@ -67,7 +67,7 @@ function buildLevels(): FieldLevel[] {
     id: 'enemy-hummingbird-scorpion',
     type: 'enemy',
     level: 5,
-    label: '敵: hummingbird-scorpion',
+    label: '敵「ハチドリ」',
     enemyTeamId: 'hummingbird-scorpion',
     nextNodeIndices: [0],
   }
@@ -75,7 +75,7 @@ function buildLevels(): FieldLevel[] {
     id: 'enemy-orc-hero-elite',
     type: 'enemy',
     level: 6,
-    label: '敵: orc-hero-elite',
+    label: 'エリート「オークヒーロー」',
     enemyTeamId: 'orc-hero-elite',
     nextNodeIndices: [],
   }

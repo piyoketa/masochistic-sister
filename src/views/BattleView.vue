@@ -459,6 +459,9 @@ async function handleOpenReward(): Promise<void> {
   if (!battle || !snapshot.value) {
     return
   }
+  // バトル終了時点のHPをストアへ反映しておく（褒章処理後の表示用）。
+  playerStore.hp = snapshot.value.player.currentHp
+  playerStore.maxHp = snapshot.value.player.maxHp
   const reward = new BattleReward(battle).compute()
   rewardStore.setReward({
     battleId: battle.id,

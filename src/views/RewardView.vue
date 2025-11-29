@@ -12,6 +12,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import GameLayout from '@/components/GameLayout.vue'
 import CardList from '@/components/CardList.vue'
+import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import { useRewardStore } from '@/stores/rewardStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
@@ -96,78 +97,83 @@ async function returnToField(): Promise<void> {
     <template #window>
       <div class="reward-view">
         <header class="reward-header">
-          <div>
-            <h1>戦利品</h1>
-            <p>勝利報酬を受け取ってフィールドに戻ります。</p>
-          </div>
+          <h1>戦利品</h1>
+          <p class="subtitle">勝利報酬を受け取ってフィールドに戻ります。</p>
           <div class="status">
             <span>HP: {{ playerStatus.hp }} / {{ playerStatus.maxHp }}</span>
-            <span>Gold: {{ playerStatus.gold }}</span>
+            <span>所持金: {{ playerStatus.gold }}</span>
             <span>デッキ: {{ playerStatus.deckCount }}枚</span>
           </div>
         </header>
 
         <section v-if="reward" class="reward-body">
-          <div class="reward-cards">
-            <div class="reward-item">
-              <div class="reward-label">HP回復</div>
-              <div class="reward-value">+{{ reward.hpHeal }}</div>
-              <button type="button" class="reward-button" :disabled="rewardsState.hp" @click="handleHeal">
-                {{ rewardsState.hp ? '受取済み' : '受け取る' }}
-              </button>
-            </div>
-            <div class="reward-item">
-              <div class="reward-label">所持金</div>
-              <div class="reward-value">+{{ reward.gold }}</div>
-              <button type="button" class="reward-button" :disabled="rewardsState.gold" @click="handleGold">
-                {{ rewardsState.gold ? '受取済み' : '受け取る' }}
-              </button>
-            </div>
-          </div>
+          <aside class="player-area">
+            <PlayerCardComponent
+              :pre-hp="{ current: playerStatus.hp, max: playerStatus.maxHp }"
+              :post-hp="{ current: playerStatus.hp, max: playerStatus.maxHp }"
+              :selection-theme="'default'"
+              :states="[]"
+              :outcomes="[]"
+            />
+          </aside>
 
-          <div class="card-section">
-            <div class="card-section__header">
-              <h3>新規カードから1枚獲得</h3>
-              <span class="card-section__note">
-                選択後に受け取ると、デッキへ追加されます（[新規]タグは除外）。
-              </span>
-            </div>
-            <div class="card-list-wrapper" :class="{ 'card-list-wrapper--disabled': rewardsState.card }">
-              <CardList
-                :cards="reward.cards.map((entry) => entry.info)"
-                title="褒賞カード"
-                :gap="50"
-                selectable
-                :selected-card-id="selectedCardId"
-                :hover-effect="!rewardsState.card"
-                @update:selected-card-id="(id) => {
-                  if (rewardsState.card) return
-                  selectedCardId = (id as string) ?? null
-                }"
-              />
-              <div class="card-actions">
-                <button
-                  type="button"
-                  class="reward-button"
-                  :disabled="rewardsState.card || !selectedCardId"
-                  @click="handleCardClaim"
-                >
-                  {{ rewardsState.card ? '受取済み' : '選択カードを獲得' }}
+          <main class="reward-main">
+            <div class="reward-cards">
+              <div class="reward-item">
+                <div class="reward-label">HP回復</div>
+                <div class="reward-value">+{{ reward.hpHeal }}</div>
+                <button type="button" class="reward-button" :disabled="rewardsState.hp" @click="handleHeal">
+                  {{ rewardsState.hp ? '受取済み' : '受け取る' }}
+                </button>
+              </div>
+              <div class="reward-item">
+                <div class="reward-label">所持金</div>
+                <div class="reward-value">+{{ reward.gold }}</div>
+                <button type="button" class="reward-button" :disabled="rewardsState.gold" @click="handleGold">
+                  {{ rewardsState.gold ? '受取済み' : '受け取る' }}
                 </button>
               </div>
             </div>
-          </div>
 
-          <div class="actions">
-            <button
-              type="button"
-              class="reward-button reward-button--secondary"
-              :disabled="!allClaimed"
-              @click="returnToField"
-            >
-              フィールドに戻る
-            </button>
-          </div>
+            <div class="card-section">
+              <div class="card-section__header">
+                <h3>新規カードから1枚獲得</h3>
+                <span class="card-section__note">デッキへ追加するカードを１枚選択してください</span>
+              </div>
+              <div class="card-list-wrapper" :class="{ 'card-list-wrapper--disabled': rewardsState.card }">
+                <CardList
+                  :cards="reward.cards.map((entry) => entry.info)"
+                  title="褒賞カード"
+                  :gap="50"
+                  selectable
+                  :selected-card-id="selectedCardId"
+                  :hover-effect="!rewardsState.card"
+                  @update:selected-card-id="(id) => {
+                    if (rewardsState.card) return
+                    selectedCardId = (id as string) ?? null
+                  }"
+                />
+                <div class="card-actions">
+                  <button
+                    type="button"
+                    class="reward-button"
+                    :disabled="rewardsState.card || !selectedCardId"
+                    @click="handleCardClaim"
+                  >
+                    {{ rewardsState.card ? '受取済み' : '選択カードを獲得' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="reward-button reward-button--secondary"
+                    :disabled="!allClaimed"
+                    @click="returnToField"
+                  >
+                    フィールドに戻る
+                  </button>
+                </div>
+              </div>
+            </div>
+          </main>
         </section>
       </div>
     </template>
@@ -177,16 +183,17 @@ async function returnToField(): Promise<void> {
 <style scoped>
 .reward-view {
   min-height: 100vh;
-  padding: 32px clamp(20px, 5vw, 64px);
+  padding: 24px clamp(20px, 5vw, 48px);
   color: #f5f2ff;
+  box-sizing: border-box;
 }
 
 .reward-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .reward-header h1 {
@@ -194,37 +201,54 @@ async function returnToField(): Promise<void> {
   letter-spacing: 0.12em;
 }
 
-.reward-header p {
-  margin: 4px 0 0;
+.subtitle {
+  margin: 0;
   color: rgba(245, 242, 255, 0.7);
+  font-size: 13px;
 }
 
 .status {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
   color: rgba(245, 242, 255, 0.85);
-  min-width: 180px;
+  justify-content: flex-end;
 }
 
 .reward-body {
+  display: grid;
+  grid-template-columns: minmax(260px, 28%) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.player-area {
+  position: sticky;
+  top: 12px;
+}
+
+.reward-main {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .reward-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
 }
 
 .reward-item {
   background: rgba(18, 16, 28, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  padding: 12px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
 }
 
 .reward-label {
@@ -233,13 +257,12 @@ async function returnToField(): Promise<void> {
 }
 
 .reward-value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .reward-button {
-  margin-top: 8px;
   background: rgba(255, 227, 115, 0.95);
   color: #2d1a0f;
   border: none;
@@ -282,13 +305,9 @@ async function returnToField(): Promise<void> {
 }
 
 .card-actions {
-  margin-top: 8px;
-}
-
-.actions {
+  margin-top: 10px;
   display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .reward-button {
