@@ -119,7 +119,6 @@ async function handleProceed(): Promise<void> {
             />
           </aside>
           <main class="main">
-            <h2>獲得候補 ({{ drawnRelics.length }}個)</h2>
             <div class="relic-list">
               <label
                 v-for="relic in drawnRelics"

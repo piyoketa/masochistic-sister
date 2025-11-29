@@ -157,6 +157,7 @@ const descriptionOverlayStyle = computed(() => {
 
 let battleAssetPreloadPromise: Promise<void> | null = null
 const rewardPrepared = ref(false)
+const playerCardRef = ref<InstanceType<typeof PlayerCardComponent> | null>(null)
 
 function preloadBattleAssets(): Promise<void> {
   if (battleAssetPreloadPromise) {
@@ -197,6 +198,11 @@ function showTransientError(message: string): void {
     errorMessage.value = null
     errorOverlayTimer = null
   }, ERROR_OVERLAY_DURATION_MS)
+}
+
+function getPlayerOriginRect(): DOMRect | null {
+  const el = playerCardRef.value?.$el as HTMLElement | undefined
+  return el?.getBoundingClientRect() ?? null
 }
 
 function resetErrorMessage(): void {
@@ -848,6 +854,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
             <div class="portrait">
               <PlayerCardComponent
                 :key="`player-card-${viewResetToken}`"
+                ref="playerCardRef"
                 :pre-hp="
                   previousSnapshot?.player
                     ? { current: previousSnapshot.player.currentHp, max: previousSnapshot.player.maxHp }
@@ -912,6 +919,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
               :view-manager="viewManager"
               :request-enemy-target="requestEnemyTarget"
               :cancel-enemy-selection="cancelEnemySelectionInternal"
+              :player-origin-rect="getPlayerOriginRect"
               @play-card="handleHandPlayCard"
               @error="handleHandError"
               @hide-overlay="handleHandHideOverlay"

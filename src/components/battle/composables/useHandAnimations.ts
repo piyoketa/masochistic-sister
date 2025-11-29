@@ -24,6 +24,7 @@ interface UseHandAnimationsOptions {
   deckCounterRef: Ref<HTMLElement | null>
   discardCounterRef: Ref<HTMLElement | null>
   findHandEntryByCardId: (cardId: number) => HandEntry | undefined
+  originRectProvider?: () => DOMRect | null
 }
 
 const ACTION_CARD_WIDTH = 120
@@ -190,14 +191,24 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
 
   function runComplexCardCreateAnimation(cardId: number, cardElement: HTMLElement): void {
     const cardRect = cardElement.getBoundingClientRect()
-    const viewportCenterX =
-      typeof window !== 'undefined' ? window.innerWidth / 2 : cardRect.left + cardRect.width / 2
-    const viewportCenterY =
-      typeof window !== 'undefined' ? window.innerHeight / 2 : cardRect.top + cardRect.height / 2
+    const originRect = options.originRectProvider?.() ?? null
+    const originCenterX =
+      originRect?.left !== undefined
+        ? originRect.left + (originRect.width || ACTION_CARD_WIDTH) / 2
+        : typeof window !== 'undefined'
+          ? window.innerWidth / 2
+          : cardRect.left + cardRect.width / 2
+    // 「PlayerImage の中心」基準: 画像のY座標中央を原点とする
+    const originCenterY =
+      originRect?.top !== undefined
+        ? originRect.top + (originRect.height || ACTION_CARD_HEIGHT) / 2
+        : typeof window !== 'undefined'
+          ? window.innerHeight / 2
+          : cardRect.top + cardRect.height / 2
     const cardCenterX = cardRect.left + (cardRect.width || ACTION_CARD_WIDTH) / 2
     const cardCenterY = cardRect.top + (cardRect.height || ACTION_CARD_HEIGHT) / 2
-    const deltaX = viewportCenterX - cardCenterX
-    const deltaY = viewportCenterY - cardCenterY
+    const deltaX = originCenterX - cardCenterX
+    const deltaY = originCenterY - cardCenterY
 
     cardElement.style.transition = 'none'
     cardElement.style.transformOrigin = 'center center'

@@ -39,6 +39,7 @@ const props = defineProps<{
   requestEnemyTarget: (theme: EnemySelectionTheme) => Promise<number>
   cancelEnemySelection: () => void
   stageEvent: StageEventPayload | null
+  playerOriginRect?: () => DOMRect | null
 }>()
 
 const emit = defineEmits<{
@@ -100,6 +101,7 @@ const {
   deckCounterRef,
   discardCounterRef,
   findHandEntryByCardId,
+  originRectProvider: () => props.playerOriginRect?.() ?? null,
 })
 markCardsVisible(
   handEntries.value
