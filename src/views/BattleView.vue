@@ -55,7 +55,7 @@ import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import RelicList from '@/components/RelicList.vue'
 import { mapSnapshotRelics, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
-import type { CardInfo } from '@/types/battle'
+import type { CardInfo, StatusCardInfo } from '@/types/battle'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 declare global {
@@ -476,19 +476,24 @@ function buildCardInfos(
   cards: Array<{ id?: number; title: string; cost: number; type: string; definition?: { image?: string } }>,
   prefix: string,
 ): CardInfo[] {
-  return cards.map((card, index) => ({
-    id: `${prefix}-${card.id ?? index}`,
-    title: card.title,
-    type: card.type as CardInfo['type'],
-    cost: card.cost,
-    illustration: card.definition?.image ?? '🂠',
-    description: (card as { description?: string }).description ?? card.title,
-    affordable: true,
-    disabled: true,
-    primaryTags: [],
-    effectTags: [],
-    categoryTags: [],
-  }))
+  return cards.map((card, index) => {
+    const id = `${prefix}-${card.id ?? index}`
+    // デッキ/捨て札確認用なので、簡易的な StatusCardInfo として扱う。
+    const info: StatusCardInfo = {
+      id,
+      title: card.title,
+      type: 'status',
+      cost: card.cost,
+      description: (card as { description?: string }).description ?? card.title,
+      primaryTags: [],
+      categoryTags: [],
+      effectTags: [],
+      affordable: true,
+      disabled: true,
+      descriptionSegments: [],
+    }
+    return info
+  })
 }
 
 async function handleOpenReward(): Promise<void> {

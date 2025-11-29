@@ -633,7 +633,6 @@ function buildFallbackCardInfo(cardId: number, title: string): CardInfo {
     title,
     type: 'skill',
     cost: 0,
-    illustration: '🂠',
     description: title,
     primaryTags: [],
     effectTags: [],

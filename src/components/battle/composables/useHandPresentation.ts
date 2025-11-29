@@ -88,38 +88,11 @@ function buildHandEntry(
   const operations = definition.operations ?? []
   const affordable = card.cost <= currentMana
 
-  const {
-    description,
-    descriptionSegments,
-    attackStyle,
-    primaryTags,
-    effectTags,
-    categoryTags,
-    damageAmount,
-    damageCount,
-    damageAmountBoosted,
-    damageCountBoosted,
-  } = buildCardPresentation(options, card, index)
+  const presentation = buildCardPresentation(options, card, index)
 
   return {
     key: identifier,
-    info: {
-      id: identifier,
-      title: card.title,
-      type: card.type,
-      cost: card.cost,
-      illustration: definition.image ?? '🂠',
-      description,
-      descriptionSegments,
-      attackStyle,
-      primaryTags,
-      effectTags,
-      categoryTags,
-      damageAmount,
-      damageCount,
-      damageAmountBoosted,
-      damageCountBoosted,
-    },
+    info: presentation,
     card,
     id: card.id,
     operations,
@@ -127,18 +100,7 @@ function buildHandEntry(
   }
 }
 
-function buildCardPresentation(options: UseHandPresentationOptions, card: Card, index: number): {
-  description: string
-  descriptionSegments?: DescriptionSegment[]
-  attackStyle?: AttackStyle
-  primaryTags: CardTagInfo[]
-  effectTags: CardTagInfo[]
-  categoryTags: CardTagInfo[]
-  damageAmount?: number
-  damageCount?: number
-  damageAmountBoosted?: boolean
-  damageCountBoosted?: boolean
-} {
+function buildCardPresentation(options: UseHandPresentationOptions, card: Card, index: number): CardInfo {
   const definition = card.definition
   const primaryTags: CardTagInfo[] = []
   const effectTags: CardTagInfo[] = []
@@ -146,7 +108,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   const seenTagIds = new Set<string>()
 
   let description = card.description
-  let descriptionSegments: DescriptionSegment[] | undefined
+  let descriptionSegments: DescriptionSegment[] = []
   let attackStyle: AttackStyle | undefined
   let damageAmount: number | undefined
   let damageCount: number | undefined
@@ -214,19 +176,68 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     } else {
       attackStyle = damages.type === 'multi' ? 'multi' : 'single'
     }
+    if (!attackStyle) {
+      attackStyle = 'single'
+    }
+  }
+
+  const baseInfo = {
+    id: card.id !== undefined ? `card-${card.id}` : `card-${index}`,
+    title: card.title,
+    cost: card.cost,
+    primaryTags,
+    categoryTags,
+    descriptionSegments,
+    damageAmountBoosted,
+    damageCountBoosted,
+  }
+
+  if (card.type === 'attack') {
+    const style: AttackStyle = attackStyle ?? 'single'
+    const safeDamageAmount = damageAmount ?? 0
+    const safeDamageCount = Math.max(1, damageCount ?? 1)
+    if (style === 'multi') {
+      return {
+        ...baseInfo,
+        type: 'attack',
+        attackStyle: 'multi',
+        damageAmount: safeDamageAmount,
+        damageCount: safeDamageCount,
+        effectTags,
+        descriptionSegments,
+      }
+    }
+    return {
+      ...baseInfo,
+      type: 'attack',
+      attackStyle: 'single',
+      damageAmount: safeDamageAmount,
+      effectTags,
+      descriptionSegments,
+    }
+  }
+
+  if (card.type === 'skill') {
+    return {
+      ...baseInfo,
+      type: 'skill',
+      description,
+      effectTags: effectTags.length ? effectTags : undefined,
+    }
+  }
+
+  if (card.type === 'status') {
+    return {
+      ...baseInfo,
+      type: 'status',
+      description,
+      effectTags: effectTags.length ? effectTags : undefined,
+    }
   }
 
   return {
-    description,
-    descriptionSegments,
-    attackStyle,
-    primaryTags,
-    effectTags,
-    categoryTags,
-    damageAmount,
-    damageCount,
-    damageAmountBoosted,
-    damageCountBoosted,
+    ...baseInfo,
+    type: 'skip',
   }
 }
 

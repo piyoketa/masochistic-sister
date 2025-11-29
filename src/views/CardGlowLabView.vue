@@ -20,7 +20,6 @@ const sampleCard: {
   title: string
   type: CardType
   cost: number
-  illustration: string
   description: string
   descriptionSegments: DescriptionSegment[]
   attackStyle: AttackStyle
@@ -34,7 +33,6 @@ const sampleCard: {
   title: '金星の祈り',
   type: 'skill',
   cost: 1,
-  illustration: '✨',
   description: '光の加護を宿す\n次の攻撃で与ダメージ+5',
   descriptionSegments: [
     { text: '🌀光の守護', tooltip: '受けるダメージ-3(1ターン)' },

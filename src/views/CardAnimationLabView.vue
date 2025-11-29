@@ -16,7 +16,6 @@ const baseSkillCard = {
   title: 'ポイズンリース',
   type: 'skill' as const,
   cost: 2,
-  illustration: '🌿',
   description: '防御＋5\n次のターン、与ダメージ+3',
   primaryTags: [{ id: 'tag-type-skill', label: '補助' }],
   effectTags: [{ id: 'tag-buff', label: '防御' }],

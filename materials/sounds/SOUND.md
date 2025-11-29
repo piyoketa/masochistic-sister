@@ -87,3 +87,6 @@ materials/sounds/poison より
 - 魔王魂
   - public/sounds/defeat/maou_se_battle18.mp3[戦闘18](https://maou.audio/se_battle18/#google_vignette) 撃破の音
   - public/sounds/defeat/maou_se_battle18.mp3 [オノマトペ・光る](https://otologic.jp/free/se/flash01.html#google_vignette) 被虐のオーラ
+- [DOVA-SYNDROME](https://dova-s.jp/_contents/license/)
+  - 著作権表示・提供等の表示は不要
+  - public/sounds/bgm/battle.mp3[タクティカルエンカウンター](https://dova-s.jp/bgm/play18089.html)

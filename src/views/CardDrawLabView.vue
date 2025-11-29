@@ -8,7 +8,6 @@ interface LabCard {
   title: string
   type: CardType
   cost: number
-  illustration?: string
   description: string
   primaryTags?: CardTagInfo[]
   effectTags?: CardTagInfo[]
@@ -20,7 +19,6 @@ const CARD_TEMPLATES: Omit<LabCard, 'id'>[] = [
     title: '炎刃スラッシュ',
     type: 'attack',
     cost: 1,
-    illustration: '🔥',
     description: '敵単体に 8 ダメージ。',
     primaryTags: [{ id: 'tag-type-attack', label: '攻撃' }],
   },
@@ -28,7 +26,6 @@ const CARD_TEMPLATES: Omit<LabCard, 'id'>[] = [
     title: 'オーラ防御',
     type: 'skill',
     cost: 1,
-    illustration: '🛡️',
     description: '防御 +6 を得る。',
     primaryTags: [{ id: 'tag-type-skill', label: '補助' }],
   },
@@ -36,7 +33,6 @@ const CARD_TEMPLATES: Omit<LabCard, 'id'>[] = [
     title: '毒の余韻',
     type: 'status',
     cost: 2,
-    illustration: '🧪',
     description: '敵に腐食(2)を付与。',
     primaryTags: [{ id: 'tag-type-status', label: '状態異常' }],
   },
@@ -44,7 +40,6 @@ const CARD_TEMPLATES: Omit<LabCard, 'id'>[] = [
     title: '陽光チャージ',
     type: 'skill',
     cost: 0,
-    illustration: '🔆',
     description: 'カードを 1 枚引く。',
     primaryTags: [{ id: 'tag-type-skill', label: '補助' }],
   },
@@ -52,7 +47,6 @@ const CARD_TEMPLATES: Omit<LabCard, 'id'>[] = [
     title: '乱れ撃ち',
     type: 'attack',
     cost: 2,
-    illustration: '💥',
     description: '3 回 x 3 ダメージ。',
     primaryTags: [{ id: 'tag-type-attack', label: '攻撃' }],
   },
@@ -60,7 +54,6 @@ const CARD_TEMPLATES: Omit<LabCard, 'id'>[] = [
     title: '猛毒の棘',
     type: 'attack',
     cost: 1,
-    illustration: '🌿',
     description: '敵単体に 4 ダメージ + 毒(3)。',
     primaryTags: [{ id: 'tag-type-attack', label: '攻撃' }],
   },
@@ -68,7 +61,6 @@ const CARD_TEMPLATES: Omit<LabCard, 'id'>[] = [
     title: '迅速移動',
     type: 'skill',
     cost: 1,
-    illustration: '💨',
     description: '次の攻撃カードのコスト -1。',
     primaryTags: [{ id: 'tag-type-skill', label: '補助' }],
   },
@@ -76,7 +68,6 @@ const CARD_TEMPLATES: Omit<LabCard, 'id'>[] = [
     title: '血の契約',
     type: 'status',
     cost: 1,
-    illustration: '🩸',
     description: 'ターン終了時にダメージ +2（自身に2ダメージ）。',
     primaryTags: [{ id: 'tag-type-status', label: '状態異常' }],
   },

@@ -62,8 +62,10 @@ const props = defineProps<{
   title: string
   type: CardType
   cost: number
-  illustration?: string
-  description: string
+  /**
+   * 攻撃カードでは省略されることがあるため optional にする。
+   */
+  description?: string
   descriptionSegments?: DescriptionSegment[]
   attackStyle?: AttackStyle
   primaryTags?: CardTagInfo[]
@@ -336,7 +338,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
               ×{{ props.damageCount }}
             </span>
           </div>
-          <p class="card-description">
+          <p v-if="props.type !== 'attack'" class="card-description">
             <template v-if="props.descriptionSegments && props.descriptionSegments.length">
               <template v-for="(segment, index) in props.descriptionSegments" :key="index">
                 <br v-if="segment.text === '\n'" />
@@ -352,9 +354,9 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
               </template>
             </template>
             <template v-else>
-              <template v-for="(line, index) in props.description.split('\n')" :key="index">
+              <template v-for="(line, index) in (props.description ?? '').split('\n')" :key="index">
                 <span>{{ line }}</span>
-                <br v-if="index < props.description.split('\n').length - 1" />
+                <br v-if="index < (props.description ?? '').split('\n').length - 1" />
               </template>
             </template>
           </p>

@@ -13,22 +13,14 @@ Library.ts の責務:
 - `ActionCardLabView` など View: `listActionCards(limitPerType)` を呼び出し、UI 向けの `CardInfo[]` を受け取る。View モデルを経由せずに直接呼べる唯一の例外オブジェクト。
 */
 import { Card } from '@/domain/entities/Card'
-import type { CardTag } from '@/domain/entities/CardTag'
-import type { CardDefinition } from '@/domain/entities/CardDefinition'
-import type { DamagePattern } from '@/domain/entities/Damages'
-import type {
-  CardInfo,
-  CardTagInfo,
-  AttackStyle,
-  CardType,
-  DescriptionSegment,
-} from '@/types/battle'
+import type { CardInfo, CardType } from '@/types/battle'
 import type { Action } from '@/domain/entities/Action'
 import { Attack } from '@/domain/entities/Action'
 import { State } from '@/domain/entities/State'
 import type { State as StateType } from '@/domain/entities/State'
 import * as actionModules from '@/domain/entities/actions'
 import * as stateModules from '@/domain/entities/states'
+import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
@@ -158,122 +150,6 @@ export class Library {
   }
 
   private buildCardInfo(card: Card, identifier: string): CardInfo | null {
-    if (!this.isSupportedCardType(card.type)) {
-      return null
-    }
-    const definition = card.definition
-    const primaryTags: CardTagInfo[] = []
-    const effectTags: CardTagInfo[] = []
-    const categoryTags: CardTagInfo[] = []
-    const seenTagIds = new Set<string>()
-
-    this.addPrimaryTags(definition, primaryTags, seenTagIds)
-    this.addTagEntries(effectTags, card.effectTags)
-    this.addTagEntries(categoryTags, card.categoryTags, (tag) => tag.name)
-
-    let description = card.description
-    let descriptionSegments: DescriptionSegment[] | undefined
-    let attackStyle: AttackStyle | undefined
-    let damageAmount: number | undefined
-    let damageCount: number | undefined
-
-    const action = card.action
-    if (action instanceof Attack) {
-      const damages = action.baseDamages
-      damageAmount = damages.baseAmount
-      damageCount = damages.baseCount
-      const formatted = action.describeForPlayerCard({
-        baseDamages: damages,
-        displayDamages: damages,
-      })
-      description = formatted.label
-      descriptionSegments = formatted.segments
-      attackStyle = this.deriveAttackStyle(definition, damages.type)
-    }
-
-    return {
-      id: identifier,
-      title: card.title,
-      type: card.type,
-      cost: card.cost,
-      illustration: definition.image ?? '🂠',
-      description,
-      descriptionSegments,
-      attackStyle,
-      primaryTags,
-      effectTags,
-      categoryTags,
-      damageAmount,
-      damageCount,
-    }
-  }
-
-  private addPrimaryTags(
-    definition: CardDefinition,
-    entries: CardTagInfo[],
-    registry: Set<string>,
-  ): void {
-    this.addTagEntry(definition.type, entries, registry, (tag) => tag.name)
-    if (this.hasTarget(definition)) {
-      this.addTagEntry(definition.target, entries, registry, (tag) => tag.name)
-    }
-  }
-
-  private deriveAttackStyle(definition: CardDefinition, pattern?: DamagePattern): AttackStyle {
-    const typeId = definition.type.id
-    if (typeId === 'tag-type-multi-attack') {
-      return 'multi'
-    }
-    if (typeId === 'tag-type-single-attack') {
-      return 'single'
-    }
-    return pattern === 'multi' ? 'multi' : 'single'
-  }
-
-  private addTagEntry(
-    tag: CardTag | undefined,
-    entries: CardTagInfo[],
-    registry: Set<string>,
-    formatter: (tag: CardTag) => string = (candidate) => candidate.name,
-  ): void {
-    if (!tag || registry.has(tag.id)) {
-      return
-    }
-    registry.add(tag.id)
-    entries.push({
-      id: tag.id,
-      label: formatter(tag),
-      description: tag.description,
-    })
-  }
-
-  private addTagEntries(
-    entries: CardTagInfo[],
-    tags?: readonly CardTag[],
-    formatter: (tag: CardTag) => string = (candidate) => candidate.name,
-  ): void {
-    if (!tags) {
-      return
-    }
-    for (const tag of tags) {
-      if (entries.some((entry) => entry.id === tag.id)) {
-        continue
-      }
-      entries.push({
-        id: tag.id,
-        label: formatter(tag),
-        description: tag.description,
-      })
-    }
-  }
-
-  private hasTarget(
-    definition: CardDefinition,
-  ): definition is CardDefinition & { target: CardDefinition['target'] } {
-    return 'target' in definition && definition.target !== undefined
-  }
-
-  private isSupportedCardType(type: CardDefinition['cardType']): type is CardType {
-    return type === 'attack' || type === 'skill' || type === 'status'
+    return buildCardInfoFromCard(card, { id: identifier })
   }
 }

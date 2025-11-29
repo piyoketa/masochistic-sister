@@ -10,23 +10,44 @@ CardEliminateLabView の責務:
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import CardList from '@/components/CardList.vue'
 import { Library } from '@/domain/library/Library'
-import type { CardInfo, CardType } from '@/types/battle'
+import type { AttackMultiCardInfo, AttackSingleCardInfo, CardInfo, CardType } from '@/types/battle'
 
 const library = new Library()
-const fallbackCard: CardInfo = {
+const fallbackSkill: CardInfo = {
   id: 'lab-card',
   title: '砂化テスト',
   type: 'skill',
   cost: 2,
-  illustration: '🜂',
   description: 'テスト用のカード\n砂化演出を確認できます。',
-  descriptionSegments: [],
   primaryTags: [{ id: 'tag-type-skill', label: '演出' }],
   effectTags: [],
   categoryTags: [],
+  descriptionSegments: [],
+}
+
+const fallbackAttack: AttackSingleCardInfo = {
+  id: 'lab-card-attack',
+  title: '砂化アタック',
+  type: 'attack',
+  cost: 1,
   attackStyle: 'single',
-  damageAmount: 0,
-  damageCount: 0,
+  damageAmount: 6,
+  effectTags: [],
+  primaryTags: [{ id: 'tag-type-single-attack', label: '単体' }],
+  categoryTags: [],
+  descriptionSegments: [{ text: 'テスト用の攻撃' }],
+}
+
+const fallbackStatus: CardInfo = {
+  id: 'lab-card-status',
+  title: '砂化ステータス',
+  type: 'status',
+  cost: 0,
+  description: 'テスト用の状態異常カード',
+  primaryTags: [{ id: 'tag-type-status', label: '状態異常' }],
+  categoryTags: [],
+  effectTags: [],
+  descriptionSegments: [],
 }
 type CardCandidateKey = 'heaven-chain' | 'flurry' | 'corrosion'
 
@@ -64,13 +85,31 @@ const cardConfigs: CardCandidateConfig[] = [
 
 const libraryCards = library.listActionCards(999)
 
-const buildFallbackForConfig = (config: CardCandidateConfig): CardInfo => ({
-  ...fallbackCard,
-  id: `lab-card-${config.key}`,
-  title: config.title,
-  type: config.type,
-  description: config.description,
-})
+const buildFallbackForConfig = (config: CardCandidateConfig): CardInfo => {
+  if (config.type === 'attack') {
+    const attackFallback: AttackMultiCardInfo | AttackSingleCardInfo = {
+      ...(fallbackAttack.attackStyle === 'single' ? fallbackAttack : { ...fallbackAttack }),
+      id: `lab-card-${config.key}`,
+      title: config.title,
+      descriptionSegments: [{ text: config.description }],
+    }
+    return attackFallback
+  }
+  if (config.type === 'status') {
+    return {
+      ...fallbackStatus,
+      id: `lab-card-${config.key}`,
+      title: config.title,
+      description: config.description,
+    }
+  }
+  return {
+    ...fallbackSkill,
+    id: `lab-card-${config.key}`,
+    title: config.title,
+    description: config.description,
+  }
+}
 
 const candidateEntries = cardConfigs.map((config) => {
   const found = libraryCards.find((card) => card.title === config.title && card.type === config.type)
@@ -85,7 +124,7 @@ const cardEntryMap = new Map(candidateEntries.map((entry) => [entry.key, entry])
 const selectedCardKey = ref<CardCandidateKey>(candidateEntries[0]?.key ?? 'heaven-chain')
 
 const currentCardEntry = computed(() => cardEntryMap.get(selectedCardKey.value))
-const currentCard = computed(() => currentCardEntry.value?.card ?? fallbackCard)
+const currentCard = computed(() => currentCardEntry.value?.card ?? fallbackSkill)
 const currentParticleColor = computed(
   () => currentCardEntry.value?.particleColor ?? 'rgba(235, 235, 235, 0.9)',
 )

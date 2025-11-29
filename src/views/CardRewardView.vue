@@ -43,6 +43,7 @@ import {
   PoisonStingAction,
   BloodSuckAction,
 } from '@/domain/entities/actions'
+import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -164,49 +165,11 @@ function createCardFromType(repository: CardRepository, type: DeckCardType): Car
 }
 
 function buildCardInfo(card: Card, id: string): CardInfo | null {
-  const definition = card.definition
-  const type = card.type
-  if (!isSupportedCardType(type)) {
-    return null
-  }
-
-  let description = card.description
-  let descriptionSegments: DescriptionSegment[] | undefined
-  let damageAmount: number | undefined
-  let damageCount: number | undefined
-  let attackStyle: CardInfo['attackStyle']
-
-  const action = card.action
-  if (action instanceof Attack) {
-    const damages = action.baseDamages
-    damageAmount = damages.baseAmount
-    damageCount = damages.baseCount
-    const formatted = action.describeForPlayerCard({
-      baseDamages: damages,
-      displayDamages: damages,
-    })
-    description = formatted.label
-    descriptionSegments = formatted.segments
-    attackStyle = damages.type === 'multi' ? 'multi' : 'single'
-  }
-
-  return {
+  return buildCardInfoFromCard(card, {
     id,
-    title: card.title,
-    type,
-    cost: card.cost,
-    illustration: definition.image ?? '🂠',
-    description,
-    descriptionSegments,
-    attackStyle,
-    damageAmount,
-    damageCount,
-    primaryTags: [],
-    effectTags: toTagInfos(card.effectTags),
-    categoryTags: toTagInfos(card.categoryTags),
     affordable: true,
     disabled: false,
-  }
+  })
 }
 
 function toTagInfos(tags?: { id?: string; name?: string; description?: string }[]): CardTagInfo[] {
@@ -217,10 +180,6 @@ function toTagInfos(tags?: { id?: string; name?: string; description?: string }[
         Boolean(tag.id) && Boolean(tag.name),
     )
     .map((tag) => ({ id: tag.id, label: tag.name, description: tag.description }))
-}
-
-function isSupportedCardType(type: CardInfo['type']): boolean {
-  return type === 'attack' || type === 'skill' || type === 'status' || type === 'skip'
 }
 </script>
 

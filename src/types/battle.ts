@@ -71,22 +71,62 @@ export type DescriptionSegment = {
   tooltip?: string
 }
 
-export type CardInfo = {
-  id: string
-  title: string
-  type: CardType
-  cost: number
-  illustration: string
-  description: string
-  descriptionSegments?: DescriptionSegment[]
-  attackStyle?: AttackStyle
-  primaryTags?: CardTagInfo[]
-  effectTags?: CardTagInfo[]
-  categoryTags?: CardTagInfo[]
-  damageAmount?: number
-  damageCount?: number
-  damageAmountBoosted?: boolean
-  damageCountBoosted?: boolean
-  affordable?: boolean
-  disabled?: boolean
+// 共通フィールド: 全カードが持つ
+export type BaseCardInfo = {
+  id: string // カード識別子（表示用にユニークであればよい）
+  title: string // カード名
+  cost: number // マナコスト（表示用）
+  primaryTags: CardTagInfo[] // タイプなど主要タグ
+  categoryTags: CardTagInfo[] // カテゴリタグ（魔/神聖など）
+  affordable?: boolean // 手札でプレイ可能かどうかのフラグ
+  disabled?: boolean // 選択不可・無効化のフラグ（UIでグレーアウト）
+  descriptionSegments?: DescriptionSegment[] // 説明文をセグメント化した配列（攻撃以外は任意）
 }
+
+// 攻撃カード（単発）
+export type AttackSingleCardInfo = BaseCardInfo & {
+  type: 'attack'
+  attackStyle: 'single'
+  damageAmount: number
+  damageAmountBoosted?: boolean // 打点が強化済みかどうか（攻撃用表示フラグ）
+  effectTags: CardTagInfo[]
+  descriptionSegments: DescriptionSegment[] // 説明文をセグメント化した配列
+}
+
+// 攻撃カード（連続）
+export type AttackMultiCardInfo = BaseCardInfo & {
+  type: 'attack'
+  attackStyle: 'multi'
+  damageAmount: number
+  damageCount: number
+  damageAmountBoosted?: boolean // 打点が強化済みかどうか（攻撃用表示フラグ）
+  damageCountBoosted?: boolean // 攻撃回数が増加しているかどうか（攻撃用表示フラグ）
+  effectTags: CardTagInfo[]
+  descriptionSegments: DescriptionSegment[] // 説明文をセグメント化した配列
+}
+
+// スキルカード
+export type SkillCardInfo = BaseCardInfo & {
+  type: 'skill'
+  description: string
+  effectTags?: CardTagInfo[]
+}
+
+// 状態異常カード
+export type StatusCardInfo = BaseCardInfo & {
+  type: 'status'
+  description: string
+  effectTags?: CardTagInfo[]
+}
+
+// スキップカード（実質表示なし、最小限）
+export type SkipCardInfo = BaseCardInfo & {
+  type: 'skip'
+}
+
+export type CardInfo =
+  | AttackSingleCardInfo
+  | AttackMultiCardInfo
+  | SkillCardInfo
+  | StatusCardInfo
+  | SkipCardInfo

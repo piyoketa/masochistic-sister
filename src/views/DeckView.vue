@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import CardList from '@/components/CardList.vue'
-import type { CardInfo, CardTagInfo, DescriptionSegment } from '@/types/battle'
+import type { CardInfo, CardTagInfo, DescriptionSegment, AttackStyle } from '@/types/battle'
 import {
   usePlayerStore,
   type DeckCardBlueprint,
@@ -27,6 +27,7 @@ import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
 import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { Damages } from '@/domain/entities/Damages'
+import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -153,7 +154,7 @@ function syncAttackEditor(): void {
     return
   }
   editAmount.value = info.damageAmount ?? null
-  editCount.value = info.damageCount ?? null
+  editCount.value = info.attackStyle === 'multi' ? info.damageCount ?? null : null
 }
 
 function applyAttackOverride(): void {
@@ -193,48 +194,11 @@ function createCardFromBlueprint(repository: CardRepository, blueprint: DeckCard
 }
 
 function buildCardInfo(card: Card, index: number): CardInfo | null {
-  const definition = card.definition
-  if (!isSupportedCardType(card.type)) {
-    return null
-  }
-
-  let description = card.description
-  let descriptionSegments: DescriptionSegment[] | undefined
-  let damageAmount: number | undefined
-  let damageCount: number | undefined
-  let attackStyle: CardInfo['attackStyle']
-
-  const action = card.action
-  if (action instanceof Attack) {
-    const damages = action.baseDamages
-    damageAmount = damages.baseAmount
-    damageCount = damages.baseCount
-    const formatted = action.describeForPlayerCard({
-      baseDamages: damages,
-      displayDamages: damages,
-    })
-    description = formatted.label
-    descriptionSegments = formatted.segments
-    attackStyle = deriveAttackStyle(damages.type)
-  }
-
-  return {
+  return buildCardInfoFromCard(card, {
     id: `deck-card-${index}`,
-    title: card.title,
-    type: card.type,
-    cost: card.cost,
-    illustration: definition.image ?? '🂠',
-    description,
-    descriptionSegments,
-    attackStyle,
-    damageAmount,
-    damageCount,
-    primaryTags: [],
-    effectTags: toTagInfos(card.effectTags),
-    categoryTags: toTagInfos(card.categoryTags),
     affordable: true,
     disabled: false,
-  }
+  })
 }
 
 function toTagInfos(tags?: { id?: string; name?: string; description?: string }[]): CardTagInfo[] {
@@ -253,12 +217,8 @@ function toTagInfos(tags?: { id?: string; name?: string; description?: string }[
     }))
 }
 
-function deriveAttackStyle(type: Attack['baseProfile']['type']): CardInfo['attackStyle'] {
+function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
   return type === 'multi' ? 'multi' : 'single'
-}
-
-function isSupportedCardType(type: CardInfo['type']): boolean {
-  return type === 'attack' || type === 'skill' || type === 'status' || type === 'skip'
 }
 </script>
 

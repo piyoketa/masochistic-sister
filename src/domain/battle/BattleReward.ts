@@ -8,11 +8,12 @@
 import type { Battle } from './Battle'
 import { Attack } from '../entities/Action'
 import type { Card } from '../entities/Card'
-import type { CardInfo, CardTagInfo, DescriptionSegment } from '@/types/battle'
+import type { CardInfo, CardTagInfo } from '@/types/battle'
 import type { DeckCardType } from '@/stores/playerStore'
 import { mapActionToDeckCardType } from '@/stores/playerStore'
 import { Damages } from '../entities/Damages'
 import type { State } from '../entities/State'
+import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
 export interface RewardCardCandidate {
   id: string
@@ -60,51 +61,16 @@ export class BattleReward {
   }
 
   private toRewardCard(card: Card, index: number): RewardCardCandidate | null {
-    const definition = card.definition
-    const type = card.type
-    if (!this.isSupportedCardType(type)) {
+    const cardInfo = buildCardInfoFromCard(card, {
+      id: `reward-card-${card.id ?? index}`,
+      affordable: true,
+      disabled: false,
+    })
+    if (!cardInfo || !this.isSupportedCardType(cardInfo.type)) {
       return null
     }
 
-    let description = card.description
-    let descriptionSegments: DescriptionSegment[] | undefined
-    let damageAmount: number | undefined
-    let damageCount: number | undefined
-    let attackStyle: CardInfo['attackStyle']
-
-    const action = card.action
-    if (action instanceof Attack) {
-      const damages = action.baseDamages
-      damageAmount = damages.baseAmount
-      damageCount = damages.baseCount
-      const formatted = action.describeForPlayerCard({
-        baseDamages: damages,
-        displayDamages: damages,
-      })
-      description = formatted.label
-      descriptionSegments = formatted.segments
-      attackStyle = damages.type === 'multi' ? 'multi' : 'single'
-    }
-
-    const cardInfo: CardInfo = {
-      id: `reward-card-${card.id ?? index}`,
-      title: card.title,
-      type,
-      cost: card.cost,
-      illustration: definition.image ?? '🂠',
-      description,
-      descriptionSegments,
-      attackStyle,
-      damageAmount,
-      damageCount,
-      primaryTags: [],
-      effectTags: this.toTagInfos(card.effectTags),
-      categoryTags: this.toTagInfos(card.categoryTags),
-      affordable: true,
-      disabled: false,
-    }
-
-    const deckType = action ? mapActionToDeckCardType(action) : null
+    const deckType = card.action ? mapActionToDeckCardType(card.action) : null
 
     return {
       id: cardInfo.id,
