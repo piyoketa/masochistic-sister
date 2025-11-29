@@ -18,6 +18,7 @@ import GameLayout from '@/components/GameLayout.vue'
 import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import CardList from '@/components/CardList.vue'
 import type { CardInfo, CardTagInfo, DescriptionSegment } from '@/types/battle'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { CardRepository } from '@/domain/repository/CardRepository'
@@ -48,13 +49,13 @@ playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
 const router = useRouter()
 
-const selectionTheme = ref('default')
+const selectionTheme = ref<EnemySelectionTheme>('default')
 const outcomes: [] = []
 const states: string[] = []
 
 const candidateTypes = computed(() => {
   const node = fieldStore.currentNode
-  if (node && node.type === 'card-reward') {
+  if (node && fieldStore.field.isCardRewardNode(node)) {
     return node.candidateActions
   }
   return []
@@ -62,7 +63,7 @@ const candidateTypes = computed(() => {
 
 const drawCount = computed(() => {
   const node = fieldStore.currentNode
-  if (node && node.type === 'card-reward') {
+  if (node && fieldStore.field.isCardRewardNode(node)) {
     return node.drawCount
   }
   return 0
@@ -211,8 +212,11 @@ function buildCardInfo(card: Card, id: string): CardInfo | null {
 function toTagInfos(tags?: { id?: string; name?: string; description?: string }[]): CardTagInfo[] {
   if (!tags) return []
   return tags
-    .filter((tag): tag is Required<Pick<CardTagInfo, 'id' | 'label'>> => Boolean(tag.id) && Boolean(tag.name))
-    .map((tag) => ({ id: tag.id as string, label: tag.name as string, description: tag.description }))
+    .filter(
+      (tag): tag is { id: string; name: string; description?: string } =>
+        Boolean(tag.id) && Boolean(tag.name),
+    )
+    .map((tag) => ({ id: tag.id, label: tag.name, description: tag.description }))
 }
 
 function isSupportedCardType(type: CardInfo['type']): boolean {

@@ -116,11 +116,14 @@ export class BattleReward {
   private toTagInfos(tags?: { id?: string; name?: string; description?: string }[]): CardTagInfo[] {
     if (!tags) return []
     return tags
-      .filter((tag): tag is Required<Pick<CardTagInfo, 'id' | 'label'>> => Boolean(tag.id) && Boolean(tag.name))
-      .map((tag) => ({ id: tag.id as string, label: tag.name as string, description: tag.description }))
+      .filter(
+        (tag): tag is { id: string; name: string; description?: string } =>
+          Boolean(tag.id) && Boolean(tag.name),
+      )
+      .map((tag) => ({ id: tag.id, label: tag.name, description: tag.description }))
   }
 
-  private isSupportedCardType(type: CardInfo['type'] | State['cardType'] | undefined): type is CardInfo['type'] {
+  private isSupportedCardType(type: CardInfo['type'] | string | undefined): type is CardInfo['type'] {
     return type === 'attack' || type === 'skill' || type === 'status' || type === 'skip'
   }
 }

@@ -18,7 +18,7 @@ export const useFieldStore = defineStore('field', {
       return state.currentLevelIndex + 1
     },
     nextLevelNodes(state): FieldNode[] {
-      const level = state.field.getLevel(state.nextLevelIndex)
+      const level = state.field.getLevel(state.currentLevelIndex + 1)
       return level?.nodes ?? []
     },
   },

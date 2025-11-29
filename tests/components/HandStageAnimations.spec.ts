@@ -41,7 +41,7 @@ function mountHandArea(handCards: Card[]) {
       isPlayerTurn: true,
       isInputLocked: false,
       viewManager: createViewManagerStub(createBattleStub(handCards)),
-      requestEnemyTarget: () => {},
+      requestEnemyTarget: async () => -1,
       cancelEnemySelection: () => {},
       stageEvent: null,
     },
@@ -71,12 +71,13 @@ function buildStageEventFromEntry(
 ): StageEventPayload {
   for (const batch of entry.animationBatches ?? []) {
     for (const instruction of batch?.instructions ?? []) {
-      if (instruction.metadata?.stage === stage) {
+      const metadata = instruction.metadata as StageEventMetadata | undefined
+      if (metadata?.stage === stage) {
         return {
           entryType: entry.type,
           batchId: batch.batchId,
           issuedAt: Date.now(),
-          metadata: deepClone(instruction.metadata),
+          metadata: deepClone(metadata),
         }
       }
     }
@@ -87,7 +88,7 @@ function buildStageEventFromEntry(
 type StageEventBatch = {
   batchId: string
   instructions: Array<{
-    metadata?: StageEventMetadata
+    metadata?: StageEventMetadata | unknown
   }>
 }
 

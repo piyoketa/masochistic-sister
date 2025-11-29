@@ -161,7 +161,8 @@ export class Card {
   get cost(): number {
     // バトル状況で計算済みのコストがある場合はそれを優先し、なければ定義コストを使う。
     // Symbolで持たせることでJSON比較時に表へ出ないようにする。
-    return (this as Record<symbol, number | undefined>)[RUNTIME_COST_KEY] ?? this.definition.cost
+    const store = this as unknown as Record<symbol, number | undefined>
+    return store[RUNTIME_COST_KEY] ?? this.definition.cost
   }
 
   get description(): string {
@@ -195,7 +196,8 @@ export class Card {
   }
 
   setRuntimeCost(cost: number | undefined): void {
-    ;(this as Record<symbol, number | undefined>)[RUNTIME_COST_KEY] = cost
+    const store = this as unknown as Record<symbol, number | undefined>
+    store[RUNTIME_COST_KEY] = cost
   }
 
   play(battle: Battle, operations: CardOperation[] = []): void {

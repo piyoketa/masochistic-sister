@@ -13,13 +13,13 @@ export type OperationLogEntryConfig = Parameters<OperationLog['push']>[0]
 
 export interface AnimationBatchInstructionSummary {
   waitMs: number
-  metadata?: AnimationInstruction['metadata']
+  metadata?: AnimationInstruction['metadata'] | unknown
 }
 
 export interface AnimationBatchSummary {
   batchId: string
   snapshot: unknown
-  patch?: BattleSnapshotPatch
+  patch?: BattleSnapshotPatch | unknown
   instructions: AnimationBatchInstructionSummary[]
 }
 
@@ -29,6 +29,12 @@ export interface ActionLogEntrySummary {
   operations?: CardOperation[]
   animationBatches?: AnimationBatchSummary[]
   eventId?: string
+  animations?: Array<{
+    batchId?: string
+    waitMs: number
+    metadata?: AnimationInstruction['metadata'] | unknown
+    snapshot?: unknown
+  }>
 }
 
 export function summarizeActionLogEntry(entry: BattleActionLogEntry): ActionLogEntrySummary {

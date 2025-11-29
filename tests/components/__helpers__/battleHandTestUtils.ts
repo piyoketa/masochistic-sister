@@ -51,6 +51,7 @@ export function createSnapshot(hand: Card[]): BattleSnapshot {
       maxHp: 40,
       currentMana: 5,
       maxMana: 5,
+      relics: [],
     },
     enemies: [],
     deck: [],

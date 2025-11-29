@@ -31,7 +31,7 @@ function nodeLabel(node: FieldNode): string {
   if (node.type === 'start') {
     return `スタート (Lv.${node.level})`
   }
-  if (node.type === 'enemy') {
+  if (fieldStore.field.isEnemyNode(node)) {
     return `敵: ${node.enemyTeamId}`
   }
   return `Lv.${node.level}`
@@ -49,7 +49,7 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
     return
   }
   fieldStore.selectNextNode(nodeIndex)
-  if (node.type === 'enemy') {
+  if (fieldStore.field.isEnemyNode(node)) {
     await router.push({ path: `/battle/${node.enemyTeamId}` })
     return
   }
@@ -81,16 +81,16 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
       </div>
     </header>
 
-    <section class="field-section">
+    <!-- <section class="field-section">
       <h2>現在のマス (Lv.{{ currentLevel }})</h2>
       <div v-if="fieldStore.currentNode" class="node-card node-card--current">
         <div class="node-title">{{ nodeLabel(fieldStore.currentNode) }}</div>
         <div class="node-state">状態: {{ fieldStore.isNodeCleared(fieldStore.currentNode.id) ? 'クリア' : '未クリア' }}</div>
       </div>
-    </section>
+    </section> -->
 
     <section class="field-section">
-      <h2>全レベル</h2>
+      <!-- <h2>全レベル</h2> -->
       <div class="level-list">
         <div v-for="(level, levelIdx) in levels" :key="level.level" class="level-block">
           <div class="level-title">Lv.{{ level.level }}</div>

@@ -18,6 +18,7 @@ function createBaseSnapshot(): BattleSnapshot {
       maxHp: 30,
       currentMana: 3,
       maxMana: 5,
+      relics: [],
     },
     enemies: [
       {

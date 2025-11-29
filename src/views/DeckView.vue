@@ -242,10 +242,13 @@ function toTagInfos(tags?: { id?: string; name?: string; description?: string }[
     return []
   }
   return tags
-    .filter((tag): tag is Required<Pick<CardTagInfo, 'id' | 'label'>> => Boolean(tag.id) && Boolean(tag.name))
+    .filter(
+      (tag): tag is { id: string; name: string; description?: string } =>
+        Boolean(tag.id) && Boolean(tag.name),
+    )
     .map((tag) => ({
-      id: tag.id as string,
-      label: tag.name as string,
+      id: tag.id,
+      label: tag.name,
       description: tag.description,
     }))
 }

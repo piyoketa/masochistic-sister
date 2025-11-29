@@ -16,19 +16,20 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { RelicInfo } from '@/domain/entities/relics/relicLibrary'
 import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
+import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
 const router = useRouter()
 
-const selectionTheme = ref('default')
+const selectionTheme = ref<EnemySelectionTheme>('default')
 const outcomes: [] = []
 const states: string[] = []
 
 const candidateRelics = computed(() => {
   const node = fieldStore.currentNode
-  if (node && node.type === 'relic-reward') {
+  if (node && fieldStore.field.isRelicRewardNode(node)) {
     return node.candidateRelics
   }
   return []
@@ -36,7 +37,7 @@ const candidateRelics = computed(() => {
 
 const drawCount = computed(() => {
   const node = fieldStore.currentNode
-  if (node && node.type === 'relic-reward') {
+  if (node && fieldStore.field.isRelicRewardNode(node)) {
     return node.drawCount
   }
   return 0

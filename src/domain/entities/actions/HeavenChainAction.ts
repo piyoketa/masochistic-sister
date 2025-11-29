@@ -10,7 +10,6 @@ import { SkipTurnAction } from './SkipTurnAction'
 import { TargetEnemyOperation, type Operation } from '../operations'
 import { LargeState } from '../states/LargeState'
 import { NoViolenceRelic } from '../relics/NoViolenceRelic'
-import type { Player } from '../Player'
 
 export class HeavenChainAction extends Skill {
   constructor() {
@@ -56,12 +55,12 @@ export class HeavenChainAction extends Skill {
   }
 
   override cost(context?: ActionCostContext): number {
-    const base = super.cost(context)
+    const base = super.cost()
     const relics = context?.battle?.getRelicInstances()
     const noViolence = relics?.find((relic) => relic instanceof NoViolenceRelic) as
       | NoViolenceRelic
       | undefined
-    if (noViolence && noViolence.isActive({ battle: context?.battle, player: context?.source as Player })) {
+    if (noViolence && noViolence.isActive()) {
       return 0
     }
     return base

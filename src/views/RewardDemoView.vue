@@ -6,12 +6,12 @@ RewardDemoView の責務:
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import GameLayout from '@/components/GameLayout.vue'
-import { useRewardStore } from '@/stores/rewardStore'
+import { useRewardStore, type PendingReward } from '@/stores/rewardStore'
 
 const router = useRouter()
 const rewardStore = useRewardStore()
 
-const demoReward = {
+const demoReward: PendingReward = {
   battleId: 'demo-battle',
   hpHeal: 30,
   gold: 50,
