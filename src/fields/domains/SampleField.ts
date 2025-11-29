@@ -64,6 +64,7 @@ function buildLevels(): FieldLevel[] {
       // 'SlipperyTouchRelic',
       // 'DevoutBelieverRelic',
       'ArcaneAdaptationRelic',
+      'ThoroughPreparationRelic',
     ],
     drawCount: 1,
     nextNodeIndices: [0],
