@@ -14,7 +14,7 @@ export class AdversityExcitementRelic extends Relic {
   private lastStatusCount = 0
 
   description(): string {
-    return '永続：手札にある状態異常カードの枚数に応じて攻撃の打点が上昇する。'
+    return '自身の状態異常カード枚数×2の打点上昇'
   }
 
   override isActive(): boolean {

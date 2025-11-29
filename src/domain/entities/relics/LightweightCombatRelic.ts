@@ -11,7 +11,7 @@ export class LightweightCombatRelic extends Relic {
   readonly icon = '🪶'
 
   description(): string {
-    return '永続：手札に「腐食」がある間、加速(1)を得る。'
+    return '手札に「腐食」がある時、+加速(1)'
   }
 
   override isActive(context?: { battle?: import('@/domain/battle/Battle').Battle; player?: import('../Player').Player }): boolean {
