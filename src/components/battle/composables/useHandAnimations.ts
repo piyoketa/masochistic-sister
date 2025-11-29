@@ -2,6 +2,7 @@ import { reactive, ref, type Ref, type ComponentPublicInstance } from 'vue'
 import type { CardInfo, CardType } from '@/types/battle'
 import { spawnCardAshOverlay } from '@/utils/cardAshOverlay'
 import type { HandEntry } from './useHandPresentation'
+import { useAudioHub } from '@/composables/audioHub'
 
 export interface FloatingCardAnimation {
   key: string
@@ -66,6 +67,7 @@ function normalizeRect(rect: DOMRect | RectLike): DOMRect {
 }
 
 export function useHandAnimations(options: UseHandAnimationsOptions) {
+  const audioHub = useAudioHub()
   const hiddenCardIds = ref<Set<number>>(new Set())
   const visibleCardIds = ref<Set<number>>(new Set())
   const floatingCards = reactive<FloatingCardAnimation[]>([])
@@ -143,6 +145,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     const startAnimation = () => {
       drawAnimationStartTimers.delete(cardId)
       logHandAnimationDebug('deck-draw transform適用', { cardId, duration, delayMs })
+      audioHub.play('/sounds/card-animations/draw.mp3')
       applyDrawTransform(cardElement, deckElement, duration)
       const cleanupTimer = window.setTimeout(() => {
         cleanupDrawAnimation(cardId)
