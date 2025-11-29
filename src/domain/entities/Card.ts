@@ -195,10 +195,8 @@ export class Card {
     }
     // 状態異常カードかつ清廉な身体が有効ならコストを1軽減（最低0）
     const baseCost = this.definition.cost
-    const pureBody = context?.battle
-      ?.getRelicInstances()
-      .find((relic) => relic instanceof PureBodyRelic) as PureBodyRelic | undefined
-    if (this.type === 'status' && pureBody?.isActive()) {
+    const pureBody = context?.battle?.hasActiveRelic('pure-body')
+    if (this.type === 'status' && pureBody) {
       return Math.max(0, baseCost - 1)
     }
     return baseCost
@@ -223,11 +221,9 @@ export class Card {
       battle.recordPlayCardAnimationContext({ cardId: this.id })
 
       // 状態異常カードのコスト軽減 relic を使用済みにする
-      const pureBody = battle
-        .getRelicInstances()
-        .find((relic) => relic instanceof PureBodyRelic) as PureBodyRelic | undefined
+      const pureBody = battle.getRelicById('pure-body') as PureBodyRelic | undefined
       pureBody?.markUsed()
-      
+
       return
     }
 

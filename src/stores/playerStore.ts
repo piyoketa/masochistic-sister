@@ -208,7 +208,13 @@ export const usePlayerStore = defineStore('player', {
       if (known.length > 0 && !known.includes(className)) {
         return
       }
+      if (this.relics.includes(className)) {
+        return
+      }
       this.relics = [...this.relics, className]
+    },
+    removeRelic(className: string): void {
+      this.relics = this.relics.filter((name) => name !== className)
     },
   },
 })

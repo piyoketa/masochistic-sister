@@ -220,10 +220,7 @@ export class Player {
   calculateInitialDraw(battle?: Battle): number {
     let draw = 3
     if (battle) {
-      const meticulous = battle
-        .getRelicInstances()
-        .find((relic) => relic.id === 'thorough-preparation' && relic.isActive({ battle, player: this }))
-      if (meticulous) {
+      if (battle.hasActiveRelic('thorough-preparation')) {
         draw += 2
       }
     }

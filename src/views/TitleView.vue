@@ -97,11 +97,6 @@ const demoLinks: LinkEntry[] = [
     description: 'ActionCardの縁を光らせるアニメーション実験',
     to: '/lab/card-glow',
   },
-  {
-    label: 'Victory Reward Demo',
-    description: '勝利報酬モーダルのデモ',
-    to: '/demo/victory-reward',
-  },
 ]
 
 const fieldLinks: LinkEntry[] = [
@@ -109,6 +104,11 @@ const fieldLinks: LinkEntry[] = [
     label: 'フィールドに出る',
     description: '次の戦闘へ進むためのフィールド画面',
     to: '/field',
+  },
+  {
+    label: 'レリック編集',
+    description: '所持レリックの追加・削除を行う',
+    to: '/relic',
   },
 ]
 </script>

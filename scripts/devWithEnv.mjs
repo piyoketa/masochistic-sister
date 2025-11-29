@@ -11,9 +11,9 @@ const env = { ...process.env }
 env.CHOKIDAR_USEPOLLING = 'true'
 env.WATCHPACK_POLLING = 'true'
 
-env.VITE_DEBUG_ANIMATION_LOG = 'true'
 // env.VITE_DEBUG_CARD_ELIMINATE = 'true'
 // env.VITE_DEBUG_HAND_ANIMATION = 'true'
+env.VITE_DEBUG_ANIMATION_LOG = 'false'
 env.VITE_DEBUG_HAND_STAGE_EVENTS='false'
 env.VITE_DEBUG_PLAYER_IMAGE='false'
 env.VITE_DEBUG_PLAYER_CARDS='false'

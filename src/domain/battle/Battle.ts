@@ -445,6 +445,27 @@ export class Battle {
     return [...this.relicInstances]
   }
 
+  /**
+   * 指定した id のレリックを所持しているか判定する（active かどうかは問わない）。
+   */
+  hasRelic(relicId: string): boolean {
+    return this.relicInstances.some((relic) => relic.id === relicId)
+  }
+
+  /**
+   * 指定した id のレリックインスタンスを取得する（見つからなければ undefined）。
+   */
+  getRelicById(relicId: string): Relic | undefined {
+    return this.relicInstances.find((relic) => relic.id === relicId)
+  }
+
+  /**
+   * 指定した id のレリックを所持し、かつ isActive が true か判定する。
+   */
+  hasActiveRelic(relicId: string): boolean {
+    return this.relicInstances.some((relic) => relic.id === relicId && relic.isActive({ battle: this, player: this.playerValue }))
+  }
+
   restoreFullSnapshot(state: FullBattleSnapshot): void {
     const base = state.snapshot
     this.statusValue = base.status

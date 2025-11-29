@@ -56,11 +56,8 @@ export class HeavenChainAction extends Skill {
 
   override cost(context?: ActionCostContext): number {
     const base = super.cost()
-    const relics = context?.battle?.getRelicInstances()
-    const noViolence = relics?.find((relic) => relic instanceof NoViolenceRelic) as
-      | NoViolenceRelic
-      | undefined
-    if (noViolence && noViolence.isActive()) {
+    const hasNoViolence = context?.battle?.hasActiveRelic('no-violence')
+    if (hasNoViolence) {
       return 0
     }
     return base
@@ -89,12 +86,7 @@ export class HeavenChainAction extends Skill {
       metadata: { enemyId: target.id, action: 'heaven-chain' },
     })
 
-    const relics = context.battle.getRelicInstances()
-    const noViolence = relics.find((relic) => relic instanceof NoViolenceRelic) as
-      | NoViolenceRelic
-      | undefined
-    if (noViolence) {
-      noViolence.markUsed()
-    }
+    const noViolence = context.battle.getRelicById('no-violence') as NoViolenceRelic | undefined
+    noViolence?.markUsed()
   }
 }

@@ -49,11 +49,8 @@ export class MasochisticAuraAction extends Skill {
 
   override cost(context?: ActionCostContext): number {
     const base = super.cost()
-    const relics = context?.battle?.getRelicInstances()
-    const adaptation = relics?.find((relic) => relic instanceof ArcaneAdaptationRelic) as
-      | ArcaneAdaptationRelic
-      | undefined
-    if (adaptation && adaptation.isActive()) {
+    const hasAdaptation = context?.battle?.hasActiveRelic('arcane-adaptation')
+    if (hasAdaptation) {
       return 0
     }
     return base
@@ -75,8 +72,7 @@ export class MasochisticAuraAction extends Skill {
     context.battle.queueInterruptEnemyAction(targetId, { trigger: 'card' })
 
     // コスト軽減 relic は1ターン1回のみ有効。使用後にフラグを立てる。
-    const relics = context.battle.getRelicInstances()
-    const adaptation = relics.find((relic) => relic instanceof ArcaneAdaptationRelic) as
+    const adaptation = context.battle.getRelicById('arcane-adaptation') as
       | ArcaneAdaptationRelic
       | undefined
     adaptation?.markUsed()
