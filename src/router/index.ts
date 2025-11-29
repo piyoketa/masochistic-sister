@@ -93,6 +93,11 @@ const router = createRouter({
       component: () => import('@/views/HpGaugeDemoView.vue'),
     },
     {
+      path: '/demo/reward',
+      name: 'reward-demo',
+      component: () => import('@/views/RewardDemoView.vue'),
+    },
+    {
       path: '/field/card-reward',
       name: 'card-reward',
       component: () => import('@/views/CardRewardView.vue'),

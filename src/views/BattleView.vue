@@ -37,6 +37,7 @@ import {
   IronBloomTeam,
   HummingbirdScorpionTeam,
   OrcHeroEliteTeam,
+  TestSlug5HpTeam,
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
@@ -718,6 +719,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   'iron-bloom-scripted': () => new IronBloomTeam({ mode: 'scripted' }),
   'hummingbird-scorpion': () => new HummingbirdScorpionTeam(),
   'orc-hero-elite': () => new OrcHeroEliteTeam(),
+  'test-slug-5hp': () => new TestSlug5HpTeam(),
 }
 
 /**

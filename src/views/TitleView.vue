@@ -39,6 +39,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: 'オークヒーロー＋取り巻きのエリート戦',
     to: '/battle/orc-hero-elite',
   },
+  {
+    label: 'Test Slug 5HP',
+    description: '検証用: HP5 のなめくじ1体',
+    to: '/battle/test-slug-5hp',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [
@@ -51,6 +56,21 @@ const demoLinks: LinkEntry[] = [
     label: 'Cut-in Demo',
     description: 'カットイン画像の再生実験ページ',
     to: '/demo/cut-in',
+  },
+  {
+    label: 'Audio Hub Demo',
+    description: '音声プリロード/再生の挙動を確認',
+    to: '/demo/audio',
+  },
+  {
+    label: 'HpGauge Demo',
+    description: '予測ダメージの黄色点滅を確認',
+    to: '/demo/hp-gauge',
+  },
+  {
+    label: 'Reward Demo',
+    description: 'デモ用報酬をセットして /reward へ遷移',
+    to: '/demo/reward',
   },
   {
     label: 'ActionCard実験場',
@@ -100,6 +120,25 @@ const fieldLinks: LinkEntry[] = [
       <p>テストケース、敵チーム、デッキ確認画面へ移動してください。</p>
     </header>
 
+        <section>
+      <h2>フィールド</h2>
+      <ul class="link-grid">
+        <li v-for="link in fieldLinks" :key="link.label">
+          <RouterLink class="link-card" :to="link.to">
+            <span class="link-label">{{ link.label }}</span>
+            <span class="link-description">{{ link.description }}</span>
+          </RouterLink>
+        </li>
+      </ul>
+    </section>
+
+    <section class="deck-link">
+      <RouterLink class="link-card deck-card" to="/deck">
+        <span class="link-label">デッキ確認</span>
+        <span class="link-description">現在の所持デッキとHPを確認できます</span>
+      </RouterLink>
+    </section>
+    
     <section>
       <h2>固定ログ / Testcase</h2>
       <ul class="link-grid">
@@ -134,25 +173,6 @@ const fieldLinks: LinkEntry[] = [
           </RouterLink>
         </li>
       </ul>
-    </section>
-
-    <section>
-      <h2>フィールド</h2>
-      <ul class="link-grid">
-        <li v-for="link in fieldLinks" :key="link.label">
-          <RouterLink class="link-card" :to="link.to">
-            <span class="link-label">{{ link.label }}</span>
-            <span class="link-description">{{ link.description }}</span>
-          </RouterLink>
-        </li>
-      </ul>
-    </section>
-
-    <section class="deck-link">
-      <RouterLink class="link-card deck-card" to="/deck">
-        <span class="link-label">デッキ確認</span>
-        <span class="link-description">現在の所持デッキとHPを確認できます</span>
-      </RouterLink>
     </section>
   </div>
 </template>
