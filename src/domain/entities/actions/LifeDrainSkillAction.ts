@@ -39,7 +39,7 @@ export class LifeDrainSkillAction extends Skill {
   }
 
   protected override description(): string {
-    return '手札の[単撃]カード1枚にドレインを付与し、次の自分のターン開始時に解除する'
+    return 'このターン、手札の[一回攻撃]1枚に[ドレイン]を付与'
   }
 
   protected override buildOperations(): Operation[] {

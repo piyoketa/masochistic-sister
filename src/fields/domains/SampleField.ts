@@ -5,9 +5,8 @@ import type { CardRewardNode, EnemyNode, FieldNode, RelicRewardNode, StartNode }
  * SampleField: 一直線に敵が並ぶシンプルなフィールド。
  * Level1: StartNode
  * Level2: カード獲得マス
- * Level3: レリック獲得マス（候補: 全レリック）
- * Level4-6: snail / iron-bloom / hummingbird-scorpion （初期化時にランダム順）
- * Level7: orc-hero-elite
+ * Level3-8: 通常敵とレリック獲得を交互に配置（3回ずつ）
+ * Level9: orc-hero-elite
  */
 export class SampleField extends Field {
   readonly id = 'sample-field'
@@ -42,6 +41,7 @@ function buildLevels(): FieldLevel[] {
       'non-violence-prayer',
       'reload',
       'scar-regeneration',
+      'life-drain-skill',
     ],
     drawCount: 3,
     nextNodeIndices: [0],
@@ -49,7 +49,7 @@ function buildLevels(): FieldLevel[] {
   const relicReward: RelicRewardNode = {
     id: 'relic-reward-1',
     type: 'relic-reward',
-    level: 3,
+    level: 0, // 後で実レベルに上書き
     label: 'レリック獲得マス',
     candidateRelics: [
       // 'MemorySaintRelic',
@@ -95,29 +95,34 @@ function buildLevels(): FieldLevel[] {
   ]
   // 初期化時に並びをシャッフルし、レベル番号を振り直す
   midEnemies.sort(() => Math.random() - 0.5)
-  midEnemies.forEach((node, idx) => {
-    node.level = 4 + idx
-  })
-  const level5: EnemyNode = {
+
+  const level7: EnemyNode = {
     id: 'enemy-orc-hero-elite',
     type: 'enemy',
-    level: 7,
+    level: 0, // 後で上書き
     label: 'エリート「オークヒーロー」',
     enemyTeamId: 'orc-hero-elite',
     nextNodeIndices: [],
   }
 
-  const nodesByLevel: FieldNode[][] = [
-    [level1],
-    [cardReward],
-    [relicReward],
-    [midEnemies[0]!],
-    [midEnemies[1]!],
-    [midEnemies[2]!],
-    [level5],
-  ]
+  // 敵とレリックを交互に挿入: enemy, relic, enemy, relic, enemy, relic
+  const interleaved: FieldNode[][] = []
+  for (let i = 0; i < midEnemies.length; i += 1) {
+    interleaved.push([midEnemies[i]!])
+    const clone: RelicRewardNode = {
+      ...relicReward,
+      id: `relic-reward-${i + 1}`,
+      level: 0, // 後で上書き
+    }
+    interleaved.push([clone])
+  }
+
+  const nodesByLevel: FieldNode[][] = [[level1], [cardReward], ...interleaved, [level7]]
 
   nodesByLevel.forEach((nodes, idx) => {
+    nodes.forEach((node) => {
+      node.level = idx + 1
+    })
     levels.push({ level: idx + 1, nodes })
   })
 

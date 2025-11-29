@@ -65,8 +65,12 @@ function drawRelics(classNames: string[], count: number): RelicInfo[] {
   if (count <= 0 || classNames.length === 0) {
     return []
   }
+  const owned = new Set(playerStore.relics)
+  const pool = classNames.filter((name) => !owned.has(name))
+  if (pool.length === 0) {
+    return []
+  }
   const results: RelicInfo[] = []
-  const pool = [...classNames]
   for (let i = 0; i < count; i += 1) {
     const pick = pool[Math.floor(Math.random() * pool.length)]
     const info = pick ? getRelicInfo(pick) : null
