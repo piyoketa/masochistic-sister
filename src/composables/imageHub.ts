@@ -7,10 +7,18 @@
 import { inject, provide, ref } from 'vue'
 import { IMAGE_ASSETS } from '@/assets/preloadManifest'
 
+interface ImageEntry {
+  img: HTMLImageElement
+  loaded: boolean
+  promise: Promise<void>
+}
+
 export interface ImageHub {
   preloadAll(urls: readonly string[]): Promise<void>
-  /** src を返し、必要なら内部キャッシュを作成する */
-  get(url: string | undefined): string | undefined
+  /** 正規化済みの src を返し、必要なら内部キャッシュを作成する */
+  getSrc(url: string | undefined): string | undefined
+  /** キャッシュ済みの Image 要素を返す（未ロードの場合は即座に作成してキャッシュ） */
+  getElement(url: string | undefined): HTMLImageElement | undefined
   ready: Readonly<{ value: boolean }>
 }
 
@@ -31,22 +39,37 @@ function normalizePath(src: string): string {
 
 export function createImageHub(): ImageHub {
   const ready = ref(false)
-  const cache = new Map<string, HTMLImageElement>()
+  const cache = new Map<string, ImageEntry>()
 
-  async function preload(url: string): Promise<HTMLImageElement> {
+  function ensureEntry(url: string): ImageEntry {
     const normalized = normalizePath(url)
     const existing = cache.get(normalized)
-    if (existing) {
-      return existing
-    }
+    if (existing) return existing
     const img = new Image()
-    const promise = new Promise<HTMLImageElement>((resolve, reject) => {
-      img.onload = () => resolve(img)
+    const promise = new Promise<void>((resolve, reject) => {
+      img.onload = () => {
+        const entry = cache.get(normalized)
+        if (entry) {
+          entry.loaded = true
+        }
+        resolve()
+      }
       img.onerror = (err) => reject(err)
     })
     img.src = normalized
-    cache.set(normalized, img)
-    return promise
+    const entry: ImageEntry = { img, loaded: img.complete, promise }
+    cache.set(normalized, entry)
+    return entry
+  }
+
+  async function preload(url: string): Promise<HTMLImageElement> {
+    const entry = ensureEntry(url)
+    try {
+      await entry.promise
+    } catch {
+      // 失敗時もキャッシュは残すが loaded=false のまま
+    }
+    return entry.img
   }
 
   async function preloadAll(urls: readonly string[]): Promise<void> {
@@ -57,19 +80,18 @@ export function createImageHub(): ImageHub {
     }
   }
 
-  function get(url: string | undefined): string | undefined {
+  function getSrc(url: string | undefined): string | undefined {
     if (!url) return undefined
-    const normalized = normalizePath(url)
-    if (!cache.has(normalized)) {
-      // 即時に Image を作成しキャッシュ、読み込みはブラウザに任せる
-      const img = new Image()
-      img.src = normalized
-      cache.set(normalized, img)
-    }
-    return normalized
+    return normalizePath(url)
   }
 
-  return { preloadAll, get, ready }
+  function getElement(url: string | undefined): HTMLImageElement | undefined {
+    if (!url) return undefined
+    const entry = ensureEntry(url)
+    return entry.img
+  }
+
+  return { preloadAll, getSrc, getElement, ready }
 }
 
 export function provideImageHub(hub: ImageHub): void {

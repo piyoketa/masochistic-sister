@@ -12,7 +12,7 @@ PlayerImageComponent の責務:
 - BattleView / PlayerCardComponent: props で HP・選択状態・テーマ色・プレイヤー状態を受け取り、背景色と差分表示を同期する。ダメージ演出などは slot を通じて子要素として受ける。
 -->
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
 import { useImageHub } from '@/composables/imageHub'
@@ -45,7 +45,19 @@ const debugEnabled =
   (typeof import.meta !== 'undefined' && import.meta.env?.DEV === true) ||
   import.meta.env?.VITE_DEBUG_PLAYER_IMAGE === 'true'
 
-const resolvedImageSrc = computed(() => {
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+const ctx = computed(() => canvasRef.value?.getContext('2d') ?? null)
+
+const BASE_DRAW = {
+  sx: 90,
+  sy: 144,
+  sw: 500,
+  sh: 1121,
+  dw: 255,
+  dh: 665,
+}
+
+const baseImage = computed(() => {
   const boundedHp = Math.max(0, Math.floor(props.currentHp ?? 0))
   const clampedHp =
     typeof props.maxHp === 'number' && Number.isFinite(props.maxHp)
@@ -53,34 +65,36 @@ const resolvedImageSrc = computed(() => {
       : boundedHp
   const frame = resolveFrameValue(clampedHp)
   const src = buildImageSrc(frame)
-  return imageHub.get(src) ?? src
+  return imageHub.getElement(src)
 })
 
 const selectionThemeActive = computed(
   () => props.isSelectingEnemy || (props.selectionTheme !== undefined && props.selectionTheme !== 'default'),
 )
 
-const faceDiffSrc = computed(() => {
+const faceDiffElement = computed(() => {
   if (props.faceDiffOverride) {
     const damaged = FACE_DIFF_SOURCES[props.faceDiffOverride]
-    return damaged ? imageHub.get(damaged) ?? damaged : null
+    return damaged ? imageHub.getElement(damaged) ?? null : null
   }
   if (!selectionThemeActive.value) {
     return null
   }
   const theme = props.selectionTheme ?? 'default'
   const src = FACE_DIFF_SOURCES[theme]
-  return src ? imageHub.get(src) ?? src : null
+  return src ? imageHub.getElement(src) ?? null : null
 })
 
-const statusDiffSrcList = computed(() => {
+const statusDiffElements = computed(() => {
   const ids = props.states ?? []
-  const collected: string[] = []
+  const collected: HTMLImageElement[] = []
   for (const id of ids) {
     const src = STATUS_DIFF_SOURCES[id]
     if (src) {
-      const resolved = imageHub.get(src) ?? src
-      collected.push(resolved)
+      const resolved = imageHub.getElement(src)
+      if (resolved) {
+        collected.push(resolved)
+      }
     }
   }
   return collected
@@ -107,6 +121,24 @@ onMounted(() => {
   })
 })
 
+watch(
+  () => [
+    props.currentHp,
+    props.maxHp,
+    faceDiffElement.value?.src ?? '',
+    statusDiffElements.value.map((img) => img.src).join('|'),
+  ],
+  () => requestAnimationFrame(draw),
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  const context = ctx.value
+  if (context) {
+    context.clearRect(0, 0, BASE_DRAW.dw, BASE_DRAW.dh)
+  }
+})
+
 function resolveFrameValue(currentHp: number): number {
   // HP以上で最も近いフレームを選択し、存在しない場合は最大値でフォールバックする。
   const candidates = PLAYER_FRAME_VALUES.filter((value) => value >= currentHp)
@@ -118,68 +150,59 @@ function resolveFrameValue(currentHp: number): number {
 
 function buildImageSrc(frameValue: number): string {
   const normalized = Math.max(0, frameValue)
-  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
-  return `${normalizedBase}/assets/players/${normalized}.png`
+  return `/assets/players/${normalized}.png`
 }
 
 function buildFaceDiffSrc(fileName: string): string {
-  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
-  return `${normalizedBase}/assets/players/face_diffs/${fileName}`
+  return `/assets/players/face_diffs/${fileName}`
 }
 
 function buildStatusDiffSrc(fileName: string): string {
-  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base
-  return `${normalizedBase}/assets/players/diffs/${fileName}`
+  return `/assets/players/diffs/${fileName}`
 }
 
-function handleImageError(src: string): void {
-  if (!debugEnabled) {
+function draw(): void {
+  const context = ctx.value
+  if (!context) {
     return
   }
-  console.warn('[PlayerImageComponent] image load failed', src)
-}
+  context.clearRect(0, 0, BASE_DRAW.dw, BASE_DRAW.dh)
 
-function handleImageLoad(src: string): void {
-  if (!debugEnabled) {
-    return
+  const layers: HTMLImageElement[] = []
+  if (baseImage.value) {
+    layers.push(baseImage.value)
   }
-  console.info('[PlayerImageComponent] image loaded', src)
+  layers.push(...statusDiffElements.value)
+  if (faceDiffElement.value) {
+    layers.push(faceDiffElement.value)
+  }
+
+  const drawLayer = (img: HTMLImageElement): void => {
+    if (!img.complete) {
+      img.onload = () => requestAnimationFrame(draw)
+      return
+    }
+    context.drawImage(
+      img,
+      BASE_DRAW.sx,
+      BASE_DRAW.sy,
+      BASE_DRAW.sw,
+      BASE_DRAW.sh,
+      0,
+      0,
+      BASE_DRAW.dw,
+      BASE_DRAW.dh,
+    )
+  }
+
+  layers.forEach(drawLayer)
 }
 </script>
 
 <template>
   <div class="player-image" :class="{ 'player-image--selecting': selectionThemeActive }" :style="styleVars">
     <div class="player-image__frame">
-      <img
-        class="player-image__img"
-        :src="resolvedImageSrc"
-        alt="聖女の立ち絵"
-        decoding="async"
-        @load="handleImageLoad(resolvedImageSrc)"
-        @error="handleImageError(resolvedImageSrc)"
-      />
-      <img
-        v-if="faceDiffSrc"
-        class="player-image__img player-image__img--face"
-        :src="faceDiffSrc"
-        alt="聖女の表情差分"
-        decoding="async"
-        @load="handleImageLoad(faceDiffSrc)"
-        @error="handleImageError(faceDiffSrc)"
-      />
-      <img
-        v-for="src in statusDiffSrcList"
-        :key="src"
-        class="player-image__img player-image__img--status"
-        :src="src"
-        alt="状態異常の差分"
-        decoding="async"
-        @load="handleImageLoad(src)"
-        @error="handleImageError(src)"
-      />
+      <canvas ref="canvasRef" class="player-image__canvas" :width="BASE_DRAW.dw" :height="BASE_DRAW.dh"></canvas>
       <div class="player-image__overlay">
         <slot />
       </div>
@@ -209,29 +232,12 @@ function handleImageLoad(src: string): void {
   overflow: hidden;
 }
 
-.player-image__img {
+.player-image__canvas {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 800px;
-  height: 1300px;
-  object-fit: none;
-  object-position: top left;
-  transform-origin: top left;
-  transform: translate(-100px, -75px) scale(0.58);
-  display: block;
+  inset: 0;
+  width: 255px;
+  height: 665px;
   z-index: 1;
-}
-
-.player-image__img--face {
-  z-index: 3;
-  pointer-events: none;
-  /* ベース画像と同じクロップ・スケールで重ねる */
-}
-
-.player-image__img--status {
-  z-index: 2;
-  pointer-events: none;
 }
 
 .player-image__overlay {

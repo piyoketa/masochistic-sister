@@ -6,7 +6,7 @@
     - 親コンポーネント: props.src(string) で表示する画像パスを受け取り、defineExpose({ play }) で公開する play(): void を呼び出して再生を開始する。必要に応じて alt 文言を props.alt で渡せる。親は再生回数やタイミングを管理し、本コンポーネントは演出の実行のみを担う。
 -->
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { nextTick, onBeforeUnmount, ref } from 'vue'
 import { useImageHub } from '@/composables/imageHub'
 
 const props = withDefaults(
@@ -20,6 +20,7 @@ const props = withDefaults(
 )
 
 const imageHub = useImageHub()
+const canvasRef = ref<HTMLCanvasElement | null>(null)
 const ENTER_DURATION_MS = 200
 const HOLD_DURATION_MS = 400
 const isVisible = ref(false)
@@ -40,6 +41,7 @@ async function play(): Promise<void> {
     isVisible.value = false
     await nextTick()
   }
+  await drawCutIn()
   isVisible.value = true
   hideTimer = window.setTimeout(() => {
     isVisible.value = false
@@ -50,14 +52,39 @@ async function play(): Promise<void> {
 defineExpose({ play, imageLoaded })
 onBeforeUnmount(() => clearTimer())
 
-const resolvedSrc = computed(() => imageHub.get(props.src) ?? props.src)
+async function drawCutIn(): Promise<void> {
+  const canvas = canvasRef.value
+  const ctx = canvas?.getContext('2d')
+  if (!canvas || !ctx) return
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  const img = imageHub.getElement(props.src)
+  if (!img) return
+
+  const draw = () => {
+    const scale = Math.min(canvas.width / img.width, canvas.height / img.height)
+    const dw = img.width * scale
+    const dh = img.height * scale
+    const dx = (canvas.width - dw) / 2
+    const dy = (canvas.height - dh) / 2
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(img, dx, dy, dw, dh)
+    imageLoaded.value = true
+  }
+
+  if (img.complete) {
+    draw()
+  } else {
+    img.onload = () => draw()
+  }
+}
 </script>
 
 <template>
   <div class="cut-in-overlay">
     <Transition name="cut-in">
       <div v-show="isVisible" class="cut-in-overlay__backdrop">
-        <img :src="resolvedSrc" :alt="alt" class="cut-in-overlay__image" />
+        <canvas ref="canvasRef" class="cut-in-overlay__canvas" width="960" height="720" :aria-label="alt"></canvas>
       </div>
     </Transition>
   </div>
@@ -81,10 +108,10 @@ const resolvedSrc = computed(() => imageHub.get(props.src) ?? props.src)
   will-change: transform, opacity;
 }
 
-.cut-in-overlay__image {
+.cut-in-overlay__canvas {
   max-width: 82%;
   max-height: 82%;
-  object-fit: contain;
+  background: transparent;
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.7));
 }
 
