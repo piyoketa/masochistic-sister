@@ -165,13 +165,18 @@ function blockedReason(enemyId: number | undefined): string | undefined {
 watch(
   () => props.stageEvent,
   (event) => {
-    if (!event || !event.batchId || processedStageBatchIds.has(event.batchId)) {
+    if (!event || !event.batchId) {
       return
     }
-    processedStageBatchIds.add(event.batchId)
+    const stage = (event.metadata as { stage?: string } | undefined)?.stage ?? 'unknown'
+    const key = `${event.batchId}:${stage}`
+    if (processedStageBatchIds.has(key)) {
+      return
+    }
+    processedStageBatchIds.add(key)
     if (processedStageBatchIds.size > 500) {
       processedStageBatchIds.clear()
-      processedStageBatchIds.add(event.batchId)
+      processedStageBatchIds.add(key)
     }
     const metadata = event.metadata
     if (!metadata) {
@@ -232,12 +237,20 @@ onBeforeUnmount(() => {
 function handleEnemyDamageStage(event: StageEventPayload, metadata: EnemyDamageStageMetadata): void {
   const enemyId = resolveEnemyIdFromStage(event, metadata)
   if (enemyId === null) {
+    if (import.meta.env?.VITE_DEBUG_ANIMATION_LOG === 'true') {
+      // eslint-disable-next-line no-console
+      console.warn('[EnemyArea] enemy-damage: enemyId missing', { event, metadata })
+    }
     return
   }
   const outcomes =
     metadata.damageOutcomes?.map((outcome) => ({
       ...outcome,
     })) ?? []
+  if (import.meta.env?.VITE_DEBUG_ANIMATION_LOG === 'true') {
+    // eslint-disable-next-line no-console
+    console.info('[EnemyArea] enemy-damage stage', { enemyId, outcomes, batchId: event.batchId })
+  }
   const target = enemyCardRefs.get(enemyId)
   target?.playDamage(outcomes)
 }

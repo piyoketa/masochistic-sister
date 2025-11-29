@@ -170,61 +170,6 @@ function hideTooltip(key: string): void {
   activeTooltip = null
 }
 
-function formatStatus(name: string, magnitude?: number): string {
-  if (magnitude === undefined) {
-    return `+ ${name}`
-  }
-  return `+ ${name}(${magnitude})`
-}
-
-function formatLegacyLabel(skill: EnemySkill): string {
-  const damage = extractLegacyDamage(skill.detail)
-  const status = extractLegacyStatus(skill.detail)
-  const magnitude = extractLegacyMagnitude(skill.detail)
-  const statusText = status ? formatStatus(status, magnitude) : ''
-  return [damage, statusText.trim()].filter((part) => part.length > 0).join(' ')
-}
-
-function selectLegacyIcon(detail: string): string {
-  if (detail.includes('×') || detail.includes('回攻撃')) {
-    return '⚔️'
-  }
-  if (detail.includes('ダメージ')) {
-    return '💥'
-  }
-  return '✨'
-}
-
-function extractLegacyDamage(detail: string): string {
-  const multi = detail.match(/(\d+)\s*[×x]\s*(\d+)/)
-  if (multi) {
-    return `${multi[1]}×${multi[2]}`
-  }
-  const single = detail.match(/(\d+)\s*ダメージ/)
-  if (single) {
-    return single[1] ?? ''
-  }
-  const numeric = detail.match(/\d+/)
-  return numeric ? numeric[0] ?? '' : ''
-}
-
-function extractLegacyStatus(detail: string): string | undefined {
-  const statusMatch = detail.match(/[＋+]\s*([^付与]+)付与/)
-  if (statusMatch) {
-    return statusMatch[1]?.trim()
-  }
-  return undefined
-}
-
-function extractLegacyMagnitude(detail: string): number | undefined {
-  const match = detail.match(/([+-]?\d+)/)
-  if (!match) {
-    return undefined
-  }
-  const value = Number(match[1])
-  return Number.isFinite(value) ? value : undefined
-}
-
 function formatStateChip(trait: EnemyTrait): { key: string; label: string; description: string } {
   const magnitude = trait.magnitude
   const label = magnitude !== undefined ? `${trait.name}(${magnitude})` : trait.name
