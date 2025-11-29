@@ -11,6 +11,8 @@ import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
 
 const props = defineProps<{
   relics: RelicDisplayEntry[]
+  /** バトル中のみ縁の光沢を付けたいので、フィールド等では false を渡す */
+  enableGlow?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -38,6 +40,7 @@ function handleLeave(): void {
         'relic-icon--active': relic.usageType === 'active',
         'relic-icon--passive': relic.usageType !== 'active',
         'relic-icon--enabled': relic.active,
+        'relic-icon--glow': relic.active && props.enableGlow !== false,
       }"
       :aria-label="relic.name"
       :aria-disabled="relic.usageType !== 'active' ? 'true' : undefined"
@@ -69,6 +72,8 @@ function handleLeave(): void {
   background: rgba(255, 255, 255, 0.05);
   color: #fff;
   transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  position: relative;
+  overflow: visible;
 }
 
 .relic-icon__glyph {
@@ -85,6 +90,46 @@ function handleLeave(): void {
 
 .relic-icon--enabled {
   border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 8px rgba(255, 236, 170, 0.6);
+}
+
+/* BattleView の発動中レリックに、card-glow 相当の縁光沢を付与 */
+.relic-icon--glow::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  background:
+    linear-gradient(#120e1c, #120e1c),
+    conic-gradient(
+      from var(--gradient-angle, 0turn),
+      #5c4827 0%,
+      #c7a03c 32%,
+      #f9de90 36%,
+      #c7a03c 40%,
+      #5c4827 60%,
+      #c7a03c 82%,
+      #f9de90 86%,
+      #c7a03c 90%,
+      #5c4827 100%
+    );
+  background-origin: border-box;
+  background-clip: content-box, border-box;
+  padding: 2px;
+  animation: relic-glow-rotate 2s linear infinite;
+  z-index: -1;
+}
+
+@property --gradient-angle {
+  syntax: '<angle>';
+  initial-value: 0turn;
+  inherits: false;
+}
+
+@keyframes relic-glow-rotate {
+  to {
+    --gradient-angle: 1turn;
+  }
 }
 
 .relic-icon:not(.relic-icon--enabled) {

@@ -77,7 +77,7 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
       </div>
       <div class="relics">
         <span class="relics__label">レリック</span>
-        <RelicList :relics="relics" @hover="() => {}" @leave="() => {}" />
+        <RelicList :relics="relics" :enable-glow="false" @hover="() => {}" @leave="() => {}" />
       </div>
     </header>
 
