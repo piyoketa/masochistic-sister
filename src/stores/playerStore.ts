@@ -10,6 +10,7 @@ import { ReloadAction } from '@/domain/entities/actions/ReloadAction'
 import { NonViolencePrayerAction } from '@/domain/entities/actions/NonViolencePrayerAction'
 import { LifeDrainSkillAction } from '@/domain/entities/actions/LifeDrainSkillAction'
 import { DailyRoutineAction } from '@/domain/entities/actions/DailyRoutineAction'
+import { PredicamentAction } from '@/domain/entities/actions/PredicamentAction'
 import { TackleAction } from '@/domain/entities/actions/TackleAction'
 import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
 import { MucusShotAction } from '@/domain/entities/actions/MucusShotAction'
@@ -28,6 +29,7 @@ export type DeckCardType =
   | 'non-violence-prayer'
   | 'life-drain-skill'
   | 'daily-routine'
+  | 'predicament'
   | 'tackle'
   | 'flurry'
   | 'mucus-shot'
@@ -57,6 +59,7 @@ const cardFactories: Record<DeckCardType, () => Card> = {
   'non-violence-prayer': () => new Card({ action: new NonViolencePrayerAction() }),
   'life-drain-skill': () => new Card({ action: new LifeDrainSkillAction() }),
   'daily-routine': () => new Card({ action: new DailyRoutineAction() }),
+  predicament: () => new Card({ action: new PredicamentAction() }),
   tackle: () => new Card({ action: new TackleAction() }),
   flurry: () => new Card({ action: new FlurryAction() }),
   'mucus-shot': () => new Card({ action: new MucusShotAction() }),
@@ -74,6 +77,7 @@ const actionConstructorMap = new Map<Function, DeckCardType>([
   [NonViolencePrayerAction, 'non-violence-prayer'],
   [LifeDrainSkillAction, 'life-drain-skill'],
   [DailyRoutineAction, 'daily-routine'],
+  [PredicamentAction, 'predicament'],
   [TackleAction, 'tackle'],
   [FlurryAction, 'flurry'],
   [MucusShotAction, 'mucus-shot'],

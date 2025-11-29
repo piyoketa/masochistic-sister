@@ -19,6 +19,7 @@ import { ReloadAction } from '@/domain/entities/actions/ReloadAction'
 import { NonViolencePrayerAction } from '@/domain/entities/actions/NonViolencePrayerAction'
 import { LifeDrainSkillAction } from '@/domain/entities/actions/LifeDrainSkillAction'
 import { DailyRoutineAction } from '@/domain/entities/actions/DailyRoutineAction'
+import { PredicamentAction } from '@/domain/entities/actions/PredicamentAction'
 import { TackleAction } from '@/domain/entities/actions/TackleAction'
 import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
 import { MucusShotAction } from '@/domain/entities/actions/MucusShotAction'
@@ -40,6 +41,7 @@ const blueprintFactories: Record<DeckCardType, () => Card> = {
   'non-violence-prayer': () => new Card({ action: new NonViolencePrayerAction() }),
   'life-drain-skill': () => new Card({ action: new LifeDrainSkillAction() }),
   'daily-routine': () => new Card({ action: new DailyRoutineAction() }),
+  predicament: () => new Card({ action: new PredicamentAction() }),
   tackle: () => new Card({ action: new TackleAction() }),
   flurry: () => new Card({ action: new FlurryAction() }),
   'mucus-shot': () => new Card({ action: new MucusShotAction() }),
@@ -81,6 +83,7 @@ const addableOptions: Array<{ value: DeckCardType; label: string }> = [
   { value: 'non-violence-prayer', label: '不殺の祈り' },
   { value: 'life-drain-skill', label: 'ライフドレイン' },
   { value: 'daily-routine', label: '日課' },
+  { value: 'predicament', label: '窮地' },
   { value: 'tackle', label: 'たいあたり' },
   { value: 'flurry', label: '乱れ突き' },
   { value: 'mucus-shot', label: '粘液飛ばし' },

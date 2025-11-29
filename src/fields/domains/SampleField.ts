@@ -4,7 +4,7 @@ import type { CardRewardNode, EnemyNode, FieldNode, StartNode } from './FieldNod
 /**
  * SampleField: 一直線に敵が並ぶシンプルなフィールド。
  * Level1: StartNode
- * Level2: カード獲得マス（候補: 戦いの準備/日課/不殺の祈り/リロード/傷の癒やし）を3枚抽選
+ * Level2: カード獲得マス（候補: 戦いの準備/日課/窮地/不殺の祈り/リロード/傷の癒やし）を3枚抽選
  * Level3: snail
  * Level4: iron-bloom
  * Level5: hummingbird-scorpion
@@ -39,6 +39,7 @@ function buildLevels(): FieldLevel[] {
     candidateActions: [
       'battle-prep',
       'daily-routine',
+      'predicament',
       'non-violence-prayer',
       'reload',
       'scar-regeneration',

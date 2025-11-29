@@ -34,6 +34,7 @@ import {
   NonViolencePrayerAction,
   LifeDrainSkillAction,
   DailyRoutineAction,
+  PredicamentAction,
   TackleAction,
   FlurryAction,
   MucusShotAction,
@@ -122,6 +123,7 @@ function mapTitleToDeckType(title: string): DeckCardType {
   if (title.includes('不殺')) return 'non-violence-prayer'
   if (title.includes('傷の癒やし')) return 'scar-regeneration'
   if (title.includes('日課')) return 'daily-routine'
+  if (title.includes('窮地')) return 'predicament'
   if (title.includes('戦いの準備')) return 'battle-prep'
   return 'heaven-chain'
 }
@@ -136,6 +138,7 @@ function createCardFromType(repository: CardRepository, type: DeckCardType): Car
     'non-violence-prayer': () => new Card({ action: new NonViolencePrayerAction() }),
     'life-drain-skill': () => new Card({ action: new LifeDrainSkillAction() }),
     'daily-routine': () => new Card({ action: new DailyRoutineAction() }),
+    predicament: () => new Card({ action: new PredicamentAction() }),
     tackle: () => new Card({ action: new TackleAction() }),
     flurry: () => new Card({ action: new FlurryAction() }),
     'mucus-shot': () => new Card({ action: new MucusShotAction() }),
