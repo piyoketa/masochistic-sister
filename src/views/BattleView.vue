@@ -256,6 +256,33 @@ const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
 }))
+const projectedPlayerHp = computed(() => {
+  if (!snapshot.value || !isPlayerTurn.value) {
+    return null
+  }
+  const currentHp = snapshot.value.player.currentHp ?? 0
+  const enemies = snapshot.value.enemies ?? []
+  let total = 0
+  for (const enemy of enemies) {
+    if (enemy.status !== 'active') {
+      continue
+    }
+    const actions = enemy.nextActions ?? []
+    for (const action of actions) {
+      if (action.type !== 'attack') {
+        continue
+      }
+      const pattern = action.calculatedPattern ?? action.pattern
+      if (!pattern) {
+        continue
+      }
+      const amount = typeof pattern.amount === 'number' ? pattern.amount : 0
+      const count = typeof pattern.count === 'number' ? pattern.count : 1
+      total += amount * count
+    }
+  }
+  return Math.max(0, currentHp - total)
+})
 const playerStates = computed(() => {
   const ids = new Set<string>()
   const hand = snapshot.value?.hand ?? []
@@ -780,13 +807,14 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
                     ? { current: previousSnapshot.player.currentHp, max: previousSnapshot.player.maxHp }
                     : { current: playerHpGauge.current, max: playerHpGauge.max }
                 "
-                :post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
-                :outcomes="playerDamageOutcomes"
-                :selection-theme="enemySelectionTheme"
-                :states="playerStates"
-              />
-            </div>
-          </aside>
+              :post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
+              :outcomes="playerDamageOutcomes"
+              :selection-theme="enemySelectionTheme"
+              :states="playerStates"
+              :predicted-hp="projectedPlayerHp ?? undefined"
+            />
+          </div>
+        </aside>
 
           <main class="battle-main">
             <BattleEnemyArea

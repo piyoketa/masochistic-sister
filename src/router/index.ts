@@ -88,6 +88,11 @@ const router = createRouter({
       component: () => import('@/views/AudioDemoView.vue'),
     },
     {
+      path: '/demo/hp-gauge',
+      name: 'hp-gauge-demo',
+      component: () => import('@/views/HpGaugeDemoView.vue'),
+    },
+    {
       path: '/field/card-reward',
       name: 'card-reward',
       component: () => import('@/views/CardRewardView.vue'),

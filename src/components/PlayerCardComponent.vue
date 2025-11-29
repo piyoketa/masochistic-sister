@@ -36,10 +36,12 @@ const props = withDefaults(
     outcomes: DamageOutcome[]
     selectionTheme?: EnemySelectionTheme
     states?: string[]
+    predictedHp?: number | null
     showHpGauge?: boolean
     show?: boolean
   }>(),
   {
+    predictedHp: null,
     showHpGauge: true,
     show: true,
   },
@@ -146,7 +148,12 @@ onMounted(() => {
       </PlayerImageComponent>
     </div>
     <div class="player-card__hp">
-      <HpGauge v-if="showHpGauge" :current="displayHp.current" :max="displayHp.max" />
+      <HpGauge
+        v-if="showHpGauge"
+        :current="displayHp.current"
+        :max="displayHp.max"
+        :predicted="props.predictedHp ?? null"
+      />
       <DamageEffects
         ref="damageRef"
         class="damage-overlay damage-overlay--player"
