@@ -253,7 +253,8 @@ const projectedPlayerHp = computed(() => {
   const enemies = snapshot.value.enemies ?? []
   let total = 0
   for (const enemy of enemies) {
-    if (enemy.status !== 'active') {
+    // 撃破済み・行動済みの敵は予測に含めない
+    if (enemy.status !== 'active' || enemy.currentHp <= 0 || enemy.hasActedThisTurn) {
       continue
     }
     const actions = enemy.nextActions ?? []
