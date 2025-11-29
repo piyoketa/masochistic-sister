@@ -61,7 +61,6 @@ export type AttackStyle = 'single' | 'multi'
 export type CardTagInfo = {
   id: string
   label: string
-  name?: string
   description?: string
 }
 

@@ -7,69 +7,24 @@ RewardDemoView の責務:
 import { useRouter } from 'vue-router'
 import GameLayout from '@/components/GameLayout.vue'
 import { useRewardStore, type PendingReward } from '@/stores/rewardStore'
+import { Library } from '@/domain/library/Library'
 
 const router = useRouter()
 const rewardStore = useRewardStore()
+
+const library = new Library()
+const demoCards = library.listActionCards(3)
 
 const demoReward: PendingReward = {
   battleId: 'demo-battle',
   hpHeal: 30,
   gold: 50,
   defeatedCount: 1,
-  cards: [
-    {
-      id: 'demo-card-1',
-      deckType: 'heaven-chain',
-      info: {
-        id: 'demo-card-1',
-        title: '天の鎖',
-        type: 'skill',
-        cost: 1,
-        description: 'このターン行動が増える',
-        primaryTags: [],
-        effectTags: [],
-        categoryTags: [],
-        descriptionSegments: [],
-        affordable: true,
-        disabled: false,
-      },
-    },
-    {
-      id: 'demo-card-2',
-      deckType: 'battle-prep',
-      info: {
-        id: 'demo-card-2',
-        title: '戦いの準備',
-        type: 'skill',
-        cost: 1,
-        description: '次のターン開始時マナ+1',
-        primaryTags: [],
-        effectTags: [],
-        categoryTags: [],
-        descriptionSegments: [],
-        affordable: true,
-        disabled: false,
-      },
-    },
-    {
-      id: 'demo-card-3',
-      deckType: 'tackle',
-      info: {
-        id: 'demo-card-3',
-        title: 'たいあたり',
-        type: 'attack',
-        cost: 1,
-        attackStyle: 'single',
-        damageAmount: 20,
-        primaryTags: [],
-        effectTags: [],
-        categoryTags: [],
-        descriptionSegments: [{ text: '突撃する' }],
-        affordable: true,
-        disabled: false,
-      },
-    },
-  ],
+  cards: demoCards.map((info, idx) => ({
+    id: info.id ?? `demo-card-${idx}`,
+    deckType: 'heaven-chain',
+    info: { ...info, affordable: true, disabled: false },
+  })),
 }
 
 function setRewardAndGo(): void {

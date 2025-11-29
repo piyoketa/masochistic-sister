@@ -10,42 +10,16 @@ CardGlowLabView の責務:
 - ActionCard: 実際に描画するカード。v-bind でスタブデータを渡す。
 -->
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { AttackStyle, CardTagInfo, CardType, DescriptionSegment } from '@/types/battle'
+import { ref, computed } from 'vue'
 import ActionCard from '@/components/ActionCard.vue'
+import { Library } from '@/domain/library/Library'
 
 const glowEnabled = ref(true)
-const sampleCard: {
-  id: string
-  title: string
-  type: CardType
-  cost: number
-  description: string
-  descriptionSegments: DescriptionSegment[]
-  attackStyle: AttackStyle
-  primaryTags: CardTagInfo[]
-  effectTags: CardTagInfo[]
-  categoryTags: CardTagInfo[]
-  damageAmount: number
-  damageCount: number
-} = {
-  id: 'glow-card',
-  title: '金星の祈り',
-  type: 'skill',
-  cost: 1,
-  description: '光の加護を宿す\n次の攻撃で与ダメージ+5',
-  descriptionSegments: [
-    { text: '🌀光の守護', tooltip: '受けるダメージ-3(1ターン)' },
-    { text: '\n' },
-    { text: '🌀祝福', tooltip: '攻撃時ダメージ+5' },
-  ],
-  attackStyle: 'single',
-  primaryTags: [{ id: 'tag-type-skill', label: '支援' }],
-  effectTags: [{ id: 'tag-buff', label: '強化' }],
-  categoryTags: [{ id: 'tag-memory', label: '記憶' }],
-  damageAmount: 0,
-  damageCount: 0,
-}
+const library = new Library()
+const sampleCard = computed(() => {
+  const first = library.listActionCards(1)[0]
+  return first ?? null
+})
 </script>
 
 <template>
@@ -63,7 +37,7 @@ const sampleCard: {
         <span>縁の光沢を有効化</span>
       </label>
       <div class="lab-stage" :class="{ 'lab-stage--glow': glowEnabled }">
-        <ActionCard v-bind="sampleCard" :operations="[]" />
+        <ActionCard v-if="sampleCard" v-bind="sampleCard" :operations="[]" />
       </div>
     </section>
   </main>
