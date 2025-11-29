@@ -40,7 +40,6 @@ import {
   TestSlug5HpTeam,
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
-import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
 import CutInOverlay from '@/components/CutInOverlay.vue'
@@ -57,6 +56,7 @@ import RelicList from '@/components/RelicList.vue'
 import { mapSnapshotRelics, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
 import type { CardInfo } from '@/types/battle'
+import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 declare global {
   interface Window {
@@ -99,11 +99,7 @@ interface EnemySelectionRequest {
 }
 
 const layoutRef = ref<HTMLDivElement | null>(null)
-const {
-  state: descriptionOverlay,
-  hide: hideDescriptionOverlay,
-  show: showDescriptionOverlay,
-} = useDescriptionOverlay()
+const { hide: hideDescriptionOverlay, show: showDescriptionOverlay } = useDescriptionOverlay()
 
 const snapshot = computed(() => managerState.snapshot)
 const isInitializing = computed(() => managerState.playback.status === 'initializing')
@@ -141,19 +137,6 @@ const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
 
-const descriptionOverlayStyle = computed(() => {
-  const layout = layoutRef.value
-  if (!layout) {
-    return { left: '0px', top: '0px' }
-  }
-  const rect = layout.getBoundingClientRect()
-  const offsetX = descriptionOverlay.x - rect.left + 12
-  const offsetY = descriptionOverlay.y - rect.top + 12
-  return {
-    left: `${offsetX}px`,
-    top: `${offsetY}px`,
-  }
-})
 
 let battleAssetPreloadPromise: Promise<void> | null = null
 const rewardPrepared = ref(false)
@@ -943,14 +926,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
             </div>
           </transition>
         </div>
-        <div
-          class="description-overlay"
-          v-show="descriptionOverlay.visible"
-          :style="descriptionOverlayStyle"
-        >
-          {{ descriptionOverlay.text }}
-        </div>
-
       </div>
     </template>
     <template #instructions>
@@ -1140,26 +1115,6 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   flex: 1;
   min-height: 0;
   position: relative;
-}
-
-.description-overlay {
-  position: absolute;
-  min-width: 160px;
-  max-width: 280px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(8, 10, 22, 0.95);
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 13px;
-  line-height: 1.4;
-  letter-spacing: 0.04em;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
-  pointer-events: none;
-  transform: translate(0, 0);
-  z-index: 20;
-  backdrop-filter: blur(6px);
-  white-space: pre-line;
 }
 
 .battle-main {

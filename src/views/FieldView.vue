@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { FieldNode } from '@/fields/domains/FieldNode'
 import RelicList from '@/components/RelicList.vue'
 import { mapClassNamesToDisplay } from '@/view/relicDisplayMapper'
+import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -20,6 +21,7 @@ const playerStatus = computed(() => ({
   gold: playerStore.gold,
 }))
 const relics = computed(() => mapClassNamesToDisplay(playerStore.relics))
+const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
 
 const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
 const levels = computed(() => fieldStore.field.levels)
@@ -77,7 +79,18 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
       </div>
       <div class="relics">
         <span class="relics__label">レリック</span>
-        <RelicList :relics="relics" :enable-glow="false" @hover="() => {}" @leave="() => {}" />
+        <RelicList
+          :relics="relics"
+          :enable-glow="false"
+          @hover="
+            (relic, e) =>
+              showDescription(relic.description, {
+                x: (e as MouseEvent).clientX,
+                y: (e as MouseEvent).clientY,
+              })
+          "
+          @leave="hideDescription"
+        />
       </div>
     </header>
 
@@ -159,6 +172,26 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
   align-items: center;
   gap: 8px;
   margin-top: 8px;
+}
+
+.relics__tooltip {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  max-width: 320px;
+}
+
+.relics__tooltip-name {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.relics__tooltip-desc {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e7e5ff;
 }
 
 .relics__label {

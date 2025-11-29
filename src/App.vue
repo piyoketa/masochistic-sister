@@ -4,6 +4,7 @@ import { RouterView } from 'vue-router'
 import { createAudioHub, provideAudioHub } from '@/composables/audioHub'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import { SOUND_ASSETS, IMAGE_ASSETS } from '@/assets/preloadManifest'
+import DescriptionOverlayLayer from '@/components/DescriptionOverlayLayer.vue'
 
 // アプリ全体で使い回す Hub を生成し、画面遷移でも破棄されないよう最上位で provide する。
 const appAudioHub = createAudioHub(SOUND_ASSETS)
@@ -21,6 +22,7 @@ onMounted(() => {
   <div class="app-frame">
     <RouterLink class="back-to-title" to="/">← タイトルへ戻る</RouterLink>
     <RouterView />
+    <DescriptionOverlayLayer />
   </div>
 </template>
 
