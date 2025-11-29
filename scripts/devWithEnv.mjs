@@ -17,6 +17,7 @@ env.WATCHPACK_POLLING = 'true'
 env.VITE_DEBUG_HAND_STAGE_EVENTS='false'
 env.VITE_DEBUG_PLAYER_IMAGE='false'
 env.VITE_DEBUG_PLAYER_CARDS='false'
+env.VITE_ASSET_PRELOAD_LOG='true'
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {

@@ -17,7 +17,7 @@ import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
 import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { Damages } from '@/domain/entities/Damages'
-import { Attack } from '@/domain/entities/Action'
+import { Attack, type Action } from '@/domain/entities/Action'
 
 export type DeckCardType =
   | 'heaven-chain'
@@ -81,6 +81,11 @@ const actionConstructorMap = new Map<Function, DeckCardType>([
   [PoisonStingAction, 'poison-sting'],
   [BloodSuckAction, 'blood-suck'],
 ])
+
+export function mapActionToDeckCardType(action: Action): DeckCardType | null {
+  const key = actionConstructorMap.get(action.constructor as Function)
+  return key ?? null
+}
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -193,7 +198,7 @@ function cardToBlueprint(card: Card): DeckCardBlueprint {
   if (!action) {
     throw new Error('デッキのカードにアクションが設定されていません')
   }
-  const key = actionConstructorMap.get(action.constructor as Function)
+  const key = mapActionToDeckCardType(action)
   if (!key) {
     throw new Error(`未対応のカードアクション "${action.constructor.name}" です`)
   }

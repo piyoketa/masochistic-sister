@@ -1,12 +1,12 @@
 <!--
 PlayerImageComponent の責務:
 - プレイヤーの現在HPに応じた立ち絵画像を表示し、TargetEnemyOperation 中は背景色をテーマ色（Arcane/Sacred/Default）で強調する。
-- 立ち絵画像をコンポーネント初期化時にプリロードし、以降の状態変化でリロードさせない。
-- プレイヤーの状態（腐食/鈍化など）や表情差分を重ねて表示する。指定された差分数だけ重ね描画する。
+- ImageHub が事前にプリロードした画像を利用し、HP変化・表情差分・状態差分を重ね描画する。
+- プレイヤーの状態（腐食/鈍化など）や表情差分を指定数だけ重ね描画する。
 
 責務ではないこと:
 - 戦闘ロジックやHP計算の決定は行わない（渡された currentHp/maxHp に従う）。
-- ダメージ演出の制御や操作受付は持たず、スロット経由で渡されたオーバーレイを重ねるだけに留める。
+- 画像のプリロード制御は行わない（ImageHub に委譲）。ダメージ演出の制御や操作受付は持たず、slot 経由で渡されたオーバーレイを重ねるのみ。
 
 主な通信相手とインターフェース:
 - BattleView / PlayerCardComponent: props で HP・選択状態・テーマ色・プレイヤー状態を受け取り、背景色と差分表示を同期する。ダメージ演出などは slot を通じて子要素として受ける。
@@ -15,6 +15,7 @@ PlayerImageComponent の責務:
 import { computed, onMounted } from 'vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
+import { useImageHub } from '@/composables/imageHub'
 
 const props = defineProps<{
   currentHp: number
@@ -29,8 +30,7 @@ const PLAYER_FRAME_VALUES = [
   0, 30, 60, 90, 120, 150,
 ]
 
-const preloadedSrcs = new Set<string>()
-let preloadPromise: Promise<void> | null = null
+const imageHub = useImageHub()
 const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme | 'damaged-arcane' | 'damaged-normal', string>> = {
   arcane: buildFaceDiffSrc('ArcaneCardTag.png'),
   sacred: buildFaceDiffSrc('SacredCardTag.png'),
@@ -52,7 +52,8 @@ const resolvedImageSrc = computed(() => {
       ? Math.min(props.maxHp, boundedHp)
       : boundedHp
   const frame = resolveFrameValue(clampedHp)
-  return buildImageSrc(frame)
+  const src = buildImageSrc(frame)
+  return imageHub.get(src) ?? src
 })
 
 const selectionThemeActive = computed(
@@ -62,13 +63,14 @@ const selectionThemeActive = computed(
 const faceDiffSrc = computed(() => {
   if (props.faceDiffOverride) {
     const damaged = FACE_DIFF_SOURCES[props.faceDiffOverride]
-    return damaged ?? null
+    return damaged ? imageHub.get(damaged) ?? damaged : null
   }
   if (!selectionThemeActive.value) {
     return null
   }
   const theme = props.selectionTheme ?? 'default'
-  return FACE_DIFF_SOURCES[theme] ?? null
+  const src = FACE_DIFF_SOURCES[theme]
+  return src ? imageHub.get(src) ?? src : null
 })
 
 const statusDiffSrcList = computed(() => {
@@ -77,7 +79,8 @@ const statusDiffSrcList = computed(() => {
   for (const id of ids) {
     const src = STATUS_DIFF_SOURCES[id]
     if (src) {
-      collected.push(src)
+      const resolved = imageHub.get(src) ?? src
+      collected.push(resolved)
     }
   }
   return collected
@@ -93,13 +96,15 @@ const styleVars = computed(() => {
 })
 
 onMounted(() => {
-  void preloadAllFrames()
-  Object.values(FACE_DIFF_SOURCES)
-    .filter(Boolean)
-    .forEach((src) => void preloadImage(src as string).catch(() => undefined))
-  Object.values(STATUS_DIFF_SOURCES)
-    .filter(Boolean)
-    .forEach((src) => void preloadImage(src as string).catch(() => undefined))
+  const frameSrcs = PLAYER_FRAME_VALUES.map((value) => buildImageSrc(value))
+  const faceDiffs = Object.values(FACE_DIFF_SOURCES).filter(Boolean) as string[]
+  const statusDiffs = Object.values(STATUS_DIFF_SOURCES).filter(Boolean) as string[]
+  void imageHub.preloadAll([...frameSrcs, ...faceDiffs, ...statusDiffs]).catch((error) => {
+    if (debugEnabled) {
+      // eslint-disable-next-line no-console
+      console.warn('[PlayerImageComponent] 画像プリロードに失敗しました', error)
+    }
+  })
 })
 
 function resolveFrameValue(currentHp: number): number {
@@ -130,58 +135,18 @@ function buildStatusDiffSrc(fileName: string): string {
   return `${normalizedBase}/assets/players/diffs/${fileName}`
 }
 
-function preloadAllFrames(): Promise<void> {
-  if (preloadPromise) {
-    return preloadPromise
-  }
-  preloadPromise = Promise.all(
-    PLAYER_FRAME_VALUES.map((value) => {
-      const src = buildImageSrc(value)
-      if (preloadedSrcs.has(src)) {
-        return Promise.resolve()
-      }
-      preloadedSrcs.add(src)
-      return preloadImage(src)
-    }),
-  )
-    .then(() => undefined)
-    .catch((error) => {
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.warn('[PlayerImageComponent] preload failed', error)
-      }
-      return undefined
-    })
-  return preloadPromise
-}
-
-function preloadImage(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.src = src
-    if (img.complete) {
-      resolve()
-      return
-    }
-    img.onload = () => resolve()
-    img.onerror = (event) => reject(event instanceof ErrorEvent ? event.error : event)
-  })
-}
-
 function handleImageError(src: string): void {
   if (!debugEnabled) {
     return
   }
-  // eslint-disable-next-line no-console
-  console.warn('[PlayerImageComponent] 画像の読み込みに失敗しました', src)
+  console.warn('[PlayerImageComponent] image load failed', src)
 }
 
 function handleImageLoad(src: string): void {
   if (!debugEnabled) {
     return
   }
-  // eslint-disable-next-line no-console
-  console.info('[PlayerImageComponent] 画像を読み込みました', src)
+  console.info('[PlayerImageComponent] image loaded', src)
 }
 </script>
 

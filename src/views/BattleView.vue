@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import GameLayout from '@/components/GameLayout.vue'
 import HpGauge from '@/components/HpGauge.vue'
 import BattleEnemyArea from '@/components/battle/BattleEnemyArea.vue'
@@ -44,11 +45,15 @@ import DamageEffects from '@/components/DamageEffects.vue'
 import CutInOverlay from '@/components/CutInOverlay.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useRewardStore } from '@/stores/rewardStore'
 import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
 import { useAudioCue } from '@/composables/useAudioCue'
-import { BATTLE_AUDIO_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
+import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import { BattleReward } from '@/domain/battle/BattleReward'
+import { createAudioHub, provideAudioHub } from '@/composables/audioHub'
+import { createImageHub, provideImageHub } from '@/composables/imageHub'
 
 declare global {
   interface Window {
@@ -70,8 +75,10 @@ type BattleViewProps = { viewManager?: ViewManager; preset?: BattlePresetKey; te
 const ERROR_OVERLAY_DURATION_MS = 2000
 
 const props = defineProps<BattleViewProps>()
+const router = useRouter()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
+const rewardStore = useRewardStore()
 
 const battleFactory = resolveBattleFactory(props, playerStore)
 const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
@@ -117,6 +124,10 @@ const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
 const playerRelics = DEFAULT_PLAYER_RELICS
 const { play: playAudioCueInternal, preload: preloadAudioCue } = useAudioCue()
+const audioHub = createAudioHub(SOUND_ASSETS)
+const imageHub = createImageHub()
+provideAudioHub(audioHub)
+provideImageHub(imageHub)
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
@@ -136,46 +147,17 @@ const descriptionOverlayStyle = computed(() => {
 })
 
 let battleAssetPreloadPromise: Promise<void> | null = null
+const rewardPrepared = ref(false)
 
 function preloadBattleAssets(): Promise<void> {
   if (battleAssetPreloadPromise) {
     return battleAssetPreloadPromise
   }
   battleAssetPreloadPromise = Promise.allSettled([
-    preloadAudioAssetsFromManifest(),
-    preloadCutInImagesFromManifest(),
+    audioHub.preloadAll(),
+    imageHub.preloadAll(IMAGE_ASSETS),
   ]).then(() => undefined)
   return battleAssetPreloadPromise
-}
-
-function preloadAudioAssetsFromManifest(): Promise<void> {
-  if (typeof window === 'undefined') {
-    return Promise.resolve()
-  }
-  BATTLE_AUDIO_ASSETS.forEach((soundId) => preloadAudioCue(soundId))
-  return Promise.resolve()
-}
-
-function preloadCutInImagesFromManifest(): Promise<void> {
-  if (typeof window === 'undefined') {
-    return Promise.resolve()
-  }
-  const unique = new Set(BATTLE_CUTIN_ASSETS)
-  const tasks = Array.from(unique).map(
-    (src) =>
-      new Promise<void>((resolve, reject) => {
-        const normalized = normalizeCutInPath(src)
-        const img = new Image()
-        img.src = normalized
-        if (img.complete) {
-          resolve()
-          return
-        }
-        img.onload = () => resolve()
-        img.onerror = (event) => reject(event instanceof ErrorEvent ? event.error : event)
-      }),
-  )
-  return Promise.allSettled(tasks).then(() => undefined)
 }
 
 function normalizeCutInPath(src: string): string {
@@ -437,6 +419,28 @@ function handleEnemySelectionCanceled(): void {
 
 function resetEnemySelectionTheme(): void {
   enemySelectionTheme.value = 'default'
+}
+
+async function handleOpenReward(): Promise<void> {
+  // 勝利後の報酬表示を一度だけセットアップし、RewardView へ遷移する。
+  if (rewardPrepared.value) {
+    await router.push('/reward')
+    return
+  }
+  const battle = viewManager.battle
+  if (!battle || !snapshot.value) {
+    return
+  }
+  const reward = new BattleReward(battle).compute()
+  rewardStore.setReward({
+    battleId: battle.id,
+    hpHeal: reward.hpHeal,
+    gold: reward.gold,
+    defeatedCount: reward.defeatedCount,
+    cards: reward.cards,
+  })
+  rewardPrepared.value = true
+  await router.push('/reward')
 }
 
 function handleHandPlayCard(payload: { cardId: number; operations: CardOperation[] }): void {
@@ -852,6 +856,9 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
           <transition name="result-overlay">
             <div v-if="!isGameOver && isVictory" class="battle-victory-overlay">
               <div class="victory-text">VICTORY!</div>
+              <button type="button" class="reward-link-button" @click="handleOpenReward">
+                報酬を受け取る
+              </button>
             </div>
           </transition>
         </div>
@@ -1333,6 +1340,26 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   letter-spacing: 0.24em;
   color: rgba(255, 227, 115, 0.92);
   text-transform: uppercase;
+}
+
+.reward-link-button {
+  margin-top: 18px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(120, 205, 255, 0.95);
+  color: #0d1a2f;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+
+.reward-link-button:hover,
+.reward-link-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.4);
 }
 
 .result-overlay-enter-active,

@@ -87,6 +87,11 @@ const router = createRouter({
       name: 'card-reward',
       component: () => import('@/views/CardRewardView.vue'),
     },
+    {
+      path: '/reward',
+      name: 'reward-view',
+      component: () => import('@/views/RewardView.vue'),
+    },
   ],
 })
 

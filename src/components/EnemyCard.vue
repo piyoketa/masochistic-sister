@@ -9,7 +9,6 @@
  */
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
-import { useAudioCue } from '@/composables/useAudioCue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { EnemyInfo, EnemySkill, EnemyTrait } from '@/types/battle'
 import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
@@ -18,6 +17,7 @@ import DamageEffects from '@/components/DamageEffects.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
+import { useAudioHub } from '@/composables/audioHub'
 
 const props = defineProps<{
   enemy: EnemyInfo
@@ -36,18 +36,15 @@ const emit = defineEmits<{
 
 const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
   useDescriptionOverlay()
+const audioHub = useAudioHub()
 
 let activeTooltip: { key: string; text: string } | null = null
 const damageOutcomes = ref<DamageOutcome[]>([])
 const damageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
-const { play: playAudioCue, preload: preloadAudioCue } = useAudioCue()
-
 const ENEMY_AUDIO_CUES = {
-  defeat: 'sounds/defeat/maou_se_battle18.mp3',
-  escape: 'sounds/escape/kurage-kosho_esc01.mp3',
+  defeat: '/sounds/defeat/maou_se_battle18.mp3',
+  escape: '/sounds/escape/kurage-kosho_esc01.mp3',
 } as const
-
-preloadEnemyCues()
 
 interface ActionChipEntry {
   key: string
@@ -247,12 +244,8 @@ async function playDamage(outcomes: readonly DamageOutcome[]): Promise<void> {
   damageEffectsRef.value?.play()
 }
 
-function preloadEnemyCues(): void {
-  Object.values(ENEMY_AUDIO_CUES).forEach((soundId) => preloadAudioCue(soundId))
-}
-
 function playEnemySound(effect: 'defeat' | 'escape'): void {
-  playAudioCue(ENEMY_AUDIO_CUES[effect])
+  audioHub.play(ENEMY_AUDIO_CUES[effect])
 }
 
 defineExpose({ playDamage, playEnemySound })

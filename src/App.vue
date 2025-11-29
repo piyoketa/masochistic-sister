@@ -1,5 +1,20 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
+import { createAudioHub, provideAudioHub } from '@/composables/audioHub'
+import { createImageHub, provideImageHub } from '@/composables/imageHub'
+import { SOUND_ASSETS, IMAGE_ASSETS } from '@/assets/preloadManifest'
+
+// アプリ全体で使い回す Hub を生成し、画面遷移でも破棄されないよう最上位で provide する。
+const appAudioHub = createAudioHub(SOUND_ASSETS)
+const appImageHub = createImageHub()
+provideAudioHub(appAudioHub)
+provideImageHub(appImageHub)
+
+onMounted(() => {
+  void appAudioHub.preloadAll().catch(() => undefined)
+  void appImageHub.preloadAll(IMAGE_ASSETS).catch(() => undefined)
+})
 </script>
 
 <template>

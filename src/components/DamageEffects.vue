@@ -9,9 +9,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
-import { getPreloadedAudio, preloadAudioAssets } from '@/utils/audioPreloader'
 import { resolveDamageSound, resolveDefaultSound } from '@/utils/damageSounds'
-import { DAMAGE_EFFECT_AUDIO_ASSETS } from '@/assets/preloadManifest'
+import { useAudioHub } from '@/composables/audioHub'
 
 const AUDIO_SUPPORTED = typeof window !== 'undefined' && typeof window.Audio === 'function'
 const debugEnv =
@@ -44,11 +43,9 @@ type DamageEntry = {
 const entries = ref<DamageEntry[]>([])
 const timers: number[] = []
 let displayedCount = 0
-const activeSounds = new Set<HTMLAudioElement>()
-const preloadState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
-const preloadError = ref<string | null>(null)
 const logs = ref<string[]>([])
-const isReady = computed(() => preloadState.value === 'ready')
+const audioHub = useAudioHub()
+const isReady = computed(() => audioHub.ready.value)
 const debugEnabled = computed(() => debugEnv || Boolean(props.debug))
 
 function appendLog(message: string): void {
@@ -57,39 +54,6 @@ function appendLog(message: string): void {
   }
   const timestamp = new Date().toLocaleTimeString()
   logs.value = [...logs.value.slice(-30), `[${timestamp}] ${message}`]
-}
-
-async function ensureAudioPreloaded(): Promise<void> {
-  if (!AUDIO_SUPPORTED) {
-    return
-  }
-  if (preloadState.value === 'ready' || preloadState.value === 'loading') {
-    console.info('[DamageEffects] ensureAudioPreloaded skip', preloadState.value)
-    if (debugEnabled.value) {
-      console.info('[DamageEffects] preload skipped, state=', preloadState.value)
-    }
-    return
-  }
-  try {
-    preloadState.value = 'loading'
-    console.info('[DamageEffects] preload start (damage sounds)')
-    if (debugEnabled.value) {
-      console.info('[DamageEffects] preload start')
-    }
-    await preloadAudioAssets([...DAMAGE_EFFECT_AUDIO_ASSETS])
-    preloadState.value = 'ready'
-    preloadError.value = null
-    console.info('[DamageEffects] preload ready (audio assets pre-decoded)')
-    if (debugEnabled.value) {
-      console.info('[DamageEffects] preload ready')
-    }
-  } catch (error) {
-    preloadState.value = 'error'
-    preloadError.value = error instanceof Error ? error.message : String(error)
-    if (debugEnabled.value) {
-      console.error('[DamageEffects] preload error', error)
-    }
-  }
 }
 
 function reset(): void {
@@ -101,17 +65,6 @@ function reset(): void {
   }
   entries.value = []
   displayedCount = 0
-  activeSounds.forEach((audio) => {
-    if (typeof audio.pause === 'function') {
-      try {
-        audio.pause()
-      } catch {
-        // ignore
-      }
-    }
-    audio.currentTime = 0
-  })
-  activeSounds.clear()
 }
 
 function playHitSound(outcome: DamageOutcome): void {
@@ -126,55 +79,7 @@ function playHitSound(outcome: DamageOutcome): void {
     console.info('[DamageEffects] play sound', sound)
   }
 
-  const baseAudio = getPreloadedAudio(sound.id)
-  console.info('[DamageEffects] playHitSound resolved asset', {
-    id: sound.id,
-    src: sound.src,
-    preloaded: Boolean(baseAudio),
-    preloadState: preloadState.value,
-  })
-  const audio = baseAudio ? (baseAudio.cloneNode(true) as HTMLAudioElement) : new Audio(sound.src)
-  audio.volume = 0.8
-  audio.addEventListener(
-    'ended',
-    () => {
-      activeSounds.delete(audio)
-    },
-    { once: true },
-  )
-  audio.addEventListener(
-    'pause',
-    () => {
-      activeSounds.delete(audio)
-    },
-    { once: true },
-  )
-  activeSounds.add(audio)
-  if (typeof audio.play === 'function') {
-    try {
-      const playResult = audio.play()
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch((error) => {
-          if (debugEnabled.value) {
-            console.error('[DamageEffects] audio play rejected', error)
-          }
-          activeSounds.delete(audio)
-        })
-      }
-    } catch (error) {
-      if (debugEnabled.value) {
-        console.error('[DamageEffects] audio play error', error)
-      }
-      activeSounds.delete(audio)
-    }
-  } else {
-    activeSounds.delete(audio)
-  }
-  audio.addEventListener('error', (event) => {
-    if (debugEnabled.value) {
-      console.error('[DamageEffects] audio error event', event)
-    }
-  })
+  audioHub.play(sound.src, { volume: 0.8 })
 }
 
 function scheduleRemoval(entryId: number, delay: number, totalEntries: number): void {
@@ -194,17 +99,7 @@ function scheduleRemoval(entryId: number, delay: number, totalEntries: number): 
 
 function play(): void {
   reset()
-  // 効果音がプリロード完了するまで待ってから再生を開始することで、
-  // 再生時に new Audio で都度ロードされるのを防ぐ。
-  ensureAudioPreloaded()
-    .catch(() => {
-      // プリロード失敗時も演出を継続し、再生側でフォールバックさせる
-      console.warn('[DamageEffects] preload failed, fallback to on-demand audio load')
-    })
-    .finally(() => {
-      console.info('[DamageEffects] startSequence after preload', preloadState.value)
-      startSequence()
-    })
+  startSequence()
 }
 
 function startSequence(): void {
@@ -236,23 +131,6 @@ function startSequence(): void {
 
 defineExpose({ play, isReady })
 onMounted(() => {
-  if (debugEnabled.value) {
-    console.info('[DamageEffects] mounted, starting preload')
-  }
-  ensureAudioPreloaded().catch((error) => {
-    if (debugEnabled.value) {
-      console.error('[DamageEffects] preload failure', error)
-    }
-  })
-  watch(
-    () => preloadState.value,
-    (state) => {
-      if (debugEnabled.value) {
-        console.info('[DamageEffects] preloadState changed', state)
-      }
-    },
-    { immediate: true },
-  )
   watch(
     () => isReady.value,
     (ready) => {
@@ -281,10 +159,6 @@ onBeforeUnmount(() => reset())
       {{ entry.amount }}
     </span>
     <div v-if="debugEnabled || false" class="damage-effects__log">
-      <p>
-        効果音: <strong>{{ preloadState }}</strong>
-        <span v-if="preloadError"> ({{ preloadError }})</span>
-      </p>
       <p v-for="line in logs" :key="line">{{ line }}</p>
     </div>
   </div>
