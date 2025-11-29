@@ -747,6 +747,12 @@ export class OperationRunner {
           actionHistory: [...entry.queue.actionHistory],
         },
       })),
+      relicStates: source.relicStates
+        ? source.relicStates.map((entry) => ({
+            className: entry.className,
+            state: entry.state && typeof entry.state === 'object' ? { ...(entry.state as object) } : entry.state,
+          }))
+        : undefined,
     }
   }
 

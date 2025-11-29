@@ -29,4 +29,19 @@ export abstract class Relic {
   getAdditionalStates(_context?: { battle?: import('@/domain/battle/Battle').Battle; player?: import('../Player').Player }): import('../State').State[] {
     return []
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onPlayerTurnStart(_context: { battle: import('@/domain/battle/Battle').Battle; player: import('../Player').Player }): void {
+    // デフォルトは何もしない
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  saveState(): unknown {
+    return undefined
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  restoreState(_state: unknown): void {
+    // デフォルト実装はステートレス
+  }
 }

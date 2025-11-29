@@ -21,6 +21,7 @@ import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
 import type { EnemyActionHint, EnemySkill } from '@/types/battle'
 import { buildEnemyActionHints } from './enemyActionHintBuilder'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
+import type { Relic } from '../entities/relics/Relic'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -137,6 +138,7 @@ export interface FullBattleSnapshot {
     enemyId: number
     queue: EnemyQueueSnapshot
   }>
+  relicStates?: Array<{ className: string; state: unknown }>
 }
 
 export interface EnemyTurnSummary {
@@ -178,6 +180,7 @@ export class Battle {
   private readonly turnValue: TurnManager
   private readonly cardRepositoryValue: CardRepository
   private relicClassNames: string[]
+  private relicInstances: Relic[]
   private logSequence = 0
   private executedActionLogIndex = -1
   private eventSequence = 0
@@ -217,6 +220,7 @@ export class Battle {
     this.turnValue = config.turn ?? new TurnManager()
     this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
     this.relicClassNames = [...(config.relicClassNames ?? [])]
+    this.relicInstances = this.buildRelicInstances(this.relicClassNames, [])
     this.playerValue.bindHand(this.handValue)
     this.cardRepositoryValue.bindZones({
       deck: this.deckValue,
@@ -359,9 +363,9 @@ export class Battle {
 
   getSnapshot(): BattleSnapshot {
     const relicSnapshots =
-      this.relicClassNames.map((className) => {
-        const relic = instantiateRelic(className)
-        const active = relic?.isActive({ battle: this, player: this.playerValue }) ?? false
+      this.relicInstances.map((relic) => {
+        const className = relic.constructor.name
+        const active = relic.isActive({ battle: this, player: this.playerValue })
         return { className, active }
       }) ?? []
 
@@ -426,11 +430,19 @@ export class Battle {
     return {
       snapshot: base,
       enemyQueues,
+      relicStates: this.relicInstances.map((relic) => ({
+        className: relic.constructor.name,
+        state: relic.saveState(),
+      })),
     }
   }
 
   getRelicClassNames(): string[] {
     return [...this.relicClassNames]
+  }
+
+  getRelicInstances(): Relic[] {
+    return [...this.relicInstances]
   }
 
   restoreFullSnapshot(state: FullBattleSnapshot): void {
@@ -446,7 +458,7 @@ export class Battle {
     this.eventsValue.replace(base.events)
     this.turnValue.setState(base.turn)
     this.logValue.replace(base.log)
-    this.relicClassNames = base.player.relics.map((relic) => relic.className)
+    this.rebuildRelics(base.player.relics.map((relic) => relic.className), state.relicStates)
 
     const idToEnemy = new Map<number, Enemy>()
     for (const enemy of this.enemyTeamValue.members) {
@@ -490,6 +502,7 @@ export class Battle {
     this.turn.startPlayerTurn()
     this.enemyTeam.endTurn()
     this.enemyTeam.handlePlayerTurnStart(this)
+    this.player.handlePlayerTurnStart(this)
     this.player.resetMana()
   }
 
@@ -1172,6 +1185,31 @@ export class Battle {
       log: source.log.map((entry) => ({ ...entry })),
       status: source.status,
     }
+  }
+
+  private buildRelicInstances(
+    classNames: string[],
+    states: Array<{ className: string; state: unknown }> | undefined,
+  ): Relic[] {
+    return classNames
+      .map((className) => {
+        const relic = instantiateRelic(className)
+        if (!relic) return null
+        const saved = states?.find((entry) => entry.className === className)
+        if (saved) {
+          relic.restoreState(saved.state)
+        }
+        return relic
+      })
+      .filter((relic): relic is Relic => relic !== null)
+  }
+
+  private rebuildRelics(
+    classNames: string[],
+    states: Array<{ className: string; state: unknown }> | undefined,
+  ): void {
+    this.relicClassNames = [...classNames]
+    this.relicInstances = this.buildRelicInstances(this.relicClassNames, states)
   }
 
   private recordOutcome(outcome: BattleStatus): void {

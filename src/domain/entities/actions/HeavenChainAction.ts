@@ -1,4 +1,4 @@
-import { Skill, type ActionContext } from '../Action'
+import { Skill, type ActionContext, type ActionCostContext } from '../Action'
 import {
   EnemySingleTargetCardTag,
   ExhaustCardTag,
@@ -9,6 +9,8 @@ import type { Enemy } from '../Enemy'
 import { SkipTurnAction } from './SkipTurnAction'
 import { TargetEnemyOperation, type Operation } from '../operations'
 import { LargeState } from '../states/LargeState'
+import { NoViolenceRelic } from '../relics/NoViolenceRelic'
+import type { Player } from '../Player'
 
 export class HeavenChainAction extends Skill {
   constructor() {
@@ -53,6 +55,18 @@ export class HeavenChainAction extends Skill {
     ]
   }
 
+  override cost(context?: ActionCostContext): number {
+    const base = super.cost(context)
+    const relics = context?.battle?.getRelicInstances()
+    const noViolence = relics?.find((relic) => relic instanceof NoViolenceRelic) as
+      | NoViolenceRelic
+      | undefined
+    if (noViolence && noViolence.isActive({ battle: context?.battle, player: context?.source as Player })) {
+      return 0
+    }
+    return base
+  }
+
   protected override perform(context: ActionContext): void {
     const target = context.target as Enemy | undefined
     if (!target) {
@@ -75,5 +89,13 @@ export class HeavenChainAction extends Skill {
       message: `${target.name}は天の鎖で動きを封じられた。`,
       metadata: { enemyId: target.id, action: 'heaven-chain' },
     })
+
+    const relics = context.battle.getRelicInstances()
+    const noViolence = relics.find((relic) => relic instanceof NoViolenceRelic) as
+      | NoViolenceRelic
+      | undefined
+    if (noViolence) {
+      noViolence.markUsed()
+    }
   }
 }

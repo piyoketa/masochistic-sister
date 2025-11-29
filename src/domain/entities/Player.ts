@@ -190,9 +190,7 @@ export class Player {
       return []
     }
     const relicStates: State[] = []
-    for (const className of battle.getRelicClassNames()) {
-      const relic = instantiateRelic(className)
-      if (!relic) continue
+    for (const relic of battle.getRelicInstances()) {
       const active = relic.isActive({ battle, player: this })
       if (!active) continue
       const additional = relic.getAdditionalStates
@@ -213,6 +211,12 @@ export class Player {
     }
     const relicStates = this.getRelicEffectStates(battle)
     return this.aggregateStates([...base, ...relicStates])
+  }
+
+  handlePlayerTurnStart(battle: Battle): void {
+    for (const relic of battle.getRelicInstances()) {
+      relic.onPlayerTurnStart({ battle, player: this })
+    }
   }
 
   /**
