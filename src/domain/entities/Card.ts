@@ -1,10 +1,18 @@
-import type { Action, ActionContext, ActionAudioCue, ActionCutInCue } from './Action'
+import type {
+  Action,
+  ActionContext,
+  ActionAudioCue,
+  ActionCutInCue,
+  ActionCostContext,
+} from './Action'
 import type { CardTag } from './CardTag'
 import { CardCategoryTag } from './CardTag'
 import type { State } from './State'
 import type { CardDefinition } from './CardDefinition'
 import type { Battle } from '../battle/Battle'
 import type { CardOperation } from './operations'
+
+const RUNTIME_COST_KEY = Symbol('runtimeCostOverride')
 
 export interface CardProps {
   action?: Action
@@ -151,7 +159,9 @@ export class Card {
   }
 
   get cost(): number {
-    return this.definition.cost
+    // バトル状況で計算済みのコストがある場合はそれを優先し、なければ定義コストを使う。
+    // Symbolで持たせることでJSON比較時に表へ出ないようにする。
+    return (this as Record<symbol, number | undefined>)[RUNTIME_COST_KEY] ?? this.definition.cost
   }
 
   get description(): string {
@@ -171,6 +181,23 @@ export class Card {
     return this.definition.image
   }
 
+  /**
+   * バトル文脈を踏まえた実コストを計算する。Action.cost に委譲し、酩酊などの補正を今後追加しやすくする。
+   */
+  calculateCost(context?: ActionCostContext): number {
+    if (this.actionRef) {
+      return this.actionRef.cost({
+        ...context,
+        cardTags: context?.cardTags ?? this.cardTags ?? [],
+      })
+    }
+    return this.definition.cost
+  }
+
+  setRuntimeCost(cost: number | undefined): void {
+    ;(this as Record<symbol, number | undefined>)[RUNTIME_COST_KEY] = cost
+  }
+
   play(battle: Battle, operations: CardOperation[] = []): void {
     const action = this.actionRef
     if (!action) {
@@ -186,6 +213,14 @@ export class Card {
       return
     }
 
+    // 戦闘状況に応じたコストを算出し、支払いと表示に反映する
+    const resolvedCost = this.calculateCost({
+      battle,
+      source: battle.player,
+      cardTags: this.cardTags ?? [],
+    })
+    this.setRuntimeCost(resolvedCost)
+
     const context: ActionContext = action.prepareContext({
       battle,
       source: battle.player,
@@ -199,7 +234,7 @@ export class Card {
     }
     context.metadata.cardTags = (this.cardTags ?? []).map((tag) => tag.id)
 
-    battle.player.spendMana(this.cost, { battle })
+    battle.player.spendMana(resolvedCost, { battle })
     battle.hand.remove(this)
 
     action.execute(context)

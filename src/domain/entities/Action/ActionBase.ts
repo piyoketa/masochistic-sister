@@ -17,6 +17,7 @@ import type { CardDefinition } from '../CardDefinition'
 import type { Enemy } from '../Enemy'
 import type { Player } from '../Player'
 import type { State } from '../State'
+import type { CardTag } from '../CardTag'
 import {
   TargetEnemyOperation,
   SelectHandCardOperation,
@@ -57,6 +58,12 @@ export interface BaseActionProps {
   cutInCue?: ActionCutInCue
 }
 
+export interface ActionCostContext {
+  battle?: Battle
+  source?: Player | Enemy
+  cardTags?: CardTag[]
+}
+
 export abstract class Action {
   protected readonly props: BaseActionProps
   private readonly gainStateFactories: Array<() => State>
@@ -78,6 +85,14 @@ export abstract class Action {
 
   protected get cardDefinitionBase(): CardDefinition {
     return this.props.cardDefinition
+  }
+
+  /**
+   * アクションの発動コストを算出する。
+   * いまは定義済みコストをそのまま返すだけだが、状態異常などの補正を入れる余地を残す。
+   */
+  cost(_context?: ActionCostContext): number {
+    return this.cardDefinitionBase.cost
   }
 
   describe(context?: ActionContext): string {

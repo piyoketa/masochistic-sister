@@ -365,6 +365,13 @@ export class Battle {
         return { className, active }
       }) ?? []
 
+    const deckWithCost = this.deckValue.list().map((card) => this.applyCardRuntimeCost(card))
+    const handWithCost = this.handValue.list().map((card) => this.applyCardRuntimeCost(card))
+    const discardWithCost = this.discardPileValue
+      .list()
+      .map((card) => this.applyCardRuntimeCost(card))
+    const exileWithCost = this.exilePileValue.list().map((card) => this.applyCardRuntimeCost(card))
+
     return {
       id: this.idValue,
       player: {
@@ -398,10 +405,10 @@ export class Battle {
           nextActions: buildEnemyActionHints(this, enemy),
         }
       }),
-      deck: this.deckValue.list(),
-      hand: this.handValue.list(),
-      discardPile: this.discardPileValue.list(),
-      exilePile: this.exilePileValue.list(),
+      deck: deckWithCost,
+      hand: handWithCost,
+      discardPile: discardWithCost,
+      exilePile: exileWithCost,
       events: this.eventsValue.list(),
       turn: this.turnValue.current,
       log: this.logValue.list(),
@@ -1126,6 +1133,16 @@ export class Battle {
       cardIds: event.cardIds ? [...event.cardIds] : undefined,
       cardTitles: event.cardTitles ? [...event.cardTitles] : undefined,
     }))
+  }
+
+  private applyCardRuntimeCost(card: Card): Card {
+    const computedCost = card.calculateCost({
+      battle: this,
+      source: this.playerValue,
+      cardTags: card.cardTags ?? [],
+    })
+    card.setRuntimeCost(computedCost)
+    return card
   }
 
   private cloneBattleSnapshot(source: BattleSnapshot): BattleSnapshot {
