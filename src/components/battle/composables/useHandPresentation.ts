@@ -114,6 +114,8 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   let damageCount: number | undefined
   let damageAmountBoosted = false
   let damageCountBoosted = false
+  let damageAmountReduced = false
+  let damageCountReduced = false
 
   addTagEntry(definition.type, primaryTags, seenTagIds, (tag) => tag.name)
   if ('target' in definition) {
@@ -129,35 +131,44 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     const damages = action.baseDamages
     const baseDamageAmount = Math.max(0, Math.floor(damages.baseAmount))
     const baseDamageCount = Math.max(1, Math.floor(damages.baseCount ?? 1))
-    damageAmount = baseDamageAmount
-    damageCount = baseDamageCount
-    const formatted = action.describeForPlayerCard({
-      baseDamages: damages,
-      displayDamages: damages,
-      inflictedStates: action.inflictStatePreviews,
-    })
-    ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(formatted))
     const applyDamageDisplay = (displayDamages: Damages): void => {
       const nextAmount = Math.max(0, Math.floor(displayDamages.amount))
-      const nextCount = Math.max(1, Math.floor(displayDamages.count ?? 1))
+      const nextCount = Math.max(0, Math.floor(displayDamages.count ?? 0))
       damageAmount = nextAmount
       damageCount = nextCount
-      damageAmountBoosted = nextAmount !== baseDamageAmount
-      damageCountBoosted = nextCount !== baseDamageCount
+      damageAmountBoosted = nextAmount > baseDamageAmount
+      damageCountBoosted = nextCount > baseDamageCount
+      damageAmountReduced = nextAmount < baseDamageAmount
+      damageCountReduced = nextCount < baseDamageCount
     }
-    applyDamageDisplay(damages)
+
+    const playerStates = battle ? battle.player.getStates(battle) : undefined
+    const preCalculated = new Damages({
+      baseAmount: damages.baseAmount,
+      baseCount: damages.baseCount,
+      type: damages.type,
+      attackerStates: playerStates,
+      defenderStates: [],
+    })
+    const preFormatted = action.describeForPlayerCard({
+      baseDamages: damages,
+      displayDamages: preCalculated,
+      inflictedStates: action.inflictStatePreviews,
+    })
+    ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(preFormatted))
+    applyDamageDisplay(preCalculated)
 
     const targetEnemyId = options.props.hoveredEnemyId
     if (battle && options.interactionState.selectedCardKey === `card-${card.id ?? index}` && targetEnemyId !== null) {
       const enemy = battle.enemyTeam.findEnemy(targetEnemyId) as Enemy | undefined
       if (enemy) {
     const calculatedDamages = new Damages({
-      baseAmount: damages.baseAmount,
-      baseCount: damages.baseCount,
-      type: damages.type,
-      attackerStates: battle.player.getStates(battle),
-      defenderStates: enemy.getStates(),
-    })
+          baseAmount: damages.baseAmount,
+          baseCount: damages.baseCount,
+          type: damages.type,
+          attackerStates: playerStates,
+          defenderStates: enemy.getStates(),
+        })
         const recalculated = action.describeForPlayerCard({
           baseDamages: damages,
           displayDamages: calculatedDamages,
@@ -188,6 +199,8 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     primaryTags,
     categoryTags,
     descriptionSegments,
+    damageAmountReduced,
+    damageCountReduced,
     damageAmountBoosted,
     damageCountBoosted,
   }
@@ -195,7 +208,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   if (card.type === 'attack') {
     const style: AttackStyle = attackStyle ?? 'single'
     const safeDamageAmount = damageAmount ?? 0
-    const safeDamageCount = Math.max(1, damageCount ?? 1)
+    const safeDamageCount = Math.max(0, damageCount ?? 0)
     if (style === 'multi') {
       return {
         ...baseInfo,
@@ -203,8 +216,12 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
         attackStyle: 'multi',
         damageAmount: safeDamageAmount,
         damageCount: safeDamageCount,
+        damageAmountReduced,
+        damageCountReduced,
         effectTags,
         descriptionSegments,
+        damageAmountBoosted,
+        damageCountBoosted,
       }
     }
     return {
@@ -212,8 +229,10 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
       type: 'attack',
       attackStyle: 'single',
       damageAmount: safeDamageAmount,
+      damageAmountReduced,
       effectTags,
       descriptionSegments,
+      damageAmountBoosted,
     }
   }
 

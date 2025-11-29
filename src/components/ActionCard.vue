@@ -78,6 +78,8 @@ const props = defineProps<{
   affordable?: boolean
   damageAmount?: number
   damageCount?: number
+  damageAmountReduced?: boolean
+  damageCountReduced?: boolean
   damageAmountBoosted?: boolean
   damageCountBoosted?: boolean
   variant?: 'default' | 'frame'
@@ -141,7 +143,7 @@ const primaryTagText = computed(() =>
 const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
   useDescriptionOverlay()
 
-const showDamagePanel = computed(() => typeof props.damageAmount === 'number' && props.damageAmount > 0)
+const showDamagePanel = computed(() => typeof props.damageAmount === 'number' && props.damageAmount >= 0)
 const damageAmountClass = computed(() => {
   if (!showDamagePanel.value || typeof props.damageAmount !== 'number') {
     return null
@@ -165,7 +167,7 @@ const damageAmountClass = computed(() => {
 const damageAmountClasses = computed(() => [
   'damage-amount',
   damageAmountClass.value,
-  { 'damage-value--boosted': props.damageAmountBoosted },
+  { 'damage-value--boosted': props.damageAmountBoosted, 'damage-value--reduced': props.damageAmountReduced },
 ])
 
 const damageCountClass = computed(() => {
@@ -188,7 +190,7 @@ const damageCountClass = computed(() => {
 const damageCountClasses = computed(() => [
   'damage-count',
   damageCountClass.value,
-  { 'damage-value--boosted': props.damageCountBoosted },
+  { 'damage-value--boosted': props.damageCountBoosted, 'damage-value--reduced': props.damageCountReduced },
 ])
 
 let activeTag: { id: string; description: string } | null = null
@@ -327,14 +329,11 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 
         <section class="card-body">
           <div v-if="showDamagePanel" class="damage-panel">
-            <span :class="damageAmountClasses">
+            <span v-if="typeof props.damageAmount === 'number'" :class="damageAmountClasses">
               {{ props.damageAmount }}
               <span class="damage-unit">ダメージ</span>
             </span>
-            <span
-              v-if="props.damageCount && props.damageCount > 1"
-              :class="damageCountClasses"
-            >
+            <span v-if="typeof props.damageCount === 'number'" :class="damageCountClasses">
               ×{{ props.damageCount }}
             </span>
           </div>
@@ -658,6 +657,13 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   color: #1f8c68;
   text-shadow:
     0 0 6px rgba(31, 140, 104, 0.35),
+    0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.damage-value--reduced {
+  color: #ff6b6b;
+  text-shadow:
+    0 0 6px rgba(255, 107, 107, 0.3),
     0 0 1px rgba(0, 0, 0, 0.6);
 }
 </style>

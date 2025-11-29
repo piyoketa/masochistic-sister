@@ -87,6 +87,7 @@ export type AttackSingleCardInfo = BaseCardInfo & {
   type: 'attack'
   attackStyle: 'single'
   damageAmount: number
+  damageAmountReduced?: boolean // 打点が低下したかどうか（攻撃用表示フラグ）
   damageAmountBoosted?: boolean // 打点が強化済みかどうか（攻撃用表示フラグ）
   effectTags: CardTagInfo[]
   descriptionSegments: DescriptionSegment[] // 説明文をセグメント化した配列
@@ -98,6 +99,8 @@ export type AttackMultiCardInfo = BaseCardInfo & {
   attackStyle: 'multi'
   damageAmount: number
   damageCount: number
+  damageAmountReduced?: boolean // 打点が低下したかどうか（攻撃用表示フラグ）
+  damageCountReduced?: boolean // 攻撃回数が低下したかどうか（攻撃用表示フラグ）
   damageAmountBoosted?: boolean // 打点が強化済みかどうか（攻撃用表示フラグ）
   damageCountBoosted?: boolean // 攻撃回数が増加しているかどうか（攻撃用表示フラグ）
   effectTags: CardTagInfo[]
