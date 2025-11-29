@@ -47,7 +47,6 @@ import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRewardStore } from '@/stores/rewardStore'
 import { DEFAULT_PLAYER_RELICS, type Relic } from '@/domain/entities/relics'
-import { useAudioCue } from '@/composables/useAudioCue'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
@@ -123,7 +122,6 @@ const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
 const playerRelics = DEFAULT_PLAYER_RELICS
-const { play: playAudioCueInternal, preload: preloadAudioCue } = useAudioCue()
 const audioHub = createAudioHub(SOUND_ASSETS)
 const imageHub = createImageHub()
 provideAudioHub(audioHub)
@@ -364,8 +362,7 @@ function playAudioCue(soundId: string): void {
   if (!soundId) {
     return
   }
-  // 実際に効果音を再生する。useAudioCue 側で window 非存在時は何もしないためここではガード不要。
-  playAudioCueInternal(soundId)
+  audioHub.play(soundId)
 }
 
 function resolveEnemySelection(enemyId: number): void {

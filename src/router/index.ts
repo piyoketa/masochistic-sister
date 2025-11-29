@@ -83,6 +83,11 @@ const router = createRouter({
       component: () => import('@/views/VictoryRewardDemoView.vue'),
     },
     {
+      path: '/demo/audio',
+      name: 'audio-demo',
+      component: () => import('@/views/AudioDemoView.vue'),
+    },
+    {
       path: '/field/card-reward',
       name: 'card-reward',
       component: () => import('@/views/CardRewardView.vue'),

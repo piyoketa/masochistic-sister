@@ -54,7 +54,7 @@ const damageSoundSrcs = damageSoundAssets.map((entry) => entry.src)
 export const SOUND_ASSETS: readonly string[] = dedupe([...globSoundAssets, ...damageSoundSrcs])
 export const IMAGE_ASSETS: readonly string[] = dedupe([...globImageAssets])
 
-/** `useAudioCue` で再生する短尺SEの soundId 一覧（今回は全音声を対象） */
+/** `audioHub` で再生する短尺SEの soundId 一覧（今回は全音声を対象） */
 export const BATTLE_AUDIO_ASSETS: readonly string[] = SOUND_ASSETS
 
 /** CutInOverlay で使用するカットイン画像パス一覧（public 配下起点） */

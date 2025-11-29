@@ -41,7 +41,7 @@
 
 6. **今後の拡張（別タスク）**
    - AudioHub / ImageHub を導入し、再生・取得を集中管理（provide/inject で統一）。
-     - AudioHub: `provide('audioHub', { preload(ids), play(id, opts), stopAll() })`。内部で useAudioCue と audioPreloader を使う。
+     - AudioHub: `provide('audioHub', { preload(ids), play(id, opts), stopAll() })`。内部は howler.js に統一。
      - ImageHub: `provide('imageHub', { preload(urls), get(url) })`。内部で Image オブジェクトをキャッシュ。
    - DamageEffects / EnemyCard / PlayerImageComponent / CutInOverlay の個別プリロード処理を削除し、Hub から提供される API で統一。
      - DamageEffects/EnemyCard: 効果音再生は audioHub.play のみ。プリロード状態管理を削除。
