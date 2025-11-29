@@ -138,9 +138,16 @@ export const usePlayerStore = defineStore('player', {
         }
       })
     },
-    addCard(type: DeckCardType): void {
+    addCard(type: DeckCardType, overrides?: { amount?: number; count?: number }): void {
       this.ensureInitialized()
-      this.deck = [...this.deck, { type }]
+      const next: DeckCardBlueprint = { type }
+      if (typeof overrides?.amount === 'number') {
+        next.overrideAmount = overrides.amount
+      }
+      if (typeof overrides?.count === 'number') {
+        next.overrideCount = overrides.count
+      }
+      this.deck = [...this.deck, next]
       this.initialized = true
     },
     removeCardAt(index: number): void {

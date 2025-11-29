@@ -72,7 +72,14 @@ function handleCardClaim(): void {
   if (!selectedCardId.value) return
   const entry = pending.cards.find((card) => card.id === selectedCardId.value)
   if (entry?.deckType) {
-    playerStore.addCard(entry.deckType)
+    const info = entry.info
+    let overrideAmount: number | undefined
+    let overrideCount: number | undefined
+    if (info.type === 'attack') {
+      overrideAmount = info.damageAmount
+      overrideCount = info.attackStyle === 'multi' ? info.damageCount : 1
+    }
+    playerStore.addCard(entry.deckType, { amount: overrideAmount, count: overrideCount })
   }
   rewardsState.value.card = true
 }
