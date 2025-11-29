@@ -4,11 +4,12 @@ import type { CardRewardNode, EnemyNode, FieldNode, RelicRewardNode, StartNode }
 /**
  * SampleField: 一直線に敵が並ぶシンプルなフィールド。
  * Level1: StartNode
- * Level2: カード獲得マス と レリック獲得マス（候補: 軽装戦闘）を用意
- * Level3: snail
- * Level4: iron-bloom
- * Level5: hummingbird-scorpion
- * Level6: orc-hero-elite
+ * Level2: カード獲得マス
+ * Level3: レリック獲得マス（候補: 全レリック）
+ * Level4: snail
+ * Level5: iron-bloom
+ * Level6: hummingbird-scorpion
+ * Level7: orc-hero-elite
  */
 export class SampleField extends Field {
   readonly id = 'sample-field'
@@ -29,7 +30,7 @@ function buildLevels(): FieldLevel[] {
     type: 'start',
     level: 1,
     label: 'スタートマス',
-    nextNodeIndices: [0, 1],
+    nextNodeIndices: [0],
   }
   const cardReward: CardRewardNode = {
     id: 'card-reward-1',
@@ -50,16 +51,27 @@ function buildLevels(): FieldLevel[] {
   const relicReward: RelicRewardNode = {
     id: 'relic-reward-1',
     type: 'relic-reward',
-    level: 2,
+    level: 3,
     label: 'レリック獲得マス',
-    candidateRelics: ['LightweightCombatRelic'],
+    candidateRelics: [
+      // 'MemorySaintRelic',
+      // 'SacrificialAwarenessRelic',
+      // 'AdversityExcitementRelic',
+      'LightweightCombatRelic',
+      // 'ActionForceRelic',
+      'PureBodyRelic',
+      'NoViolenceRelic',
+      // 'SlipperyTouchRelic',
+      // 'DevoutBelieverRelic',
+      'ArcaneAdaptationRelic',
+    ],
     drawCount: 1,
     nextNodeIndices: [0],
   }
   const level2: EnemyNode = {
     id: 'enemy-snail',
     type: 'enemy',
-    level: 3,
+    level: 4,
     label: '敵「かたつむり」',
     enemyTeamId: 'snail',
     nextNodeIndices: [0],
@@ -67,7 +79,7 @@ function buildLevels(): FieldLevel[] {
   const level3: EnemyNode = {
     id: 'enemy-iron-bloom',
     type: 'enemy',
-    level: 4,
+    level: 5,
     label: '敵「鉄花」',
     enemyTeamId: 'iron-bloom',
     nextNodeIndices: [0],
@@ -75,7 +87,7 @@ function buildLevels(): FieldLevel[] {
   const level4: EnemyNode = {
     id: 'enemy-hummingbird-scorpion',
     type: 'enemy',
-    level: 5,
+    level: 6,
     label: '敵「ハチドリ」',
     enemyTeamId: 'hummingbird-scorpion',
     nextNodeIndices: [0],
@@ -83,7 +95,7 @@ function buildLevels(): FieldLevel[] {
   const level5: EnemyNode = {
     id: 'enemy-orc-hero-elite',
     type: 'enemy',
-    level: 6,
+    level: 7,
     label: 'エリート「オークヒーロー」',
     enemyTeamId: 'orc-hero-elite',
     nextNodeIndices: [],
@@ -91,7 +103,8 @@ function buildLevels(): FieldLevel[] {
 
   const nodesByLevel: FieldNode[][] = [
     [level1],
-    [cardReward, relicReward],
+    [cardReward],
+    [relicReward],
     [level2],
     [level3],
     [level4],
