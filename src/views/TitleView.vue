@@ -105,11 +105,6 @@ const fieldLinks: LinkEntry[] = [
     description: '次の戦闘へ進むためのフィールド画面',
     to: '/field',
   },
-  {
-    label: 'レリック編集',
-    description: '所持レリックの追加・削除を行う',
-    to: '/relic',
-  },
 ]
 </script>
 
@@ -120,11 +115,15 @@ const fieldLinks: LinkEntry[] = [
       <p>テストケース、敵チーム、デッキ確認画面へ移動してください。</p>
     </header>
 
-        <section>
+    <section>
       <h2>フィールド</h2>
-      <ul class="link-grid">
+      <ul class="link-grid link-grid--field">
         <li v-for="link in fieldLinks" :key="link.label">
-          <RouterLink class="link-card" :to="link.to">
+          <RouterLink
+            class="link-card"
+            :class="{ 'link-card--primary': link.to === '/field' }"
+            :to="link.to"
+          >
             <span class="link-label">{{ link.label }}</span>
             <span class="link-description">{{ link.description }}</span>
           </RouterLink>
@@ -132,10 +131,14 @@ const fieldLinks: LinkEntry[] = [
       </ul>
     </section>
 
-    <section class="deck-link">
+    <section class="deck-row">
       <RouterLink class="link-card deck-card" to="/deck">
         <span class="link-label">デッキ確認</span>
         <span class="link-description">現在の所持デッキとHPを確認できます</span>
+      </RouterLink>
+      <RouterLink class="link-card deck-card" to="/relic">
+        <span class="link-label">レリック編集</span>
+        <span class="link-description">所持レリックの追加・削除を行う</span>
       </RouterLink>
     </section>
     
@@ -258,8 +261,21 @@ h2 {
   line-height: 1.4;
 }
 
-.deck-link {
-  margin-top: 32px;
+.link-grid--field {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.link-card--primary {
+  border: 2px solid rgba(255, 227, 115, 0.9);
+  box-shadow: 0 10px 36px rgba(255, 227, 115, 0.25);
+  transform: translateY(-2px);
+}
+
+.deck-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 20px 0 28px;
 }
 
 .deck-card {
