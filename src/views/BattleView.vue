@@ -814,6 +814,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
             <RelicList
               class="relic-icon-list"
               :relics="playerRelics"
+              :enable-glow="true"
               @hover="(relic, event) => handleRelicHover(event, relic)"
               @leave="handleRelicLeave"
             />
