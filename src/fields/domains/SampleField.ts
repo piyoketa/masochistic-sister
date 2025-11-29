@@ -1,10 +1,10 @@
 import { Field, type FieldLevel } from './Field'
-import type { CardRewardNode, EnemyNode, FieldNode, StartNode } from './FieldNode'
+import type { CardRewardNode, EnemyNode, FieldNode, RelicRewardNode, StartNode } from './FieldNode'
 
 /**
  * SampleField: 一直線に敵が並ぶシンプルなフィールド。
  * Level1: StartNode
- * Level2: カード獲得マス（候補: 戦いの準備/日課/窮地/不殺の祈り/リロード/傷の癒やし）を3枚抽選
+ * Level2: カード獲得マス と レリック獲得マス（候補: 軽装戦闘）を用意
  * Level3: snail
  * Level4: iron-bloom
  * Level5: hummingbird-scorpion
@@ -29,7 +29,7 @@ function buildLevels(): FieldLevel[] {
     type: 'start',
     level: 1,
     label: 'スタートマス',
-    nextNodeIndices: [0],
+    nextNodeIndices: [0, 1],
   }
   const cardReward: CardRewardNode = {
     id: 'card-reward-1',
@@ -45,6 +45,15 @@ function buildLevels(): FieldLevel[] {
       'scar-regeneration',
     ],
     drawCount: 3,
+    nextNodeIndices: [0],
+  }
+  const relicReward: RelicRewardNode = {
+    id: 'relic-reward-1',
+    type: 'relic-reward',
+    level: 2,
+    label: 'レリック獲得マス',
+    candidateRelics: ['LightweightCombatRelic'],
+    drawCount: 1,
     nextNodeIndices: [0],
   }
   const level2: EnemyNode = {
@@ -82,7 +91,7 @@ function buildLevels(): FieldLevel[] {
 
   const nodesByLevel: FieldNode[][] = [
     [level1],
-    [cardReward],
+    [cardReward, relicReward],
     [level2],
     [level3],
     [level4],

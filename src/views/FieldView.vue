@@ -57,6 +57,10 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
     await router.push({ path: '/field/card-reward' })
     return
   }
+  if (node.type === 'relic-reward') {
+    await router.push({ path: '/field/relic-reward' })
+    return
+  }
 }
 </script>
 

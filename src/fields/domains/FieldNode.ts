@@ -1,4 +1,4 @@
-export type FieldNodeType = 'start' | 'enemy' | 'card-reward'
+export type FieldNodeType = 'start' | 'enemy' | 'card-reward' | 'relic-reward'
 
 export interface FieldNode {
   id: string
@@ -21,5 +21,11 @@ export interface EnemyNode extends FieldNode {
 export interface CardRewardNode extends FieldNode {
   type: 'card-reward'
   candidateActions: string[]
+  drawCount: number
+}
+
+export interface RelicRewardNode extends FieldNode {
+  type: 'relic-reward'
+  candidateRelics: string[]
   drawCount: number
 }

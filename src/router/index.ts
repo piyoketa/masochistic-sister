@@ -103,6 +103,11 @@ const router = createRouter({
       component: () => import('@/views/CardRewardView.vue'),
     },
     {
+      path: '/field/relic-reward',
+      name: 'relic-reward',
+      component: () => import('@/views/RelicRewardView.vue'),
+    },
+    {
       path: '/reward',
       name: 'reward-view',
       component: () => import('@/views/RewardView.vue'),
