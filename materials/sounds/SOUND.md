@@ -73,6 +73,8 @@ materials/sounds/poison より
   - on-jin_nukarumu01 [泥・ぬかるみ](https://on-jin.com/sound/listshow.php?pagename=sei&title=%E6%B3%A5%E3%83%BB%E3%81%AC%E3%81%8B%E3%82%8B%E3%81%BF&janl=%E7%94%9F%E6%B4%BB%E7%B3%BB%E9%9F%B3&bunr=%E6%B0%B4%E5%91%A8%E3%82%8A%E3%81%9D%E3%81%AE%E4%BB%96&kate=%E6%B0%B4%E5%91%A8%E3%82%8A)
 - 効果音ラボ
   - soundeffect-lab_punch3.mp3 [打撃3](https://soundeffect-lab.info/sound/battle/)
+  - public/sounds/fields/gold.mp3[お金を落とす2](https://soundeffect-lab.info/sound/various/)
+  - public/sounds/fields/gain_hp.mp3[ゲージ回復3](https://soundeffect-lab.info/sound/button/)
 - [くらげ工房](http://www.kurage-kosho.info/battle.html)
   - 商用利用無料
   - kurage-kosho_gun-fire02.mp3 [銃器・発砲02](http://www.kurage-kosho.info/battle.html)
