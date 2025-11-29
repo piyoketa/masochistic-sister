@@ -52,7 +52,7 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
     baseCount: damages.baseCount,
     type: damages.type,
     attackerStates: enemy.getStates(),
-    defenderStates: battle.player.getStates(),
+    defenderStates: battle.player.getStates(battle),
   })
 
   return {

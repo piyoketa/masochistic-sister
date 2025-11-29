@@ -153,8 +153,8 @@ export abstract class Attack extends Action {
       baseAmount: this.baseProfile.baseAmount,
       baseCount: this.baseProfile.baseCount,
       type: this.baseProfile.type,
-      attackerStates: this.collectStates(attacker),
-      defenderStates: this.collectStates(defender),
+      attackerStates: this.collectStates(attacker, battle),
+      defenderStates: this.collectStates(defender, battle),
       context: battle
         ? {
             battle,
@@ -186,9 +186,10 @@ export abstract class Attack extends Action {
     return isPlayerEntity(entity)
   }
 
-  private collectStates(entity: Player | Enemy): State[] {
+  private collectStates(entity: Player | Enemy, battle?: Battle): State[] {
     if ('getStates' in entity && typeof entity.getStates === 'function') {
-      return [...entity.getStates()]
+      // Player はバトル情報があるとレリック付与状態を考慮できる
+      return [...(entity as Player | Enemy).getStates(battle as Battle | undefined)]
     }
 
     return []
@@ -232,8 +233,8 @@ export abstract class Attack extends Action {
     damages: Damages
     outcomes: DamageOutcome[]
   }): void {
-    const attackerStates = this.collectStates(params.attacker)
-    const defenderStates = this.collectStates(params.defender)
+    const attackerStates = this.collectStates(params.attacker, params.battle)
+    const defenderStates = this.collectStates(params.defender, params.battle)
 
     for (let index = 0; index < params.outcomes.length; index += 1) {
       const outcome = params.outcomes[index]!

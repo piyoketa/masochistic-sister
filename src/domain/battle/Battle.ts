@@ -429,6 +429,10 @@ export class Battle {
     }
   }
 
+  getRelicClassNames(): string[] {
+    return [...this.relicClassNames]
+  }
+
   restoreFullSnapshot(state: FullBattleSnapshot): void {
     const base = state.snapshot
     this.statusValue = base.status

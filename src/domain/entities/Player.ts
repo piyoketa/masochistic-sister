@@ -4,6 +4,7 @@ import type { Hand } from '../battle/Hand'
 import { MemoryManager } from './players/MemoryManager'
 import type { Attack } from './Action'
 import type { Damages } from './Damages'
+import { instantiateRelic } from './relics/relicLibrary'
 
 export interface PlayerProps {
   id: string
@@ -23,6 +24,7 @@ export class Player {
   private currentManaValue: number
   private handRef?: Hand
   private readonly memoryManager: MemoryManager
+  // レリック由来のStateは元のStateとは別に計算するため、baseState集計ロジックを共通化する。
 
   constructor(props: PlayerProps) {
     this.idValue = props.id
@@ -163,20 +165,63 @@ export class Player {
     }
   }
 
-  getStates(): State[] {
+  /**
+   * 手札由来のState（元のState）だけを返す。
+   */
+  getBaseStates(): State[] {
     const hand = this.handRef
     if (!hand) {
       return []
     }
 
+    const states = hand
+      .list()
+      .map((card) => card.state)
+      .filter((state): state is State => Boolean(state))
+
+    return this.aggregateStates(states)
+  }
+
+  /**
+   * レリック由来の追加Stateを計算する。
+   */
+  getRelicEffectStates(battle?: Battle): State[] {
+    if (!battle) {
+      return []
+    }
+    const relicStates: State[] = []
+    for (const className of battle.getRelicClassNames()) {
+      const relic = instantiateRelic(className)
+      if (!relic) continue
+      const active = relic.isActive({ battle, player: this })
+      if (!active) continue
+      const additional = relic.getAdditionalStates
+        ? relic.getAdditionalStates({ battle, player: this })
+        : []
+      relicStates.push(...additional)
+    }
+    return this.aggregateStates(relicStates)
+  }
+
+  /**
+   * 合計State（元のState + レリック付与）を返す。
+   */
+  getStates(battle?: Battle): State[] {
+    const base = this.getBaseStates()
+    if (!battle) {
+      return base
+    }
+    const relicStates = this.getRelicEffectStates(battle)
+    return this.aggregateStates([...base, ...relicStates])
+  }
+
+  /**
+   * State配列をid単位でマージし、magnitudeを合算する。
+   */
+  private aggregateStates(states: State[]): State[] {
     const aggregates = new Map<string, { state: State; total: number }>()
 
-    for (const card of hand.list()) {
-      const state = card.state
-      if (!state) {
-        continue
-      }
-
+    for (const state of states) {
       const entry = aggregates.get(state.id)
       const magnitude = state.magnitude ?? 0
 

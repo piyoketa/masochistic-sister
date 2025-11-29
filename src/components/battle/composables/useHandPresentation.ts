@@ -189,13 +189,13 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     if (battle && options.interactionState.selectedCardKey === `card-${card.id ?? index}` && targetEnemyId !== null) {
       const enemy = battle.enemyTeam.findEnemy(targetEnemyId) as Enemy | undefined
       if (enemy) {
-        const calculatedDamages = new Damages({
-          baseAmount: damages.baseAmount,
-          baseCount: damages.baseCount,
-          type: damages.type,
-          attackerStates: battle.player.getStates(),
-          defenderStates: enemy.getStates(),
-        })
+    const calculatedDamages = new Damages({
+      baseAmount: damages.baseAmount,
+      baseCount: damages.baseCount,
+      type: damages.type,
+      attackerStates: battle.player.getStates(battle),
+      defenderStates: enemy.getStates(),
+    })
         const recalculated = action.describeForPlayerCard({
           baseDamages: damages,
           displayDamages: calculatedDamages,

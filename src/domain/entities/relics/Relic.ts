@@ -21,4 +21,12 @@ export abstract class Relic {
   isActive(_context?: { battle?: import('@/domain/battle/Battle').Battle; player?: import('../Player').Player }): boolean {
     return true
   }
+
+  /**
+   * レリックが付与する追加の State 一覧を返す。デフォルトはなし。
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getAdditionalStates(_context?: { battle?: import('@/domain/battle/Battle').Battle; player?: import('../Player').Player }): import('../State').State[] {
+    return []
+  }
 }
