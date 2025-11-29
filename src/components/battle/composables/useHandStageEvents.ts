@@ -16,6 +16,7 @@ interface UseHandStageEventsOptions {
     variant: 'trash' | 'eliminate',
     options?: { fallbackTitle?: string },
   ) => void
+  notifyError?: (message: string) => void
 }
 
 type DeckDrawStageMetadata = Extract<StageEventMetadata, { stage: 'deck-draw' }>
@@ -128,6 +129,10 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   )
 
   async function handleDeckDrawStage(metadata: DeckDrawStageMetadata): Promise<void> {
+    if (metadata.handOverflow) {
+      showHandOverflowOverlay()
+    }
+
     const cardIds = metadata.cardIds ?? []
     if (cardIds.length === 0) {
       return
@@ -145,9 +150,6 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
         logHandStageDebug('deck-draw pending', { cardId: id, config })
       }
     })
-    if (metadata.handOverflow) {
-      showHandOverflowOverlay()
-    }
   }
 
   async function handleCreateStateCardStage(
@@ -192,6 +194,7 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
 
   function showHandOverflowOverlay(): void {
     handOverflowOverlayMessage.value = '手札が満杯です！'
+    options.notifyError?.('手札が満杯です！')
     if (handOverflowTimer) {
       window.clearTimeout(handOverflowTimer)
     }

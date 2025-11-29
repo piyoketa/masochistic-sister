@@ -1,16 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import BattleHandArea from '@/components/battle/BattleHandArea.vue'
 import { Card } from '@/domain/entities/Card'
 import { BattlePrepAction } from '@/domain/entities/actions/BattlePrepAction'
 import type { StageEventMetadata, StageEventPayload } from '@/types/animation'
-import {
-  ACTION_LOG_ENTRY_02_START_PLAYER_TURN,
-  ACTION_LOG_ENTRY_03_PLAY_CARD,
-  ACTION_LOG_ENTRY_04_ENEMY_ACT,
-  ACTION_LOG_ENTRY_12_START_PLAYER_TURN,
-  ACTION_LOG_ENTRY_24_PLAY_CARD,
-} from '../fixtures/battleSampleExpectedActionLog'
+import { ACTION_LOG_ENTRY_12_START_PLAYER_TURN } from '../fixtures/battleSampleExpectedActionLog'
 import {
   actionCardStub,
   createSnapshot,
@@ -20,16 +14,8 @@ import {
 
 type StageName = StageEventMetadata['stage']
 
-describe('BattleHandArea: Animation batches と手札演出の同期', () => {
-  it('ACTION_LOG_ENTRY_12_START_PLAYER_TURN の deck-draw stage (handOverflow) で警告オーバーレイが表示される', async () => {
-    /**
-     * - 対象エントリ: ACTION_LOG_ENTRY_12_START_PLAYER_TURN
-     * - 対象stage: stage:'deck-draw', cardIds:[5], handOverflow:true
-     * - 期待: handOverflowOverlayMessage が即座に表示され、1200ms 後に自動消滅する。
-     * - 想定課題: overlay が setTimeout 管理のため、テストやアプリで連続発火すると clearTimeout 漏れで
-     *            表示が残留するリスクあり。
-     */
-    vi.useFakeTimers()
+describe('BattleHandArea: 手札あふれオーバーレイ', () => {
+  it('ACTION_LOG_ENTRY_12_START_PLAYER_TURN の deck-draw(handOverflow) で「手札が満杯です！」が表示される', async () => {
     const initialCards = [createNamedCard(1, '手札A')]
     const wrapper = mountHandArea(initialCards)
     const overflowEvent = buildStageEventFromEntry(
@@ -38,14 +24,11 @@ describe('BattleHandArea: Animation batches と手札演出の同期', () => {
     )
     await wrapper.setProps({ stageEvent: overflowEvent })
     await flushAll(wrapper)
-    expect(wrapper.find('.hand-overlay').exists()).toBe(true)
 
-    await vi.advanceTimersByTimeAsync(1500)
-    await flushAll(wrapper)
-    expect(wrapper.find('.hand-overlay').exists()).toBe(false)
-    vi.useRealTimers()
+    const overlay = wrapper.find('.battle-error-overlay')
+    expect(overlay.exists()).toBe(true)
+    expect(overlay.text()).toContain('手札が満杯です！')
   })
-
 })
 
 function mountHandArea(handCards: Card[]) {
@@ -58,8 +41,8 @@ function mountHandArea(handCards: Card[]) {
       isPlayerTurn: true,
       isInputLocked: false,
       viewManager: createViewManagerStub(createBattleStub(handCards)),
-      requestEnemyTarget: vi.fn(),
-      cancelEnemySelection: vi.fn(),
+      requestEnemyTarget: () => {},
+      cancelEnemySelection: () => {},
       stageEvent: null,
     },
     global: {
@@ -68,12 +51,6 @@ function mountHandArea(handCards: Card[]) {
         TransitionGroup: false,
       },
     },
-  })
-}
-
-function waitForAnimationFrame(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => resolve())
   })
 }
 
