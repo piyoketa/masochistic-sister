@@ -62,6 +62,19 @@ export class State {
     return ''
   }
 
+  /**
+   * コスト計算時の補正値を返す。デフォルトは0。
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  costAdjustment(_context?: {
+    battle?: Battle
+    owner?: Player | Enemy
+    cardTags?: CardTag[]
+    cardType?: CardDefinition['cardType']
+  }): number {
+    return 0
+  }
+
   createCardDefinition(): CardDefinition {
     const base = this.cardDefinitionBase
     if (!base) {

@@ -43,4 +43,17 @@ export abstract class Relic {
   restoreState(_state: unknown): void {
     // デフォルト実装はステートレス
   }
+
+  /**
+   * コスト計算時の補正値を返す。デフォルトは0。
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  costAdjustment(_context?: {
+    battle?: import('@/domain/battle/Battle').Battle
+    player?: import('../Player').Player
+    cardTags?: import('../CardTag').CardTag[]
+    cardType?: import('../CardDefinition').CardDefinition['cardType']
+  }): number {
+    return 0
+  }
 }

@@ -92,7 +92,51 @@ export abstract class Action {
    * いまは定義済みコストをそのまま返すだけだが、状態異常などの補正を入れる余地を残す。
    */
   cost(_context?: ActionCostContext): number {
-    return this.cardDefinitionBase.cost
+    const cardTags = _context?.cardTags ?? []
+    let cost = this.cardDefinitionBase.cost
+
+    // State由来のコスト補正
+    const source = (_context?.source as Player | Enemy | undefined) ?? (_context?.battle?.player as Player | Enemy | undefined)
+    const stateAdjust =
+      source && 'getStates' in source && typeof source.getStates === 'function'
+        ? (source as Player | Enemy)
+            .getStates(_context?.battle)
+            .reduce(
+              (sum, state) =>
+                sum +
+                (typeof state.costAdjustment === 'function'
+                  ? state.costAdjustment({
+                      battle: _context?.battle,
+                      owner: source as Player | Enemy,
+                      cardTags,
+                      cardType: this.cardDefinitionBase.cardType,
+                    })
+                  : 0),
+              0,
+            )
+        : 0
+    cost += stateAdjust ?? 0
+
+    // レリック由来のコスト補正
+    const relicAdjust =
+      _context?.battle
+        ?.getRelicInstances()
+        .reduce(
+          (sum, relic) =>
+            sum +
+            (typeof relic.costAdjustment === 'function'
+              ? relic.costAdjustment({
+                  battle: _context?.battle,
+                  player: _context?.battle?.player,
+                  cardTags,
+                  cardType: this.cardDefinitionBase.cardType,
+                })
+              : 0),
+          0,
+        ) ?? 0
+    cost += relicAdjust
+
+    return Math.max(0, cost)
   }
 
   describe(context?: ActionContext): string {

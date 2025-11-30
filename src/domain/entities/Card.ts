@@ -11,6 +11,7 @@ import type { CardDefinition } from './CardDefinition'
 import type { Battle } from '../battle/Battle'
 import type { CardOperation } from './operations'
 import { StateAction } from './Action/StateAction'
+import { PureBodyRelic } from './relics/PureBodyRelic'
 import type { State } from './State'
 
 const RUNTIME_COST_KEY = Symbol('runtimeCostOverride')
@@ -219,7 +220,6 @@ export class Card {
 
     battle.player.spendMana(resolvedCost, { battle })
     battle.hand.remove(this)
-
     action.execute(context)
 
     battle.recordPlayCardAnimationContext({

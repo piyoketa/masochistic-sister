@@ -3,8 +3,8 @@ import { StatusTypeCardTag } from '../cardTags'
 import { StateAction } from '../Action/StateAction'
 import type { CardTag } from '../CardTag'
 
-class IntoxicationStateAction extends StateAction {
-  constructor(state: IntoxicationState, tags?: CardTag[]) {
+class EvilThoughtStateAction extends StateAction {
+  constructor(state: EvilThoughtState, tags?: CardTag[]) {
     super({
       name: state.name,
       cardDefinition: state.createCardDefinition(),
@@ -15,14 +15,15 @@ class IntoxicationStateAction extends StateAction {
   }
 }
 
-export class IntoxicationState extends BadState {
+// 邪念: 神聖タグのカードコスト+1（Action.cost側で参照）
+export class EvilThoughtState extends BadState {
   constructor(magnitude = 1) {
     super({
-      id: 'state-intoxication',
-      name: '酩酊',
+      id: 'state-evil-thought',
+      name: '邪念',
       magnitude,
       cardDefinition: {
-        title: '酩酊',
+        title: '邪念',
         cardType: 'status',
         type: new StatusTypeCardTag(),
         target: undefined,
@@ -32,19 +33,18 @@ export class IntoxicationState extends BadState {
   }
 
   override description(): string {
-    const delta = this.magnitude ?? 0
-    // 将来的に Action.cost で酩酊を参照し、記憶カードのコストを delta 増加させる想定。
-    return `「記憶」タグのカードを使うとき、コストが${delta}増加する`
+    const add = this.magnitude ?? 0
+    return `神聖カードのコスト+${add}`
   }
 
   override costAdjustment(context?: { cardTags?: CardTag[] }): number {
     const tags = context?.cardTags ?? []
-    const hasMemory = tags.some((tag) => tag.id === 'tag-memory')
-    if (!hasMemory) return 0
+    const hasSacred = tags.some((tag) => tag.id === 'tag-sacred')
+    if (!hasSacred) return 0
     return Math.max(0, Math.floor(this.magnitude ?? 0))
   }
 
   override action(tags?: CardTag[]): StateAction {
-    return new IntoxicationStateAction(this, tags)
+    return new EvilThoughtStateAction(this, tags)
   }
 }

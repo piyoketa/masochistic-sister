@@ -10,13 +10,12 @@ StateAction.ts の責務:
 - props.cardDefinition / gainStates は State 側で定義されたものを使用する。
 - cost(context) でコスト補正を行う。現時点では「酩酊」によるコスト増のみ。
 */
-import { Action } from './ActionBase'
-import type { ActionContext, ActionCostContext, ActionType } from './ActionBase'
-import type { CardDefinition } from '../CardDefinition'
-import type { State } from '../State'
+import { Action, type ActionContext, type ActionCostContext, type ActionType } from './ActionBase'
 import type { CardTag } from '../CardTag'
 import type { Battle } from '../../battle/Battle'
 import type { Player } from '../Player'
+import type { CardDefinition } from '../CardDefinition'
+import type { State } from '../State'
 import { PureBodyRelic } from '../relics/PureBodyRelic'
 
 interface StateActionProps {
@@ -51,21 +50,15 @@ export class StateAction extends Action {
   }
 
   override cost(context?: ActionCostContext): number {
-    let cost = this.cardDefinitionBase.cost
-    const cardTags = [...(context?.cardTags ?? []), ...this.baseTags]
-    const battle = context?.battle as Battle | undefined
-    const player = battle?.player as Player | undefined
+    const mergedTags = [...(context?.cardTags ?? []), ...this.baseTags]
+    // まず親の計算結果（神聖タグなど共通補正込み）を得る
+    let cost = super.cost({
+      ...context,
+      cardTags: mergedTags,
+    })
 
-    // 酩酊: 記憶タグを持つカードなら magnitude 分コスト増
-    const intoxication = player?.getBaseStates().find((state) => state.id === 'state-intoxication')
-    if (intoxication && cardTags.some((tag) => tag.id === MEMORY_TAG_ID)) {
-      cost += Math.max(0, Math.floor(intoxication.magnitude ?? 0))
-    }
-    // 清廉な身体: 状態異常カードのコスト-1（最低0）
-    if (battle?.hasActiveRelic('pure-body')) {
-      cost = Math.max(0, cost - 1)
-    }
-    return cost
+    // State由来のコスト補正
+    return Math.max(0, cost)
   }
 
   override perform(_context: ActionContext): void {
