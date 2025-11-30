@@ -15,8 +15,8 @@ export class LightweightCombatRelic extends Relic {
   }
 
   override isActive(context?: { battle?: import('@/domain/battle/Battle').Battle; player?: import('../Player').Player }): boolean {
-    const baseStates = context?.player?.getBaseStates() ?? []
-    return baseStates.some((state) => state instanceof CorrosionState)
+    if (!context?.player) return false
+    return context.player.hasBaseStateOfType(CorrosionState)
   }
 
   override getAdditionalStates(context?: {

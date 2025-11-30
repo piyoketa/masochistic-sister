@@ -5,6 +5,7 @@ import { MemoryManager } from './players/MemoryManager'
 import type { Attack } from './Action'
 import type { Damages } from './Damages'
 import { instantiateRelic } from './relics/relicLibrary'
+import { StatusTypeCardTag } from './cardTags'
 
 export interface PlayerProps {
   id: string
@@ -214,6 +215,20 @@ export class Player {
   }
 
   /**
+   * 指定のStateクラスを「元のState（手札由来）」から保持しているかを判定する。
+   */
+  hasBaseStateOfType<T extends State>(stateCtor: new (...args: any[]) => T): boolean {
+    return this.getBaseStates().some((state) => state instanceof stateCtor)
+  }
+
+  /**
+   * 「元のState（手札由来）」のうち、状態異常系(Status)の枚数を返す。
+   */
+  countBaseStatusStates(): number {
+    return this.getBaseStates().filter(isStatusState).length
+  }
+
+  /**
    * 戦闘開始時の初期ドロー枚数を計算する。
    * 基本は3枚。入念な準備レリックが有効なら+2枚。
    */
@@ -295,4 +310,14 @@ function cloneState(state: State): State {
 
 function setStateMagnitude(state: State, magnitude: number): void {
   ;((state as unknown as { props: { magnitude?: number } }).props).magnitude = magnitude
+}
+
+function isStatusState(state: State): boolean {
+  if (state.cardDefinition?.cardType === 'status') {
+    return true
+  }
+  if (state.cardDefinition?.type instanceof StatusTypeCardTag) {
+    return true
+  }
+  return state.type instanceof StatusTypeCardTag
 }
