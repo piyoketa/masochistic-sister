@@ -129,6 +129,14 @@ function buildLevels(): FieldLevel[] {
       enemyTeamId: 'high-orc-band',
       nextNodeIndices: [],
     },
+    {
+      id: 'enemy-beam-cannon-elite',
+      type: 'enemy',
+      level: 0,
+      label: 'エリート「ビーム砲チーム」',
+      enemyTeamId: 'beam-cannon-elite',
+      nextNodeIndices: [],
+    },
   ]
   const level7 = eliteCandidates[Math.floor(Math.random() * eliteCandidates.length)]
 

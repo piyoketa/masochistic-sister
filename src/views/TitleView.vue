@@ -64,6 +64,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: 'ランサー×2＋ダンサーのエリート編成',
     to: '/battle/high-orc-band',
   },
+  {
+    label: 'Beam Cannon Elite',
+    description: '大型ビーム砲＋酒飲みオークのエリート編成',
+    to: '/battle/beam-cannon-elite',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [

@@ -19,6 +19,8 @@ export { JointDamageState } from './JointDamageState'
 export { ChargeState } from './ChargeState'
 export { EvilThoughtState } from './EvilThoughtState'
 export { TeamBondState } from './TeamBondState'
+export { StunCountState } from './StunCountState'
+export { FiveLegsState } from './FiveLegsState'
 
 import type { State } from '../State'
 import type { StateSnapshot } from '@/types/battle'
@@ -43,6 +45,8 @@ import { JointDamageState } from './JointDamageState'
 import { ChargeState } from './ChargeState'
 import { EvilThoughtState } from './EvilThoughtState'
 import { TeamBondState } from './TeamBondState'
+import { StunCountState } from './StunCountState'
+import { FiveLegsState } from './FiveLegsState'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
@@ -67,6 +71,8 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-charge': (m) => new ChargeState(m),
   'state-evil-thought': (m) => new EvilThoughtState(m),
   'trait-team-bond': () => new TeamBondState(),
+  'state-stun-count': (m) => new StunCountState(m ?? 0),
+  'trait-five-legs': () => new FiveLegsState(),
 }
 
 export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | undefined {
