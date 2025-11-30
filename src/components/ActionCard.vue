@@ -471,14 +471,14 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 .card-cost {
   position: absolute;
   top: -10px;
-  left: -6px;
-  padding: 4px 8px;
-  border-radius: 12px;
+  left: -8px;
+  padding: 2px 8px;
+  border-radius: 14px;
   background: rgba(255, 227, 115, 1);
   color: #402510;
   font-weight: 700;
   letter-spacing: 0.06em;
-  font-size: 11px;
+  font-size: 14px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
