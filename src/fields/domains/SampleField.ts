@@ -92,6 +92,14 @@ function buildLevels(): FieldLevel[] {
       enemyTeamId: 'hummingbird-allies',
       nextNodeIndices: [0],
     },
+    {
+      id: 'enemy-orc-wrestler',
+      type: 'enemy',
+      level: 7,
+      label: '敵「オークレスラー」',
+      enemyTeamId: 'orc-wrestler-team',
+      nextNodeIndices: [0],
+    },
   ]
   // 初期化時に並びをシャッフルし、レベル番号を振り直す
   midEnemies.sort(() => Math.random() - 0.5)

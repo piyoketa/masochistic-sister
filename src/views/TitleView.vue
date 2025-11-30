@@ -49,6 +49,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: '検証用: HP5 のなめくじ1体',
     to: '/battle/test-slug-5hp',
   },
+  {
+    label: 'Orc Wrestler Team',
+    description: 'コウモリ＋ゴースト＋かたつむり＋オークレスラーの混成チーム',
+    to: '/battle/orc-wrestler-team',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [
