@@ -50,7 +50,7 @@
 - 優先度:15　攻撃者自身に関わるバフ・デバフで、掛け算のもの
   - 重量化 HeavyweightState
   - 軽量化 LightweightState
-  - 気弱 ダメージ量が2/3になる
+  - 弱気
 - 優先度:20 被攻撃者に関わるバフ・デバフで、加減算のもの
   - 腐食 CorrosionState
   - 粘液 StickyState

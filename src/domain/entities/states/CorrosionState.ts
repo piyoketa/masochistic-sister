@@ -37,6 +37,10 @@ export class CorrosionState extends BadState {
     return `被ダメージ+${bonus}`
   }
 
+  override get priority(): number {
+    return 20
+  }
+
   override affectsDefender(): boolean {
     return true
   }

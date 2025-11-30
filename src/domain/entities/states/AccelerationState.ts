@@ -34,4 +34,8 @@ export class AccelerationState extends BuffState {
       count: params.count + bonus,
     }
   }
+
+  override get priority(): number {
+    return 10
+  }
 }

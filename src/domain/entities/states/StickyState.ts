@@ -37,6 +37,10 @@ export class StickyState extends BadState {
    return `被攻撃回数+${bonus}`
   }
 
+  override get priority(): number {
+    return 20
+  }
+
   override isPreHitModifier(): boolean {
     return true
   }

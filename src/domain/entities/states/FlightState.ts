@@ -28,7 +28,7 @@ export class FlightState extends TraitState {
   }
 
   override get priority(): number {
-    return 100
+    return 120
   }
 
   override affectsDefender(): boolean {

@@ -14,6 +14,8 @@ export { PoisonState } from './PoisonState'
 export { LargeState } from './LargeState'
 export { FuryAwakeningState } from './FuryAwakeningState'
 export { IntoxicationState } from './IntoxicationState'
+export { WeakState } from './WeakState'
+export { JointDamageState } from './JointDamageState'
 
 import type { State } from '../State'
 import type { StateSnapshot } from '@/types/battle'
@@ -33,6 +35,8 @@ import { PoisonState } from './PoisonState'
 import { LargeState } from './LargeState'
 import { FuryAwakeningState } from './FuryAwakeningState'
 import { IntoxicationState } from './IntoxicationState'
+import { WeakState } from './WeakState'
+import { JointDamageState } from './JointDamageState'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
@@ -52,6 +56,8 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-large': () => new LargeState(),
   'state-fury-awakening': () => new FuryAwakeningState(),
   'state-intoxication': (m) => new IntoxicationState(m),
+  'state-weak': (m) => new WeakState(m),
+  'state-joint-damage': (m) => new JointDamageState(m),
 }
 
 export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | undefined {

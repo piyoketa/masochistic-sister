@@ -34,4 +34,8 @@ export class StrengthState extends BuffState {
       amount: params.amount + bonus,
     }
   }
+
+  override get priority(): number {
+    return 10
+  }
 }

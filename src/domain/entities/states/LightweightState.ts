@@ -51,7 +51,7 @@ export class LightweightState extends BadState {
   }
 
   override get priority(): number {
-    return 1
+    return 15
   }
 
   override affectsAttacker(): boolean {

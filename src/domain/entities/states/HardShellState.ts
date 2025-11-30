@@ -15,6 +15,10 @@ export class HardShellState extends TraitState {
     return `被ダメージ-${reduction}`
   }
 
+  override get priority(): number {
+    return 20
+  }
+
   override affectsDefender(): boolean {
     return true
   }
