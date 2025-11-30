@@ -143,14 +143,14 @@ describe('Hand limit mechanics', () => {
       const repository = new CardRepository()
       const cards = [
         createMemoryStateCard(repository, '腐食'),
-        createMemoryStateCard(repository, '鈍化'),
+        createMemoryStateCard(repository, '粘液'),
       ]
       const hand = new Hand(cards)
 
       const removed = hand.removeOldest((card) => card.definition.cardType !== 'status')
 
       expect(removed).toBeUndefined()
-      expect(hand.list().map((card) => card.title)).toEqual(['腐食', '鈍化'])
+      expect(hand.list().map((card) => card.title)).toEqual(['腐食', '粘液'])
     })
   })
 

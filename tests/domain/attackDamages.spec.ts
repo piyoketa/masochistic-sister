@@ -259,7 +259,7 @@ describe('Attack#calcDamagesの挙動', () => {
     expect(damages.defenderStates).not.toContain(defenderAcceleration)
   })
 
-  it('単体攻撃は鈍化による回数増加を受けない', () => {
+  it('単体攻撃は粘液による回数増加を受けない', () => {
     const action = new TackleAction()
     const attacker = createPlayerWithHand().player
     const sticky = new StickyState(1)
