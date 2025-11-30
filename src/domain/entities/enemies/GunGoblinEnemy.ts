@@ -1,0 +1,21 @@
+/*
+責務: 銃ゴブリン敵個体の基本パラメータと行動セットを提供する。ビーム攻撃とパワーチャージの2行動を持つ。
+非責務: 行動順やターゲット選択の決定はチーム側のアクションキューに委譲する。
+主なインターフェース: Enemy基底のプロパティを通じてHP/行動リスト/画像を定義し、EnemyTeamから参照される。
+*/
+import { Enemy, type EnemyProps } from '../Enemy'
+import { BeamShotAction } from '../actions/BeamShotAction'
+import { PowerChargeAction } from '../actions/PowerChargeAction'
+
+export class GunGoblinEnemy extends Enemy {
+  constructor(overrides?: Partial<EnemyProps>) {
+    super({
+      name: '銃ゴブリン',
+      maxHp: 30,
+      currentHp: 30,
+      actions: [new BeamShotAction(10), new PowerChargeAction(20)],
+      image: '/assets/enemies/kamaitachi.jpg',
+      ...overrides,
+    })
+  }
+}

@@ -100,6 +100,14 @@ function buildLevels(): FieldLevel[] {
       enemyTeamId: 'orc-wrestler-team',
       nextNodeIndices: [0],
     },
+    {
+      id: 'enemy-gun-goblin-team',
+      type: 'enemy',
+      level: 8,
+      label: '敵「銃ゴブリンチーム」',
+      enemyTeamId: 'gun-goblin-team',
+      nextNodeIndices: [0],
+    },
   ]
   // 初期化時に並びをシャッフルし、レベル番号を振り直す
   midEnemies.sort(() => Math.random() - 0.5)

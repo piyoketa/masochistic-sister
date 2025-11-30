@@ -54,6 +54,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: 'コウモリ＋ゴースト＋かたつむり＋オークレスラーの混成チーム',
     to: '/battle/orc-wrestler-team',
   },
+  {
+    label: 'Gun Goblin Team',
+    description: '銃ゴブリンとお化け目玉の混成チーム',
+    to: '/battle/gun-goblin-team',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [

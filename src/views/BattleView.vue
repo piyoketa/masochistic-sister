@@ -32,7 +32,14 @@ import { BattleLog } from '@/domain/battle/BattleLog'
 import { TurnManager } from '@/domain/battle/TurnManager'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { ProtagonistPlayer } from '@/domain/entities/players'
-import { SnailTeam, IronBloomTeam, HummingbirdAlliesTeam, OrcHeroEliteTeam, TestSlug5HpTeam } from '@/domain/entities/enemyTeams'
+import {
+  SnailTeam,
+  IronBloomTeam,
+  HummingbirdAlliesTeam,
+  OrcHeroEliteTeam,
+  TestSlug5HpTeam,
+  GunGoblinTeam,
+} from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
@@ -752,6 +759,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   'hummingbird-allies': () => new HummingbirdAlliesTeam(),
   'orc-hero-elite': () => new OrcHeroEliteTeam(),
   'test-slug-5hp': () => new TestSlug5HpTeam(),
+  'gun-goblin-team': () => new GunGoblinTeam(),
 }
 
 /**
