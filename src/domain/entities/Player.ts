@@ -228,6 +228,10 @@ export class Player {
   }
 
   handlePlayerTurnStart(battle: Battle): void {
+    // プレイヤーが保持するStateのターン開始効果を実行する（毒など）。
+    for (const state of this.getStates(battle)) {
+      state.onTurnStart({ battle, owner: this })
+    }
     for (const relic of battle.getRelicInstances()) {
       relic.onPlayerTurnStart({ battle, player: this })
     }
