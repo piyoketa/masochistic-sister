@@ -1,5 +1,13 @@
-import type { CardRewardNode, EnemyNode, FieldNode, StartNode } from './FieldNode'
-import type { RelicRewardNode } from './FieldNode'
+import type {
+  CardRewardNode,
+  EnemyNode,
+  FieldNode,
+  StartNode,
+  RelicRewardNode,
+  RandomCardRewardNode,
+  FixedRelicRewardNode,
+  BossEnemyNode,
+} from './FieldNode'
 
 export type FieldLevel = {
   level: number
@@ -24,7 +32,7 @@ export abstract class Field {
   }
 
   isEnemyNode(node: FieldNode): node is EnemyNode {
-    return node.type === 'enemy'
+    return node.type === 'enemy' || node.type === 'boss-enemy'
   }
 
   isCardRewardNode(node: FieldNode): node is CardRewardNode {
@@ -33,5 +41,17 @@ export abstract class Field {
 
   isRelicRewardNode(node: FieldNode): node is RelicRewardNode {
     return node.type === 'relic-reward'
+  }
+
+  isRandomCardRewardNode(node: FieldNode): node is RandomCardRewardNode {
+    return node.type === 'random-card-reward'
+  }
+
+  isFixedRelicRewardNode(node: FieldNode): node is FixedRelicRewardNode {
+    return node.type === 'fixed-relic-reward'
+  }
+
+  isBossEnemyNode(node: FieldNode): node is BossEnemyNode {
+    return node.type === 'boss-enemy'
   }
 }

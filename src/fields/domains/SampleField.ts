@@ -1,25 +1,72 @@
 import { Field, type FieldLevel } from './Field'
-import type { CardRewardNode, EnemyNode, FieldNode, RelicRewardNode, StartNode } from './FieldNode'
+import type {
+  CardRewardNode,
+  EnemyNode,
+  FieldNode,
+  RelicRewardNode,
+  StartNode,
+  RandomCardRewardNode,
+  FixedRelicRewardNode,
+  BossEnemyNode,
+} from './FieldNode'
+import {
+  SnailTeam,
+  IronBloomTeam,
+  HummingbirdAlliesTeam,
+  OrcWrestlerTeam,
+  GunGoblinTeam,
+  OrcHeroEliteTeam,
+  HighOrcBandTeam,
+  BeamCannonEliteTeam,
+  GiantSlugEliteTeam,
+} from '@/domain/entities/enemyTeams'
+import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 
-/**
- * SampleField: 一直線に敵が並ぶシンプルなフィールド。
- * Level1: StartNode
- * Level2: カード獲得マス
- * Level3-8: 通常敵とレリック獲得を交互に配置（3回ずつ）
- * Level9: orc-hero-elite
- */
+const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
+  snail: () => new SnailTeam(),
+  'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
+  'hummingbird-allies': () => new HummingbirdAlliesTeam(),
+  'orc-wrestler-team': () => new OrcWrestlerTeam(),
+  'gun-goblin-team': () => new GunGoblinTeam(),
+  'orc-hero-elite': () => new OrcHeroEliteTeam(),
+  'high-orc-band': () => new HighOrcBandTeam(),
+  'beam-cannon-elite': () => new BeamCannonEliteTeam(),
+  'giant-slug-elite': () => new GiantSlugEliteTeam(),
+}
+
+const NORMAL_ENEMY_POOL = ['snail', 'iron-bloom', 'hummingbird-allies', 'orc-wrestler-team', 'gun-goblin-team']
+const ELITE_POOL = ['orc-hero-elite', 'high-orc-band', 'beam-cannon-elite', 'giant-slug-elite']
+const CARD_CANDIDATES = [
+  'battle-prep',
+  'daily-routine',
+  'predicament',
+  'non-violence-prayer',
+  'reload',
+  'scar-regeneration',
+  'life-drain-skill',
+]
+const RELIC_CANDIDATES = [
+  'LightweightCombatRelic',
+  'PureBodyRelic',
+  'NoViolenceRelic',
+  'ArcaneAdaptationRelic',
+  'ThoroughPreparationRelic',
+]
+
+const MAX_ENEMIES = 5
+
 export class SampleField extends Field {
   readonly id = 'sample-field'
   readonly name = 'Sample Field'
   readonly levels: FieldLevel[]
 
-  constructor() {
+  constructor(ownedRelics: string[] = []) {
     super()
-    this.levels = buildLevels()
+    this.levels = buildLevels(ownedRelics)
   }
 }
 
-function buildLevels(): FieldLevel[] {
+function buildLevels(ownedRelics: string[]): FieldLevel[] {
   const levels: FieldLevel[] = []
 
   const level1: StartNode = {
@@ -27,148 +74,127 @@ function buildLevels(): FieldLevel[] {
     type: 'start',
     level: 1,
     label: 'スタートマス',
-    nextNodeIndices: [0],
+    nextNodeIndices: [],
   }
   const cardReward: CardRewardNode = {
     id: 'card-reward-1',
     type: 'card-reward',
     level: 2,
     label: 'カード獲得マス',
-    candidateActions: [
-      'battle-prep',
-      'daily-routine',
-      'predicament',
-      'non-violence-prayer',
-      'reload',
-      'scar-regeneration',
-      'life-drain-skill',
-    ],
+    candidateActions: [...CARD_CANDIDATES],
     drawCount: 3,
-    nextNodeIndices: [0],
+    nextNodeIndices: [],
   }
   const relicReward: RelicRewardNode = {
     id: 'relic-reward-1',
     type: 'relic-reward',
-    level: 0, // 後で実レベルに上書き
+    level: 2,
     label: 'レリック獲得マス',
-    candidateRelics: [
-      // 'MemorySaintRelic',
-      // 'SacrificialAwarenessRelic',
-      // 'AdversityExcitementRelic',
-      'LightweightCombatRelic',
-      // 'ActionForceRelic',
-      'PureBodyRelic',
-      'NoViolenceRelic',
-      // 'SlipperyTouchRelic',
-      // 'DevoutBelieverRelic',
-      'ArcaneAdaptationRelic',
-      'ThoroughPreparationRelic',
-    ],
+    candidateRelics: [...RELIC_CANDIDATES],
     drawCount: 1,
-    nextNodeIndices: [0],
+    nextNodeIndices: [],
   }
-  const enemyPool: EnemyNode[] = [
-    {
-      id: 'enemy-snail',
-      type: 'enemy',
-      level: 0,
-      label: '敵「かたつむり」',
-      enemyTeamId: 'snail',
-      nextNodeIndices: [0],
-    },
-    {
-      id: 'enemy-iron-bloom',
-      type: 'enemy',
-      level: 0,
-      label: '敵「鉄花」',
-      enemyTeamId: 'iron-bloom',
-      nextNodeIndices: [0],
-    },
-    {
-      id: 'enemy-hummingbird-allies',
-      type: 'enemy',
-      level: 0,
-      label: '敵「ハチドリ」',
-      enemyTeamId: 'hummingbird-allies',
-      nextNodeIndices: [0],
-    },
-    {
-      id: 'enemy-orc-wrestler',
-      type: 'enemy',
-      level: 0,
-      label: '敵「オークレスラー」',
-      enemyTeamId: 'orc-wrestler-team',
-      nextNodeIndices: [0],
-    },
-    {
-      id: 'enemy-gun-goblin-team',
-      type: 'enemy',
-      level: 0,
-      label: '敵「銃ゴブリンチーム」',
-      enemyTeamId: 'gun-goblin-team',
-      nextNodeIndices: [0],
-    },
-  ]
-  // プールからランダムに3体を選択し、順序もシャッフル
-  const midEnemies = [...enemyPool].sort(() => Math.random() - 0.5).slice(0, 3)
 
-  const eliteCandidates: EnemyNode[] = [
-    {
-      id: 'enemy-orc-hero-elite',
-      type: 'enemy',
-      level: 0,
-      label: 'エリート「オークヒーロー」',
-      enemyTeamId: 'orc-hero-elite',
-      nextNodeIndices: [],
-    },
-    {
-      id: 'enemy-high-orc-band',
-      type: 'enemy',
-      level: 0,
-      label: 'エリート「ハイオーク一味」',
-      enemyTeamId: 'high-orc-band',
-      nextNodeIndices: [],
-    },
-    {
-      id: 'enemy-beam-cannon-elite',
-      type: 'enemy',
-      level: 0,
-      label: 'エリート「ビーム砲チーム」',
-      enemyTeamId: 'beam-cannon-elite',
-      nextNodeIndices: [],
-    },
-    {
-      id: 'enemy-giant-slug-elite',
-      type: 'enemy',
-      level: 0,
-      label: 'エリート「大王なめくじ」',
-      enemyTeamId: 'giant-slug-elite',
-      nextNodeIndices: [],
-    },
-  ]
-  const level7 =
-    eliteCandidates[Math.floor(Math.random() * eliteCandidates.length)] ?? eliteCandidates[0]!
-
-  // 敵とレリックを交互に挿入: enemy, relic, enemy, relic, enemy, relic
-  const interleaved: FieldNode[][] = []
-  for (let i = 0; i < midEnemies.length; i += 1) {
-    interleaved.push([midEnemies[i]!])
-    const clone: RelicRewardNode = {
-      ...relicReward,
-      id: `relic-reward-${i + 1}`,
-      level: 0, // 後で上書き
+  const level3to6: FieldNode[][] = []
+  for (let level = 3; level <= 6; level += 1) {
+    const nodes: FieldNode[] = []
+    for (let i = 0; i < 3; i += 1) {
+      const roll = Math.random()
+      if (roll < 0.6) {
+        nodes.push(createNormalEnemyNode(level, i))
+      } else if (roll < 0.8) {
+        nodes.push(createRandomCardRewardNode(level, i))
+      } else {
+        nodes.push(createFixedRelicRewardNode(level, i, ownedRelics))
+      }
     }
-    interleaved.push([clone])
+    level3to6.push(nodes)
   }
 
-  const nodesByLevel: FieldNode[][] = [[level1], [cardReward], ...interleaved, [level7]]
+  const eliteNodes: BossEnemyNode[] = shuffleArray([...ELITE_POOL])
+    .slice(0, 2)
+    .map((teamId, idx) => ({
+      id: `boss-${idx + 1}`,
+      type: 'boss-enemy',
+      level: 7,
+      label: `BOSS「${teamId}」`,
+      enemyTeamId: teamId,
+      nextNodeIndices: [],
+    }))
+
+  const nodesByLevel: FieldNode[][] = [[level1], [cardReward, relicReward], ...level3to6, eliteNodes]
 
   nodesByLevel.forEach((nodes, idx) => {
+    const next = nodesByLevel[idx + 1]
     nodes.forEach((node) => {
       node.level = idx + 1
+      if (next) {
+        node.nextNodeIndices = next.map((_, nextIdx) => nextIdx)
+      } else {
+        node.nextNodeIndices = []
+      }
     })
     levels.push({ level: idx + 1, nodes })
   })
 
   return levels
+}
+
+function createNormalEnemyNode(level: number, idx: number): EnemyNode {
+  const teamId = NORMAL_ENEMY_POOL[Math.floor(Math.random() * NORMAL_ENEMY_POOL.length)]!
+  const teamFactory = ENEMY_TEAM_FACTORIES[teamId]
+  const team = teamFactory ? teamFactory() : new SnailTeam()
+  const enemy = team.members[Math.floor(Math.random() * Math.min(team.members.length, MAX_ENEMIES))]
+  const labelName = enemy?.name ?? teamId
+  return {
+    id: `enemy-${level}-${idx}`,
+    type: 'enemy',
+    level,
+    label: `敵「${labelName}」`,
+    enemyTeamId: teamId,
+    nextNodeIndices: [],
+  }
+}
+
+function createRandomCardRewardNode(level: number, idx: number): RandomCardRewardNode {
+  const selected = pickUnique(CARD_CANDIDATES, 3)
+  return {
+    id: `random-card-${level}-${idx}`,
+    type: 'random-card-reward',
+    level,
+    label: 'カード獲得（３枚から１枚選択）',
+    candidateActions: [...CARD_CANDIDATES],
+    selectedActions: selected,
+    drawCount: 1,
+    nextNodeIndices: [],
+  }
+}
+
+function createFixedRelicRewardNode(level: number, idx: number, owned: string[]): FixedRelicRewardNode {
+  const available = RELIC_CANDIDATES.filter((name) => !owned.includes(name))
+  const relic = available[0] ?? RELIC_CANDIDATES[0] ?? 'PureBodyRelic'
+  return {
+    id: `fixed-relic-${level}-${idx}`,
+    type: 'fixed-relic-reward',
+    level,
+    label: `レリック「${relic}」を獲得`,
+    candidateRelics: [...RELIC_CANDIDATES],
+    selectedRelic: relic,
+    nextNodeIndices: [],
+  }
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const temp = copy[i]
+    copy[i] = copy[j] as T
+    copy[j] = temp
+  }
+  return copy
+}
+
+function pickUnique<T>(arr: T[], count: number): T[] {
+  return shuffleArray(arr).slice(0, Math.min(count, arr.length))
 }

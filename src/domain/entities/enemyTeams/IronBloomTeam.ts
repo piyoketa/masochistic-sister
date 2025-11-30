@@ -28,7 +28,7 @@ export class IronBloomTeam extends EnemyTeam {
   constructor(options?: IronBloomTeamOptions) {
     const scripted = options?.mode !== 'random'
     super({
-      id: 'enemy-team-iron-bloom',
+      id: 'iron-bloom',
       members: [
         new OrcLancerEnemy(
           scripted

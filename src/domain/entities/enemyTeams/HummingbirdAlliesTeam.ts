@@ -7,7 +7,7 @@ import { TackleAction } from '../actions/TackleAction'
 export class HummingbirdAlliesTeam extends EnemyTeam {
   constructor() {
     super({
-      id: 'enemy-team-hummingbird-allies',
+      id: 'hummingbird-allies',
       members: [
         new OrcLancerEnemy({
           actionQueueFactory: () =>

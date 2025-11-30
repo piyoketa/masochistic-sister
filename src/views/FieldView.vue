@@ -65,6 +65,14 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
     await router.push({ path: '/field/relic-reward' })
     return
   }
+  if (node.type === 'random-card-reward') {
+    await router.push({ path: '/field/random-card-reward' })
+    return
+  }
+  if (node.type === 'fixed-relic-reward') {
+    await router.push({ path: '/field/fixed-relic-reward' })
+    return
+  }
 }
 
 audioStore.playBgm('/sounds/bgm/field.mp3')

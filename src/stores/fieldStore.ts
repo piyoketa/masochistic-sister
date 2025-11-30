@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import { SampleField } from '@/fields/domains/SampleField'
 import type { Field } from '@/fields/domains/Field'
 import type { FieldNode } from '@/fields/domains/FieldNode'
+import { usePlayerStore } from './playerStore'
 
 export const useFieldStore = defineStore('field', {
   state: () => ({
-    field: new SampleField() as Field,
+    field: new SampleField(usePlayerStore().relics) as Field,
     currentLevelIndex: 0,
     currentNodeIndex: 0,
     clearedNodes: new Set<string>(['start-1']),
@@ -24,7 +25,9 @@ export const useFieldStore = defineStore('field', {
   },
   actions: {
     reset(): void {
-      this.field = new SampleField()
+      const playerStore = usePlayerStore()
+      playerStore.ensureInitialized()
+      this.field = new SampleField(playerStore.relics)
       this.currentLevelIndex = 0
       this.currentNodeIndex = 0
       this.clearedNodes = new Set<string>(['start-1'])
