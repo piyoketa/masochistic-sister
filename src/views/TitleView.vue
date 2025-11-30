@@ -35,9 +35,9 @@ const enemyTeamLinks: LinkEntry[] = [
     to: '/battle/iron-bloom',
   },
   {
-    label: 'Hummingbird & Scorpion',
-    description: 'ハチドリ＋サソリの支援コンビ',
-    to: '/battle/hummingbird-scorpion',
+    label: 'Hummingbird Allies',
+    description: 'ハチドリ',
+    to: '/battle/hummingbird-allies',
   },
   {
     label: 'Orc Hero Elite',

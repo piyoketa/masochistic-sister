@@ -32,13 +32,7 @@ import { BattleLog } from '@/domain/battle/BattleLog'
 import { TurnManager } from '@/domain/battle/TurnManager'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { ProtagonistPlayer } from '@/domain/entities/players'
-import {
-  SnailTeam,
-  IronBloomTeam,
-  HummingbirdScorpionTeam,
-  OrcHeroEliteTeam,
-  TestSlug5HpTeam,
-} from '@/domain/entities/enemyTeams'
+import { SnailTeam, IronBloomTeam, HummingbirdAlliesTeam, OrcHeroEliteTeam, TestSlug5HpTeam } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
@@ -755,7 +749,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: DEFAULT_ENEMY_TEAM_FACTORY,
   'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
   'iron-bloom-scripted': () => new IronBloomTeam({ mode: 'scripted' }),
-  'hummingbird-scorpion': () => new HummingbirdScorpionTeam(),
+  'hummingbird-allies': () => new HummingbirdAlliesTeam(),
   'orc-hero-elite': () => new OrcHeroEliteTeam(),
   'test-slug-5hp': () => new TestSlug5HpTeam(),
 }

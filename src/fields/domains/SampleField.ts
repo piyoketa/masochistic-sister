@@ -85,11 +85,11 @@ function buildLevels(): FieldLevel[] {
       nextNodeIndices: [0],
     },
     {
-      id: 'enemy-hummingbird-scorpion',
+      id: 'enemy-hummingbird-allies',
       type: 'enemy',
       level: 6,
       label: '敵「ハチドリ」',
-      enemyTeamId: 'hummingbird-scorpion',
+      enemyTeamId: 'hummingbird-allies',
       nextNodeIndices: [0],
     },
   ]

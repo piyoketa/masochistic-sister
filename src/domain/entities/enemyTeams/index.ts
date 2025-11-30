@@ -1,6 +1,6 @@
 export { SnailTeam } from './SnailTeam'
 export { TestEnemyTeam } from './TestEnemyTeam'
 export { IronBloomTeam } from './IronBloomTeam'
-export { HummingbirdScorpionTeam } from './HummingbirdScorpionTeam'
+export { HummingbirdAlliesTeam } from './HummingbirdAlliesTeam'
 export { OrcHeroEliteTeam } from './OrcHeroEliteTeam'
 export { TestSlug5HpTeam } from './TestSlug5HpTeam'

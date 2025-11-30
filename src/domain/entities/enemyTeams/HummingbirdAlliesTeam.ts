@@ -1,24 +1,19 @@
 import { EnemyTeam } from '../EnemyTeam'
-import {
-  OrcLancerEnemy,
-  ScorpionEnemy,
-  HummingbirdEnemy,
-  SlugEnemy,
-} from '../enemies'
+import { OrcLancerEnemy, KamaitachiEnemy, HummingbirdEnemy, SlugEnemy } from '../enemies'
 import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
 import { BattleDanceAction } from '../actions/BattleDanceAction'
 import { TackleAction } from '../actions/TackleAction'
 
-export class HummingbirdScorpionTeam extends EnemyTeam {
+export class HummingbirdAlliesTeam extends EnemyTeam {
   constructor() {
     super({
-      id: 'enemy-team-hummingbird-scorpion',
+      id: 'enemy-team-hummingbird-allies',
       members: [
         new OrcLancerEnemy({
           actionQueueFactory: () =>
             new DefaultEnemyActionQueue({ initialActionType: BattleDanceAction }),
         }),
-        new ScorpionEnemy(),
+        new KamaitachiEnemy(),
         new HummingbirdEnemy(),
         new SlugEnemy({
           actionQueueFactory: () =>

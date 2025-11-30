@@ -19,7 +19,7 @@ import {
   SnailTeam,
   TestEnemyTeam,
   IronBloomTeam,
-  HummingbirdScorpionTeam,
+  HummingbirdAlliesTeam,
   OrcHeroEliteTeam,
 } from '../entities/enemyTeams'
 import type { EnemyTeam } from '../entities/EnemyTeam'
@@ -92,7 +92,7 @@ export function createStage3Battle(): Battle {
   return createBattleFromPreset({
     id: 'battle-stage3',
     deckBuilder: buildDefaultDeck,
-    enemyTeamFactory: () => new HummingbirdScorpionTeam(),
+    enemyTeamFactory: () => new HummingbirdAlliesTeam(),
   })
 }
 
