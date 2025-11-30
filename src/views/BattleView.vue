@@ -41,6 +41,7 @@ import {
   GunGoblinTeam,
   HighOrcBandTeam,
   BeamCannonEliteTeam,
+  GiantSlugEliteTeam,
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
@@ -764,6 +765,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   'gun-goblin-team': () => new GunGoblinTeam(),
   'high-orc-band': () => new HighOrcBandTeam(),
   'beam-cannon-elite': () => new BeamCannonEliteTeam(),
+  'giant-slug-elite': () => new GiantSlugEliteTeam(),
 }
 
 /**

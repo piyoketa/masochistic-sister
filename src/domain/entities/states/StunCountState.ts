@@ -1,7 +1,7 @@
 import type { Battle } from '../../battle/Battle'
 import type { Action } from '../Action'
 import { SkipTurnAction } from '../actions/SkipTurnAction'
-import type { Enemy } from '../Enemy'
+import { Enemy } from '../Enemy'
 import type { DamageHitContext } from '../State'
 import { BuffState } from '../State'
 

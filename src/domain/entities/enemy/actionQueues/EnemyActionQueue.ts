@@ -11,6 +11,9 @@ export abstract class EnemyActionQueue {
   protected pending: Action[] = []
   protected displayPlan: Action[] = []
   protected rng: () => number = Math.random
+  // バトル・所有者コンテキスト（条件付きキューなどで使用）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected context: Record<string, any> | undefined
 
   initialize(actions: Action[], rng: () => number): void {
     this.actions = [...actions]
@@ -48,6 +51,11 @@ export abstract class EnemyActionQueue {
     this.pending.length = 0
     this.actions.length = 0
     this.displayPlan.length = 0
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setContext(_context: Record<string, unknown>): void {
+    this.context = _context
   }
 
   discardNext(): Action | undefined {

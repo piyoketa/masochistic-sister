@@ -20,7 +20,7 @@ export class CowardTrait extends TraitState {
   }
 
   override description(): string {
-    return '最後の一人になると逃走する'
+    return '臆病な敵しかいない時、逃走する'
   }
 
   override onActionResolved(context: ActionResolvedContext): void {
@@ -34,7 +34,17 @@ export class CowardTrait extends TraitState {
     }
 
     const activeEnemies = context.battle.enemyTeam.members.filter((enemy) => enemy.isActive())
-    if (activeEnemies.length === 1 && activeEnemies[0] === owner) {
+    if (activeEnemies.length === 0) {
+      return
+    }
+
+    const allCoward = activeEnemies.every((enemy) =>
+      enemy
+        .getStates()
+        .some((state) => state instanceof CowardTrait),
+    )
+
+    if (allCoward) {
       owner.flee(context.battle)
     }
   }

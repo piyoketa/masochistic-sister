@@ -50,6 +50,21 @@ export class EnemyTeam {
     return this.repositoryValue
   }
 
+  /**
+   * 敵を動的に追加する。ID採番・行動キュー初期化・ターン順への登録を行う。
+   * 追加は末尾に挿入し、ビュー差分は Snapshot 側で反映される想定。
+   */
+  addEnemy(enemy: Enemy): Enemy {
+    const registered = this.repositoryValue.register(enemy)
+    if (registered.id === undefined) {
+      throw new Error('Enemy registration failed')
+    }
+    this.membersValue.push(registered)
+    this.turnOrderValue.push(registered.id)
+    registered.resetTurn()
+    return registered
+  }
+
   findEnemy(id: number): Enemy | undefined {
     return this.repositoryValue.findById(id)
   }

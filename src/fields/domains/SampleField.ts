@@ -137,8 +137,17 @@ function buildLevels(): FieldLevel[] {
       enemyTeamId: 'beam-cannon-elite',
       nextNodeIndices: [],
     },
+    {
+      id: 'enemy-giant-slug-elite',
+      type: 'enemy',
+      level: 0,
+      label: 'エリート「大王なめくじ」',
+      enemyTeamId: 'giant-slug-elite',
+      nextNodeIndices: [],
+    },
   ]
-  const level7 = eliteCandidates[Math.floor(Math.random() * eliteCandidates.length)]
+  const level7 =
+    eliteCandidates[Math.floor(Math.random() * eliteCandidates.length)] ?? eliteCandidates[0]!
 
   // 敵とレリックを交互に挿入: enemy, relic, enemy, relic, enemy, relic
   const interleaved: FieldNode[][] = []

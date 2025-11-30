@@ -152,6 +152,11 @@ export class Enemy {
       return
     }
 
+    // キューにバトルコンテキストをセット（条件付きキュー用）
+    if (typeof (this.actionQueue as any).setContext === 'function') {
+      ;(this.actionQueue as any).setContext({ battle, owner: this })
+    }
+
     const action = this.actionQueue.next()
     if (!action) {
       battle.addLogEntry({

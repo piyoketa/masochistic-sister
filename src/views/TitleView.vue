@@ -69,6 +69,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: '大型ビーム砲＋酒飲みオークのエリート編成',
     to: '/battle/beam-cannon-elite',
   },
+  {
+    label: 'Giant Slug Elite',
+    description: '大王なめくじ＋なめくじの召喚エリート',
+    to: '/battle/giant-slug-elite',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [
