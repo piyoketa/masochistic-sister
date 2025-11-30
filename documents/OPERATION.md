@@ -27,7 +27,7 @@
 ## 実装計画
 1. **使用不可敵の判定データを TargetEnemyOperation に付与**
     - Operation 生成時に Battle/EnemyTeam へアクセスし、各敵の「選択可否」「理由テキスト」を計算して Operation インスタンスに格納するフィールド（例: `availability: Record<enemyId, { selectable: boolean; reason?: string }>`）を追加。
-    - HeavenChainAction / MasochisticAuraAction など個別スキルは「対象候補を列挙するメソッド」を通じて条件を宣言する形へ変更し、perform 内からは除外処理を削除。
+    - HeavenChainAction / MasochisticAuraAction など個別スキルは「対象候補を列挙するメソッド」を通じて条件を宣言する形へ変更し、perform 内からは消滅処理を削除。
 2. **HeavenChainAction の大型制限を Operation レイヤーへ移動**
     - LargeState を持つ敵を Operation 生成時点で `selectable: false` にし、理由メッセージ（例: `大型の敵には天の鎖を使えません`）を付与。
     - perform では Operation が保証するため追加チェックを外しログ出力も Operation 経由（必要なら別ステージ）で行う。

@@ -296,7 +296,7 @@ describe('Attack#calcDamagesの挙動', () => {
     expect(damages.count).toBe(4)
   })
 
-  it('飛行状態の敵にはダメージが1に制限される', () => {
+  it('ダメージ固定状態の敵にはダメージが1に制限される', () => {
     const action = createTentacleFlurryAction()
     const attacker = createPlayerWithHand().player
     const defenderEnemy = createEnemyWithStates([new FlightState(1)])
@@ -359,9 +359,9 @@ describe('Attack.performのダメージアウトカム', () => {
     expect(damages?.totalPostHitDamage).toBe(25)
   })
 
-  it('飛行状態の敵にはヒット毎に1ダメージだけ与えられる', () => {
+  it('ダメージ固定状態の敵にはヒット毎に1ダメージだけ与えられる', () => {
     const enemy = new Enemy({
-      name: '飛行テスト',
+      name: 'ダメージ固定テスト',
       maxHp: 10,
       currentHp: 10,
       actions: [new SkipTurnAction('何もしない')],

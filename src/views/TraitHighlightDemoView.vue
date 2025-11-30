@@ -43,7 +43,7 @@ const baseEnemy: EnemyInfo = {
     },
     {
       id: 'state-flight',
-      name: '飛行',
+      name: 'ダメージ固定',
       description: 'ダメージは常に1（重要Trait）',
       category: 'trait',
       isImportant: true,
@@ -82,7 +82,7 @@ async function replay(): Promise<void> {
     <main class="demo-body">
       <EnemyCard :key="version" :enemy="enemyForRender" selectable />
       <section class="hint">
-        <p>・硬い殻 / 飛行: Trait + isImportant → 縁が明るくポップします。</p>
+        <p>・硬い殻 / ダメージ固定: Trait + isImportant → 縁が明るくポップします。</p>
         <p>・打点上昇: Buff → 強調なしで通常表示。</p>
       </section>
     </main>

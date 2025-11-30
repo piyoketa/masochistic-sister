@@ -30,7 +30,7 @@
 
 ## Trait：敵固有の能力
 - 例：
-  - 飛行 FlightState
+  - ダメージ固定 FlightState
   - 硬い殻 HardShellState
   - 大型 LargeState
   - 臆病 CowardTrait
@@ -58,4 +58,4 @@
 - 優先度:25 被攻撃者に関わるバフ・デバフで、掛け算のもの
   - 関節損傷 
 - 優先度:120 被攻撃者に関わるバフ・デバフで、特定の値に固定する（代入する）もの
-  - 飛行 FlightState
+  - ダメージ固定 FlightState

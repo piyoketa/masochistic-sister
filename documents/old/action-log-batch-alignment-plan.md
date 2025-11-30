@@ -17,7 +17,7 @@
    - `start-player-turn` で turn-start/mana/deck-draw を単一バッチ化（wait 計算含む）。
    - `buildPlayCardAnimations` を `player-action` / `enemy-defeat` の 2 バッチ構成へ再実装し、instruction 順序（mana → card-move → draw → audio → damage）を固定。撃破が無い場合は `enemy-defeat` を生成しない。
    - `attachEnemyActAnimations` を `enemy-act-start` / `enemy-action` / `remember-enemy-attack` の 3 バッチに統一。`enemy-action` バッチ内で player-damage → create-state-card → audio を並べ、`remember` バッチに memory-card のみを入れる。
-   - snapshotBeforeCardAdditions の除外対象を state/memory イベントの cardIds まで拡張し、`memory-card` のアニメ再生前に手札へカードが現れないようにする。
+   - snapshotBeforeCardAdditions の消滅対象を state/memory イベントの cardIds まで拡張し、`memory-card` のアニメ再生前に手札へカードが現れないようにする。
 2. **Battle / Player イベント配線**
    - `Player.rememberEnemyAttack` → `Battle.recordMemoryCardAnimation` の流れで enemyId/Card 情報を漏れなく渡し、OperationRunner が `remember-enemy-attack` バッチに必要な metadata を取得できるようにする。
    - 疼き (`ScarRegenerationAction`) のようなプレイヤー起点 `memory-card` を `player-action` バッチへ残しつつ、敵由来の memory-card は `remember-enemy-attack` バッチに限定する分岐を OperationRunner へ追加。

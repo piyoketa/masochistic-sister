@@ -1,4 +1,4 @@
-- enemy-act：かたつむりのAction「ぬるりと食いつく」の場合
+- enemy-act：かたつむりのAction「吸いつく」の場合
     - バッチ1: enemy-act-start-batch
         - Instruction1: enemy-highlight
             - waitsMs: 0

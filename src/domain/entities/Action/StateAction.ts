@@ -63,9 +63,12 @@ export class StateAction extends Action {
 
   override perform(_context: ActionContext): void {
     const battle = _context.battle as Battle | undefined
+
     if (battle) {
+      // 状態カードを使用した場合は清廉な身体の使用フラグを立てる
       const pureBody = battle.getRelicById('pure-body') as PureBodyRelic | undefined
-      pureBody?.markUsed?.()
+      pureBody?.markUsed()
+
       if (this.stateId) {
         battle.player.removeState(this.stateId)
       }

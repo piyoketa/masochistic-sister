@@ -242,7 +242,7 @@ export function createBattleScenario(): BattleScenario {
   })
   registerOperation('playAcidSpitOnTentacle', {
     type: 'play-card',
-    card: (battle: Battle) => findMemoryCardId(battle, 'ぬるりと食いつく'),
+    card: (battle: Battle) => findMemoryCardId(battle, '吸いつく'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
   })
   registerOperation('playMucusShotOnTentacle', {

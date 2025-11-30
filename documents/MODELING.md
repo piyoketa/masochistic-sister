@@ -21,7 +21,7 @@
 | 主なプロパティ | `action` (`Action`)、`state` (`State`)、`cardTags`、`definition`（タイトル・コスト等の表示用定義） |
 | 主なメソッド | `play(battle, operations)` / `copyWith(overrides)` |
 
-- `play` 内で `Action.prepareContext` を呼び、Operation 収集→バリデーション→対象選択→効果実行→墓地/除外移動までを順序立てて処理します。
+- `play` 内で `Action.prepareContext` を呼び、Operation 収集→バリデーション→対象選択→効果実行→墓地/消滅移動までを順序立てて処理します。
 - `copyWith` はデッキ生成などで同一アクションを別定義で扱いたい場合に使用します。
 
 ---
@@ -111,7 +111,7 @@ Operation は `Action.prepareContext` 内で順番に解決され、`ActionConte
    3. HP 変動 (`Battle.damagePlayer` / `Enemy.takeDamage`)。
    4. 事後フック `onAfterDamage`（状態異常付与など）。
    5. プレイヤー被弾時は `CardRepository.memoryEnemyAttack` で記憶カードを生成・手札追加。
-3. `Card` 自身は `moveToNextZone` で捨て札 or 除外処理。
+3. `Card` 自身は `moveToNextZone` で捨て札 or 消滅処理。
 
 ---
 

@@ -21,7 +21,7 @@
 | `turn-start` | ターン開始フェーズ突入の通知（各種リセット後の状態を描画） | `start-player-turn` |
 | `deck-draw` | 山札や各種追加効果で手札に入ったカードを描画（draw数・手札上限情報付き） | ターン開始ドロー、日課などのドロー効果 |
 | `card-trash` | 手札のカードを捨て札に送る | `play-card`, 再装填などのカード効果 |
-| `card-eliminate` | カードを除外（消費）ゾーンへ送る | [消費]カードの`play-card` |
+| `card-eliminate` | カードが消滅する | [消滅]カードの`play-card` |
 | `create-state-card` | 敵から受けた状態異常カードを生成し手札へ追加 | `Player.addState` |
 | `memory-card` | 敵攻撃の記憶カードを生成し手札へ追加 | `Player.rememberEnemyAttack` |
 | `enemy-damage` | 敵に対するダメージ演出 | `play-card` |
@@ -55,7 +55,7 @@ play-card時のAnimationInstructionの生成例を示します。
 1. **[0] `mana`**
    - マナを消費（マイナス）または獲得（プラス）した値を示す。
 2. **[1] `card-trash` / `card-eliminate`**  
-   - 使用カードが移動した直後の snapshot。手札→捨て札の場合は `card-trash`、消費カードは `card-eliminate`（除外演出は 720ms 固定）。
+   - 使用カードが移動した直後の snapshot。手札→捨て札の場合は `card-trash`、消費カードは `card-eliminate`（消滅演出は 720ms 固定）。
 3. **[2] `enemy-damage`**  
    - ダメージを伴う場合のみ生成。`metadata.damageOutcomes` にヒット配列を含め、待機時間は (ヒット数-1)×0.2s。
 4. **[3] `defeat`**  

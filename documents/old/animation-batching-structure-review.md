@@ -48,7 +48,7 @@ title: AnimationBatch / ActionLog 構造の現状整理
   - **用途**: 敵行動による記憶カード生成（旧仕様）を表現。現在は `create-state-card` / `memory-card` へ移行済みで、OperationRunner では `card-create` を発行していない（`src/domain/battle/OperationRunner.ts` 内の `stage: 'card-create'` 参照は存在せず、fixtures でも出現しない）。
   - **結論**: 現行フローでは未使用のため、ステージ定義から削除して問題ない。ただし旧 fixture の整合性を確認する必要あり。
 
-- **対応済み**: `AnimationStageMetadata` から `card-create` を除外し、`create-state-card` / `memory-card` のみを使用する。
+- **対応済み**: `AnimationStageMetadata` から `card-create` を消滅し、`create-state-card` / `memory-card` のみを使用する。
 
 - `card-trash / card-eliminate`
   - `cardTitle` (単数) は単一カード移動で fallback 表示用タイトルを渡すため、`cardTitles` は複数枚同時処理で title 配列を送るために用意されている。

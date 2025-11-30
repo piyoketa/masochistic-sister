@@ -1,7 +1,7 @@
 import { Relic } from './Relic'
 
 /**
- * 敬虔な信者：天の鎖が消費されない
+ * 敬虔な信者
  */
 export class DevoutBelieverRelic extends Relic {
   readonly id = 'devout-believer'
@@ -10,6 +10,6 @@ export class DevoutBelieverRelic extends Relic {
   readonly icon = '🙏'
 
   description(): string {
-    return '永続：「天の鎖」を使用しても消費されず、手札に戻る。'
+    return '「天の鎖」を使用しても消滅しなくなる'
   }
 }

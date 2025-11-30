@@ -85,7 +85,7 @@ describe('DefaultEnemyActionQueue', () => {
 
   beforeEach(() => {
     actionA = new LogSkillAction('たいあたり')
-    actionB = new LogSkillAction('ぬるりと食いつく')
+    actionB = new LogSkillAction('吸いつく')
   })
 
   it('初回の行動を固定し、その後は交互に行動する', () => {
@@ -108,7 +108,7 @@ describe('DefaultEnemyActionQueue', () => {
 
     const logs = battle.log.list().map((entry) => entry.message)
     expect(logs).toEqual([
-      'かたつむりはぬるりと食いつくを使った',
+      'かたつむりは吸いつくを使った',
       'かたつむりはたいあたりを使った',
     ])
   })
@@ -163,7 +163,7 @@ describe('DefaultEnemyActionQueue', () => {
     expect(messages).toEqual([
       'オークは天の鎖で動きを封じられた。',
       'オークは天の鎖で縛られていて何もできない！',
-      'オークはぬるりと食いつくを使った',
+      'オークは吸いつくを使った',
     ])
   })
 

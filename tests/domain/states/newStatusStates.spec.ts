@@ -43,7 +43,7 @@ describe('軽量化Stateの挙動', () => {
   })
 })
 
-describe('飛行Stateの挙動', () => {
+describe('ダメージ固定Stateの挙動', () => {
   it('受けるダメージが常に1へ制限される', () => {
     const damages = new Damages({
       baseAmount: 20,
@@ -57,8 +57,8 @@ describe('飛行Stateの挙動', () => {
   })
 })
 
-describe('飛行と腐食の優先度', () => {
-  it('飛行が常に最後に適用されて1ダメージへ制限する', () => {
+describe('ダメージ固定と腐食の優先度', () => {
+  it('ダメージ固定が常に最後に適用されて1ダメージへ制限する', () => {
     const damages = new Damages({
       baseAmount: 30,
       baseCount: 2,

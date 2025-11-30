@@ -49,7 +49,7 @@ export class BattleReward {
     }
   }
 
-  /** 手札・山札・捨て札・除外から [新規] タグ付きカードを抽出する。 */
+  /** 手札・山札・捨て札・消滅から [新規] タグ付きカードを抽出する。 */
   private collectNewCards(): Card[] {
     const piles = [
       ...this.battle.hand.list(),

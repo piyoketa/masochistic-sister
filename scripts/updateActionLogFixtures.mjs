@@ -32,7 +32,7 @@ const useFixtureSource = process.env.USE_FIXTURE_SOURCE === '1'
 const scenarioSpecificAdjustments = {
   'tests/fixtures/battleSampleExpectedActionLog.ts': {
     alreadyActedEnemyEntries: {
-      10: { enemyId: 3, actionName: 'ぬるりと食いつく' },
+      10: { enemyId: 3, actionName: '吸いつく' },
     },
     playCardMemoryCardOverrides: {
       23: {
@@ -782,7 +782,7 @@ function stageComment(stage, metadata) {
     case 'card-trash':
       return `[カード廃棄] ${(describeCardList(metadata) || describeCardFromMetadata(metadata))} を捨て札へ移動`
     case 'card-eliminate':
-      return `[カード除外] ${(describeCardList(metadata) || describeCardFromMetadata(metadata))} を消費`
+      return `[カード消滅] ${(describeCardList(metadata) || describeCardFromMetadata(metadata))} が消滅`
     case 'damage':
       return `[ダメージ演出] ${describeCardFromMetadata(metadata)} の攻撃結果`
     case 'player-damage':
