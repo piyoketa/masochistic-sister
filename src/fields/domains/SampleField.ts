@@ -67,11 +67,11 @@ function buildLevels(): FieldLevel[] {
     drawCount: 1,
     nextNodeIndices: [0],
   }
-  const midEnemies: EnemyNode[] = [
+  const enemyPool: EnemyNode[] = [
     {
       id: 'enemy-snail',
       type: 'enemy',
-      level: 4,
+      level: 0,
       label: '敵「かたつむり」',
       enemyTeamId: 'snail',
       nextNodeIndices: [0],
@@ -79,7 +79,7 @@ function buildLevels(): FieldLevel[] {
     {
       id: 'enemy-iron-bloom',
       type: 'enemy',
-      level: 5,
+      level: 0,
       label: '敵「鉄花」',
       enemyTeamId: 'iron-bloom',
       nextNodeIndices: [0],
@@ -87,7 +87,7 @@ function buildLevels(): FieldLevel[] {
     {
       id: 'enemy-hummingbird-allies',
       type: 'enemy',
-      level: 6,
+      level: 0,
       label: '敵「ハチドリ」',
       enemyTeamId: 'hummingbird-allies',
       nextNodeIndices: [0],
@@ -95,7 +95,7 @@ function buildLevels(): FieldLevel[] {
     {
       id: 'enemy-orc-wrestler',
       type: 'enemy',
-      level: 7,
+      level: 0,
       label: '敵「オークレスラー」',
       enemyTeamId: 'orc-wrestler-team',
       nextNodeIndices: [0],
@@ -103,23 +103,34 @@ function buildLevels(): FieldLevel[] {
     {
       id: 'enemy-gun-goblin-team',
       type: 'enemy',
-      level: 8,
+      level: 0,
       label: '敵「銃ゴブリンチーム」',
       enemyTeamId: 'gun-goblin-team',
       nextNodeIndices: [0],
     },
   ]
-  // 初期化時に並びをシャッフルし、レベル番号を振り直す
-  midEnemies.sort(() => Math.random() - 0.5)
+  // プールからランダムに3体を選択し、順序もシャッフル
+  const midEnemies = [...enemyPool].sort(() => Math.random() - 0.5).slice(0, 3)
 
-  const level7: EnemyNode = {
-    id: 'enemy-orc-hero-elite',
-    type: 'enemy',
-    level: 0, // 後で上書き
-    label: 'エリート「オークヒーロー」',
-    enemyTeamId: 'orc-hero-elite',
-    nextNodeIndices: [],
-  }
+  const eliteCandidates: EnemyNode[] = [
+    {
+      id: 'enemy-orc-hero-elite',
+      type: 'enemy',
+      level: 0,
+      label: 'エリート「オークヒーロー」',
+      enemyTeamId: 'orc-hero-elite',
+      nextNodeIndices: [],
+    },
+    {
+      id: 'enemy-high-orc-band',
+      type: 'enemy',
+      level: 0,
+      label: 'エリート「ハイオーク一味」',
+      enemyTeamId: 'high-orc-band',
+      nextNodeIndices: [],
+    },
+  ]
+  const level7 = eliteCandidates[Math.floor(Math.random() * eliteCandidates.length)]
 
   // 敵とレリックを交互に挿入: enemy, relic, enemy, relic, enemy, relic
   const interleaved: FieldNode[][] = []

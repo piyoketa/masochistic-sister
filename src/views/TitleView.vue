@@ -59,6 +59,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: '銃ゴブリンとお化け目玉の混成チーム',
     to: '/battle/gun-goblin-team',
   },
+  {
+    label: 'High Orc Band',
+    description: 'ランサー×2＋ダンサーのエリート編成',
+    to: '/battle/high-orc-band',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [

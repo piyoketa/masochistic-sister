@@ -39,6 +39,7 @@ import {
   OrcHeroEliteTeam,
   TestSlug5HpTeam,
   GunGoblinTeam,
+  HighOrcBandTeam,
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
@@ -760,6 +761,7 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   'orc-hero-elite': () => new OrcHeroEliteTeam(),
   'test-slug-5hp': () => new TestSlug5HpTeam(),
   'gun-goblin-team': () => new GunGoblinTeam(),
+  'high-orc-band': () => new HighOrcBandTeam(),
 }
 
 /**
