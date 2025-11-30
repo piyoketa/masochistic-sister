@@ -61,8 +61,8 @@ const OPERATION_EXPECTATIONS = [
   { name: '戦いの準備で次ターンのマナを予約', lastActionIndex: 4 },
   { name: 'ターン終了 → 敵行動と次ターン開始まで', lastActionIndex: 11 },
   { name: 'たいあたり(記憶)でかたつむりへ反撃', lastActionIndex: 12 },
-  { name: '酸を吐く(記憶)で触手へ腐食付与', lastActionIndex: 13 },
-  { name: '粘液飛ばし(記憶)で触手を撃破', lastActionIndex: 14 },
+  { name: 'ぬるりと食いつく(記憶)で触手へ腐食付与', lastActionIndex: 13 },
+  { name: '体液をかける(記憶)で触手を撃破', lastActionIndex: 14 },
   { name: '腐食カードを使用', lastActionIndex: 15 },
   { name: 'ターン終了 → 敵行動第2セット', lastActionIndex: 21 },
   { name: '疼きで乱れ突き(5×5)を選択', lastActionIndex: 22 },
@@ -198,12 +198,12 @@ function buildOperationEntries(references: ReturnType<typeof collectScenarioRefe
   })
   entries.push({
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '酸を吐く'),
+    card: (battle) => findMemoryCardId(battle, 'ぬるりと食いつく'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
   })
   entries.push({
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '粘液飛ばし'),
+    card: (battle) => findMemoryCardId(battle, '体液をかける'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
   })
   entries.push({

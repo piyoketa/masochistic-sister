@@ -89,7 +89,7 @@ Vue.js側は、主にBattle Classにアクセスし、その構造体を受け�
     - Action
         - Attack
             - SingleAttack
-                - 酸を吐く
+                - ぬるりと食いつく
                 - 吸血（具体的な攻撃）
             - **ContinuousAttack**
         - Skill
@@ -113,7 +113,7 @@ Vue.js側は、主にBattle Classにアクセスし、その構造体を受け�
             - 一回計算したらキャッシュしておくこと
     - 現在の攻撃回数（getMethodでもいいかも？）
 
-- 酸を吐く
+- ぬるりと食いつく
     - SingleAttack 5点
     - 追加効果
         - 説明文：相手の状態に「溶解」を１つ追加する

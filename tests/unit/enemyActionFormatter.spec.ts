@@ -36,15 +36,15 @@ describe('formatEnemyActionLabel', () => {
   it('formats status inflicting single attack', () => {
     const { label, segments } = formatEnemyActionLabel(
       baseHint({
-        title: '酸を吐く',
+        title: 'ぬるりと食いつく',
         type: 'attack',
         pattern: { amount: 5, count: 1, type: 'single' },
         status: { name: '腐食', magnitude: 1 },
       }),
     )
-    expect(label).toBe('酸を吐く💥5+🌀腐食(1)')
+    expect(label).toBe('ぬるりと食いつく💥5+🌀腐食(1)')
     expect(segments).toEqual([
-      { text: '酸を吐く' },
+      { text: 'ぬるりと食いつく' },
       { text: '💥' },
       { text: '5', highlighted: false },
       { text: '+' },

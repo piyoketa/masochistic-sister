@@ -87,8 +87,8 @@ const addableOptions: Array<{ value: DeckCardType; label: string }> = [
   { value: 'predicament', label: '窮地' },
   { value: 'tackle', label: 'たいあたり' },
   { value: 'flurry', label: '乱れ突き' },
-  { value: 'mucus-shot', label: '粘液飛ばし' },
-  { value: 'acid-spit', label: '酸を吐く' },
+  { value: 'mucus-shot', label: '体液をかける' },
+  { value: 'acid-spit', label: 'ぬるりと食いつく' },
   { value: 'poison-sting', label: '毒針' },
   { value: 'blood-suck', label: '血吸い' },
 ]

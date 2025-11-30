@@ -53,7 +53,7 @@ const references = collectScenarioReferences(battleFactory().getSnapshot())
 const operationEntries = buildOperationEntries(references)
 
 const OPERATION_EXPECTATIONS = [
-  { name: '被虐のオーラで鉄花の粘液飛ばしを誘発', lastActionIndex: 2 },
+  { name: '被虐のオーラで鉄花の体液をかけるを誘発', lastActionIndex: 2 },
   { name: '天の鎖でなめくじの行動を拘束', lastActionIndex: 3 },
   { name: '戦いの準備で次ターンのマナを予約', lastActionIndex: 4 },
   { name: 'ターン終了 → 敵行動と次ターン開始', lastActionIndex: 11 },

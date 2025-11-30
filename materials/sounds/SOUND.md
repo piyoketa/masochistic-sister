@@ -43,7 +43,7 @@ materials/sounds/slam　以下のファイルより
 - 30以上: kurage-kosho_gun-fire02.mp3
 
 ### effectType: spit
-「酸を吐く」「粘液飛ばし」などの、液体を使った攻撃はこのタイプに分類する。
+「ぬるりと食いつく」「体液をかける」などの、液体を使った攻撃はこのタイプに分類する。
 このタイプではダメージ量による効果音の差は付けない。
 
 materials/sounds/spit より
