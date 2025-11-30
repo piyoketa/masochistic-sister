@@ -192,6 +192,14 @@ export class Enemy {
     }
     if (this.currentHpValue <= 0 && previousHp > 0) {
       this.statusValue = 'defeated'
+      if (options?.battle) {
+        this.forEachState((state) =>
+          state.onOwnerDefeated({
+            battle: options.battle!,
+            owner: this,
+          }),
+        )
+      }
       if (options?.battle && this.id !== undefined) {
         options.battle.recordDefeatAnimation(this.id)
       }

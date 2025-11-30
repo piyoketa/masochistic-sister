@@ -18,6 +18,7 @@ export { WeakState } from './WeakState'
 export { JointDamageState } from './JointDamageState'
 export { ChargeState } from './ChargeState'
 export { EvilThoughtState } from './EvilThoughtState'
+export { TeamBondState } from './TeamBondState'
 
 import type { State } from '../State'
 import type { StateSnapshot } from '@/types/battle'
@@ -41,6 +42,7 @@ import { WeakState } from './WeakState'
 import { JointDamageState } from './JointDamageState'
 import { ChargeState } from './ChargeState'
 import { EvilThoughtState } from './EvilThoughtState'
+import { TeamBondState } from './TeamBondState'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
@@ -64,6 +66,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-joint-damage': (m) => new JointDamageState(m),
   'state-charge': (m) => new ChargeState(m),
   'state-evil-thought': (m) => new EvilThoughtState(m),
+  'trait-team-bond': () => new TeamBondState(),
 }
 
 export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | undefined {

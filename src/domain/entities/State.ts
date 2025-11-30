@@ -144,6 +144,9 @@ export class State {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onDamageSequenceResolved(_context: DamageSequenceContext): void {}
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onOwnerDefeated(_context: { battle: Battle; owner: Player | Enemy }): void {}
+
   protected setMagnitude(value: number | undefined): void {
     this.props.magnitude = value
   }
