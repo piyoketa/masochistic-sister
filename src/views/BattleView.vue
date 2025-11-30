@@ -1288,7 +1288,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 
 .mana-pop {
   position: relative;
-  width: 120px;
+  width: 100px;
   aspect-ratio: 1 / 1;
   border-radius: 999px;
   background: radial-gradient(circle at 30% 30%, #ffeeb1, #ffd44a 70%);
@@ -1302,10 +1302,10 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 }
 
 .mana-pop__current {
-  font-size: 48px;
+  font-size: 36px;
   position: absolute;
-  left: 30px;
-  top: 10px;
+  left: 27px;
+  top: 8px;
 }
 
 .mana-pop__max {
@@ -1318,13 +1318,13 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 
 .mana-pop__slash {
   position: absolute;
-  width: 68px;
+  width: 45px;
   height: 2px;
   background: currentColor;
   transform: rotate(-52deg);
   opacity: 0.9;
-  right: 20px;
-  bottom: 50px;
+  right: 25px;
+  bottom: 45px;
 }
 
 @keyframes mana-pop-bounce {
