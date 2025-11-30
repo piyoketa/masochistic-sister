@@ -91,7 +91,11 @@ function resetDisplayHp(): void {
   const safe = baseHpStart.value
   displayHp.current = safe.current
   displayHp.max = safe.max
-  isTakingDamage.value = false
+  // ダメージ演出中に Snapshot が更新されても表情差分を途切れさせないため、
+  // outcomes が空の場合のみダメージフラグを落とす。
+  if (!props.outcomes || props.outcomes.length === 0) {
+    isTakingDamage.value = false
+  }
   if (debugEnabled) {
     // eslint-disable-next-line no-console
     console.info('[PlayerCard] resetDisplayHp', { pre: props.preHp, post: props.postHp, displayHp: { ...displayHp } })
