@@ -10,9 +10,9 @@ AudioDemoView の責務:
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { SOUND_ASSETS } from '@/assets/preloadManifest'
-import { useAudioHub } from '@/composables/audioHub'
+import { useAudioStore } from '@/stores/audioStore'
 
-const audioHub = useAudioHub()
+const audioStore = useAudioStore()
 const log = ref<string[]>([])
 const isPreloading = ref(false)
 
@@ -23,10 +23,15 @@ function appendLog(message: string): void {
 
 async function handlePreload(): Promise<void> {
   if (isPreloading.value) return
+  const hub = audioStore.hub
+  if (!hub) {
+    appendLog('AudioHub が初期化されていません')
+    return
+  }
   isPreloading.value = true
   appendLog('プリロード開始')
   try {
-    await audioHub.preloadAll()
+    await hub.preloadAll()
     appendLog('プリロード完了')
   } catch (error) {
     appendLog(`プリロード失敗: ${error}`)
@@ -36,11 +41,11 @@ async function handlePreload(): Promise<void> {
 }
 
 function handlePlay(src: string): void {
-  audioHub.play(src)
+  audioStore.playSe(src)
   appendLog(`再生: ${src}`)
 }
 
-const ready = computed(() => audioHub.ready.value)
+const ready = computed(() => audioStore.hub?.ready.value ?? false)
 </script>
 
 <template>

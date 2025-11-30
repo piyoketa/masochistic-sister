@@ -7,10 +7,8 @@ interface LinkEntry {
 }
 
 import { useAudioStore } from '@/stores/audioStore'
-import { useAudioHub } from '@/composables/audioHub'
 
 const audioStore = useAudioStore()
-const audioHub = useAudioHub()
 
 const testcaseLinks: LinkEntry[] = [
   {
@@ -118,7 +116,6 @@ const bgmVolume = computed({
   get: () => audioStore.bgmVolume,
   set: (v: number) => audioStore.setBgmVolume(v),
 })
-audioHub.setBgmVolume(audioStore.bgmVolume)
 </script>
 
 <template>

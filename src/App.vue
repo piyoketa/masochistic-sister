@@ -13,6 +13,7 @@ const appImageHub = createImageHub()
 provideAudioHub(appAudioHub)
 provideImageHub(appImageHub)
 const audioStore = useAudioStore()
+audioStore.setHub(appAudioHub)
 
 onMounted(() => {
   void appAudioHub.preloadAll().catch(() => undefined)

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import DamageEffects from '@/components/DamageEffects.vue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
+import { useAudioStore } from '@/stores/audioStore'
 
 const maxHp = 120
 const currentHp = ref(maxHp)
+const audioStore = useAudioStore()
 interface Scenario {
   id: string
   label: string
@@ -74,7 +76,6 @@ function playSequence(): void {
 }
 
 const audioSupported = typeof window !== 'undefined' && typeof window.Audio === 'function'
-console.info('[DamageEffectsDemo] audioSupported=', audioSupported)
 const exposedReady = ref(false)
 
 watch(
@@ -90,15 +91,19 @@ watch(
 )
 
 const handleAudioReadyChange = (ready: boolean) => {
-  console.info('[DamageEffectsDemo] audio-ready-change event', ready)
   exposedReady.value = ready
 }
 
 const isAudioReady = computed(() => {
-  if (!audioSupported) {
-    return true
-  }
-  return exposedReady.value
+  if (!audioSupported) return true
+  if (!audioStore.hub) return true
+  return exposedReady.value || audioStore.hub.ready.value
+})
+
+onMounted(() => {
+  void audioStore.hub?.preloadAll().then(() => {
+    exposedReady.value = true
+  })
 })
 
 watch(

@@ -16,13 +16,13 @@ import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import { useRewardStore } from '@/stores/rewardStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
-import { useAudioHub } from '@/composables/audioHub'
+import { useAudioStore } from '@/stores/audioStore'
 
 const rewardStore = useRewardStore()
 const playerStore = usePlayerStore()
 const fieldStore = useFieldStore()
 const router = useRouter()
-const audioHub = useAudioHub()
+const audioStore = useAudioStore()
 
 playerStore.ensureInitialized()
 
@@ -51,7 +51,7 @@ function handleHeal(): void {
   if (!pending || rewardsState.value.hp) return
   if (pending.hpHeal > 0) {
     playerStore.healHp(pending.hpHeal)
-    audioHub.play('/sounds/fields/gain_hp.mp3')
+    audioStore.playSe('/sounds/fields/gain_hp.mp3')
   }
   rewardsState.value.hp = true
 }
@@ -61,7 +61,7 @@ function handleGold(): void {
   if (!pending || rewardsState.value.gold) return
   if (pending.gold > 0) {
     playerStore.addGold(pending.gold)
-    audioHub.play('/sounds/fields/gold.mp3')
+    audioStore.playSe('/sounds/fields/gold.mp3')
   }
   rewardsState.value.gold = true
 }

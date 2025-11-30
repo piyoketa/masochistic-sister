@@ -10,7 +10,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { resolveDamageSound, resolveDefaultSound } from '@/utils/damageSounds'
-import { useAudioHub } from '@/composables/audioHub'
+import { useAudioStore } from '@/stores/audioStore'
 
 const AUDIO_SUPPORTED = typeof window !== 'undefined' && typeof window.Audio === 'function'
 const debugEnv =
@@ -44,8 +44,8 @@ const entries = ref<DamageEntry[]>([])
 const timers: number[] = []
 let displayedCount = 0
 const logs = ref<string[]>([])
-const audioHub = useAudioHub()
-const isReady = computed(() => audioHub.ready.value)
+const audioStore = useAudioStore()
+const isReady = computed(() => audioStore.hub?.ready.value ?? false)
 const debugEnabled = computed(() => debugEnv || Boolean(props.debug))
 
 function appendLog(message: string): void {
@@ -79,7 +79,7 @@ function playHitSound(outcome: DamageOutcome): void {
     console.info('[DamageEffects] play sound', sound)
   }
 
-  audioHub.play(sound.src, { volume: 0.8 })
+  audioStore.playSe(sound.src)
 }
 
 function scheduleRemoval(entryId: number, delay: number, totalEntries: number): void {

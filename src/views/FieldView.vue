@@ -7,7 +7,7 @@ import type { FieldNode } from '@/fields/domains/FieldNode'
 import RelicList from '@/components/RelicList.vue'
 import { mapClassNamesToDisplay } from '@/view/relicDisplayMapper'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
-import { useAudioHub } from '@/composables/audioHub'
+import { useAudioStore } from '@/stores/audioStore'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -23,7 +23,7 @@ const playerStatus = computed(() => ({
 }))
 const relics = computed(() => mapClassNamesToDisplay(playerStore.relics))
 const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
-const audioHub = useAudioHub()
+const audioStore = useAudioStore()
 
 const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
 const levels = computed(() => fieldStore.field.levels)
@@ -67,15 +67,15 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
   }
 }
 
-audioHub.playBgm('/sounds/bgm/field.mp3')
+audioStore.playBgm('/sounds/bgm/field.mp3')
 
 onMounted(() => {
-  audioHub.playBgm('/sounds/bgm/field.mp3')
+  audioStore.playBgm('/sounds/bgm/field.mp3')
 })
 
-// onUnmounted(() => {
-//   audioHub.stopBgm()
-// })
+onUnmounted(() => {
+  audioStore.stopBgm()
+})
 </script>
 
 <template>

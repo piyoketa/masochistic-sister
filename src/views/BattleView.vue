@@ -50,7 +50,7 @@ import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloa
 import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { BattleReward } from '@/domain/battle/BattleReward'
-import { useAudioHub } from '@/composables/audioHub'
+import { useAudioStore } from '@/stores/audioStore'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import RelicList from '@/components/RelicList.vue'
 import { mapSnapshotRelics, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
@@ -131,7 +131,7 @@ const deckCardInfos = computed<CardInfo[]>(() => buildCardInfos(snapshot.value?.
 const discardCardInfos = computed<CardInfo[]>(() =>
   buildCardInfos(snapshot.value?.discardPile ?? [], 'discard'),
 )
-const audioHub = useAudioHub()
+const audioStore = useAudioStore()
 const imageHub = createImageHub()
 provideImageHub(imageHub)
 const animationDebugLoggingEnabled =
@@ -148,7 +148,7 @@ function preloadBattleAssets(): Promise<void> {
     return battleAssetPreloadPromise
   }
   battleAssetPreloadPromise = Promise.allSettled([
-    audioHub.preloadAll(),
+    audioStore.hub?.preloadAll() ?? Promise.resolve(),
     imageHub.preloadAll(IMAGE_ASSETS),
   ]).then(() => undefined)
   return battleAssetPreloadPromise
@@ -209,7 +209,7 @@ onMounted(() => {
       console.warn('[BattleView] preloadBattleAssets failed', error)
     }
   })
-  audioHub.playBgm('/sounds/bgm/battle.mp3')
+  audioStore.playBgm('/sounds/bgm/battle.mp3')
   viewManager
     .initialize()
     .catch((error) => {
@@ -221,7 +221,7 @@ onMounted(() => {
 onUnmounted(() => {
   subscriptions.forEach((dispose) => dispose())
   clearErrorOverlayTimer()
-  audioHub.stopBgm()
+  audioStore.stopBgm()
 })
 
 const turnLabel = computed(() => {
@@ -380,7 +380,7 @@ function playAudioCue(soundId: string): void {
   if (!soundId) {
     return
   }
-  audioHub.play(soundId)
+  audioStore.playSe(soundId)
 }
 
 function resolveEnemySelection(enemyId: number): void {

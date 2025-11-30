@@ -17,7 +17,7 @@ import DamageEffects from '@/components/DamageEffects.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
-import { useAudioHub } from '@/composables/audioHub'
+import { useAudioStore } from '@/stores/audioStore'
 
 const props = defineProps<{
   enemy: EnemyInfo
@@ -36,7 +36,7 @@ const emit = defineEmits<{
 
 const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
   useDescriptionOverlay()
-const audioHub = useAudioHub()
+const audioStore = useAudioStore()
 
 let activeTooltip: { key: string; text: string } | null = null
 const damageOutcomes = ref<DamageOutcome[]>([])
@@ -190,7 +190,7 @@ async function playDamage(outcomes: readonly DamageOutcome[]): Promise<void> {
 }
 
 function playEnemySound(effect: 'defeat' | 'escape'): void {
-  audioHub.play(ENEMY_AUDIO_CUES[effect])
+  audioStore.playSe(ENEMY_AUDIO_CUES[effect])
 }
 
 defineExpose({ playDamage, playEnemySound })
