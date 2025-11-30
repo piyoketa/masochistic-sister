@@ -41,6 +41,7 @@ export class TestEnemyTeam extends EnemyTeam {
 
     super({
       id: 'enemy-team-test-encounter',
+      name: 'テストかたつむり隊',
       members: [orc, orcDancer, tentacle, snail],
     })
   }

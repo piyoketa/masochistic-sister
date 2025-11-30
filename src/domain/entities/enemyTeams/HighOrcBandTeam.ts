@@ -27,6 +27,7 @@ export class HighOrcBandTeam extends EnemyTeam {
 
     super({
       id: 'high-orc-band',
+      name: 'ハイオーク一味',
       members: [lancerA, lancerB, dancer],
     })
   }

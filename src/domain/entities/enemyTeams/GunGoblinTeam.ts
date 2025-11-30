@@ -30,6 +30,7 @@ export class GunGoblinTeam extends EnemyTeam {
 
     super({
       id: 'gun-goblin-team',
+      name: '銃ゴブリン隊',
       members: [gunGoblin, eyeball, snail, wrestler],
     })
   }

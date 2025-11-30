@@ -7,6 +7,7 @@ import type { Action } from './Action'
 
 export interface EnemyTeamProps {
   id: string
+  name?: string
   members: Enemy[]
   turnOrder?: number[]
   enemyRepository?: EnemyRepository
@@ -14,12 +15,14 @@ export interface EnemyTeamProps {
 
 export class EnemyTeam {
   private readonly idValue: string
+  private readonly nameValue: string
   private readonly membersValue: Enemy[]
   private readonly turnOrderValue: number[]
   private readonly repositoryValue: EnemyRepository
 
   constructor(props: EnemyTeamProps) {
     this.idValue = props.id
+    this.nameValue = props.name ?? props.id
     this.repositoryValue = props.enemyRepository ?? new EnemyRepository()
     this.membersValue = props.members.map((enemy) => this.repositoryValue.register(enemy))
     this.turnOrderValue =
@@ -36,6 +39,10 @@ export class EnemyTeam {
 
   get id(): string {
     return this.idValue
+  }
+
+  get name(): string {
+    return this.nameValue
   }
 
   get members(): Enemy[] {

@@ -24,6 +24,7 @@ export class OrcHeroEliteTeam extends EnemyTeam {
   constructor() {
     super({
       id: 'orc-hero-elite',
+      name: 'オークヒーロー隊',
       members: [
         new OrcHeroEnemy(),
         new BatEnemy(),

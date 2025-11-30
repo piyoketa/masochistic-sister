@@ -32,6 +32,7 @@ export class BeamCannonEliteTeam extends EnemyTeam {
 
     super({
       id: 'beam-cannon-elite',
+      name: 'ビーム砲部隊',
       members: [cannon, drunkOrc, ghost, tentacle],
     })
   }

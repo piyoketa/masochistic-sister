@@ -8,6 +8,7 @@ export class HummingbirdAlliesTeam extends EnemyTeam {
   constructor() {
     super({
       id: 'hummingbird-allies',
+      name: 'ハチドリ隊',
       members: [
         new OrcLancerEnemy({
           actionQueueFactory: () =>

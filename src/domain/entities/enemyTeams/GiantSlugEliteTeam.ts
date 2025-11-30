@@ -14,6 +14,7 @@ export class GiantSlugEliteTeam extends EnemyTeam {
     })
     super({
       id: 'giant-slug-elite',
+      name: '大王なめくじ隊',
       members: [king, slugA, slugB],
     })
   }

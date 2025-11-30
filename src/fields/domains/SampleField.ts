@@ -21,6 +21,7 @@ import {
   GiantSlugEliteTeam,
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
+import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),
@@ -79,7 +80,7 @@ function buildLevels(ownedRelics: string[]): FieldLevel[] {
   const cardReward: CardRewardNode = {
     id: 'card-reward-1',
     type: 'card-reward',
-    level: 2,
+    level: 2, // 後続で一括上書き
     label: 'カード獲得マス',
     candidateActions: [...CARD_CANDIDATES],
     drawCount: 3,
@@ -88,15 +89,15 @@ function buildLevels(ownedRelics: string[]): FieldLevel[] {
   const relicReward: RelicRewardNode = {
     id: 'relic-reward-1',
     type: 'relic-reward',
-    level: 2,
+    level: 3, // 後続で一括上書き
     label: 'レリック獲得マス',
     candidateRelics: [...RELIC_CANDIDATES],
     drawCount: 1,
     nextNodeIndices: [],
   }
 
-  const level3to6: FieldNode[][] = []
-  for (let level = 3; level <= 6; level += 1) {
+  const level4to7: FieldNode[][] = []
+  for (let level = 4; level <= 7; level += 1) {
     const nodes: FieldNode[] = []
     for (let i = 0; i < 3; i += 1) {
       const roll = Math.random()
@@ -108,21 +109,26 @@ function buildLevels(ownedRelics: string[]): FieldLevel[] {
         nodes.push(createFixedRelicRewardNode(level, i, ownedRelics))
       }
     }
-    level3to6.push(nodes)
+    level4to7.push(nodes)
   }
 
   const eliteNodes: BossEnemyNode[] = shuffleArray([...ELITE_POOL])
     .slice(0, 2)
-    .map((teamId, idx) => ({
-      id: `boss-${idx + 1}`,
-      type: 'boss-enemy',
-      level: 7,
-      label: `BOSS「${teamId}」`,
-      enemyTeamId: teamId,
-      nextNodeIndices: [],
-    }))
+    .map((teamId, idx) => {
+      const teamFactory = ENEMY_TEAM_FACTORIES[teamId]
+      const team = teamFactory ? teamFactory() : new SnailTeam()
+      const labelName = team.name ?? teamId
+      return {
+        id: `boss-${idx + 1}`,
+        type: 'boss-enemy',
+        level: 8,
+        label: `BOSS「${labelName}」`,
+        enemyTeamId: teamId,
+        nextNodeIndices: [],
+      }
+    })
 
-  const nodesByLevel: FieldNode[][] = [[level1], [cardReward, relicReward], ...level3to6, eliteNodes]
+  const nodesByLevel: FieldNode[][] = [[level1], [cardReward], [relicReward], ...level4to7, eliteNodes]
 
   nodesByLevel.forEach((nodes, idx) => {
     const next = nodesByLevel[idx + 1]
@@ -173,11 +179,12 @@ function createRandomCardRewardNode(level: number, idx: number): RandomCardRewar
 function createFixedRelicRewardNode(level: number, idx: number, owned: string[]): FixedRelicRewardNode {
   const available = RELIC_CANDIDATES.filter((name) => !owned.includes(name))
   const relic = available[0] ?? RELIC_CANDIDATES[0] ?? 'PureBodyRelic'
+  const relicName = getRelicInfo(relic)?.name ?? relic
   return {
     id: `fixed-relic-${level}-${idx}`,
     type: 'fixed-relic-reward',
     level,
-    label: `レリック「${relic}」を獲得`,
+    label: `レリック「${relicName}」を獲得`,
     candidateRelics: [...RELIC_CANDIDATES],
     selectedRelic: relic,
     nextNodeIndices: [],

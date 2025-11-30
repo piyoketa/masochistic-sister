@@ -15,6 +15,7 @@ export class SnailTeam extends EnemyTeam {
 
     super({
       id: 'snail',
+      name: 'かたつむりチーム',
       members: [orc, orcDancer, tentacle, snail],
     })
   }
