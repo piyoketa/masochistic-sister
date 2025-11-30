@@ -9,7 +9,7 @@ title: アニメーション再設計計画（バッチ導入）
   - `memory-card`（`Player.rememberEnemyAttack` 時の記憶カード生成、`waitMs = 1500ms`、敵の `enemy-action-batch` 終了後に `remember-enemy-attack-batch` を追加）。  
   - `audio`（効果音再生向け、`waitMs = 500ms`、`Action` に `soundId` がある場合に生成）。  
 - **バッチ構成の例**  
-  - `enemy-act`（吸いつく）:  
+  - `enemy-act`（酸を吐く）:  
     1. `enemy-act-start-batch`: `enemy-highlight`（`waitMs=0`）。  
     2. `enemy-action-batch`: `player-damage`（`waitMs=(count-1)*200+500`）、`create-state-card`（`waitMs=500`）。  
     3. `remember-enemy-attack-batch`: `memory-card`（`waitMs=1500`）。  

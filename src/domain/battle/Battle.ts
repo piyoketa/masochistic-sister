@@ -1182,10 +1182,10 @@ export class Battle {
     }
 
     const acidMemories = cards.filter(
-      (card) => this.isMemoryCard(card) && card.action?.name === '吸いつく',
+      (card) => this.isMemoryCard(card) && card.action?.name === '酸を吐く',
     )
     const others = cards.filter(
-      (card) => !(this.isMemoryCard(card) && card.action?.name === '吸いつく'),
+      (card) => !(this.isMemoryCard(card) && card.action?.name === '酸を吐く'),
     )
 
     return [...acidMemories, ...others]

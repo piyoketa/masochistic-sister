@@ -6,12 +6,12 @@ import { CorrosionState } from '../states/CorrosionState'
 export class AcidSpitAction extends Attack {
   constructor() {
     super({
-      name: '吸いつく',
+      name: '酸を吐く',
       baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
       effectType: 'spit',
       inflictStates: [() => new CorrosionState()],
       cardDefinition: {
-        title: '吸いつく',
+        title: '酸を吐く',
         cardType: 'attack',
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),

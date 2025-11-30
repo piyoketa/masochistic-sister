@@ -24,7 +24,7 @@ export class GiantSlugKingEnemy extends Enemy {
       maxHp: 100,
       currentHp: 100,
       actions: [new SummonAllyAction(), flurry],
-      states: [new LargeState(), new TeamBondState()],
+      states: [new LargeState()],
       image: '/assets/enemies/slug-king.jpg',
       actionQueueFactory: () =>
         new ConditionalEnemyActionQueue([
