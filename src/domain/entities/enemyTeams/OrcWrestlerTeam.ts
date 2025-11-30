@@ -12,19 +12,19 @@ export class OrcWrestlerTeam extends EnemyTeam {
   constructor() {
     const bat = new BatEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
+        new DefaultEnemyActionQueue(),
     })
     const ghost = new GhostEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: ScareAction }),
+        new DefaultEnemyActionQueue(),
     })
     const snail = new SnailEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
+        new DefaultEnemyActionQueue(),
     })
     const wrestler = new OrcWrestlerEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: JointLockAction }),
+        new DefaultEnemyActionQueue(),
     })
     super({
       id: 'orc-wrestler-team',

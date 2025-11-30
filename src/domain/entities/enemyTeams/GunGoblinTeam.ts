@@ -13,19 +13,19 @@ export class GunGoblinTeam extends EnemyTeam {
   constructor() {
     const gunGoblin = new GunGoblinEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: PowerChargeAction }),
+        new DefaultEnemyActionQueue(),
     })
     const eyeball = new EyeballGhostEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: ConfusingGazeAction }),
+        new DefaultEnemyActionQueue(),
     })
     const snail = new SnailEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
+        new DefaultEnemyActionQueue(),
     })
     const wrestler = new OrcWrestlerEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: JointLockAction }),
+        new DefaultEnemyActionQueue(),
     })
 
     super({

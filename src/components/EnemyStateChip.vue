@@ -79,8 +79,8 @@ const emit = defineEmits<{
     rgba(30, 8, 10, 0) 360deg
   );
   /* 中央は透明で枠のみ光らせる */
-  mask: radial-gradient(circle, transparent 60%, black 62%);
-  -webkit-mask: radial-gradient(circle, transparent 60%, black 62%);
+  /* mask: radial-gradient(circle, transparent 60%, black 62%);
+  -webkit-mask: radial-gradient(circle, transparent 60%, black 62%); */
   opacity: 0;
   animation: gradient-angle 3s infinite linear;
   pointer-events: none;

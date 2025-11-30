@@ -14,15 +14,15 @@ export class HighOrcBandTeam extends EnemyTeam {
   constructor() {
     const lancerA = new HighOrcLancerEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: BattleDanceAction }),
+        new DefaultEnemyActionQueue(),
     })
     const lancerB = new HighOrcLancerEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: FlurryAction }),
+        new DefaultEnemyActionQueue(),
     })
     const dancer = new HighOrcDancerEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: TailwindAction }),
+        new DefaultEnemyActionQueue(),
     })
 
     super({

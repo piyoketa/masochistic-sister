@@ -16,6 +16,10 @@ export class FiveLegsState extends TraitState {
     })
   }
 
+  override description(): string {
+    return '各ターン開始時にスタンカウント(5)を付与する。'
+  }
+
   override onTurnStart(context: { battle: Battle; owner: Player | Enemy }): void {
     const { battle, owner } = context
     owner.removeState('state-stun-count')

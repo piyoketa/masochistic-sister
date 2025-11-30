@@ -15,19 +15,19 @@ export class BeamCannonEliteTeam extends EnemyTeam {
   constructor() {
     const cannon = new GoblinBeamCannonEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: PowerChargeAction }),
+        new DefaultEnemyActionQueue(),
     })
     const drunkOrc = new DrunkOrcEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: DrunkenBreathAction }),
+        new DefaultEnemyActionQueue(),
     })
     const ghost = new GhostEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: BeamShotAction }),
+        new DefaultEnemyActionQueue(),
     })
     const tentacle = new TentacleEnemy({
       actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: BeamShotAction }),
+        new DefaultEnemyActionQueue(),
     })
 
     super({
