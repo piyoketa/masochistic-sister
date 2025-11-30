@@ -19,7 +19,7 @@ import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
-import type { EnemyInfo, EnemyTrait, EnemyActionHint, EnemyStatus } from '@/types/battle'
+import type { EnemyInfo, EnemyTrait, EnemyActionHint, EnemyStatus, StateSnapshot } from '@/types/battle'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
@@ -347,14 +347,19 @@ function handleHoverEnd(enemyId: number): void {
   emit('hover-end', enemyId)
 }
 
-function mapStatesToEntries(states?: State[]): EnemyTrait[] | undefined {
+function mapStatesToEntries(states?: Array<State | StateSnapshot>): EnemyTrait[] | undefined {
   if (!states || states.length === 0) {
     return undefined
   }
 
   return states.map((state) => ({
     name: state.name,
-    detail: state.description(),
+    detail:
+      typeof (state as State).description === 'function'
+        ? (state as State).description()
+        : typeof (state as StateSnapshot).description === 'string'
+        ? (state as StateSnapshot).description ?? ''
+        : '',
     magnitude: state.magnitude,
   }))
 }

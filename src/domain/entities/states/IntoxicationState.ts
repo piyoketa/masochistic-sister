@@ -1,7 +1,21 @@
-import { State } from '../State'
+import { BadState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
+import { StateAction } from '../Action/StateAction'
+import type { CardTag } from '../CardTag'
 
-export class IntoxicationState extends State {
+class IntoxicationStateAction extends StateAction {
+  constructor(state: IntoxicationState, tags?: CardTag[]) {
+    super({
+      name: state.name,
+      cardDefinition: state.createCardDefinition(),
+      tags,
+      stateId: state.id,
+      sourceState: state,
+    })
+  }
+}
+
+export class IntoxicationState extends BadState {
   constructor(magnitude = 1) {
     super({
       id: 'state-intoxication',
@@ -21,5 +35,9 @@ export class IntoxicationState extends State {
     const delta = this.magnitude ?? 0
     // 将来的に Action.cost で酩酊を参照し、記憶カードのコストを delta 増加させる想定。
     return `「記憶」タグのカードを使うとき、コストが${delta}増加する`
+  }
+
+  override action(tags?: CardTag[]): StateAction {
+    return new IntoxicationStateAction(this, tags)
   }
 }

@@ -11,11 +11,25 @@ LightweightState.ts の責務:
 - `Attack.calcDamages`: pre-hit計算時に `modifyPreHit` を通じて倍率・回数補正が適用される。
 - `Damages`: 適用済みの State として記録され、後続の記憶カード生成に利用される。
 */
-import { State } from '../State'
+import { BadState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
+import { StateAction } from '../Action/StateAction'
+import type { CardTag } from '../CardTag'
 
-export class LightweightState extends State {
+class LightweightStateAction extends StateAction {
+  constructor(state: LightweightState, tags?: CardTag[]) {
+    super({
+      name: state.name,
+      cardDefinition: state.createCardDefinition(),
+      tags,
+      stateId: state.id,
+      sourceState: state,
+    })
+  }
+}
+
+export class LightweightState extends BadState {
   constructor(magnitude = 1) {
     super({
       id: 'state-lightweight',
@@ -65,5 +79,9 @@ export class LightweightState extends State {
       amount: params.amount * multiplier,
       count: params.count + stacks,
     }
+  }
+
+  override action(tags?: CardTag[]): StateAction {
+    return new LightweightStateAction(this, tags)
   }
 }

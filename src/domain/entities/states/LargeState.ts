@@ -1,7 +1,7 @@
-import { State } from '../State'
+import { TraitState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 
-export class LargeState extends State {
+export class LargeState extends TraitState {
   constructor() {
     super({
       id: 'state-large',

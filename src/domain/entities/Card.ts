@@ -7,17 +7,16 @@ import type {
 } from './Action'
 import type { CardTag } from './CardTag'
 import { CardCategoryTag } from './CardTag'
-import type { State } from './State'
 import type { CardDefinition } from './CardDefinition'
 import type { Battle } from '../battle/Battle'
 import type { CardOperation } from './operations'
-import { PureBodyRelic } from './relics/PureBodyRelic'
+import { StateAction } from './Action/StateAction'
+import type { State } from './State'
 
 const RUNTIME_COST_KEY = Symbol('runtimeCostOverride')
 
 export interface CardProps {
-  action?: Action
-  state?: State
+  action: Action
   cardTags?: CardTag[]
   offensiveStates?: State[]
   defensiveStates?: State[]
@@ -26,8 +25,7 @@ export interface CardProps {
 
 export class Card {
   private idValue?: number
-  private readonly actionRef?: Action
-  private readonly stateRef?: State
+  private readonly actionRef: Action
   private readonly cardTagsValue?: CardTag[]
   private readonly offensiveStatesValue?: State[]
   private readonly defensiveStatesValue?: State[]
@@ -37,12 +35,11 @@ export class Card {
   private extraCategoryTags: CardCategoryTag[] = []
 
   constructor(props: CardProps) {
-    if (!props.action && !props.state) {
-      throw new Error('Card requires an action or a state reference')
+    if (!props.action) {
+      throw new Error('Card requires an action')
     }
 
     this.actionRef = props.action
-    this.stateRef = props.state
     this.cardTagsValue = props.cardTags
     this.offensiveStatesValue = props.offensiveStates
     this.defensiveStatesValue = props.defensiveStates
@@ -70,8 +67,15 @@ export class Card {
     return this.actionRef
   }
 
+  /**
+   * 状態カードの場合に対応する State インスタンスを返す。
+   * 既存の getBaseStates などの互換性維持用。
+   */
   get state(): State | undefined {
-    return this.stateRef
+    if (this.actionRef instanceof StateAction) {
+      return this.actionRef.state
+    }
+    return undefined
   }
 
   get effectTags(): CardTag[] | undefined {
@@ -167,16 +171,8 @@ export class Card {
   }
 
   get description(): string {
-    // 描画時には定義ではなく参照しているAction/Stateから説明文を動的に生成する
-    if (this.actionRef) {
-      return this.actionRef.describe()
-    }
-
-    if (this.stateRef) {
-      return this.stateRef.description()
-    }
-
-    return ''
+    // 描画時には定義ではなく参照しているActionから説明文を動的に生成する
+    return this.actionRef.describe()
   }
 
   get image(): string | undefined {
@@ -187,19 +183,10 @@ export class Card {
    * バトル文脈を踏まえた実コストを計算する。Action.cost に委譲し、酩酊などの補正を今後追加しやすくする。
    */
   calculateCost(context?: ActionCostContext): number {
-    if (this.actionRef) {
-      return this.actionRef.cost({
-        ...context,
-        cardTags: context?.cardTags ?? this.cardTags ?? [],
-      })
-    }
-    // 状態異常カードかつ清廉な身体が有効ならコストを1軽減（最低0）
-    const baseCost = this.definition.cost
-    const pureBody = context?.battle?.hasActiveRelic('pure-body')
-    if (this.type === 'status' && pureBody) {
-      return Math.max(0, baseCost - 1)
-    }
-    return baseCost
+    return this.actionRef.cost({
+      ...context,
+      cardTags: context?.cardTags ?? this.cardTags ?? [],
+    })
   }
 
   setRuntimeCost(cost: number | undefined): void {
@@ -209,24 +196,6 @@ export class Card {
 
   play(battle: Battle, operations: CardOperation[] = []): void {
     const action = this.actionRef
-    if (!action) {
-      const state = this.stateRef
-      if (!state) {
-        throw new Error('Card cannot be played without an action')
-      }
-
-      battle.player.spendMana(this.cost, { battle })
-      battle.player.removeState(state.id)
-      battle.exilePile.add(this)
-      battle.recordPlayCardAnimationContext({ cardId: this.id })
-
-      // 状態異常カードのコスト軽減 relic を使用済みにする
-      const pureBody = battle.getRelicById('pure-body') as PureBodyRelic | undefined
-      pureBody?.markUsed()
-
-      return
-    }
-
     // 戦闘状況に応じたコストを算出し、支払いと表示に反映する
     const resolvedCost = this.calculateCost({
       battle,
@@ -262,7 +231,19 @@ export class Card {
         : undefined,
     })
 
-    this.moveToNextZone(battle)
+    // 状態カード（StateAction化）はExileへ送る
+    if (action instanceof StateAction && action.shouldExileOnPlay) {
+      battle.exilePile.add(this)
+      if (this.id !== undefined) {
+        battle.recordCardTrashAnimation({
+          cardIds: [this.id],
+          cardTitles: [this.title],
+          variant: 'eliminate',
+        })
+      }
+    } else {
+      this.moveToNextZone(battle)
+    }
   }
 
   private extractAudioCueFromContext(context: ActionContext): ActionAudioCue | undefined {
@@ -300,7 +281,6 @@ export class Card {
   copyWith(overrides: Partial<CardProps>): Card {
     return new Card({
       action: overrides.action ?? this.actionRef,
-      state: overrides.state ?? this.stateRef,
       cardTags: overrides.cardTags ?? this.cardTagsValue,
       offensiveStates: overrides.offensiveStates ?? this.offensiveStatesValue,
       defensiveStates: overrides.defensiveStates ?? this.defensiveStatesValue,
@@ -362,9 +342,7 @@ export class Card {
   }
 
   private composeDefinition(): CardDefinition {
-    const baseDefinition = this.actionRef
-      ? this.actionRef.createCardDefinition()
-      : this.stateRef!.createCardDefinition()
+    const baseDefinition = this.actionRef.createCardDefinition()
     const overrides = this.definitionOverridesValue
 
     if (!overrides) {
@@ -451,4 +429,20 @@ export class Card {
       target: skillTarget,
     }
   }
+}
+
+export function createStateActionFromState(state: State, cardTags?: CardTag[]): StateAction {
+  if ('action' in state && typeof (state as any).action === 'function') {
+    return (state as any).action(cardTags) as StateAction
+  }
+  console.warn(
+    `State ${state.id} は、BadStateではありません。StateActionを直接返すactionメソッドを実装してください。`,
+  )
+  return new StateAction({
+    name: state.name,
+    cardDefinition: state.createCardDefinition(),
+    tags: cardTags,
+    stateId: state.id,
+    sourceState: state,
+  })
 }

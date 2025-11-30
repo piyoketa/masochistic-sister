@@ -1,8 +1,22 @@
-import { State } from '../State'
+import { BadState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
+import { StateAction } from '../Action/StateAction'
+import type { CardTag } from '../CardTag'
 
-export class StickyState extends State {
+class StickyStateAction extends StateAction {
+  constructor(state: StickyState, tags?: CardTag[]) {
+    super({
+      name: state.name,
+      cardDefinition: state.createCardDefinition(),
+      tags,
+      stateId: state.id,
+      sourceState: state,
+    })
+  }
+}
+
+export class StickyState extends BadState {
   constructor(magnitude = 1) {
     super({
       id: 'state-sticky',
@@ -37,5 +51,9 @@ export class StickyState extends State {
       ...params,
       count: params.count + bonus,
     }
+  }
+
+  override action(tags?: CardTag[]): StateAction {
+    return new StickyStateAction(this, tags)
   }
 }

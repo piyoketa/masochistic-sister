@@ -1,5 +1,5 @@
 import { Enemy } from '../Enemy'
-import { State } from '../State'
+import { TraitState } from '../State'
 import type { Battle } from '../../battle/Battle'
 import type { Player } from '../Player'
 import type { Action } from '../Action'
@@ -11,7 +11,7 @@ interface ActionResolvedContext {
   action: Action
 }
 
-export class CowardTrait extends State {
+export class CowardTrait extends TraitState {
   constructor() {
     super({
       id: 'trait-coward',

@@ -21,6 +21,7 @@ import type { State as StateType } from '@/domain/entities/State'
 import * as actionModules from '@/domain/entities/actions'
 import * as stateModules from '@/domain/entities/states'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
+import { createStateActionFromState } from '@/domain/entities/Card'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
@@ -141,7 +142,8 @@ export class Library {
 
   private buildStateCardInfo(state: StateType, index: number): CardInfo | null {
     try {
-      const card = new Card({ state })
+      const stateAction = createStateActionFromState(state)
+      const card = new Card({ action: stateAction })
       const identifier = `library-state-${state.constructor.name}-${index}`
       return this.buildCardInfo(card, identifier)
     } catch {

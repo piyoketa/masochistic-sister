@@ -12,14 +12,14 @@ GuardianPetalState.ts の責務:
 - `Enemy` / `Player`: `addState` を経由してバリアを付与する。
 - `Battle`: ここでは参照のみで直接操作しない。
 */
-import { State } from '../State'
+import { TraitState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import { BarrierState } from './BarrierState'
 import { Enemy } from '../Enemy'
 import type { Battle } from '../../battle/Battle'
 import type { Player } from '../Player'
 
-export class GuardianPetalState extends State {
+export class GuardianPetalState extends TraitState {
   constructor(magnitude = 0) {
     super({
       id: 'state-guardian-petal',

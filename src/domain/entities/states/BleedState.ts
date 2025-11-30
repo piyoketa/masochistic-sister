@@ -1,10 +1,24 @@
-import { State } from '../State'
+import { BadState } from '../State'
 import { Attack } from '../Action'
 import { Enemy } from '../Enemy'
 import { StatusTypeCardTag } from '../cardTags'
 import type { Battle } from '../../battle/Battle'
 import type { Player } from '../Player'
 import type { Action } from '../Action'
+import { StateAction } from '../Action/StateAction'
+import type { CardTag } from '../CardTag'
+
+class BleedStateAction extends StateAction {
+  constructor(state: BleedState, tags?: CardTag[]) {
+    super({
+      name: state.name,
+      cardDefinition: state.createCardDefinition(),
+      tags,
+      stateId: state.id,
+      sourceState: state,
+    })
+  }
+}
 
 interface ActionResolvedContext {
   battle: Battle
@@ -13,7 +27,7 @@ interface ActionResolvedContext {
   action: Action
 }
 
-export class BleedState extends State {
+export class BleedState extends BadState {
   constructor(magnitude = 1) {
     super({
       id: 'state-bleed',
@@ -52,5 +66,9 @@ export class BleedState extends State {
     } else {
       context.battle.damagePlayer(damage)
     }
+  }
+
+  override action(tags?: CardTag[]): StateAction {
+    return new BleedStateAction(this, tags)
   }
 }

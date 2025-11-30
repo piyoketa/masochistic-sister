@@ -1,10 +1,10 @@
-import { State, type DamageHitContext, type DamageSequenceContext } from '../State'
+import { TraitState, type DamageHitContext, type DamageSequenceContext } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import { StrengthState } from './StrengthState'
 import type { Enemy } from '../Enemy'
 import type { Player } from '../Player'
 
-export class FuryAwakeningState extends State {
+export class FuryAwakeningState extends TraitState {
   private pendingStacks = 0
 
   constructor() {

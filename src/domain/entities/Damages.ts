@@ -81,7 +81,7 @@ export class Damages {
     let currentCount = init.baseCount
 
     const appliedAttacker: State[] = []
-    for (const state of sortStatesByPriority(init.attackerStates)) {
+    for (const state of sortStatesByPriority(filterStatesWithModify(init.attackerStates))) {
       const beforeAmount = currentAmount
       const beforeCount = currentCount
       const result = state.modifyPreHit({
@@ -101,7 +101,7 @@ export class Damages {
     }
 
     const appliedDefender: State[] = []
-    for (const state of sortStatesByPriority(init.defenderStates)) {
+    for (const state of sortStatesByPriority(filterStatesWithModify(init.defenderStates))) {
       const beforeAmount = currentAmount
       const beforeCount = currentCount
       const result = state.modifyPreHit({
@@ -180,4 +180,18 @@ function sortStatesByPriority(states?: State[]): State[] {
     return []
   }
   return [...states].sort((a, b) => a.priority - b.priority)
+}
+
+function filterStatesWithModify(states?: State[]): State[] {
+  if (!states || states.length === 0) {
+    return []
+  }
+  return states.filter((state) => {
+    const ok = typeof (state as State).modifyPreHit === 'function'
+    if (!ok) {
+      // eslint-disable-next-line no-console
+      console.warn('[Damages] 無効なStateが含まれています', state)
+    }
+    return ok
+  })
 }

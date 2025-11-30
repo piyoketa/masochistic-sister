@@ -5,11 +5,22 @@ export type EnemySkill = {
 
 export type EnemyStatus = 'active' | 'defeated' | 'escaped'
 
-export type EnemyTrait = {
+export type StateCategory = 'bad' | 'buff' | 'trait'
+
+export type BaseStateSnapshot = {
+  id: string
   name: string
-  detail: string
+  description?: string
   magnitude?: number
+  category: StateCategory
+  isImportant?: boolean
 }
+
+export type BadStateSnapshot = BaseStateSnapshot & { category: 'bad' }
+export type BuffStateSnapshot = BaseStateSnapshot & { category: 'buff' }
+export type TraitStateSnapshot = BaseStateSnapshot & { category: 'trait' }
+export type StateSnapshot = BadStateSnapshot | BuffStateSnapshot | TraitStateSnapshot
+
 
 export type EnemyActionHint = {
   title: string
@@ -51,7 +62,7 @@ export type EnemyInfo = {
   }
   nextActions?: EnemyActionHint[]
   skills: EnemySkill[]
-  states?: EnemyTrait[]
+  states?: StateSnapshot[]
 }
 
 export type CardType = 'attack' | 'skill' | 'status' | 'skip'

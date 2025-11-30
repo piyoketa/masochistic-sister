@@ -1,8 +1,8 @@
-import { State } from '../State'
+import { BuffState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
-export class AccelerationState extends State {
+export class AccelerationState extends BuffState {
   constructor(magnitude = 1) {
     super({
       id: 'state-acceleration',

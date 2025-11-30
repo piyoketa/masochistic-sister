@@ -14,3 +14,50 @@ export { PoisonState } from './PoisonState'
 export { LargeState } from './LargeState'
 export { FuryAwakeningState } from './FuryAwakeningState'
 export { IntoxicationState } from './IntoxicationState'
+
+import type { State } from '../State'
+import type { StateSnapshot } from '@/types/battle'
+import { HardShellState } from './HardShellState'
+import { CorrosionState } from './CorrosionState'
+import { AccelerationState } from './AccelerationState'
+import { StickyState } from './StickyState'
+import { StrengthState } from './StrengthState'
+import { CowardTrait } from './CowardTrait'
+import { BleedState } from './BleedState'
+import { BarrierState } from './BarrierState'
+import { GuardianPetalState } from './GuardianPetalState'
+import { HeavyweightState } from './HeavyweightState'
+import { LightweightState } from './LightweightState'
+import { FlightState } from './FlightState'
+import { PoisonState } from './PoisonState'
+import { LargeState } from './LargeState'
+import { FuryAwakeningState } from './FuryAwakeningState'
+import { IntoxicationState } from './IntoxicationState'
+
+// Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
+export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
+  'state-hard-shell': (m) => new HardShellState(m),
+  'state-corrosion': (m) => new CorrosionState(m),
+  'state-acceleration': (m) => new AccelerationState(m),
+  'state-sticky': (m) => new StickyState(m),
+  'state-strength': (m) => new StrengthState(m),
+  'trait-coward': () => new CowardTrait(),
+  'state-bleed': (m) => new BleedState(m),
+  'state-barrier': (m) => new BarrierState(m),
+  'state-guardian-petal': (m) => new GuardianPetalState(m),
+  'state-heavyweight': (m) => new HeavyweightState(m),
+  'state-lightweight': (m) => new LightweightState(m),
+  'state-flight': (m) => new FlightState(m),
+  'state-poison': (m) => new PoisonState(m),
+  'state-large': (m) => new LargeState(m),
+  'state-fury-awakening': (m) => new FuryAwakeningState(m),
+  'state-intoxication': (m) => new IntoxicationState(m),
+}
+
+export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | undefined {
+  const factory = STATE_FACTORY[snapshot.id]
+  if (!factory) {
+    return undefined
+  }
+  return factory(snapshot.magnitude ?? 0)
+}

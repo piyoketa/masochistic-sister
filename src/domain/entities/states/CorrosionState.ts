@@ -1,8 +1,22 @@
-import { State } from '../State'
+import { BadState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
+import { StateAction } from '../Action/StateAction'
+import type { CardTag } from '../CardTag'
 
-export class CorrosionState extends State {
+class CorrosionStateAction extends StateAction {
+  constructor(state: CorrosionState, tags?: CardTag[]) {
+    super({
+      name: state.name,
+      cardDefinition: state.createCardDefinition(),
+      tags,
+      stateId: state.id,
+      sourceState: state,
+    })
+  }
+}
+
+export class CorrosionState extends BadState {
   constructor(magnitude = 1) {
     super({
       id: 'state-corrosion',
@@ -41,5 +55,9 @@ export class CorrosionState extends State {
       ...params,
       amount: params.amount + bonus,
     }
+  }
+
+  override action(tags?: CardTag[]): StateAction {
+    return new CorrosionStateAction(this, tags)
   }
 }

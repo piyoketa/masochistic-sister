@@ -7,7 +7,7 @@
  *
  * ここではカードID管理を行わず、CardRepository へ委譲する。生成後の手札追加も Battle に依頼する。
  */
-import { Card } from '../Card'
+import { Card, createStateActionFromState } from '../Card'
 import { Attack } from '../Action'
 import { Damages } from '../Damages'
 import type { State } from '../State'
@@ -40,7 +40,8 @@ export class MemoryManager {
 
   rememberState(params: RememberStateParams): Card {
     const { state, repository, battle } = params
-    const card = repository.create(() => new Card({ state }))
+    const stateAction = createStateActionFromState(state)
+    const card = repository.create(() => new Card({ action: stateAction }))
     battle.addCardToPlayerHand(card)
     return card
   }

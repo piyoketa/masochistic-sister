@@ -11,13 +11,27 @@ PoisonState.ts の責務:
 - `Battle`: `damageEnemy` / `damagePlayer` を呼び出し、HP減少を適用する。
 - `Enemy` / `Player`: 所持者の判定に利用するのみで、直接状態リストの編集は行わない。
 */
-import { State } from '../State'
+import { BadState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { Battle } from '../../battle/Battle'
 import type { Player } from '../Player'
 import { Enemy } from '../Enemy'
+import { StateAction } from '../Action/StateAction'
+import type { CardTag } from '../CardTag'
 
-export class PoisonState extends State {
+class PoisonStateAction extends StateAction {
+  constructor(state: PoisonState, tags?: CardTag[]) {
+    super({
+      name: state.name,
+      cardDefinition: state.createCardDefinition(),
+      tags,
+      stateId: state.id,
+      sourceState: state,
+    })
+  }
+}
+
+export class PoisonState extends BadState {
   constructor(magnitude = 1) {
     super({
       id: 'state-poison',
@@ -50,5 +64,9 @@ export class PoisonState extends State {
     }
 
     context.battle.damagePlayer(damage)
+  }
+
+  override action(tags?: CardTag[]): StateAction {
+    return new PoisonStateAction(this, tags)
   }
 }

@@ -173,10 +173,11 @@ function hideTooltip(key: string): void {
 function formatStateChip(trait: EnemyTrait): { key: string; label: string; description: string } {
   const magnitude = trait.magnitude
   const label = magnitude !== undefined ? `${trait.name}(${magnitude})` : trait.name
+  const description = trait.description ?? trait.name
   return {
-    key: `${trait.name}-${trait.detail}`,
+    key: `${trait.id}-${trait.name}`,
     label,
-    description: trait.detail,
+    description,
   }
 }
 

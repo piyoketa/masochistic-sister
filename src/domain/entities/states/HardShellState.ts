@@ -1,15 +1,15 @@
-import { State } from '../State'
+import { TraitState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
-export class HardShellState extends State {
+export class HardShellState extends TraitState {
   constructor(magnitude = 20) {
     super({
       id: 'state-hard-shell',
-      name: '防御',
+      name: '硬い殻',
       magnitude,
       cardDefinition: {
-        title: '防御',
+        title: '硬い殻',
         cardType: 'status',
         type: new StatusTypeCardTag(),
         target: undefined,

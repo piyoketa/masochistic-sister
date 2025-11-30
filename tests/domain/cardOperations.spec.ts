@@ -24,6 +24,7 @@ import {
 import { MemoryCardTag } from '@/domain/entities/cardTags/MemoryCardTag'
 import type { CardOperation } from '@/domain/entities/operations'
 import { CorrosionState } from '@/domain/entities/states'
+import { createStateActionFromState } from '@/domain/entities/Card'
 
 function createBattleWithHand(
   handCards: Card[],
@@ -175,7 +176,7 @@ describe('Card operation validation', () => {
   it('再装填で状態異常以外の手札を入れ替える', () => {
     const repo = new CardRepository()
     const reloadCard = repo.create(() => new Card({ action: new ReloadAction() }))
-    const statusCard = repo.create(() => new Card({ state: new CorrosionState(1) }))
+    const statusCard = repo.create(() => new Card({ action: createStateActionFromState(new CorrosionState(1)) }))
     const handCardA = repo.create(() => new Card({ action: new BattlePrepAction() }))
     const handCardB = repo.create(() => new Card({ action: new HandSwapAction() }))
     const drawCardA = repo.create(() => new Card({ action: new BattlePrepAction() }))

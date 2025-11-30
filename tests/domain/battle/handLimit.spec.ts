@@ -15,6 +15,7 @@ import { StickyState } from '@/domain/entities/states/StickyState'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { TestEnemyTeam } from '@/domain/entities/enemyTeams'
+import { createStateActionFromState } from '@/domain/entities/Card'
 
 function createBattleWith(
   handCards: Card[],
@@ -53,7 +54,7 @@ function createBattleWith(
 function createMemoryStateCard(repository: CardRepository, title: string): Card {
   return repository.create(() =>
     new Card({
-      state: title === '腐食' ? new CorrosionState(1) : new StickyState(1),
+      action: createStateActionFromState(title === '腐食' ? new CorrosionState(1) : new StickyState(1)),
       definitionOverrides: { title },
     }),
   )
@@ -66,7 +67,7 @@ describe('Hand limit mechanics', () => {
 
       const statusOldest = sourceRepository.create(() =>
         new Card({
-          state: new CorrosionState(1),
+          action: createStateActionFromState(new CorrosionState(1)),
           definitionOverrides: { title: '腐食' },
         }),
       )
@@ -102,7 +103,7 @@ describe('Hand limit mechanics', () => {
       const statusCards = Array.from({ length: 10 }, (_, index) =>
         sourceRepository.create(() =>
           new Card({
-            state: index % 2 === 0 ? new CorrosionState(1) : new StickyState(1),
+            action: createStateActionFromState(index % 2 === 0 ? new CorrosionState(1) : new StickyState(1)),
             definitionOverrides: { title: `状態${index}` },
           }),
         ),

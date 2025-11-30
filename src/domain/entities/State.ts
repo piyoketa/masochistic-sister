@@ -1,5 +1,7 @@
 import type { CardDefinition } from './CardDefinition'
 import type { DamageCalculationParams, DamageOutcome, Damages } from './Damages'
+import { StateAction } from './Action/StateAction'
+import type { CardTag } from './CardTag'
 import type { Battle } from '../battle/Battle'
 import type { Player } from './Player'
 import type { Enemy } from './Enemy'
@@ -10,10 +12,13 @@ export interface StateProps {
   name: string
   magnitude?: number
   cardDefinition?: CardDefinition
+  isImportant?: boolean
 }
 
+export type StateCategory = 'bad' | 'buff' | 'trait'
+
 export class State {
-  private readonly props: StateProps
+  protected readonly props: StateProps
 
   constructor(props: StateProps) {
     this.props = props
@@ -33,6 +38,20 @@ export class State {
 
   get cardDefinitionBase(): CardDefinition | undefined {
     return this.props.cardDefinition
+  }
+
+  /**
+   * このStateのカテゴリ（Bad/Buff/Trait）。デフォルトは Buff。
+   */
+  getCategory(): StateCategory {
+    return 'buff'
+  }
+
+  /**
+   * Traitの重要度フラグ。デフォルト false。
+   */
+  isImportant(): boolean {
+    return Boolean(this.props.isImportant)
   }
 
   get priority(): number {
@@ -114,6 +133,55 @@ export class State {
 
   protected setMagnitude(value: number | undefined): void {
     this.props.magnitude = value
+  }
+}
+
+/**
+ * プレイヤー手札に入る「悪性」状態（カード化されるもの）
+ */
+export class BadState extends State {
+  override getCategory(): StateCategory {
+    return 'bad'
+  }
+
+  /**
+   * 状態カードとして使用可能な Action を生成する。
+   * 追加タグを渡すことで、記憶タグなどを付与したバリアントも生成できる。
+   */
+  action(tags?: CardTag[]): Action {
+    return new StateAction({
+      name: this.name,
+      cardDefinition: this.createCardDefinition(),
+      tags,
+      stateId: this.id,
+      sourceState: this,
+    })
+  }
+}
+
+/**
+ * バフ系（手札に入らない）
+ */
+export class BuffState extends State {
+  override getCategory(): StateCategory {
+    return 'buff'
+  }
+}
+
+/**
+ * 敵固有 Trait
+ */
+export class TraitState extends State {
+  constructor(props: StateProps) {
+    super(props)
+  }
+
+  override getCategory(): StateCategory {
+    return 'trait'
+  }
+
+  override isImportant(): boolean {
+    return Boolean(this.props.isImportant) || super.isImportant()
   }
 }
 

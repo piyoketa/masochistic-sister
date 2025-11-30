@@ -11,11 +11,11 @@ FlightState.ts の責務:
 - `Attack.calcDamages`: pre-hit計算時に `modifyPreHit` が呼び出され、1ダメージへ書き換える。
 - `Damages`: 被ダメージ上限を反映した結果を保持し、後続でUIへ伝達する。
 */
-import { State } from '../State'
+import { TraitState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
-export class FlightState extends State {
+export class FlightState extends TraitState {
   constructor(magnitude = 1) {
     super({
       id: 'state-flight',

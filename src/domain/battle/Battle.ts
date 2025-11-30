@@ -18,10 +18,11 @@ import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
 import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
-import type { EnemyActionHint, EnemySkill } from '@/types/battle'
+import type { EnemyActionHint, EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { buildEnemyActionHints } from './enemyActionHintBuilder'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
 import type { Relic } from '../entities/relics/Relic'
+import { instantiateStateFromSnapshot } from '../entities/states'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -50,6 +51,7 @@ export interface BattleSnapshot {
     currentMana: number
     maxMana: number
     relics: Array<{ className: string; active: boolean }>
+    states?: StateSnapshot[]
   }
   enemies: Array<{
     id: number
@@ -57,7 +59,7 @@ export interface BattleSnapshot {
     image: string
     currentHp: number
     maxHp: number
-    states: State[]
+    states: StateSnapshot[]
     hasActedThisTurn: boolean
     status: EnemyStatus
     skills: EnemySkill[]
@@ -362,6 +364,7 @@ export class Battle {
   }
 
   getSnapshot(): BattleSnapshot {
+    const teamId = this.enemyTeamValue.id
     const relicSnapshots =
       this.relicInstances.map((relic) => {
         const className = relic.constructor.name
@@ -386,6 +389,7 @@ export class Battle {
         currentMana: this.playerValue.currentMana,
         maxMana: this.playerValue.maxMana,
         relics: relicSnapshots,
+        states: this.playerValue.getStates(this).map((state) => this.buildStateSnapshot(state)),
       },
       enemies: this.enemyTeamValue.members.map<BattleSnapshot['enemies'][number]>((enemy: Enemy) => {
         const id = enemy.id
@@ -399,7 +403,7 @@ export class Battle {
           image: enemy.image,
           currentHp: enemy.currentHp,
           maxHp: enemy.maxHp,
-          states: enemy.states,
+          states: enemy.states.map((state) => this.buildStateSnapshot(state, teamId)),
           hasActedThisTurn: enemy.hasActedThisTurn,
           status: enemy.status,
           skills: enemy.actions.map((action) => ({
@@ -418,6 +422,35 @@ export class Battle {
       log: this.logValue.list(),
       status: this.statusValue,
     }
+  }
+
+  private buildStateSnapshot(state: State, teamId?: string): StateSnapshot {
+    // state がプレーンオブジェクト化しているケースでも落ちないようガードする
+    const category: StateCategory = typeof state.getCategory === 'function' ? state.getCategory() : 'buff'
+    const importantFromTeam = teamId ? this.isImportantStateForTeam(teamId, state.id) : false
+    const description = typeof state.description === 'function' ? state.description() : String((state as any).description ?? '')
+    const isImportant = importantFromTeam || (typeof state.isImportant === 'function' ? state.isImportant() : false)
+
+    return {
+      id: state.id,
+      name: state.name,
+      description,
+      magnitude: state.magnitude,
+      category,
+      isImportant,
+    }
+  }
+
+  private isImportantStateForTeam(teamId: string, stateId: string): boolean {
+    const table: Record<string, readonly string[]> = {
+      'enemy-team-snail-encounter': ['state-hard-shell'],
+      'enemy-team-test-encounter': ['state-hard-shell'],
+      'enemy-team-hummingbird-allies': ['state-flight'],
+      'enemy-team-iron-bloom': ['state-guardian-petal'],
+      'enemy-team-orc-hero-elite': ['state-large', 'state-fury-awakening'],
+    }
+    const list = table[teamId]
+    return list ? list.includes(stateId) : false
   }
 
   captureFullSnapshot(): FullBattleSnapshot {
@@ -496,7 +529,11 @@ export class Battle {
       enemy.setCurrentHp(enemySnapshot.currentHp)
       enemy.setStatus(enemySnapshot.status)
       enemy.setHasActedThisTurn(enemySnapshot.hasActedThisTurn)
-      enemy.replaceStates(enemySnapshot.states)
+      enemy.replaceStates(
+        enemySnapshot.states
+          .map((entry) => instantiateStateFromSnapshot(entry))
+          .filter((entry): entry is State => Boolean(entry)),
+      )
       const queueState = state.enemyQueues.find((entry) => entry.enemyId === enemySnapshot.id)
       if (queueState) {
         enemy.restoreQueueSnapshot(queueState.queue)
@@ -1187,10 +1224,13 @@ export class Battle {
   private cloneBattleSnapshot(source: BattleSnapshot): BattleSnapshot {
     return {
       ...source,
-      player: { ...source.player },
+      player: {
+        ...source.player,
+        states: source.player.states ? source.player.states.map((state) => ({ ...state })) : undefined,
+      },
       enemies: source.enemies.map((enemy) => ({
         ...enemy,
-        states: [...enemy.states],
+        states: enemy.states.map((state) => ({ ...state })),
       })),
       deck: [...source.deck],
       hand: [...source.hand],
