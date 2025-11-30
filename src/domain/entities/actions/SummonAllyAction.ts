@@ -30,7 +30,7 @@ export class SummonAllyAction extends Skill {
     const enemyCount =
       context?.battle?.enemyTeam.members.filter((enemy) => enemy.isActive() || enemy.status === 'active')
         .length ?? 0
-    return enemyCount < MAX_ENEMIES
+    return enemyCount < MAX_ENEMIES - 1
   }
 
   protected override perform(context: ActionContext): void {
@@ -50,6 +50,8 @@ export class SummonAllyAction extends Skill {
           initialActionType: initial,
         }),
     })
+    // 召喚直後はそのターン行動済みにして、即座の行動を防ぐ
+    // slug.setHasActedThisTurn(true)
     const added = battle.enemyTeam.addEnemy(slug)
     battle.addLogEntry({
       message: `${context.source.name}が${added.name}を呼び出した！`,
