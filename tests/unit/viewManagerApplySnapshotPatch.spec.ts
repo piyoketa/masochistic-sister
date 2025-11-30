@@ -95,6 +95,10 @@ describe('ViewManager.applySnapshotPatch', () => {
     class DummyState extends State {
       constructor(id: string) {
         super({ id, name: `状態-${id}` })
+        ;(this as unknown as { category: string }).category = 'buff'
+      }
+      override getCategory(): import('@/types/battle').StateCategory {
+        return 'buff'
       }
       // クラスメソッドが維持されることを確認するため、説明文を返す
       override description(): string {
@@ -113,7 +117,7 @@ describe('ViewManager.applySnapshotPatch', () => {
           image: 'slime.png',
           currentHp: 10,
           maxHp: 10,
-          states: [stateInstance],
+          states: [stateInstance as unknown as import('@/types/battle').StateSnapshot],
           hasActedThisTurn: false,
           status: 'active' as const,
           skills: [{ name: '跳ねる', detail: '軽い攻撃' }],
@@ -142,7 +146,7 @@ describe('ViewManager.applySnapshotPatch', () => {
     const rawState = rawEnemies?.[0]?.states[0]
     expect(rawState).toBe(stateInstance)
     expect(rawState).toBeInstanceOf(State)
-    expect(rawState?.description()).toBe('説明:状態-dummy-1')
+    expect((rawState as unknown as DummyState)?.description()).toBe('説明:状態-dummy-1')
     // 元スナップショット側は汚染されていない
     expect(baseSnapshot.player.currentHp).toBe(20)
     expect(viewManager.state.previousSnapshot).toEqual(baseSnapshot)

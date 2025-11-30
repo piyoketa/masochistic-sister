@@ -72,7 +72,7 @@ export class StateAction extends Action {
     const battle = _context.battle as Battle | undefined
     if (battle) {
       const pureBody = battle.getRelicById('pure-body') as PureBodyRelic | undefined
-      pureBody?.markUsed()
+      pureBody?.markUsed?.()
       if (this.stateId) {
         battle.player.removeState(this.stateId)
       }
@@ -89,7 +89,7 @@ export class StateAction extends Action {
 
   override describe(context?: ActionContext): string {
     // BadState の説明文をそのままカード表示に利用する。なければ定義のタイトルを返す。
-    const stateDescription = this.stateValue?.description(context)
+    const stateDescription = this.stateValue?.description()
     if (stateDescription && stateDescription.length > 0) {
       return stateDescription
     }

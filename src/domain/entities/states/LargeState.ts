@@ -1,4 +1,4 @@
-import { TraitState } from '../State'
+import { State, TraitState } from '../State'
 
 export class LargeState extends TraitState {
   constructor() {

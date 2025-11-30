@@ -47,10 +47,10 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-guardian-petal': (m) => new GuardianPetalState(m),
   'state-heavyweight': (m) => new HeavyweightState(m),
   'state-lightweight': (m) => new LightweightState(m),
-  'state-flight': (m) => new FlightState(m),
+  'state-flight': () => new FlightState(),
   'state-poison': (m) => new PoisonState(m),
-  'state-large': (m) => new LargeState(m),
-  'state-fury-awakening': (m) => new FuryAwakeningState(m),
+  'state-large': () => new LargeState(),
+  'state-fury-awakening': () => new FuryAwakeningState(),
   'state-intoxication': (m) => new IntoxicationState(m),
 }
 

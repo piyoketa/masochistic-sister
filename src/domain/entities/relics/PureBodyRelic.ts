@@ -12,4 +12,8 @@ export class PureBodyRelic extends Relic {
   description(): string {
     return '起動：このターン中、状態異常を解除するカードのマナコストが1減少する。'
   }
+
+  markUsed(): void {
+    // 現状は使用済み管理が不要なためダミー実装
+  }
 }

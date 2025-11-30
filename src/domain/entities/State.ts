@@ -41,10 +41,10 @@ export class State {
   }
 
   /**
-   * このStateのカテゴリ（Bad/Buff/Trait）。デフォルトは Buff。
+   * このStateのカテゴリ（Bad/Buff/Trait）。派生クラスで必ず実装する。
    */
   getCategory(): StateCategory {
-    return 'buff'
+    throw new Error('State.getCategory must be overridden by subclasses')
   }
 
   /**

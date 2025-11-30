@@ -19,7 +19,7 @@ import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
-import type { EnemyInfo, EnemyTrait, EnemyActionHint, EnemyStatus, StateSnapshot } from '@/types/battle'
+import type { EnemyInfo, EnemyActionHint, EnemyStatus, StateSnapshot } from '@/types/battle'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
@@ -347,21 +347,25 @@ function handleHoverEnd(enemyId: number): void {
   emit('hover-end', enemyId)
 }
 
-function mapStatesToEntries(states?: Array<State | StateSnapshot>): EnemyTrait[] | undefined {
+function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapshot[] | undefined {
   if (!states || states.length === 0) {
     return undefined
   }
 
-  return states.map((state) => ({
-    name: state.name,
-    detail:
-      typeof (state as State).description === 'function'
-        ? (state as State).description()
-        : typeof (state as StateSnapshot).description === 'string'
-        ? (state as StateSnapshot).description ?? ''
-        : '',
-    magnitude: state.magnitude,
-  }))
+  return states.map((state) => {
+    if (typeof (state as State).getCategory === 'function') {
+      const typed = state as State
+      return {
+        id: typed.id,
+        name: typed.name,
+        description: typeof typed.description === 'function' ? typed.description() : '',
+        magnitude: typed.magnitude,
+        category: typed.getCategory(),
+        isImportant: typeof typed.isImportant === 'function' ? typed.isImportant() : false,
+      }
+    }
+    return state as StateSnapshot
+  })
 }
 </script>
 

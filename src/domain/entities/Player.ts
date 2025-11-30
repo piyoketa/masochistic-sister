@@ -326,11 +326,13 @@ function setStateMagnitude(state: State, magnitude: number): void {
 }
 
 function isStatusState(state: State): boolean {
-  if (state.cardDefinition?.cardType === 'status') {
+  const def = state.cardDefinitionBase
+  if (!def) return false
+  if (def.cardType === 'status') {
     return true
   }
-  if (state.cardDefinition?.type instanceof StatusTypeCardTag) {
+  if (def.type instanceof StatusTypeCardTag) {
     return true
   }
-  return state.type instanceof StatusTypeCardTag
+  return false
 }

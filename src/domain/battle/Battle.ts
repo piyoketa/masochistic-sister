@@ -426,7 +426,7 @@ export class Battle {
 
   private buildStateSnapshot(state: State, teamId?: string): StateSnapshot {
     // state がプレーンオブジェクト化しているケースでも落ちないようガードする
-    const category: StateCategory = typeof state.getCategory === 'function' ? state.getCategory() : 'buff'
+    const category: StateCategory = state.getCategory()
     const importantFromTeam = teamId ? this.isImportantStateForTeam(teamId, state.id) : false
     const description = typeof state.description === 'function' ? state.description() : String((state as any).description ?? '')
     const isImportant = importantFromTeam || (typeof state.isImportant === 'function' ? state.isImportant() : false)
