@@ -87,9 +87,11 @@ materials/sounds/poison より
 - [OtoLogic](https://otologic.jp/free/license.html)
   - クレジットを表記すれば無料
   - public/sounds/skills/OtoLogic_Electric-Shock02-Short.mp3[電撃02](https://otologic.jp/free/se/electric-shock01.html#google_vignette)
+  - public/sounds/battle/victory.mp3[天使04](https://otologic.jp/free/se/angel01.html)
 - 魔王魂
   - public/sounds/defeat/maou_se_battle18.mp3[戦闘18](https://maou.audio/se_battle18/#google_vignette) 撃破の音
   - public/sounds/defeat/maou_se_battle18.mp3 [オノマトペ・光る](https://otologic.jp/free/se/flash01.html#google_vignette) 被虐のオーラ
+  - public/sounds/bgm/gameover.mp3[アコースティック43](https://maou.audio/bgm_acoustic43/)
 - [DOVA-SYNDROME](https://dova-s.jp/_contents/license/)
   - 著作権表示・提供等の表示は不要
   - public/sounds/bgm/battle.mp3[タクティカルエンカウンター](https://dova-s.jp/bgm/play18089.html)

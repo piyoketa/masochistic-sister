@@ -320,6 +320,13 @@ watch(
       handleAudioStage(metadata)
     } else if (metadata?.stage === 'cutin') {
       await handleCutInStage(metadata)
+    } else if (metadata?.stage === 'victory') {
+      // 勝利時: 戦闘BGMを止め、勝利SEを再生する。
+      audioStore.stopBgm()
+      audioStore.playSe('/sounds/battle/victory.mp3')
+    } else if (metadata?.stage === 'gameover') {
+      // 敗北時: BGMを敗北曲に切り替える。
+      audioStore.playBgm('/sounds/bgm/gameover.mp3')
     }
   },
 )
