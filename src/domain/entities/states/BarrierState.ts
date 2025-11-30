@@ -13,7 +13,6 @@ BarrierState.ts の責務:
 - `Battle`: 本State自体はBattleへ直接通知せず、Attack経由でダメージ結果へ反映する。
 */
 import { BuffState, type DamageHitContext } from '../State'
-import { StatusTypeCardTag } from '../cardTags'
 import type { Enemy } from '../Enemy'
 import type { Player } from '../Player'
 
@@ -23,13 +22,6 @@ export class BarrierState extends BuffState {
       id: 'state-barrier',
       name: 'バリア',
       magnitude,
-      cardDefinition: {
-        title: 'バリア',
-        cardType: 'status',
-        type: new StatusTypeCardTag(),
-        target: undefined,
-        cost: 1,
-      },
     })
   }
 

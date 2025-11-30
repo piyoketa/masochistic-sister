@@ -12,7 +12,6 @@ FlightState.ts の責務:
 - `Damages`: 被ダメージ上限を反映した結果を保持し、後続でUIへ伝達する。
 */
 import { TraitState } from '../State'
-import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
 export class FlightState extends TraitState {
@@ -21,13 +20,6 @@ export class FlightState extends TraitState {
       id: 'state-flight',
       name: '飛行',
       magnitude,
-      cardDefinition: {
-        title: '飛行',
-        cardType: 'status',
-        type: new StatusTypeCardTag(),
-        target: undefined,
-        cost: 1,
-      },
     })
   }
 

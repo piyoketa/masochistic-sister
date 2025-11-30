@@ -1,5 +1,4 @@
 import { TraitState, type DamageHitContext, type DamageSequenceContext } from '../State'
-import { StatusTypeCardTag } from '../cardTags'
 import { StrengthState } from './StrengthState'
 import type { Enemy } from '../Enemy'
 import type { Player } from '../Player'
@@ -11,13 +10,6 @@ export class FuryAwakeningState extends TraitState {
     super({
       id: 'state-fury-awakening',
       name: '怒りの覚醒',
-      cardDefinition: {
-        title: '怒りの覚醒',
-        cardType: 'status',
-        type: new StatusTypeCardTag(),
-        target: undefined,
-        cost: 1,
-      },
     })
   }
 

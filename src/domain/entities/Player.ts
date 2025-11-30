@@ -24,6 +24,8 @@ export class Player {
   private currentHpValue: number
   private currentManaValue: number
   private handRef?: Hand
+  // カード化されないバフ/特性などを保持するためのベースStateプール
+  private baseStatePool: State[] = []
   private readonly memoryManager: MemoryManager
   // レリック由来のStateは元のStateとは別に計算するため、baseState集計ロジックを共通化する。
 
@@ -130,7 +132,9 @@ export class Player {
       return
     }
 
+    // カード化しないStateはベースプールへ直接格納する
     if (!state.cardDefinitionBase) {
+      this.baseStatePool.push(state)
       return
     }
 
@@ -152,6 +156,12 @@ export class Player {
   }
 
   removeState(stateId: string): void {
+    const poolIndex = this.baseStatePool.findIndex((entry) => entry.id === stateId)
+    if (poolIndex >= 0) {
+      this.baseStatePool.splice(poolIndex, 1)
+      return
+    }
+
     const hand = this.handRef
     if (!hand) {
       return
@@ -175,10 +185,13 @@ export class Player {
       return []
     }
 
-    const states = hand
-      .list()
-      .map((card) => card.state)
-      .filter((state): state is State => Boolean(state))
+    const states = [
+      ...this.baseStatePool,
+      ...hand
+        .list()
+        .map((card) => card.state)
+        .filter((state): state is State => Boolean(state)),
+    ]
 
     return this.aggregateStates(states)
   }

@@ -1,18 +1,10 @@
 import { TraitState } from '../State'
-import { StatusTypeCardTag } from '../cardTags'
 
 export class LargeState extends TraitState {
   constructor() {
     super({
       id: 'state-large',
       name: '大型',
-      cardDefinition: {
-        title: '大型',
-        cardType: 'status',
-        type: new StatusTypeCardTag(),
-        target: undefined,
-        cost: 1,
-      },
     })
   }
 

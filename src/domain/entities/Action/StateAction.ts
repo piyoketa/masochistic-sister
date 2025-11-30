@@ -86,4 +86,13 @@ export class StateAction extends Action {
   get shouldExileOnPlay(): boolean {
     return this.exileOnPlay
   }
+
+  override describe(context?: ActionContext): string {
+    // BadState の説明文をそのままカード表示に利用する。なければ定義のタイトルを返す。
+    const stateDescription = this.stateValue?.description(context)
+    if (stateDescription && stateDescription.length > 0) {
+      return stateDescription
+    }
+    return this.cardDefinitionBase.title ?? ''
+  }
 }

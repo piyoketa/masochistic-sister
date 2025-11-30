@@ -1110,7 +1110,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   gap: 0;
   flex: 1;
   min-height: 0;
-  --enemy-zone-height: 320px;
+  --enemy-zone-height: 370px;
   --enemy-zone-offset: 0px; /* 敵ゾーンを画面上部に寄せてヘッダーとの距離を詰める視覚オフセット */
 }
 

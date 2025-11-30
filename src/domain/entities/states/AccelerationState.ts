@@ -1,5 +1,4 @@
 import { BuffState } from '../State'
-import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
 export class AccelerationState extends BuffState {
@@ -8,13 +7,6 @@ export class AccelerationState extends BuffState {
       id: 'state-acceleration',
       name: '加速',
       magnitude,
-      cardDefinition: {
-        title: '加速',
-        cardType: 'status',
-        type: new StatusTypeCardTag(),
-        target: undefined,
-        cost: 1,
-      },
     })
   }
 

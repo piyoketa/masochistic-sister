@@ -13,7 +13,6 @@ GuardianPetalState.ts の責務:
 - `Battle`: ここでは参照のみで直接操作しない。
 */
 import { TraitState } from '../State'
-import { StatusTypeCardTag } from '../cardTags'
 import { BarrierState } from './BarrierState'
 import { Enemy } from '../Enemy'
 import type { Battle } from '../../battle/Battle'
@@ -25,13 +24,6 @@ export class GuardianPetalState extends TraitState {
       id: 'state-guardian-petal',
       name: '守りの花びら',
       magnitude,
-      cardDefinition: {
-        title: '守りの花びら',
-        cardType: 'status',
-        type: new StatusTypeCardTag(),
-        target: undefined,
-        cost: 1,
-      },
     })
   }
 

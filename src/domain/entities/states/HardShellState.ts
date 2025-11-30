@@ -1,5 +1,4 @@
 import { TraitState } from '../State'
-import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 
 export class HardShellState extends TraitState {
@@ -8,13 +7,6 @@ export class HardShellState extends TraitState {
       id: 'state-hard-shell',
       name: '硬い殻',
       magnitude,
-      cardDefinition: {
-        title: '硬い殻',
-        cardType: 'status',
-        type: new StatusTypeCardTag(),
-        target: undefined,
-        cost: 1,
-      },
     })
   }
 

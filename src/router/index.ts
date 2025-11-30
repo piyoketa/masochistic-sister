@@ -38,6 +38,11 @@ const router = createRouter({
       component: () => import('@/views/DamageEffectsDemoView.vue'),
     },
     {
+      path: '/demo/trait-highlight',
+      name: 'trait-highlight-demo',
+      component: () => import('@/views/TraitHighlightDemoView.vue'),
+    },
+    {
       path: '/demo/cut-in',
       name: 'cut-in-demo',
       component: () => import('@/views/CutInDemoView.vue'),

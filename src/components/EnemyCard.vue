@@ -8,9 +8,9 @@
  * - useDescriptionOverlay: ツールチップ用のグローバルオーバーレイと連携
  */
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import HpGauge from '@/components/HpGauge.vue'
-import type { EnemyInfo, EnemySkill, EnemyTrait } from '@/types/battle'
+import type { EnemyInfo, EnemySkill, StateSnapshot } from '@/types/battle'
 import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import DamageEffects from '@/components/DamageEffects.vue'
@@ -41,6 +41,7 @@ const audioStore = useAudioStore()
 let activeTooltip: { key: string; text: string } | null = null
 const damageOutcomes = ref<DamageOutcome[]>([])
 const damageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
+const traitAnimationNonce = ref(0)
 const ENEMY_AUDIO_CUES = {
   defeat: '/sounds/defeat/maou_se_battle18.mp3',
   escape: '/sounds/escape/kurage-kosho_esc01.mp3',
@@ -121,7 +122,18 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
   ]
 })
 
-const stateChips = computed(() => (props.enemy.states ?? []).map(formatStateChip))
+const traitChips = computed(() => {
+  const nonce = traitAnimationNonce.value
+  return (props.enemy.states ?? [])
+    .filter((state) => state.category === 'trait')
+    .map((state, index) => formatStateChip(state, `${index}-${nonce}`))
+})
+
+const stateChips = computed(() =>
+  (props.enemy.states ?? [])
+    .filter((state) => state.category !== 'trait')
+    .map((state, index) => formatStateChip(state, `${index}`)),
+)
 
 function handleEnter(): void {
   emit('hover-start')
@@ -170,14 +182,20 @@ function hideTooltip(key: string): void {
   activeTooltip = null
 }
 
-function formatStateChip(trait: EnemyTrait): { key: string; label: string; description: string } {
-  const magnitude = trait.magnitude
-  const label = magnitude !== undefined ? `${trait.name}(${magnitude})` : trait.name
-  const description = trait.description ?? trait.name
+function formatStateChip(state: StateSnapshot, keySuffix: string): {
+  key: string
+  label: string
+  description: string
+  isImportant?: boolean
+} {
+  const magnitude = state.magnitude
+  const label = magnitude !== undefined ? `${state.name}(${magnitude})` : state.name
+  const description = state.description ?? state.name
   return {
-    key: `${trait.id}-${trait.name}`,
+    key: `${state.id}-${state.name}-${keySuffix}`,
     label,
     description,
+    isImportant: state.category === 'trait' ? state.isImportant : undefined,
   }
 }
 
@@ -193,6 +211,14 @@ async function playDamage(outcomes: readonly DamageOutcome[]): Promise<void> {
 function playEnemySound(effect: 'defeat' | 'escape'): void {
   audioStore.playSe(ENEMY_AUDIO_CUES[effect])
 }
+
+watch(
+  () => props.enemy.states,
+  () => {
+    traitAnimationNonce.value += 1
+  },
+  { deep: true },
+)
 
 defineExpose({ playDamage, playEnemySound })
 </script>
@@ -245,13 +271,41 @@ defineExpose({ playDamage, playEnemySound })
       </ul>
     </section>
 
-    <section v-if="stateChips.length" class="enemy-card__section">
+    <section v-if="traitChips.length" class="enemy-card__section enemy-card__section--traits">
+      <h5 class="enemy-card__label">Traits</h5>
+      <TransitionGroup
+        tag="ul"
+        name="enemy-state"
+        class="enemy-card__list enemy-card__list--chips enemy-card__list--traits"
+      >
+        <li
+          v-for="state in traitChips"
+          :key="state.key"
+          :class="[
+            'enemy-card__chip',
+            'enemy-card__chip--plain',
+            { 'enemy-card__chip--important': state.isImportant },
+          ]"
+          @mouseenter="(event) => showTooltip(event, state.description, `enemy-state-${state.key}`)"
+          @mousemove="(event) => updateTooltipPosition(event, `enemy-state-${state.key}`, state.description)"
+          @mouseleave="() => hideTooltip(`enemy-state-${state.key}`)"
+        >
+          {{ state.label }}
+        </li>
+      </TransitionGroup>
+    </section>
+
+    <section v-if="stateChips.length" class="enemy-card__section enemy-card__section--states">
       <h5 class="enemy-card__label">States</h5>
       <TransitionGroup tag="ul" name="enemy-state" class="enemy-card__list enemy-card__list--chips">
         <li
           v-for="state in stateChips"
           :key="state.key"
-          class="enemy-card__chip enemy-card__chip--plain"
+          :class="[
+            'enemy-card__chip',
+            'enemy-card__chip--plain',
+            { 'enemy-card__chip--important': state.isImportant },
+          ]"
           @mouseenter="(event) => showTooltip(event, state.description, `enemy-state-${state.key}`)"
           @mousemove="(event) => updateTooltipPosition(event, `enemy-state-${state.key}`, state.description)"
           @mouseleave="() => hideTooltip(`enemy-state-${state.key}`)"
@@ -271,7 +325,7 @@ defineExpose({ playDamage, playEnemySound })
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 210px;
+  height: 260px;
   padding: 10px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(18, 22, 40, 0.9), rgba(10, 12, 24, 0.95));
@@ -405,6 +459,37 @@ defineExpose({ playDamage, playEnemySound })
   filter: grayscale(0.5);
 }
 
+.enemy-card__chip--important {
+  position: relative;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.enemy-card__chip--important::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at center, rgba(255, 120, 120, 0.35), rgba(255, 120, 120, 0) 70%),
+    conic-gradient(
+      from var(--trait-glow-angle, 0turn),
+      rgba(255, 90, 90, 0) 0deg,
+      rgba(255, 90, 90, 0) 260deg,
+      rgba(255, 120, 120, 0.95) 300deg,
+      rgba(255, 90, 90, 0.1) 330deg,
+      rgba(255, 90, 90, 0) 360deg
+    );
+  filter: blur(1px);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation:
+    trait-glow-spin 0.6s linear 1,
+    trait-glow-fade 0.5s ease-in-out 1;
+  animation-fill-mode: forwards;
+}
+
 .enemy-card :deep(.enemy-state-enter-active),
 .enemy-card :deep(.enemy-state-leave-active) {
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -427,6 +512,41 @@ defineExpose({ playDamage, playEnemySound })
 
 .value--boosted {
   color: #4cff9f;
+}
+
+@property --trait-glow-angle {
+  syntax: '<angle>';
+  initial-value: 0turn;
+  inherits: false;
+}
+
+@keyframes trait-glow-spin {
+  to {
+    --trait-glow-angle: 1.5turn;
+  }
+}
+
+@keyframes trait-glow-fade {
+  0% {
+    opacity: 0;
+    filter: blur(0px);
+    box-shadow: 0 0 6px rgba(255, 120, 120, 0.1);
+  }
+  10% {
+    opacity: 0.9;
+    filter: blur(1px);
+    box-shadow: 0 0 20px rgba(255, 120, 120, 0.35), 0 0 36px rgba(255, 120, 120, 0.28);
+  }
+  80% {
+    opacity: 1;
+    filter: blur(1px);
+    box-shadow: 0 0 24px rgba(255, 120, 120, 0.45), 0 0 48px rgba(255, 120, 120, 0.35);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(0px);
+    box-shadow: 0 0 6px rgba(255, 120, 120, 0.1);
+  }
 }
 
 .enemy-card__blocked-overlay {
