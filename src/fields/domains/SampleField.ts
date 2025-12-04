@@ -101,9 +101,9 @@ function buildLevels(ownedRelics: string[]): FieldLevel[] {
     const nodes: FieldNode[] = []
     for (let i = 0; i < 3; i += 1) {
       const roll = Math.random()
-      if (roll < 0.6) {
+      if (roll < 0.8) {
         nodes.push(createNormalEnemyNode(level, i))
-      } else if (roll < 0.8) {
+      } else if (roll < 0.9) {
         nodes.push(createRandomCardRewardNode(level, i))
       } else {
         nodes.push(createFixedRelicRewardNode(level, i, ownedRelics))

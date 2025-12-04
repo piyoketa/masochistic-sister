@@ -13,18 +13,51 @@ Skill.ts の責務:
 */
 import type { ActionCutInCue, BaseActionProps } from './ActionBase'
 import { Action } from './ActionBase'
+import type { State } from '../State'
+import type { Player } from '../Player'
+import type { Enemy } from '../Enemy'
+import { isPlayerEntity } from '../typeGuards'
 
 // cutInCue は BaseActionProps に含まれるが、スキル文脈で明示しておく
 export interface SkillProps extends BaseActionProps {
   cutInCue?: ActionCutInCue
+  inflictStates?: Array<() => State>
 }
 
 export abstract class Skill extends Action {
+  // 非列挙プロパティとして保持し、ActionLog などのシリアライズに混ざらないようにする
+  private readonly inflictStateFactories: Array<() => State>
+
   protected constructor(props: SkillProps) {
     super(props)
+    const inflictFactories = props.inflictStates ? [...props.inflictStates] : []
+    Object.defineProperty(this, 'inflictStateFactories', {
+      value: inflictFactories,
+      enumerable: false,
+      writable: false,
+    })
   }
 
   get type(): 'skill' {
     return 'skill'
+  }
+
+  protected applyInflictedStates(context: { battle: import('../..//battle/Battle').Battle }, target: Enemy | Player): void {
+    if (this.inflictStateFactories.length === 0) return
+    for (const factory of this.inflictStateFactories) {
+      const state = factory()
+      target.addState(state, { battle: context.battle })
+    }
+  }
+
+  protected override perform(context: import('./ActionBase').ActionContext): void {
+    const target =
+      context.target ??
+      (isPlayerEntity(context.source) ? undefined : (context.battle.player as Player))
+    if (!target) {
+      context.metadata = { ...(context.metadata ?? {}), skipped: true, skipReason: 'no-target' }
+      return
+    }
+    this.applyInflictedStates(context, target)
   }
 }

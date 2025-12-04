@@ -18,11 +18,11 @@ export class ConfusingGazeAction extends Skill {
         target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
-      gainStates: [() => new EvilThoughtState(1)],
+      inflictStates: [() => new EvilThoughtState(1)],
     })
   }
 
   protected override description(): string {
-    return ''
+    return '対象に邪念を付与する'
   }
 }

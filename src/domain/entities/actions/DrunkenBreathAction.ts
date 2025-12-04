@@ -17,7 +17,7 @@ export class DrunkenBreathAction extends Skill {
         target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
-      gainStates: [() => new IntoxicationState(magnitude)],
+      inflictStates: [() => new IntoxicationState(magnitude)],
     })
   }
 
