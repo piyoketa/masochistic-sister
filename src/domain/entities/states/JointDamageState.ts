@@ -3,6 +3,7 @@ import { StateAction } from '../Action/StateAction'
 import type { CardTag } from '../CardTag'
 import type { DamageCalculationParams } from '../Damages'
 import { StatusTypeCardTag } from '../cardTags'
+import { TackleAction } from '../actions/TackleAction'
 
 class JointDamageStateAction extends StateAction {
   constructor(state: JointDamageState, tags?: CardTag[]) {
@@ -16,7 +17,7 @@ class JointDamageStateAction extends StateAction {
   }
 }
 
-// 関節損傷: 一回攻撃の被ダメージを割合増加
+// 関節損傷: 「たいあたり」（TackleAction）による被ダメージをスタックごとに+20する
 export class JointDamageState extends BadState {
   constructor(magnitude = 1) {
     super({
@@ -34,12 +35,13 @@ export class JointDamageState extends BadState {
   }
 
   override get priority(): number {
-    return 25
+    // 「たいあたり」への固定加算を他の加減算系と同タイミングで扱うため、20に調整
+    return 20
   }
 
   override description(): string {
-    const percent = Math.floor((this.magnitude ?? 0) * 100)
-    return `一回攻撃の被ダメージ+${percent}%`
+    const bonus = 20 * (this.magnitude ?? 0)
+    return `たいあたりの被ダメージ+${bonus}`
   }
 
   override affectsDefender(): boolean {
@@ -52,11 +54,14 @@ export class JointDamageState extends BadState {
 
   override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
     if (params.role !== 'defender') return params
-    if (params.type !== 'single') return params
-    const rate = 1 + (this.magnitude ?? 0)
+    // 判定はクラスベースで行い、名称依存や攻撃回数依存にしない
+    const isTackle = params.context?.attack instanceof TackleAction
+    if (!isTackle) return params
+    const bonus = 20 * (this.magnitude ?? 0)
     return {
       ...params,
-      amount: Math.max(0, Math.floor(params.amount * rate)),
+      // 1ヒットあたりに固定値を加算する（countが変動しても1回ごとに加算）
+      amount: Math.max(0, params.amount + bonus),
     }
   }
 

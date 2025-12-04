@@ -55,7 +55,7 @@
   - 腐食 CorrosionState
   - 粘液 StickyState
   - 硬い殻 HardShellState
+  - 関節損傷 JointDamageState（たいあたり被ダメージ+20 * スタック）
 - 優先度:25 被攻撃者に関わるバフ・デバフで、掛け算のもの
-  - 関節損傷 
 - 優先度:120 被攻撃者に関わるバフ・デバフで、特定の値に固定する（代入する）もの
   - ダメージ固定 FlightState
