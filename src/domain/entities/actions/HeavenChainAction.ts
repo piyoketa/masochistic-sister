@@ -55,7 +55,7 @@ export class HeavenChainAction extends Skill {
   }
 
   override cost(context?: ActionCostContext): number {
-    const base = super.cost()
+    const base = super.cost(context)
     const hasNoViolence = context?.battle?.hasActiveRelic('no-violence')
     if (hasNoViolence) {
       return 0
