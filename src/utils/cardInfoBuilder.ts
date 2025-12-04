@@ -24,6 +24,7 @@ export function buildCardInfoFromCard(
     id?: string
     affordable?: boolean
     disabled?: boolean
+    costContext?: import('@/domain/entities/Action/ActionBase').ActionCostContext
   },
 ): CardInfo | null {
   if (!isSupportedCardType(card.type)) {
@@ -38,10 +39,13 @@ export function buildCardInfoFromCard(
 
   addPrimaryTags(definition, primaryTags, seenTagIds)
 
+  const cost =
+    options?.costContext !== undefined ? card.calculateCost(options.costContext) : card.cost
+
   const baseInfo = {
     id: options?.id ?? `card-${card.id ?? 'unknown'}`,
     title: card.title,
-    cost: card.cost,
+    cost,
     primaryTags,
     categoryTags,
     affordable: options?.affordable,

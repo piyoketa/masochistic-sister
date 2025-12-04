@@ -476,12 +476,21 @@ function closePileOverlay(): void {
 }
 
 function buildCardInfos(cards: Card[], prefix: string): CardInfo[] {
+  const battle = viewManager.battle
+  const costContext =
+    battle != null
+      ? {
+          battle,
+          source: battle.player,
+        }
+      : undefined
   return cards
     .map((card, index) =>
       buildCardInfoFromCard(card, {
         id: `${prefix}-${card.id ?? index}`,
         affordable: true,
         disabled: true,
+        costContext,
       }),
     )
     .filter((info): info is CardInfo => info !== null)
