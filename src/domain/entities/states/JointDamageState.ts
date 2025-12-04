@@ -3,7 +3,6 @@ import { StateAction } from '../Action/StateAction'
 import type { CardTag } from '../CardTag'
 import type { DamageCalculationParams } from '../Damages'
 import { StatusTypeCardTag } from '../cardTags'
-import { TackleAction } from '../actions/TackleAction'
 
 class JointDamageStateAction extends StateAction {
   constructor(state: JointDamageState, tags?: CardTag[]) {
@@ -54,8 +53,8 @@ export class JointDamageState extends BadState {
 
   override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
     if (params.role !== 'defender') return params
-    // 判定はクラスベースで行い、名称依存や攻撃回数依存にしない
-    const isTackle = params.context?.attack instanceof TackleAction
+    // 判定はクラス名ベースで行い、名称依存や攻撃回数依存にしない（同期importでの循環回避のためconstructor.nameを利用）
+    const isTackle = isTackleAction(params.context?.attack)
     if (!isTackle) return params
     const bonus = 20 * (this.magnitude ?? 0)
     return {
@@ -68,4 +67,10 @@ export class JointDamageState extends BadState {
   override action(tags?: CardTag[]): StateAction {
     return new JointDamageStateAction(this, tags)
   }
+}
+
+function isTackleAction(attack: unknown): boolean {
+  if (!attack) return false
+  const constructorName = (attack as { constructor?: { name?: string } }).constructor?.name
+  return constructorName === 'TackleAction'
 }

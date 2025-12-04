@@ -24,7 +24,7 @@ export interface UseHandPresentationOptions {
     hoveredEnemyId: number | null
     viewManager: ViewManager
   }
-  interactionState: { selectedCardKey: string | null }
+  interactionState: { selectedCardKey: string | null; isAwaitingEnemy: boolean }
 }
 
 export function useHandPresentation(options: UseHandPresentationOptions) {
@@ -131,6 +131,12 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     const damages = action.baseDamages
     const baseDamageAmount = Math.max(0, Math.floor(damages.baseAmount))
     const baseDamageCount = Math.max(1, Math.floor(damages.baseCount ?? 1))
+    // 表示用ダメージを段階的に計算する: 通常は素の値、敵選択待ちでプレイヤーState、敵ホバーで敵Stateも反映
+    const identifier = card.id !== undefined ? `card-${card.id}` : `card-${index}`
+    const isSelectedCard = options.interactionState.selectedCardKey === identifier
+    const shouldApplyPlayerStates = isSelectedCard && options.interactionState.isAwaitingEnemy
+    const shouldApplyEnemyStates =
+      shouldApplyPlayerStates && options.props.hoveredEnemyId !== null && battle !== undefined
     const applyDamageDisplay = (displayDamages: Damages): void => {
       const nextAmount = Math.max(0, Math.floor(displayDamages.amount))
       const nextCount = Math.max(0, Math.floor(displayDamages.count ?? 0))
@@ -142,40 +148,59 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
       damageCountReduced = nextCount < baseDamageCount
     }
 
-    const playerStates = battle ? battle.player.getStates(battle) : undefined
-    const preCalculated = new Damages({
+    // 1. 基本表示（補正なし）
+    const baseDisplay = new Damages({
       baseAmount: damages.baseAmount,
       baseCount: damages.baseCount,
       type: damages.type,
-      attackerStates: playerStates,
-      defenderStates: [],
     })
-    const preFormatted = action.describeForPlayerCard({
+    let formatted = action.describeForPlayerCard({
       baseDamages: damages,
-      displayDamages: preCalculated,
+      displayDamages: baseDisplay,
       inflictedStates: action.inflictStatePreviews,
     })
-    ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(preFormatted))
-    applyDamageDisplay(preCalculated)
+    ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(formatted))
+    applyDamageDisplay(baseDisplay)
 
-    const targetEnemyId = options.props.hoveredEnemyId
-    if (battle && options.interactionState.selectedCardKey === `card-${card.id ?? index}` && targetEnemyId !== null) {
-      const enemy = battle.enemyTeam.findEnemy(targetEnemyId) as Enemy | undefined
-      if (enemy) {
-    const calculatedDamages = new Damages({
-          baseAmount: damages.baseAmount,
-          baseCount: damages.baseCount,
-          type: damages.type,
-          attackerStates: playerStates,
-          defenderStates: enemy.getStates(),
-        })
-        const recalculated = action.describeForPlayerCard({
-          baseDamages: damages,
-          displayDamages: calculatedDamages,
-          inflictedStates: action.inflictStatePreviews,
-        })
-        ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(recalculated))
-        applyDamageDisplay(calculatedDamages)
+    // 2. 敵選択待ちに入ったらプレイヤーStateを適用
+    if (battle && shouldApplyPlayerStates) {
+      const playerStates = battle.player.getStates(battle)
+      const playerAdjusted = new Damages({
+        baseAmount: damages.baseAmount,
+        baseCount: damages.baseCount,
+        type: damages.type,
+        attackerStates: playerStates,
+        defenderStates: [],
+      })
+      formatted = action.describeForPlayerCard({
+        baseDamages: damages,
+        displayDamages: playerAdjusted,
+        inflictedStates: action.inflictStatePreviews,
+      })
+      ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(formatted))
+      applyDamageDisplay(playerAdjusted)
+
+      // 3. 敵ホバー時は敵Stateも加算
+      if (shouldApplyEnemyStates) {
+        const targetEnemyId = options.props.hoveredEnemyId
+        const enemy =
+          typeof targetEnemyId === 'number' ? (battle.enemyTeam.findEnemy(targetEnemyId) as Enemy | undefined) : undefined
+        if (enemy) {
+          const enemyAdjusted = new Damages({
+            baseAmount: damages.baseAmount,
+            baseCount: damages.baseCount,
+            type: damages.type,
+            attackerStates: playerStates,
+            defenderStates: enemy.getStates(),
+          })
+          formatted = action.describeForPlayerCard({
+            baseDamages: damages,
+            displayDamages: enemyAdjusted,
+            inflictedStates: action.inflictStatePreviews,
+          })
+          ;({ label: description, segments: descriptionSegments } = stripDamageInfoFromDescription(formatted))
+          applyDamageDisplay(enemyAdjusted)
+        }
       }
     }
 
