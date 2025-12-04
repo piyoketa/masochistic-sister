@@ -27,7 +27,12 @@ const cards = computed(() =>
 
 <template>
   <transition name="pile-overlay">
-    <div v-if="visible" class="pile-overlay">
+    <div
+      v-if="visible"
+      class="pile-overlay"
+      @contextmenu.prevent="emit('close')"
+    >
+      <!-- 右クリックでも閉じられるように、コンテキストメニューを抑止してcloseを発火 -->
       <div class="pile-window">
         <div class="pile-window__header">
           <div class="pile-window__title">

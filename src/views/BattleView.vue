@@ -133,6 +133,7 @@ const playerRelics = computed<RelicDisplayEntry[]>(() =>
 )
 const activePile = ref<'deck' | 'discard' | null>(null)
 const deckCardInfos = computed<CardInfo[]>(() => buildCardInfos(snapshot.value?.deck ?? [], 'deck'))
+const randomizedDeckCardInfos = ref<CardInfo[]>([])
 const discardCardInfos = computed<CardInfo[]>(() =>
   buildCardInfos(snapshot.value?.discardPile ?? [], 'discard'),
 )
@@ -335,6 +336,16 @@ watch(
     }
   },
 )
+watch(
+  () => deckCardInfos.value,
+  (cards) => {
+    if (activePile.value !== 'deck') {
+      return
+    }
+    // デッキオーバーレイ表示中にデッキ内容が変わった場合も表示をランダム順に保つ
+    randomizedDeckCardInfos.value = shuffleCardInfosForDisplay(cards)
+  },
+)
 // TODO: ドメイン層へ移し、ビュー側に条件判定を残さない
 const battleStatus = computed(() => snapshot.value?.status ?? 'in-progress')
 const isGameOver = computed(() => battleStatus.value === 'gameover')
@@ -462,6 +473,7 @@ function logPileSnapshot(pile: 'deck' | 'discard'): void {
 }
 
 function openDeckOverlay(): void {
+  randomizedDeckCardInfos.value = shuffleCardInfosForDisplay(deckCardInfos.value)
   activePile.value = 'deck'
   logPileSnapshot('deck')
 }
@@ -473,6 +485,18 @@ function openDiscardOverlay(): void {
 
 function closePileOverlay(): void {
   activePile.value = null
+}
+
+function shuffleCardInfosForDisplay(cards: CardInfo[]): CardInfo[] {
+  // 山札の表示順は実際のドロー順を秘匿したいので、都度シャッフルしたコピーを返す。
+  const shuffled = [...cards]
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = shuffled[i]
+    shuffled[i] = shuffled[j]
+    shuffled[j] = tmp
+  }
+  return shuffled
 }
 
 function buildCardInfos(cards: Card[], prefix: string): CardInfo[] {
@@ -949,7 +973,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   </GameLayout>
   <PileOverlay
     :active-pile="activePile"
-    :deck-cards="deckCardInfos"
+    :deck-cards="randomizedDeckCardInfos"
     :discard-cards="discardCardInfos"
     @close="closePileOverlay"
   />
