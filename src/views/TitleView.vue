@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 interface LinkEntry {
   label: string
   description: string
   to: string | { name: string }
 }
-
-import { useAudioStore } from '@/stores/audioStore'
-
-const audioStore = useAudioStore()
 
 const testcaseLinks: LinkEntry[] = [
   {
@@ -137,10 +132,6 @@ const fieldLinks: LinkEntry[] = [
   },
 ]
 
-const bgmVolume = computed({
-  get: () => audioStore.bgmVolume,
-  set: (v: number) => audioStore.setBgmVolume(v),
-})
 </script>
 
 <template>
@@ -148,19 +139,6 @@ const bgmVolume = computed({
     <header class="title-hero">
       <h1>被虐のシスター</h1>
       <p>テストケース、敵チーム、デッキ確認画面へ移動してください。</p>
-      <div class="volume-row">
-        <label class="volume-label" for="bgm-volume">BGM音量</label>
-        <input
-          id="bgm-volume"
-          v-model.number="bgmVolume"
-          class="volume-slider"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-        />
-        <span class="volume-value">{{ Math.round(bgmVolume * 100) }}%</span>
-      </div>
     </header>
 
     <section>
@@ -240,33 +218,6 @@ const bgmVolume = computed({
 .title-hero {
   text-align: center;
   margin-bottom: 32px;
-}
-
-.volume-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.volume-label {
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  color: rgba(245, 242, 255, 0.85);
-}
-
-.volume-slider {
-  width: 160px;
-}
-
-.volume-value {
-  font-size: 12px;
-  color: rgba(245, 242, 255, 0.75);
-  min-width: 40px;
-  text-align: right;
 }
 
 .title-hero h1 {
