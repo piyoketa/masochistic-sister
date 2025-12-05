@@ -5,7 +5,9 @@ import { createAudioHub, provideAudioHub } from '@/composables/audioHub'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import { SOUND_ASSETS, IMAGE_ASSETS } from '@/assets/preloadManifest'
 import DescriptionOverlayLayer from '@/components/DescriptionOverlayLayer.vue'
+import PileOverlay from '@/components/battle/PileOverlay.vue'
 import { useAudioStore } from '@/stores/audioStore'
+import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 
 // アプリ全体で使い回す Hub を生成し、画面遷移でも破棄されないよう最上位で provide する。
 const appAudioHub = createAudioHub(SOUND_ASSETS)
@@ -13,6 +15,7 @@ const appImageHub = createImageHub()
 provideAudioHub(appAudioHub)
 provideImageHub(appImageHub)
 const audioStore = useAudioStore()
+const pileOverlayStore = usePileOverlayStore()
 audioStore.setHub(appAudioHub)
 const isVolumePanelOpen = ref(false)
 const bgmVolume = computed({
@@ -80,6 +83,12 @@ function toggleVolumePanel(): void {
     </transition>
     <RouterView />
     <DescriptionOverlayLayer />
+    <PileOverlay
+      :active-pile="pileOverlayStore.activePile"
+      :deck-cards="pileOverlayStore.deckCards"
+      :discard-cards="pileOverlayStore.discardCards"
+      @close="pileOverlayStore.close()"
+    />
   </div>
 </template>
 

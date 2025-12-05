@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import GameLayout from '@/components/GameLayout.vue'
-import HpGauge from '@/components/HpGauge.vue'
 import BattleEnemyArea from '@/components/battle/BattleEnemyArea.vue'
 import BattleHandArea from '@/components/battle/BattleHandArea.vue'
 import {
@@ -52,18 +50,18 @@ import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRewardStore } from '@/stores/rewardStore'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
-import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
+import MainGameLayout from '@/components/battle/MainGameLayout.vue'
+import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { BattleReward } from '@/domain/battle/BattleReward'
 import { useAudioStore } from '@/stores/audioStore'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
-import RelicList from '@/components/RelicList.vue'
-import { mapSnapshotRelics, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
 import type { CardInfo } from '@/types/battle'
 import type { Card } from '@/domain/entities/Card'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
+import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 
 declare global {
   interface Window {
@@ -89,6 +87,7 @@ const router = useRouter()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const rewardStore = useRewardStore()
+const pileOverlayStore = usePileOverlayStore()
 
 const battleFactory = resolveBattleFactory(props, playerStore)
 const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
@@ -104,8 +103,7 @@ interface EnemySelectionRequest {
   resolve: (enemyId: number) => void
   reject: (error: Error) => void
 }
-
-const layoutRef = ref<HTMLDivElement | null>(null)
+const mainLayoutRef = ref<InstanceType<typeof MainGameLayout> | null>(null)
 const { hide: hideDescriptionOverlay, show: showDescriptionOverlay } = useDescriptionOverlay()
 
 const snapshot = computed(() => managerState.snapshot)
@@ -128,10 +126,6 @@ const manaPulseKey = ref(0)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
-const playerRelics = computed<RelicDisplayEntry[]>(() =>
-  mapSnapshotRelics(snapshot.value?.player.relics ?? []),
-)
-const activePile = ref<'deck' | 'discard' | null>(null)
 const deckCardInfos = computed<CardInfo[]>(() => buildCardInfos(snapshot.value?.deck ?? [], 'deck'))
 const randomizedDeckCardInfos = ref<CardInfo[]>([])
 const discardCardInfos = computed<CardInfo[]>(() =>
@@ -147,7 +141,6 @@ const animationDebugLoggingEnabled =
 
 let battleAssetPreloadPromise: Promise<void> | null = null
 const rewardPrepared = ref(false)
-const playerCardRef = ref<InstanceType<typeof PlayerCardComponent> | null>(null)
 
 function preloadBattleAssets(): Promise<void> {
   if (battleAssetPreloadPromise) {
@@ -179,8 +172,7 @@ function showTransientError(message: string): void {
 }
 
 function getPlayerOriginRect(): DOMRect | null {
-  const el = playerCardRef.value?.$el as HTMLElement | undefined
-  return el?.getBoundingClientRect() ?? null
+  return mainLayoutRef.value?.getPlayerCardRect() ?? null
 }
 
 function resetErrorMessage(): void {
@@ -230,20 +222,6 @@ onUnmounted(() => {
   audioStore.stopBgm()
 })
 
-const turnLabel = computed(() => {
-  const currentTurn = snapshot.value?.turn.turnCount
-  return currentTurn !== undefined ? `ターン ${currentTurn}` : 'ターン -'
-})
-const phaseLabel = computed(() => {
-  const activeSide = snapshot.value?.turn.activeSide
-  if (activeSide === 'player') {
-    return 'Player Turn'
-  }
-  if (activeSide === 'enemy') {
-    return 'Enemy Turn'
-  }
-  return 'Turn -'
-})
 const playerMana = computed(() => ({
   current: snapshot.value?.player.currentMana ?? 0,
   max: snapshot.value?.player.maxMana ?? 0,
@@ -339,11 +317,12 @@ watch(
 watch(
   () => deckCardInfos.value,
   (cards) => {
-    if (activePile.value !== 'deck') {
+    if (pileOverlayStore.activePile !== 'deck') {
       return
     }
     // デッキオーバーレイ表示中にデッキ内容が変わった場合も表示をランダム順に保つ
     randomizedDeckCardInfos.value = shuffleCardInfosForDisplay(cards)
+    pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
   },
 )
 // TODO: ドメイン層へ移し、ビュー側に条件判定を残さない
@@ -474,17 +453,13 @@ function logPileSnapshot(pile: 'deck' | 'discard'): void {
 
 function openDeckOverlay(): void {
   randomizedDeckCardInfos.value = shuffleCardInfosForDisplay(deckCardInfos.value)
-  activePile.value = 'deck'
+  pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
   logPileSnapshot('deck')
 }
 
 function openDiscardOverlay(): void {
-  activePile.value = 'discard'
+  pileOverlayStore.openDiscard(randomizedDeckCardInfos.value, discardCardInfos.value)
   logPileSnapshot('discard')
-}
-
-function closePileOverlay(): void {
-  activePile.value = null
 }
 
 function shuffleCardInfosForDisplay(cards: CardInfo[]): CardInfo[] {
@@ -817,150 +792,55 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 </script>
 
 <template>
-  <GameLayout>
-    <template #window>
-      <div ref="layoutRef" class="battle-layout" @contextmenu.prevent="handleContextMenu">
-        <transition name="battle-error">
-          <div v-if="errorMessage" class="battle-error-overlay" role="alert">
-            {{ errorMessage }}
-          </div>
-        </transition>
-        <CutInOverlay
-          :key="`battle-cutin-${viewResetToken}`"
-          ref="cutInRef"
-          class="battle-cutin-overlay"
-          :src="currentCutInSrc"
-        />
-        <header class="battle-header">
-          <div class="header-relics">
-            <span class="relic-label">レリック</span>
-            <RelicList
-              class="relic-icon-list"
-              :relics="playerRelics"
-              :enable-glow="true"
-              @hover="(relic, event) => handleRelicHover(event, relic)"
-              @leave="handleRelicLeave"
-            />
-          </div>
-          <div class="header-status">
-            <span class="phase-label">{{ phaseLabel }}</span>
-            <span class="turn-label">{{ turnLabel }}</span>
-          </div>
-          <div class="header-actions">
-            <button
-              type="button"
-              class="header-button"
-              :disabled="!canRetry"
-              @click="handleRetryClick"
-            >
-              戦闘開始からやり直す
-            </button>
-            <button
-              type="button"
-              class="header-button"
-              :disabled="!canUndo"
-              @click="handleUndoClick"
-            >
-              一手戻す
-            </button>
-          </div>
-        </header>
-
-        <div class="battle-body">
-          <aside class="battle-sidebar">
-            <div class="portrait">
-              <PlayerCardComponent
-                :key="`player-card-${viewResetToken}`"
-                ref="playerCardRef"
-                :pre-hp="
-                  previousSnapshot?.player
-                    ? { current: previousSnapshot.player.currentHp, max: previousSnapshot.player.maxHp }
-                    : { current: playerHpGauge.current, max: playerHpGauge.max }
-                "
-              :post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
-              :outcomes="playerDamageOutcomes"
-              :selection-theme="enemySelectionTheme"
-              :states="playerStates"
-              :predicted-hp="projectedPlayerHp ?? undefined"
-            />
-          </div>
-        </aside>
-
-          <main class="battle-main">
-            <BattleEnemyArea
-              :key="`enemy-area-${viewResetToken}`"
-              :snapshot="snapshot"
-              :is-initializing="isInitializing"
-              :stage-event="latestStageEvent"
-              :is-selecting-enemy="isSelectingEnemy"
-              :hovered-enemy-id="hoveredEnemyId"
-              :selection-hints="enemySelectionHints"
-              :selection-theme="enemySelectionTheme"
-              @hover-start="handleEnemyHoverStart"
-              @hover-end="handleEnemyHoverEnd"
-              @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
-              @cancel-selection="handleEnemySelectionCanceled"
-            />
-
-            <div class="battle-main__overlay">
-              <div class="battle-main__overlay-inner">
-                <div class="battle-main__overlay-left">
-                  <div class="mana-pop" :key="manaPulseKey" aria-label="現在のマナ">
-                    <span class="mana-pop__current">{{ playerMana.current }}</span>
-                    <span class="mana-pop__slash" aria-hidden="true"></span>
-                    <span class="mana-pop__max">{{ playerMana.max }}</span>
-                  </div>
-                </div>
-                <div class="battle-main__overlay-right">
-                  <button
-                    class="end-turn-button"
-                    type="button"
-                    :disabled="isInputLocked"
-                    @click="handleEndTurnClick"
-                  >
-                    ターン終了
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <BattleHandArea
-              :key="`hand-area-${viewResetToken}`"
-              ref="handAreaRef"
-              :snapshot="snapshot"
-              :hovered-enemy-id="hoveredEnemyId"
-              :is-initializing="isInitializing"
-              :stage-event="latestStageEvent"
-              :is-player-turn="isPlayerTurn"
-              :is-input-locked="isInputLocked"
-              :view-manager="viewManager"
-              :request-enemy-target="requestEnemyTarget"
-              :cancel-enemy-selection="cancelEnemySelectionInternal"
-              :player-origin-rect="getPlayerOriginRect"
-              @play-card="handleHandPlayCard"
-              @error="handleHandError"
-              @hide-overlay="handleHandHideOverlay"
-              @show-enemy-selection-hints="handleEnemySelectionHints"
-              @clear-enemy-selection-hints="handleClearEnemySelectionHints"
-              @open-deck-overlay="openDeckOverlay"
-              @open-discard-overlay="openDiscardOverlay"
-            />
-          </main>
-          <transition name="result-overlay">
-            <div v-if="isGameOver" class="battle-gameover-overlay">
-              <div class="gameover-text">GAME OVER</div>
-            </div>
-          </transition>
-          <transition name="result-overlay">
-            <div v-if="!isGameOver && isVictory" class="battle-victory-overlay">
-              <div class="victory-text">VICTORY!</div>
-              <button type="button" class="reward-link-button" @click="handleOpenReward">
-                報酬を受け取る
-              </button>
-            </div>
-          </transition>
+  <MainGameLayout
+    ref="mainLayoutRef"
+    :player-card-key="`player-card-${viewResetToken}`"
+    :player-pre-hp="
+      previousSnapshot?.player
+        ? { current: previousSnapshot.player.currentHp, max: previousSnapshot.player.maxHp }
+        : { current: playerHpGauge.current, max: playerHpGauge.max }
+    "
+    :player-post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
+    :player-outcomes="playerDamageOutcomes"
+    :player-selection-theme="enemySelectionTheme"
+    :player-states="playerStates"
+    :player-predicted-hp="projectedPlayerHp ?? undefined"
+    @contextmenu="handleContextMenu"
+    @relic-hover="(relic, event) => handleRelicHover(event, relic)"
+    @relic-leave="handleRelicLeave"
+    @relic-click="handleRelicClick"
+    @deck-click="openDeckOverlay"
+  >
+    <template #overlays>
+      <transition name="battle-error">
+        <div v-if="errorMessage" class="battle-error-overlay" role="alert">
+          {{ errorMessage }}
         </div>
-      </div>
+      </transition>
+      <CutInOverlay
+        :key="`battle-cutin-${viewResetToken}`"
+        ref="cutInRef"
+        class="battle-cutin-overlay"
+        :src="currentCutInSrc"
+      />
+    </template>
+    <template #actions>
+      <button
+        type="button"
+        class="header-button"
+        :disabled="!canRetry"
+        @click="handleRetryClick"
+      >
+        戦闘開始からやり直す
+      </button>
+      <button
+        type="button"
+        class="header-button"
+        :disabled="!canUndo"
+        @click="handleUndoClick"
+      >
+        一手戻す
+      </button>
     </template>
     <template #instructions>
       <h2>次フェーズの指針</h2>
@@ -970,13 +850,81 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         <li>演出・SEのタイミングを試し、緊張感を高められるか確認する</li>
       </ol>
     </template>
-  </GameLayout>
-  <PileOverlay
-    :active-pile="activePile"
-    :deck-cards="randomizedDeckCardInfos"
-    :discard-cards="discardCardInfos"
-    @close="closePileOverlay"
-  />
+
+    <main class="battle-main">
+      <BattleEnemyArea
+        :key="`enemy-area-${viewResetToken}`"
+        :snapshot="snapshot"
+        :is-initializing="isInitializing"
+        :stage-event="latestStageEvent"
+        :is-selecting-enemy="isSelectingEnemy"
+        :hovered-enemy-id="hoveredEnemyId"
+        :selection-hints="enemySelectionHints"
+        :selection-theme="enemySelectionTheme"
+        @hover-start="handleEnemyHoverStart"
+        @hover-end="handleEnemyHoverEnd"
+        @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
+        @cancel-selection="handleEnemySelectionCanceled"
+      />
+
+      <div class="battle-main__overlay">
+        <div class="battle-main__overlay-inner">
+          <div class="battle-main__overlay-left">
+            <div class="mana-pop" :key="manaPulseKey" aria-label="現在のマナ">
+              <span class="mana-pop__current">{{ playerMana.current }}</span>
+              <span class="mana-pop__slash" aria-hidden="true"></span>
+              <span class="mana-pop__max">{{ playerMana.max }}</span>
+            </div>
+          </div>
+          <div class="battle-main__overlay-right">
+            <button
+              class="end-turn-button"
+              type="button"
+              :disabled="isInputLocked"
+              @click="handleEndTurnClick"
+            >
+              ターン終了
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <BattleHandArea
+        :key="`hand-area-${viewResetToken}`"
+        ref="handAreaRef"
+        :snapshot="snapshot"
+        :hovered-enemy-id="hoveredEnemyId"
+        :is-initializing="isInitializing"
+        :stage-event="latestStageEvent"
+        :is-player-turn="isPlayerTurn"
+        :is-input-locked="isInputLocked"
+        :view-manager="viewManager"
+        :request-enemy-target="requestEnemyTarget"
+        :cancel-enemy-selection="cancelEnemySelectionInternal"
+        :player-origin-rect="getPlayerOriginRect"
+        @play-card="handleHandPlayCard"
+        @error="handleHandError"
+        @hide-overlay="handleHandHideOverlay"
+        @show-enemy-selection-hints="handleEnemySelectionHints"
+        @clear-enemy-selection-hints="handleClearEnemySelectionHints"
+        @open-deck-overlay="openDeckOverlay"
+        @open-discard-overlay="openDiscardOverlay"
+      />
+    </main>
+    <transition name="result-overlay">
+      <div v-if="isGameOver" class="battle-gameover-overlay">
+        <div class="gameover-text">GAME OVER</div>
+      </div>
+    </transition>
+    <transition name="result-overlay">
+      <div v-if="!isGameOver && isVictory" class="battle-victory-overlay">
+        <div class="victory-text">VICTORY!</div>
+        <button type="button" class="reward-link-button" @click="handleOpenReward">
+          報酬を受け取る
+        </button>
+      </div>
+    </transition>
+  </MainGameLayout>
 </template>
 
 <style scoped>

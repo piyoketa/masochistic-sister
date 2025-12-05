@@ -4,26 +4,36 @@ import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { FieldNode } from '@/fields/domains/FieldNode'
-import RelicList from '@/components/RelicList.vue'
-import { mapClassNamesToDisplay } from '@/view/relicDisplayMapper'
+import PlayerStatusHeader from '@/components/battle/PlayerStatusHeader.vue'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { useAudioStore } from '@/stores/audioStore'
+import { usePileOverlayStore } from '@/stores/pileOverlayStore'
+import { CardRepository } from '@/domain/repository/CardRepository'
+import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
+import type { CardInfo } from '@/types/battle'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
+const pileOverlayStore = usePileOverlayStore()
 
 const router = useRouter()
 
-const playerStatus = computed(() => ({
-  hp: playerStore.hp,
-  maxHp: playerStore.maxHp,
-  deckCount: playerStore.deck.length,
-  gold: playerStore.gold,
-}))
-const relics = computed(() => mapClassNamesToDisplay(playerStore.relics))
 const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
 const audioStore = useAudioStore()
+const deckCardInfos = computed<CardInfo[]>(() => {
+  const repository = new CardRepository()
+  const cards = playerStore.buildDeck(repository)
+  return cards
+    .map((card, index) =>
+      buildCardInfoFromCard(card, {
+        id: `player-deck-${card.id ?? index}`,
+        affordable: true,
+        disabled: true,
+      }),
+    )
+    .filter((info): info is CardInfo => info !== null)
+})
 
 const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
 const levels = computed(() => fieldStore.field.levels)
@@ -46,6 +56,10 @@ function isReachable(levelIndex: number, nodeIndex: number): boolean {
     return false
   }
   return fieldStore.reachableNextNodes().some((entry) => entry.index === nodeIndex)
+}
+
+function openDeckOverlay(): void {
+  pileOverlayStore.openDeck(deckCardInfos.value, [])
 }
 
 async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: number): Promise<void> {
@@ -88,31 +102,20 @@ onUnmounted(() => {
 
 <template>
   <div class="field-view">
-    <header class="field-header">
-      <h1>フィールド</h1>
-      <div class="status">
-        <span>HP: {{ playerStatus.hp }} / {{ playerStatus.maxHp }}</span>
-        <span>デッキ枚数: {{ playerStatus.deckCount }}</span>
-        <span>所持金: {{ playerStatus.gold }}</span>
-        <span>現在Lv: {{ currentLevel }}</span>
-        <button type="button" class="deck-button" @click="router.push('/deck')">デッキ確認</button>
-      </div>
-      <div class="relics">
-        <span class="relics__label">レリック</span>
-        <RelicList
-          :relics="relics"
-          :enable-glow="false"
-          @hover="
-            (relic, e) =>
-              showDescription(relic.description, {
-                x: (e as MouseEvent).clientX,
-                y: (e as MouseEvent).clientY,
-              })
-          "
-          @leave="hideDescription"
-        />
-      </div>
-    </header>
+    <PlayerStatusHeader
+      class="field-header"
+      @relic-hover="(relic, e) => showDescription(relic.description, { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY })"
+      @relic-leave="hideDescription"
+      @relic-click="() => undefined"
+      @deck-click="openDeckOverlay"
+    >
+      <template #actions>
+        <div class="field-header__actions">
+          <span class="field-header__item">現在Lv: {{ currentLevel }}</span>
+          <button type="button" class="deck-button" @click="router.push('/deck')">デッキ確認</button>
+        </div>
+      </template>
+    </PlayerStatusHeader>
 
     <!-- <section class="field-section">
       <h2>現在のマス (Lv.{{ currentLevel }})</h2>
@@ -179,47 +182,6 @@ onUnmounted(() => {
   letter-spacing: 0.12em;
 }
 
-.status {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 14px;
-  color: rgba(245, 242, 255, 0.85);
-}
-
-.relics {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.relics__tooltip {
-  margin-top: 6px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-  max-width: 320px;
-}
-
-.relics__tooltip-name {
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.relics__tooltip-desc {
-  font-size: 13px;
-  line-height: 1.4;
-  color: #e7e5ff;
-}
-
-.relics__label {
-  font-size: 13px;
-  color: rgba(245, 242, 255, 0.7);
-  letter-spacing: 0.06em;
-}
-
 .deck-button {
   background: rgba(255, 227, 115, 0.9);
   color: #2d1a0f;
@@ -228,6 +190,14 @@ onUnmounted(() => {
   padding: 6px 12px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.field-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(245, 242, 255, 0.85);
+  font-size: 14px;
 }
 
 .field-section {
