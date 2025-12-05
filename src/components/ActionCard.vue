@@ -317,7 +317,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
       @focusin="handleEnter"
       @focusout="handleLeave"
     >
-      <template v-if="!isFrameVariant">
+      <template v-if="true">
         <span :class="costClasses">{{ props.cost }}</span>
 
         <header class="card-header">
@@ -436,6 +436,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   outline: none;
   z-index: 1;
   color: var(--card-text-color, #f5f5f5);   
+  text-align: center;
 }
 
 .action-card:hover,

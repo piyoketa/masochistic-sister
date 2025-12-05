@@ -6,6 +6,8 @@ import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import { SOUND_ASSETS, IMAGE_ASSETS } from '@/assets/preloadManifest'
 import DescriptionOverlayLayer from '@/components/DescriptionOverlayLayer.vue'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
+import ActionCardOverlayLayer from '@/components/ActionCardOverlayLayer.vue'
+import RelicCardOverlayLayer from '@/components/RelicCardOverlayLayer.vue'
 import { useAudioStore } from '@/stores/audioStore'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 
@@ -49,7 +51,7 @@ function toggleVolumePanel(): void {
   <div class="app-frame">
     <RouterLink class="back-to-title" to="/">← タイトルへ戻る</RouterLink>
     <button class="volume-toggle" type="button" @click="toggleVolumePanel" aria-label="音量設定">
-      <v-icon icon="mdi-volume-high" size="20" />
+      <v-icon icon="mdi-volume-high" size="20" color="white" />
     </button>
     <transition name="volume-panel">
       <div v-if="isVolumePanelOpen" class="volume-panel" role="dialog" aria-label="音量調整">
@@ -83,6 +85,8 @@ function toggleVolumePanel(): void {
     </transition>
     <RouterView />
     <DescriptionOverlayLayer />
+    <ActionCardOverlayLayer />
+    <RelicCardOverlayLayer />
     <PileOverlay
       :active-pile="pileOverlayStore.activePile"
       :deck-cards="pileOverlayStore.deckCards"

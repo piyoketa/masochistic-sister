@@ -38,9 +38,10 @@ export class BattleReward {
     const defeatedCount = this.battle.enemyTeam.members.length
     const newCards = this.collectNewCards()
     const cardEntries = newCards.map((card, index) => this.toRewardCard(card, index))
-    const gold = defeatedCount * 10 + newCards.length
+    // const gold = defeatedCount * 5
+    const gold = 0
     // HP 回復量は暫定定数。将来的にスコア式へ差し替える余地を残す。
-    const hpHeal = 50
+    const hpHeal = 100
     return {
       hpHeal,
       gold,

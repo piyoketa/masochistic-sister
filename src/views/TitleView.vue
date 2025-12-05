@@ -88,6 +88,11 @@ const demoLinks: LinkEntry[] = [
     to: '/demo/audio',
   },
   {
+    label: 'Overlay Demo',
+    description: 'Action/Relicカードのオーバーレイ表示デモ',
+    to: '/demo/overlays',
+  },
+  {
     label: 'HpGauge Demo',
     description: '予測ダメージの黄色点滅を確認',
     to: '/demo/hp-gauge',

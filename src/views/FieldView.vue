@@ -171,15 +171,7 @@ onUnmounted(() => {
 }
 
 .field-header {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   margin-bottom: 24px;
-}
-
-.field-header h1 {
-  margin: 0;
-  letter-spacing: 0.12em;
 }
 
 .deck-button {
