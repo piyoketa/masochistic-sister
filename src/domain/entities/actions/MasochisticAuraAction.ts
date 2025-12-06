@@ -15,6 +15,7 @@ export class MasochisticAuraAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new EnemySingleTargetCardTag(),
         cost: 1,
+        subtitle: '体質',
         categoryTags: [new ArcaneCardTag()],
       },
       audioCue: {

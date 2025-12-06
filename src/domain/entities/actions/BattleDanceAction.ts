@@ -12,6 +12,7 @@ export class BattleDanceAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 1,
+        subtitle: '',
       },
       gainStates: [() => new AccelerationState(1)],
       audioCue: {

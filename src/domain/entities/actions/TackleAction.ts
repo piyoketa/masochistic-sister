@@ -5,11 +5,11 @@ import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 export class TackleAction extends Attack {
   constructor() {
     super({
-      name: 'たいあたり',
+      name: '叩かれた',
       baseDamage: new Damages({ baseAmount: 20, baseCount: 1, type: 'single' }),
       effectType: 'slam',
       cardDefinition: {
-        title: 'たいあたり',
+        title: '叩かれた',
         cardType: 'attack',
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),

@@ -12,6 +12,7 @@ export class BuildUpAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 1,
+        subtitle: '',
       },
       gainStates: [() => new StrengthState(10)],
       audioCue: {

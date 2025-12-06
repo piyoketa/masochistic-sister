@@ -17,6 +17,7 @@ export class PowerChargeAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 1,
+        subtitle: '',
       },
       gainStates: [() => new ChargeState(magnitude)],
     })

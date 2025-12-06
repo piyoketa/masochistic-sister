@@ -83,6 +83,7 @@ const props = defineProps<{
   damageAmountBoosted?: boolean
   damageCountBoosted?: boolean
   variant?: 'default' | 'frame'
+  subtitle?: string
 }>()
 
 const emit = defineEmits<{
@@ -110,6 +111,20 @@ const costClasses = computed(() => [
   'card-cost',
   { 'card-cost--unavailable': props.affordable === false },
 ])
+const subtitleText = computed(() => {
+  const raw = props.subtitle ?? ''
+  const trimmed = raw.trim()
+  if (trimmed.length > 0) {
+    return trimmed
+  }
+  if (props.type === 'attack') {
+    return '被虐の記憶'
+  }
+  if (props.type === 'status') {
+    return '状態異常'
+  }
+  return ''
+})
 const cardStyleVars = computed(() => {
   const theme = CARD_TYPE_THEMES[props.type] ?? CARD_TYPE_THEMES.skill
   const tagBg =
@@ -322,7 +337,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 
         <header class="card-header">
           <h4>{{ props.title }}</h4>
-          <span class="card-category">被虐の記憶</span>
+          <span v-if="subtitleText" class="card-subtitle">{{ subtitleText }}</span>
         </header>
 
         <section class="card-body">
@@ -531,7 +546,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
     0.5px 0.5px 0 #6b060f;
 }
 
-.card-category {
+.card-subtitle {
   font-size: 8px;
   font-weight: 400;
   letter-spacing: 0.12em;

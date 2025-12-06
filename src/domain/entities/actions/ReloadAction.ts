@@ -26,6 +26,7 @@ export class ReloadAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 1,
+        subtitle: '',
       },
     })
   }

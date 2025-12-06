@@ -29,6 +29,7 @@ export class NonViolencePrayerAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 0,
+        subtitle: '',
       },
     })
   }

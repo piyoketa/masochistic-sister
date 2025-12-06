@@ -86,6 +86,7 @@ export type BaseCardInfo = {
   id: string // カード識別子（表示用にユニークであればよい）
   title: string // カード名
   cost: number // マナコスト（表示用）
+  subtitle?: string // サブタイトル（例: 祈り／状態異常など）
   primaryTags: CardTagInfo[] // タイプなど主要タグ
   categoryTags: CardTagInfo[] // カテゴリタグ（魔/神聖など）
   affordable?: boolean // 手札でプレイ可能かどうかのフラグ

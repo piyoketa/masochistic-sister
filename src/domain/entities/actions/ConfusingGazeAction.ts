@@ -17,6 +17,7 @@ export class ConfusingGazeAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new EnemySingleTargetCardTag(),
         cost: 1,
+        subtitle: '',
       },
       inflictStates: [() => new EvilThoughtState(1)],
     })

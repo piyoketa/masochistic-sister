@@ -33,6 +33,7 @@ export class LifeDrainSkillAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 1,
+        subtitle: '',
         categoryTags: [new ArcaneCardTag()],
       },
     })

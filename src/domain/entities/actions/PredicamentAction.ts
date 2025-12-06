@@ -24,6 +24,7 @@ export class PredicamentAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 0,
+        subtitle: '',
       },
     })
   }

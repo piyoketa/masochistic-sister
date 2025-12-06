@@ -44,11 +44,13 @@ export function buildCardInfoFromCard(
 
   const cost =
     options?.costContext !== undefined ? card.calculateCost(options.costContext) : card.cost
+  const subtitle = resolveSubtitle(card)
 
   const baseInfo = {
     id: options?.id ?? `card-${card.id ?? 'unknown'}`,
     title: card.title,
     cost,
+    subtitle,
     primaryTags,
     categoryTags,
     affordable: options?.affordable,
@@ -163,4 +165,23 @@ function deriveAttackStyle(definition: CardDefinition, pattern?: DamagePattern):
 
 function isSupportedCardType(type: CardInfo['type'] | string | undefined): type is CardInfo['type'] {
   return type === 'attack' || type === 'skill' || type === 'status' || type === 'skip'
+}
+
+function resolveSubtitle(card: Card): string | undefined {
+  if (card.type === 'attack') {
+    return '被虐の記憶'
+  }
+  if (card.type === 'status') {
+    return '状態異常'
+  }
+  if (card.type === 'skill') {
+    return normalizeSubtitle((card.definition as CardDefinition | undefined)?.subtitle)
+  }
+  return normalizeSubtitle((card.definition as CardDefinition | undefined)?.subtitle)
+}
+
+function normalizeSubtitle(value?: string): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
 }

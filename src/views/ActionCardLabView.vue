@@ -39,15 +39,11 @@ const statusComparisonCards = showcaseCards.filter((card) => card.type === 'stat
 
 <template>
   <main class="card-lab">
-    <header class="card-lab__intro">
-      <h1>ActionCard実験場</h1>
-    </header>
-
     <section class="card-lab__section card-lab__section--experimental-c">
       <CardList
         :cards="[...skillAttackCards, ...statusComparisonCards]"
         :height="360"
-        title="スキル/アタック/状態異常（逆転配色）"
+        title=""
       />
     </section>
 

@@ -12,6 +12,7 @@ const TAILWIND_PROPS: AllyBuffSkillProps = {
     type: new SkillTypeCardTag(),
     target: new SelfTargetCardTag(),
     cost: 0,
+    subtitle: '',
   },
   targetTags: ['acceleratable', 'multi-attack'],
   affinityKey: 'tailwind',

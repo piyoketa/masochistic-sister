@@ -19,6 +19,7 @@ interface BaseCardDefinition<
   cardType: TCardType
   type: TTypeTag
   cost: number
+  subtitle?: string
   image?: string
   effectTags?: CardTag[]
   categoryTags?: CardCategoryTag[]
