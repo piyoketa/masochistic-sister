@@ -8,7 +8,7 @@ describe('Library', () => {
     const card = createCardFromBlueprint({ type: 'tackle', overrideAmount: 40, overrideCount: 2 })
     expect(card.title).toBe('たいあたり')
     const action = card.action
-    if (!('baseDamages' in action)) {
+    if (!action || !('baseDamages' in action)) {
       throw new Error('Attack expected')
     }
     expect((action as { baseDamages: { baseAmount: number; baseCount: number } }).baseDamages.baseAmount).toBe(40)
@@ -17,10 +17,13 @@ describe('Library', () => {
 
   it('blueprintからCardInfoを構築できる', () => {
     const info = buildCardInfoFromBlueprint({ type: 'flurry', overrideAmount: 8, overrideCount: 3 }, 'test')
+    if (!info || info.type !== 'attack' || info.attackStyle !== 'multi') {
+      throw new Error('攻撃カード情報の生成に失敗しました')
+    }
     expect(info?.id).toContain('test')
     expect(info?.title).toBe('乱れ突き')
-    expect(info?.damageAmount).toBe(8)
-    expect(info?.damageCount).toBe(3)
+    expect(info.damageAmount).toBe(8)
+    expect(info.damageCount).toBe(3)
   })
 
   it('ActionをDeckCardTypeにマッピングできる', () => {

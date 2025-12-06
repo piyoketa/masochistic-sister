@@ -1,342 +1,219 @@
 <!--
 RewardView の責務:
-- Battle 勝利時に算出された報酬（HP回復/所持金/カード褒賞）を表示し、受け取る操作を提供する。
-- rewardStore に保存された一時データを参照し、受け取り完了後は fieldStore へクリア状態を反映した上でフィールドへ戻す。
+- Battle 勝利時に rewardStore に保持された褒章カード一覧を表示し、全てまとめてデッキへ追加する。
+- 受け取り処理完了後に fieldStore を更新してフィールドへ戻る遷移を提供する。
 
 非責務:
-- 報酬計算自体（BattleReward に委譲）。ここでは計算済みデータを表示するのみ。
-- バトル進行やログ再生。純粋に UI と store 更新に限定する。
+- 報酬の計算（BattleReward に委譲）やバトル進行。
+- HP/所持金などの数値報酬付与（現仕様では取り扱わない）。
 -->
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import GameLayout from '@/components/GameLayout.vue'
+import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import CardList from '@/components/CardList.vue'
-import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
-import { useRewardStore } from '@/stores/rewardStore'
+import { useRewardStore, type RewardCardEntry } from '@/stores/rewardStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
-import { useAudioStore } from '@/stores/audioStore'
 
 const rewardStore = useRewardStore()
 const playerStore = usePlayerStore()
 const fieldStore = useFieldStore()
 const router = useRouter()
-const audioStore = useAudioStore()
 
 playerStore.ensureInitialized()
 
-const selectedCardId = ref<string | null>(null)
-const rewardsState = ref({ hp: false, gold: false, card: false })
-
 const reward = computed(() => rewardStore.pending)
+const isProcessing = ref(false)
+const claimError = ref<string | null>(null)
 
-const playerStatus = computed(() => ({
-  hp: playerStore.hp,
-  maxHp: playerStore.maxHp,
-  gold: playerStore.gold,
-  deckCount: playerStore.deck.length,
+const rewardSummary = computed(() => ({
+  defeatedCount: reward.value?.defeatedCount ?? 0,
+  cardCount: reward.value?.cards.length ?? 0,
 }))
+
+const rewardCardInfos = computed(() => reward.value?.cards.map((entry) => entry.info) ?? [])
+
+const hasRewardCards = computed(() => rewardSummary.value.cardCount > 0)
+const canClaim = computed(() => Boolean(reward.value) && !isProcessing.value)
 
 onMounted(() => {
   if (!reward.value) {
-    return
+    // バトルを経由せずに直接アクセスされた場合はフィールドへ戻す。
+    void router.replace('/field')
   }
-  const firstCard = reward.value.cards[0]
-  selectedCardId.value = firstCard?.id ?? null
 })
 
-function handleHeal(): void {
-  const pending = reward.value
-  if (!pending || rewardsState.value.hp) return
-  if (pending.hpHeal > 0) {
-    playerStore.healHp(pending.hpHeal)
-    audioStore.playSe('/sounds/fields/gain_hp.mp3')
+function addCardToDeck(entry: RewardCardEntry): void {
+  if (!entry.deckType) {
+    // deckType が解決できない褒章カードは破損データ扱いとし、追加をスキップする。
+    return
   }
-  rewardsState.value.hp = true
+  const info = entry.info
+  let overrideAmount: number | undefined
+  let overrideCount: number | undefined
+  if (info.type === 'attack') {
+    overrideAmount = info.damageAmount
+    // 攻撃カテゴリは attackStyle で判定する。連続攻撃のダメージ回数は状態異常で変動してもカテゴリが変わらないため、
+    // count の実値だけで一回攻撃かどうかを推定しない。
+    overrideCount = info.attackStyle === 'multi' ? info.damageCount : 1
+  }
+  playerStore.addCard(entry.deckType, { amount: overrideAmount, count: overrideCount })
 }
 
-function handleGold(): void {
-  const pending = reward.value
-  if (!pending || rewardsState.value.gold) return
-  if (pending.gold > 0) {
-    playerStore.addGold(pending.gold)
-    audioStore.playSe('/sounds/fields/gold.mp3')
+async function handleClaimAll(): Promise<void> {
+  if (!reward.value || isProcessing.value) {
+    return
   }
-  rewardsState.value.gold = true
-}
-
-function handleCardClaim(): void {
-  const pending = reward.value
-  if (!pending || rewardsState.value.card) return
-  if (!selectedCardId.value) return
-  const entry = pending.cards.find((card) => card.id === selectedCardId.value)
-  if (entry?.deckType) {
-    const info = entry.info
-    let overrideAmount: number | undefined
-    let overrideCount: number | undefined
-    if (info.type === 'attack') {
-      overrideAmount = info.damageAmount
-      overrideCount = info.attackStyle === 'multi' ? info.damageCount : 1
-    }
-    playerStore.addCard(entry.deckType, { amount: overrideAmount, count: overrideCount })
+  isProcessing.value = true
+  claimError.value = null
+  try {
+    reward.value.cards.forEach((entry) => addCardToDeck(entry))
+    fieldStore.markCurrentCleared()
+    rewardStore.clear()
+    await router.push('/field')
+  } catch (error) {
+    claimError.value = error instanceof Error ? error.message : String(error)
+    isProcessing.value = false
   }
-  rewardsState.value.card = true
-}
-
-async function returnToField(): Promise<void> {
-  fieldStore.markCurrentCleared()
-  rewardStore.clear()
-  await router.push('/field')
 }
 </script>
 
 <template>
-  <GameLayout>
-    <template #window>
-      <div class="reward-view">
-        <header class="reward-header">
-          <h1>戦利品</h1>
-          <p class="subtitle">勝利報酬を受け取ってフィールドに戻ります。</p>
-          <div class="status">
-            <span>HP: {{ playerStatus.hp }} / {{ playerStatus.maxHp }}</span>
-            <span>所持金: {{ playerStatus.gold }}</span>
-            <span>デッキ: {{ playerStatus.deckCount }}枚</span>
+  <MainGameLayout>
+    <div class="reward-view">
+      <header class="reward-header">
+        <div class="reward-heading">
+          <p class="eyebrow">VICTORY REWARD</p>
+          <h1>褒章カードを獲得</h1>
+          <p class="subtitle">戦闘で刻まれた「傷の記憶」をすべてデッキに編入します。</p>
+        </div>
+        <div class="reward-summary">
+          <div class="summary-chip">
+            <span class="chip-label">撃破</span>
+            <span class="chip-value">{{ rewardSummary.defeatedCount }} 体</span>
           </div>
-        </header>
+          <div class="summary-chip">
+            <span class="chip-label">褒章カード</span>
+            <span class="chip-value">{{ rewardSummary.cardCount }} 枚</span>
+          </div>
+        </div>
+      </header>
 
-        <section v-if="reward" class="reward-body">
-          <aside class="player-area">
-            <PlayerCardComponent
-              :pre-hp="{ current: playerStatus.hp, max: playerStatus.maxHp }"
-              :post-hp="{ current: playerStatus.hp, max: playerStatus.maxHp }"
-              :selection-theme="'default'"
-              :states="[]"
-              :outcomes="[]"
-            />
-          </aside>
+      <section v-if="reward" class="card-section">
+        <CardList
+          v-if="hasRewardCards"
+          :cards="rewardCardInfos"
+          :gap="16"
+          :height="200"
+          :hover-effect="true"
+          :force-playable="true"
+        />
+        <p class="card-note">
+          {{
+            hasRewardCards
+              ? '表示されている褒章カードはすべて自動でデッキに追加されます。'
+              : '今回追加される褒章カードはありません。'
+          }}
+        </p>
+      </section>
+      <div v-else class="reward-empty">受け取れる報酬がありません。フィールドへ戻ります。</div>
 
-          <main class="reward-main">
-            <div class="reward-cards">
-              <div class="reward-item">
-                <div class="reward-label">HP回復</div>
-                <div class="reward-value">+{{ reward.hpHeal }}</div>
-                <button type="button" class="reward-button" :disabled="rewardsState.hp" @click="handleHeal">
-                  {{ rewardsState.hp ? '受取済み' : '受け取る' }}
-                </button>
-              </div>
-              <div class="reward-item">
-                <div class="reward-label">所持金</div>
-                <div class="reward-value">+{{ reward.gold }}</div>
-                <button type="button" class="reward-button" :disabled="rewardsState.gold" @click="handleGold">
-                  {{ rewardsState.gold ? '受取済み' : '受け取る' }}
-                </button>
-              </div>
-            </div>
-
-            <div class="card-section">
-              <div class="card-section__header">
-                <h3>新規カードから1枚獲得</h3>
-                <span class="card-section__note">デッキへ追加するカードを１枚選択してください</span>
-              </div>
-              <div class="card-list-wrapper" :class="{ 'card-list-wrapper--disabled': rewardsState.card }">
-                <CardList
-                  :cards="reward.cards.map((entry) => entry.info)"
-                  title="褒賞カード"
-                  :gap="50"
-                  selectable
-                  :selected-card-id="selectedCardId"
-                  :hover-effect="!rewardsState.card"
-                  @update:selected-card-id="(id) => {
-                    if (rewardsState.card) return
-                    selectedCardId = (id as string) ?? null
-                  }"
-                />
-                <div class="card-actions">
-                  <button
-                    type="button"
-                    class="reward-button"
-                    :disabled="rewardsState.card || !selectedCardId"
-                    @click="handleCardClaim"
-                  >
-                    {{ rewardsState.card ? '受取済み' : '選択カードを獲得' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="reward-button reward-button--secondary"
-                    @click="returnToField"
-                  >
-                    フィールドに戻る
-                  </button>
-                </div>
-              </div>
-            </div>
-          </main>
-        </section>
-      </div>
-    </template>
-  </GameLayout>
+      <footer class="reward-actions">
+        <button
+          type="button"
+          class="reward-button"
+          :disabled="!canClaim"
+          @click="handleClaimAll"
+        >
+          報酬を獲得してフィールドに戻る
+        </button>
+        <p class="action-note">ボタンを押すと褒章カードを全て受け取り、フィールドへ遷移します。</p>
+        <p v-if="claimError" class="action-error">{{ claimError }}</p>
+      </footer>
+    </div>
+  </MainGameLayout>
 </template>
 
 <style scoped>
 .reward-view {
-  min-height: 100vh;
-  padding: 24px clamp(20px, 5vw, 48px);
+  padding: 24px clamp(16px, 4vw, 32px) 40px;
   color: #f5f2ff;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .reward-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
 }
 
-.reward-header h1 {
-  margin: 0;
+.reward-heading h1 {
+  margin: 4px 0 6px;
   letter-spacing: 0.12em;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  color: rgba(245, 242, 255, 0.6);
 }
 
 .subtitle {
   margin: 0;
-  color: rgba(245, 242, 255, 0.7);
+  color: rgba(245, 242, 255, 0.72);
   font-size: 13px;
 }
 
-.status {
+.reward-summary {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
-  font-size: 13px;
-  color: rgba(245, 242, 255, 0.85);
-  justify-content: flex-end;
-}
-
-.reward-body {
-  display: grid;
-  grid-template-columns: minmax(260px, 28%) 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-.player-area {
-  position: sticky;
-  top: 12px;
-}
-
-.reward-main {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.reward-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 8px;
-}
-
-.reward-item {
-  background: rgba(18, 16, 28, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 10px 12px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
   align-items: center;
 }
 
-.reward-label {
-  font-size: 13px;
-  color: rgba(245, 242, 255, 0.7);
+.summary-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(18, 16, 28, 0.8);
+  min-width: 120px;
 }
 
-.reward-value {
+.chip-label {
+  font-size: 12px;
+  color: rgba(245, 242, 255, 0.6);
+  letter-spacing: 0.08em;
+}
+
+.chip-value {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.06em;
 }
 
-.reward-button {
-  background: rgba(255, 227, 115, 0.95);
-  color: #2d1a0f;
-  border: none;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.reward-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.card-section__header {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.card-section__header h3 {
-  margin: 0;
-}
-
-.card-section__note {
-  font-size: 12px;
-  color: rgba(245, 242, 255, 0.75);
-}
-
-.card-list-wrapper {
+.card-section {
+  background: rgba(16, 14, 24, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 8px 12px;
-  background: rgba(16, 14, 24, 0.8);
+  border-radius: 14px;
+  padding: 12px 14px 16px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  max-height: 320px;
+  overflow: hidden;
 }
 
-.card-list-wrapper--disabled {
-  opacity: 0.9;
-}
-
-.card-list-wrapper--disabled :deep(.card-list) {
-  pointer-events: none;
-}
-
-.card-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
-}
-
-.reward-button {
-  background: rgba(255, 227, 115, 0.95);
-  color: #2d1a0f;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 18px;
-  font-weight: 800;
-  cursor: pointer;
-  letter-spacing: 0.04em;
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
-}
-
-.reward-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.reward-button:not(:disabled):hover,
-.reward-button:not(:disabled):focus-visible {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
-}
-
-.reward-button--secondary {
-  background: rgba(120, 205, 255, 0.95);
-  color: #0d1a2f;
+.card-note {
+  margin: 8px 4px 0;
+  font-size: 12px;
+  color: rgba(245, 242, 255, 0.72);
 }
 
 .reward-empty {
@@ -345,5 +222,49 @@ async function returnToField(): Promise<void> {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   color: rgba(245, 242, 255, 0.85);
+}
+
+.reward-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.reward-button {
+  background: linear-gradient(90deg, rgba(255, 227, 115, 0.95), rgba(255, 188, 82, 0.95));
+  color: #2d1a0f;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+
+.reward-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.reward-button:not(:disabled):hover,
+.reward-button:not(:disabled):focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+}
+
+.action-note {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(245, 242, 255, 0.7);
+}
+
+.action-error {
+  margin: 0;
+  font-size: 12px;
+  color: #ffb4c1;
 }
 </style>

@@ -26,11 +26,12 @@ export interface SkillProps extends BaseActionProps {
 
 export abstract class Skill extends Action {
   // 非列挙プロパティとして保持し、ActionLog などのシリアライズに混ざらないようにする
-  private readonly inflictStateFactories: Array<() => State>
+  protected readonly inflictStateFactories: Array<() => State>
 
   protected constructor(props: SkillProps) {
     super(props)
     const inflictFactories = props.inflictStates ? [...props.inflictStates] : []
+    this.inflictStateFactories = inflictFactories
     Object.defineProperty(this, 'inflictStateFactories', {
       value: inflictFactories,
       enumerable: false,

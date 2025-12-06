@@ -9,7 +9,7 @@ import type { DeckCardType } from './playerStore'
  *
  * 非責務:
  * - 報酬の計算ロジック（BattleReward に委譲）。
- * - 実際の HP 回復やカード追加（RewardView 側で playerStore を更新）。
+ * - 褒章カードの実追加処理（RewardView 側で playerStore を更新）。
  */
 export interface RewardCardEntry {
   id: string
@@ -19,8 +19,6 @@ export interface RewardCardEntry {
 
 export interface PendingReward {
   battleId: string
-  hpHeal: number
-  gold: number
   defeatedCount: number
   cards: RewardCardEntry[]
 }

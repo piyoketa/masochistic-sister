@@ -65,8 +65,6 @@ import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
-export type DeckCardType = DeckCardTypeFromStore
-export type DeckCardBlueprint = DeckCardBlueprintFromStore
 
 // デッキカードの一覧定義をLibraryへ集約し、storeやオーバーレイ等が参照できるようにする。
 const cardFactories: Record<DeckCardType, () => Card> = {

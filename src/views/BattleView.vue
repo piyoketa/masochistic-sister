@@ -465,10 +465,17 @@ function openDiscardOverlay(): void {
 function shuffleCardInfosForDisplay(cards: CardInfo[]): CardInfo[] {
   // 山札の表示順は実際のドロー順を秘匿したいので、都度シャッフルしたコピーを返す。
   const shuffled = [...cards]
+  if (shuffled.length <= 1) {
+    return shuffled
+  }
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1))
     const tmp = shuffled[i]
-    shuffled[i] = shuffled[j]
+    const swapTarget = shuffled[j]
+    if (tmp === undefined || swapTarget === undefined) {
+      continue
+    }
+    shuffled[i] = swapTarget
     shuffled[j] = tmp
   }
   return shuffled
@@ -511,8 +518,6 @@ async function handleOpenReward(): Promise<void> {
   const reward = new BattleReward(battle).compute()
   rewardStore.setReward({
     battleId: battle.id,
-    hpHeal: reward.hpHeal,
-    gold: reward.gold,
     defeatedCount: reward.defeatedCount,
     cards: reward.cards,
   })

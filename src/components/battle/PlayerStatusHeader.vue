@@ -38,9 +38,9 @@ const playerStatus = computed(() => ({
         class="relic-icon-list"
         :relics="playerRelics"
         :enable-glow="true"
-        @hover="(relic, ev) => emit('relic-hover', relic, ev)"
+        @hover="(relic: RelicDisplayEntry, ev: MouseEvent | FocusEvent) => emit('relic-hover', relic, ev)"
         @leave="emit('relic-leave')"
-        @click="(relic) => emit('relic-click', relic)"
+        @click="(relic: RelicDisplayEntry) => emit('relic-click', relic)"
       />
     </div>
     <div class="header-player">

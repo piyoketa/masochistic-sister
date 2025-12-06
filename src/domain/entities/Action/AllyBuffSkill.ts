@@ -25,14 +25,12 @@ export interface AllyBuffSkillProps extends SkillProps {
 export abstract class AllyBuffSkill extends Skill {
   private readonly requiredTags: string[]
   private readonly affinityKeyValue: string
-  private readonly inflictStateFactories: Array<() => State>
   private plannedTargetId?: number
 
   protected constructor(props: AllyBuffSkillProps) {
     super(props)
     this.requiredTags = [...props.targetTags]
     this.affinityKeyValue = props.affinityKey
-    this.inflictStateFactories = props.inflictStates ? [...props.inflictStates] : []
   }
 
   get requiredAllyTags(): string[] {
@@ -75,17 +73,6 @@ export abstract class AllyBuffSkill extends Skill {
       return undefined
     }
     return context.battle.enemyTeam.findEnemy(targetId)
-  }
-
-  protected applyInflictedStates(context: ActionContext, target: Enemy | Player): void {
-    if (this.inflictStateFactories.length === 0) {
-      return
-    }
-
-    for (const factory of this.inflictStateFactories) {
-      const state = factory()
-      target.addState(state, { battle: context.battle })
-    }
   }
 
   protected afterBuffApplied(_context: ActionContext, _target: Enemy | Player): void {}

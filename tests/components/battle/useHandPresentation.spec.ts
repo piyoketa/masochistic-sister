@@ -7,6 +7,9 @@ import { Damages } from '@/domain/entities/Damages'
 import { EnemySingleTargetCardTag, SingleAttackCardTag } from '@/domain/entities/cardTags'
 import { StrengthState } from '@/domain/entities/states/StrengthState'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
+import type { Enemy } from '@/domain/entities/Enemy'
+import type { ViewManager } from '@/view/ViewManager'
+import type { CardInfo } from '@/types/battle'
 
 // テスト専用の攻撃カード。ターゲット選択が必要なシンプルな一回攻撃。
 class TestAttack extends Attack {
@@ -89,24 +92,28 @@ describe('useHandPresentation ダメージ表示タイミング', () => {
     const { handEntries } = useHandPresentation({ props, interactionState })
 
     // 手札通常表示: 補正なし
-    expect(handEntries.value[0]?.info.damageAmount).toBe(20)
+    const baseInfo = handEntries.value[0]?.info as Extract<CardInfo, { type: 'attack' }>
+    expect(baseInfo.damageAmount).toBe(20)
 
     // 敵選択待ち開始でプレイヤーState（打点上昇+2）だけ反映
     interactionState.selectedCardKey = 'card-1'
     interactionState.isAwaitingEnemy = true
     await nextTick()
-    expect(handEntries.value[0]?.info.damageAmount).toBe(22)
+    const awaitingInfo = handEntries.value[0]?.info as Extract<CardInfo, { type: 'attack' }>
+    expect(awaitingInfo.damageAmount).toBe(22)
 
     // 敵ホバーで敵State（腐食+10）も加算される
     props.hoveredEnemyId = 1
     await nextTick()
-    expect(handEntries.value[0]?.info.damageAmount).toBe(32)
+    const hoveredInfo = handEntries.value[0]?.info as Extract<CardInfo, { type: 'attack' }>
+    expect(hoveredInfo.damageAmount).toBe(32)
 
     // キャンセル後は補正なし表示に戻る
     interactionState.isAwaitingEnemy = false
     interactionState.selectedCardKey = null
     props.hoveredEnemyId = null
     await nextTick()
-    expect(handEntries.value[0]?.info.damageAmount).toBe(20)
+    const resetInfo = handEntries.value[0]?.info as Extract<CardInfo, { type: 'attack' }>
+    expect(resetInfo.damageAmount).toBe(20)
   })
 })

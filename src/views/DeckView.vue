@@ -28,10 +28,14 @@ import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { Damages } from '@/domain/entities/Damages'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
+import { shopManager } from '@/domain/shop/ShopManager'
+import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
+// デッキ編集画面に入るタイミングでショップ品揃えを最低限保証しておく
+shopManager.ensureOffers(playerStore.relics)
 
 const blueprintFactories: Record<DeckCardType, () => Card> = {
   'heaven-chain': () => new Card({ action: new HeavenChainAction() }),
@@ -104,6 +108,21 @@ const playerHp = computed(() => ({
 }))
 
 const playerGold = computed(() => playerStore.gold)
+const editHp = ref<number>(playerStore.hp)
+const editMaxHp = ref<number>(playerStore.maxHp)
+const editGold = ref<number>(playerStore.gold)
+const shopState = computed(() => shopManager.getOffers())
+
+function applyPlayerStatus(): void {
+  // デッキ編集画面ではHP/最大HP/所持金も調整できるようにする
+  playerStore.setMaxHp(editMaxHp.value)
+  playerStore.setHp(editHp.value)
+  playerStore.setGold(editGold.value)
+  // フォーム値を最新ストア値で揃えておく
+  editHp.value = playerStore.hp
+  editMaxHp.value = playerStore.maxHp
+  editGold.value = playerStore.gold
+}
 
 function selectedIndex(): number {
   const id = selectedCardId.value
@@ -117,13 +136,20 @@ function selectedIndex(): number {
   return Number(match[1])
 }
 
-function removeSelected(): void {
+function sellSelected(): void {
   const index = selectedIndex()
   if (index < 0) {
     return
   }
+  const info = selectedCardInfo.value
+  const price = shopManager.calculateSellPrice(info)
+  // 売却時にゴールドを加算する。売値0Gのカードも削除自体は可能とする。
+  if (price > 0) {
+    playerStore.addGold(price)
+  }
   playerStore.removeCardAt(index)
   selectedCardId.value = null
+  syncAttackEditor()
 }
 
 function duplicateSelected(): void {
@@ -145,6 +171,59 @@ const selectedCardInfo = computed(
   () => deckCards.value.find((card) => card.id === selectedCardId.value) ?? null,
 )
 const selectedCardIsAttack = computed(() => selectedCardInfo.value?.type === 'attack')
+const selectedSellPrice = computed(() => shopManager.calculateSellPrice(selectedCardInfo.value))
+const sellButtonLabel = computed(() => {
+  if (!selectedCardInfo.value) {
+    return '選択カードを売る'
+  }
+  return `選択カードを売る (+${selectedSellPrice.value}G)`
+})
+
+function buyHeal(): void {
+  const price = shopState.value.heal.price
+  if (playerStore.gold < price) {
+    return
+  }
+  playerStore.spendGold(price)
+  playerStore.healHp(shopState.value.heal.amount)
+  syncStatusEditors()
+}
+
+function buyCard(offer: (typeof shopState.value.cards)[number]): void {
+  if (playerStore.gold < offer.price) {
+    return
+  }
+  playerStore.spendGold(offer.price)
+  playerStore.addCard(offer.deckType)
+  syncStatusEditors()
+}
+
+function buyRelic(offer: (typeof shopState.value.relics)[number]): void {
+  if (playerStore.gold < offer.price) {
+    return
+  }
+  if (playerStore.relics.includes(offer.relicClassName)) {
+    return
+  }
+  playerStore.spendGold(offer.price)
+  playerStore.addRelic(offer.relicClassName)
+  syncStatusEditors()
+}
+
+function syncStatusEditors(): void {
+  editHp.value = playerStore.hp
+  editMaxHp.value = playerStore.maxHp
+  editGold.value = playerStore.gold
+}
+
+function resolveCardLabel(deckType: DeckCardType): string {
+  const found = addableOptions.find((opt) => opt.value === deckType)
+  return found?.label ?? deckType
+}
+
+function resolveRelicLabel(className: string): string {
+  return getRelicInfo(className)?.name ?? className
+}
 
 function syncAttackEditor(): void {
   const info = selectedCardInfo.value
@@ -260,9 +339,27 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
           type="button"
           class="deck-button deck-button--danger"
           :disabled="!selectedCardId"
-          @click="removeSelected"
+          @click="sellSelected"
         >
-          選択カードを削除
+          {{ sellButtonLabel }}
+        </button>
+        <span v-if="selectedCardId" class="sell-price">売値: {{ selectedSellPrice }}G</span>
+      </div>
+      <div class="status-row">
+        <div class="status-field">
+          <label for="edit-max-hp">最大HP</label>
+          <input id="edit-max-hp" v-model.number="editMaxHp" type="number" min="1" />
+        </div>
+        <div class="status-field">
+          <label for="edit-hp">現在HP</label>
+          <input id="edit-hp" v-model.number="editHp" type="number" min="0" />
+        </div>
+        <div class="status-field">
+          <label for="edit-gold">所持金</label>
+          <input id="edit-gold" v-model.number="editGold" type="number" min="0" />
+        </div>
+        <button type="button" class="deck-button" @click="applyPlayerStatus">
+          ステータスを更新
         </button>
       </div>
     </div>
@@ -289,6 +386,67 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
       <button type="button" class="deck-button" @click="applyAttackOverride" :disabled="!selectedCardIsAttack">
         上記の値を適用
       </button>
+    </div>
+    <div class="shop-section">
+      <h2>SHOP</h2>
+      <div class="shop-grid">
+        <div class="shop-card">
+          <div class="shop-title">HP回復 +{{ shopState.heal.amount }}</div>
+          <div class="shop-price">{{ shopState.heal.price }}G</div>
+          <button
+            type="button"
+            class="deck-button"
+            :disabled="playerGold < shopState.heal.price"
+            @click="buyHeal"
+          >
+            購入
+          </button>
+        </div>
+        <div class="shop-card">
+          <div class="shop-title">カード</div>
+          <ul class="shop-list">
+            <li v-for="offer in shopState.cards" :key="offer.deckType" class="shop-item">
+              <div>
+                <span class="shop-item__name">{{ resolveCardLabel(offer.deckType) }}</span>
+                <span v-if="offer.sale" class="shop-badge">SALE</span>
+              </div>
+              <div class="shop-item__actions">
+                <span class="shop-price">{{ offer.price }}G</span>
+                <button
+                  type="button"
+                  class="deck-button"
+                  :disabled="playerGold < offer.price"
+                  @click="buyCard(offer)"
+                >
+                  購入
+                </button>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="shop-card">
+          <div class="shop-title">レリック</div>
+          <ul class="shop-list">
+            <li v-for="offer in shopState.relics" :key="offer.relicClassName" class="shop-item">
+              <div>
+                <span class="shop-item__name">{{ resolveRelicLabel(offer.relicClassName) }}</span>
+                <span v-if="offer.sale" class="shop-badge">SALE</span>
+              </div>
+              <div class="shop-item__actions">
+                <span class="shop-price">{{ offer.price }}G</span>
+                <button
+                  type="button"
+                  class="deck-button"
+                  :disabled="playerGold < offer.price || playerStore.relics.includes(offer.relicClassName)"
+                  @click="buyRelic(offer)"
+                >
+                  購入
+                </button>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -369,6 +527,31 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
   gap: 8px;
   flex-wrap: wrap;
 }
+.sell-price {
+  color: #ffe27a;
+  font-weight: 700;
+}
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.status-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-field input {
+  background: rgba(18, 18, 28, 0.9);
+  color: #f4f1ff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 120px;
+}
 
 .deck-button {
   background: rgba(255, 227, 115, 0.9);
@@ -432,5 +615,78 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
   border-radius: 8px;
   padding: 6px 10px;
   width: 100px;
+}
+
+.shop-section {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(16, 14, 24, 0.85);
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.shop-card {
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(24, 22, 34, 0.85);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shop-title {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.shop-price {
+  font-weight: 700;
+  color: #ffe27a;
+}
+
+.shop-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.shop-item__name {
+  font-weight: 700;
+}
+
+.shop-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shop-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: rgba(120, 205, 255, 0.2);
+  color: #85d6ff;
+  border-radius: 8px;
+  font-size: 11px;
+  margin-left: 6px;
+  border: 1px solid rgba(120, 205, 255, 0.5);
 }
 </style>

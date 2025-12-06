@@ -11,6 +11,18 @@ import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { CardInfo } from '@/types/battle'
+import {
+  SnailTeam,
+  IronBloomTeam,
+  HummingbirdAlliesTeam,
+  OrcWrestlerTeam,
+  GunGoblinTeam,
+  OrcHeroEliteTeam,
+  HighOrcBandTeam,
+  BeamCannonEliteTeam,
+  GiantSlugEliteTeam,
+} from '@/domain/entities/enemyTeams'
+import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -38,6 +50,18 @@ const deckCardInfos = computed<CardInfo[]>(() => {
 const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
 const levels = computed(() => fieldStore.field.levels)
 
+const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
+  snail: () => new SnailTeam(),
+  'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
+  'hummingbird-allies': () => new HummingbirdAlliesTeam(),
+  'orc-wrestler-team': () => new OrcWrestlerTeam(),
+  'gun-goblin-team': () => new GunGoblinTeam(),
+  'orc-hero-elite': () => new OrcHeroEliteTeam(),
+  'high-orc-band': () => new HighOrcBandTeam(),
+  'beam-cannon-elite': () => new BeamCannonEliteTeam(),
+  'giant-slug-elite': () => new GiantSlugEliteTeam(),
+}
+
 function nodeLabel(node: FieldNode): string {
   if (node.label) {
     return node.label
@@ -46,9 +70,20 @@ function nodeLabel(node: FieldNode): string {
     return `スタート (Lv.${node.level})`
   }
   if (fieldStore.field.isEnemyNode(node)) {
-    return `敵: ${node.enemyTeamId}`
+    const info = resolveTeamInfo(node.enemyTeamId)
+    return info ? `敵: ${info.name}` : `敵: ${node.enemyTeamId}`
   }
   return `Lv.${node.level}`
+}
+
+function resolveTeamInfo(teamId: string): { name: string; members: string[] } | null {
+  const factory = ENEMY_TEAM_FACTORIES[teamId]
+  const team = factory ? factory() : null
+  if (!team) {
+    return null
+  }
+  const members = team.members.map((enemy) => enemy.name ?? `enemy-${enemy.id ?? ''}`)
+  return { name: team.name ?? teamId, members }
 }
 
 function isReachable(levelIndex: number, nodeIndex: number): boolean {
@@ -142,6 +177,11 @@ onUnmounted(() => {
               }"
             >
               <div class="node-title">{{ nodeLabel(node) }}</div>
+              <ul v-if="fieldStore.field.isEnemyNode(node)" class="enemy-members">
+                <li v-for="member in resolveTeamInfo(node.enemyTeamId)?.members ?? []" :key="member">
+                  {{ member }}
+                </li>
+              </ul>
               <div class="node-state">
                 状態: {{ fieldStore.isNodeCleared(node.id) ? 'クリア' : '未クリア' }}
               </div>
@@ -252,6 +292,13 @@ onUnmounted(() => {
   margin-bottom: 8px;
   font-size: 13px;
   color: rgba(245, 242, 255, 0.8);
+}
+
+.enemy-members {
+  margin: 0 0 8px;
+  padding-left: 16px;
+  color: rgba(245, 242, 255, 0.85);
+  font-size: 13px;
 }
 
 .enter-button {

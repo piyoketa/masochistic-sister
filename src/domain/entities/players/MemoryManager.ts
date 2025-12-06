@@ -40,8 +40,10 @@ export class MemoryManager {
 
   rememberState(params: RememberStateParams): Card {
     const { state, repository, battle } = params
+    // 敵から受けた状態異常カードも「新規」タグを付けて手札に追加する
+    const newTag = new NewlyCreatedCardTag()
     const stateAction = createStateActionFromState(state)
-    const card = repository.create(() => new Card({ action: stateAction }))
+    const card = repository.create(() => new Card({ action: stateAction, cardTags: [newTag] }))
     battle.addCardToPlayerHand(card)
     return card
   }

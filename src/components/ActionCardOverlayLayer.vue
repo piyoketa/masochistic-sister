@@ -19,14 +19,7 @@ const overlayStyle = computed(() => ({
 
 const cardProps = computed(() => {
   if (state.card) {
-    const card = state.card
-    const fallback: CardInfo = {
-      id: card.id ?? 'overlay-card',
-      title: card.title ?? 'カード',
-      type: card.type ?? 'skill',
-      cost: card.cost ?? 0,
-    }
-    return { ...fallback, ...card }
+    return state.card as CardInfo
   }
   if (state.blueprint) {
     return buildCardInfoFromBlueprint(state.blueprint, 'overlay') ?? null

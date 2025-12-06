@@ -11,6 +11,7 @@ import PlayerStatusHeader from '@/components/battle/PlayerStatusHeader.vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import type { DamageOutcome } from '@/domain/entities/Damages'
+import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
 
 const props = defineProps<{
   playerCardKey?: string | number
@@ -23,17 +24,22 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (event: 'contextmenu'): void
-  (event: 'relic-hover', relic: RelicDisplayEntry, event: MouseEvent | FocusEvent): void
-  (event: 'relic-leave'): void
-  (event: 'relic-click', relic: RelicDisplayEntry): void
-  (event: 'deck-click'): void
+  (eventName: 'contextmenu'): void
+  (eventName: 'relic-hover', relic: RelicDisplayEntry, ev: MouseEvent | FocusEvent): void
+  (eventName: 'relic-leave'): void
+  (eventName: 'relic-click', relic: RelicDisplayEntry): void
+  (eventName: 'deck-click'): void
 }>()
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 
 const playerCardRef = ref<InstanceType<typeof PlayerCardComponent> | null>(null)
+
+const playerStatus = computed(() => ({
+  hp: playerStore.hp,
+  maxHp: playerStore.maxHp,
+}))
 
 const resolvedPreHp = computed(() => props.playerPreHp ?? { current: playerStatus.value.hp, max: playerStatus.value.maxHp })
 const resolvedPostHp = computed(() => props.playerPostHp ?? { current: playerStatus.value.hp, max: playerStatus.value.maxHp })

@@ -3,6 +3,7 @@ import type { Deck } from '../battle/Deck'
 import type { Hand } from '../battle/Hand'
 import type { DiscardPile } from '../battle/DiscardPile'
 import type { ExilePile } from '../battle/ExilePile'
+import { DuplicatedCardTag } from '../entities/cardTags/DuplicatedCardTag'
 
 export type CardFactory<T extends Card = Card> = () => T
 
@@ -19,6 +20,7 @@ export class CardRepository {
   private readonly cards = new Map<number, Card>()
   private counter = 0
   private zones?: CardRepositoryZones
+  private static readonly NEW_TAG_ID = 'tag-newly-created'
 
   create<T extends Card>(factory: CardFactory<T>): T {
     const id = this.generateId()
@@ -103,6 +105,20 @@ export class CardRepository {
   clear(): void {
     this.cards.clear()
     this.counter = 0
+  }
+
+  /**
+   * カードの複製を生成するユーティリティ。
+   * - [新規]タグが付与されている場合は除去し、代わりに[複製]タグを追加する。
+   * - オリジナルカードのaction/stateなどはそのままコピーする。
+   */
+  duplicateCard(original: Card): Card {
+    const cardTags = original.cardTags ?? []
+    const filteredTags = cardTags.filter((tag) => tag.id !== CardRepository.NEW_TAG_ID)
+    const duplicateTag = new DuplicatedCardTag()
+    const nextTags = [...filteredTags, duplicateTag]
+    const duplicate = this.create(() => original.copyWith({ cardTags: nextTags }))
+    return duplicate
   }
 
   private generateId(): number {

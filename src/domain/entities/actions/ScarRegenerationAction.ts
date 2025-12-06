@@ -23,6 +23,7 @@ import {
 import type { Operation } from '../operations'
 import { SelectHandCardOperation } from '../operations'
 import type { Card } from '../Card'
+import type { CardRepository } from '../../repository/CardRepository'
 
 const MEMORY_TAG_ID = 'tag-memory'
 
@@ -59,7 +60,8 @@ export class ScarRegenerationAction extends Skill {
     const selectOperation = this.getSelectOperation(context)
     const selected = selectOperation.card
 
-    const duplicate = context.battle.cardRepository.create(() => selected.copyWith({}))
+    // 複製時は [新規] タグを外し、代わりに [複製] タグを付与するため CardRepository のユーティリティを使用する
+    const duplicate = this.duplicateCard(context.battle.cardRepository, selected)
     context.battle.addCardToPlayerHand(duplicate)
   }
 
@@ -73,6 +75,10 @@ export class ScarRegenerationAction extends Skill {
     }
 
     return operation
+  }
+
+  private duplicateCard(repository: CardRepository, card: Card) {
+    return repository.duplicateCard(card)
   }
 }
 

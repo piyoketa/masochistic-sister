@@ -17,8 +17,6 @@ const demoCards = library.listActionCards(3)
 
 const demoReward: PendingReward = {
   battleId: 'demo-battle',
-  hpHeal: 30,
-  gold: 50,
   defeatedCount: 1,
   cards: demoCards.map((info, idx) => ({
     id: info.id ?? `demo-card-${idx}`,

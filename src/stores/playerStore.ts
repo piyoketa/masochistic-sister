@@ -6,6 +6,9 @@ import { createCardFromBlueprint, mapActionToDeckCardType, type DeckCardBlueprin
 import { Card } from '@/domain/entities/Card'
 import type { Action } from '@/domain/entities/Action'
 
+// store外からデッキ型を参照できるように明示的に再エクスポートする
+export type { DeckCardType, DeckCardBlueprint } from '@/domain/library/Library'
+
 interface DeckPreviewEntry {
   id: number
   title: string
@@ -45,7 +48,11 @@ export const usePlayerStore = defineStore('player', {
     buildDeck(_cardRepository: CardRepository): Card[] {
       this.ensureInitialized()
       const cards = this.deck.map((blueprint) => createCardFromBlueprint(blueprint))
-      return shuffle(cards)
+      // 状態異常カードは山札の先頭に集め、各グループ内でシャッフルする
+      const statusCards = cards.filter((card) => card.type === 'status')
+      const otherCards = cards.filter((card) => card.type !== 'status')
+      const ordered = [...shuffle(statusCards), ...shuffle(otherCards)]
+      return ordered
     },
     getDeckPreview(): DeckPreviewEntry[] {
       this.ensureInitialized()
@@ -119,6 +126,21 @@ export const usePlayerStore = defineStore('player', {
     },
     setGold(amount: number): void {
       this.gold = Math.max(0, Math.floor(amount))
+    },
+    setHp(amount: number): void {
+      this.ensureInitialized()
+      const next = Math.floor(amount)
+      const clamped = Math.min(this.maxHp, Math.max(0, next))
+      this.hp = clamped
+    },
+    setMaxHp(amount: number): void {
+      this.ensureInitialized()
+      const next = Math.max(1, Math.floor(amount))
+      this.maxHp = next
+      // 最大HPを下げた場合でも、現在HPが超過しないように丸める
+      if (this.hp > next) {
+        this.hp = next
+      }
     },
     healHp(amount: number): void {
       const heal = Math.max(0, Math.floor(amount))
