@@ -243,13 +243,13 @@ export class Player {
 
   /**
    * 戦闘開始時の初期ドロー枚数を計算する。
-   * 基本は3枚。入念な準備レリックが有効なら+2枚。
+   * 基本は3枚。入念な準備レリックが有効なら+1枚。
    */
   calculateInitialDraw(battle?: Battle): number {
     let draw = 3
     if (battle) {
       if (battle.hasActiveRelic('thorough-preparation')) {
-        draw += 2
+        draw += 1
       }
     }
     return draw

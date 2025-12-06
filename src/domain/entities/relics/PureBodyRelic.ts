@@ -11,7 +11,7 @@ export class PureBodyRelic extends Relic {
   private usedThisTurn = false
 
   description(): string {
-    return '起動：このターン中、状態異常を解除するカードのマナコストが1減少する。'
+    return 'ターン中１回まで、状態異常解除のコスト-1'
   }
 
   override isActive(): boolean {

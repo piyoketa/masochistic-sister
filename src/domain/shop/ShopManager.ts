@@ -46,7 +46,7 @@ export type RelicOffer = {
 type ShopState = {
   cards: CardOffer[]
   relics: RelicOffer[]
-  heal: { amount: number; price: number }
+  heal: { amount: number; basePrice: number; purchased: number; price: number }
 }
 
 const HEAL_AMOUNT = 50
@@ -57,7 +57,11 @@ const RELIC_PRICE = 5
 const RELIC_PRICE_SALE = 2
 
 export class ShopManager {
-  private state: ShopState = { cards: [], relics: [], heal: { amount: HEAL_AMOUNT, price: HEAL_PRICE } }
+  private state: ShopState = {
+    cards: [],
+    relics: [],
+    heal: { amount: HEAL_AMOUNT, basePrice: HEAL_PRICE, purchased: 0, price: HEAL_PRICE },
+  }
 
   /**
    * フィールド初期化時に品揃えを決定する。
@@ -86,7 +90,7 @@ export class ShopManager {
     this.state = {
       cards: cardOffers,
       relics: relicOffers,
-      heal: { amount: HEAL_AMOUNT, price: HEAL_PRICE },
+      heal: { amount: HEAL_AMOUNT, basePrice: HEAL_PRICE, purchased: 0, price: HEAL_PRICE },
     }
   }
 
@@ -96,6 +100,22 @@ export class ShopManager {
   ensureOffers(ownedRelics: string[]): void {
     if (this.state.cards.length === 0 && this.state.relics.length === 0) {
       this.setupOffers({ ownedRelics })
+    }
+  }
+
+  markCardSold(deckType: DeckCardType): void {
+    this.state.cards = this.state.cards.filter((offer) => offer.deckType !== deckType)
+  }
+
+  markRelicSold(className: string): void {
+    this.state.relics = this.state.relics.filter((offer) => offer.relicClassName !== className)
+  }
+
+  markHealPurchased(): void {
+    this.state.heal = {
+      ...this.state.heal,
+      purchased: this.state.heal.purchased + 1,
+      price: this.state.heal.basePrice * (this.state.heal.purchased + 2),
     }
   }
 

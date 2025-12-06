@@ -174,7 +174,6 @@ function resolveSelectionTheme(card: CardInfo): EnemySelectionTheme {
 .card-list__body {
   overflow-y: auto;
   max-height: var(--card-list-max-height, 360px);
-  padding: 30px 8px;
 }
 
 .card-list__body--no-limit {

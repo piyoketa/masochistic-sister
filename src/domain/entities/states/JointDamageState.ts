@@ -40,7 +40,7 @@ export class JointDamageState extends BadState {
 
   override description(): string {
     const bonus = 20 * (this.magnitude ?? 0)
-    return `たいあたりの被ダメージ+${bonus}`
+    return `たいあたりの被ダメージ+${bonus}（累積）`
   }
 
   override affectsDefender(): boolean {

@@ -1,22 +1,22 @@
 <!--
 RelicRewardView の責務:
-- フィールドのレリック獲得マスに入った際、候補リストから指定数（現状1）を抽選し、プレイヤーが1つ選んで獲得できる画面を提供する。
-- プレイヤーの基本ステータス表示と、獲得済み判定・次のマスへ進む導線を提供する。
+- フィールドのレリック獲得マスで、候補から1つ選択して獲得し、フィールドへ戻る。
+- プレイヤー状態を表示しつつ、選択完了後は1ボタンで遷移する。
 
-責務ではないこと:
-- フィールド遷移やバトル進行の管理。ノードのクリア状態や遷移は fieldStore に委譲する。
-- レリックの詳細なロジック計算（isActive や状態付与）は各レリッククラスに任せ、本画面では表示と獲得のみを扱う。
+非責務:
+- フィールド生成・遷移管理（fieldStore に委譲）。
+- レリックの効果ロジック（レリッククラスに委譲）。
 -->
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import GameLayout from '@/components/GameLayout.vue'
-import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
+import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
-import type { RelicInfo } from '@/domain/entities/relics/relicLibrary'
-import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
+import { getRelicInfo, type RelicInfo } from '@/domain/entities/relics/relicLibrary'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import type { CardInfo } from '@/types/battle'
+import RelicCard from '@/components/RelicCard.vue'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -44,21 +44,20 @@ const drawCount = computed(() => {
 })
 
 const drawnRelics = ref<RelicInfo[]>([])
-const selectedClassName = ref<string | null>(null)
 const claimed = ref(false)
+const claimError = ref<string | null>(null)
 
-const playerHp = computed(() => ({
-  current: playerStore.hp,
-  max: playerStore.maxHp,
+const playerStatus = computed(() => ({
+  hp: playerStore.hp,
+  maxHp: playerStore.maxHp,
+  deckCount: playerStore.deck.length,
 }))
 
-const canClaim = computed(() => Boolean(selectedClassName.value) && !claimed.value)
+const firstRelic = computed(() => drawnRelics.value[0] ?? null)
+const canClaim = computed(() => Boolean(firstRelic.value) && !claimed.value)
 
 onMounted(() => {
   drawnRelics.value = drawRelics(candidateRelics.value, drawCount.value)
-  if (drawnRelics.value.length === 1) {
-    selectedClassName.value = drawnRelics.value[0]?.className ?? null
-  }
 })
 
 function drawRelics(classNames: string[], count: number): RelicInfo[] {
@@ -81,93 +80,73 @@ function drawRelics(classNames: string[], count: number): RelicInfo[] {
   return results
 }
 
-function handleSelect(className: string): void {
-  if (claimed.value) return
-  selectedClassName.value = className
-}
-
-function handleClaim(): void {
-  if (!selectedClassName.value || claimed.value) return
-  playerStore.addRelic(selectedClassName.value)
+async function handleClaim(): Promise<void> {
+  const relic = firstRelic.value
+  if (!relic || claimed.value) return
   claimed.value = true
-}
-
-async function handleProceed(): Promise<void> {
+  playerStore.addRelic(relic.className)
   fieldStore.markCurrentCleared()
   await router.push('/field')
 }
+
+const relicCardInfos = computed<CardInfo[]>(() =>
+  firstRelic.value
+    ? [
+        {
+          id: firstRelic.value.className ?? 'relic-card',
+          type: 'status',
+          cost: 0,
+          title: firstRelic.value.name,
+          primaryTags: [],
+          categoryTags: [],
+          affordable: true,
+          disabled: false,
+          description: firstRelic.value.description,
+          descriptionSegments: [{ text: firstRelic.value.description }],
+        },
+      ]
+    : [],
+)
 </script>
 
 <template>
-  <GameLayout>
-    <template #window>
-      <div class="relic-reward-view">
-        <header class="header">
-          <h1>レリック獲得</h1>
-          <div class="header-status">
-            <span>HP: {{ playerHp.current }} / {{ playerHp.max }}</span>
-            <span>デッキ枚数: {{ playerStore.deck.length }}</span>
-            <span>所持金: {{ playerStore.gold }}</span>
-          </div>
-        </header>
-
-        <div class="layout">
-          <aside class="player-area">
-            <PlayerCardComponent
-              :pre-hp="playerHp"
-              :post-hp="playerHp"
-              :outcomes="outcomes"
-              :selection-theme="selectionTheme"
-              :states="states"
-              :show-hp-gauge="false"
-            />
-          </aside>
-          <main class="main">
-            <div class="relic-list">
-              <label
-                v-for="relic in drawnRelics"
-                :key="relic.className"
-                class="relic-card"
-                :class="{
-                  'relic-card--selected': selectedClassName === relic.className,
-                  'relic-card--claimed': claimed,
-                }"
-              >
-                <input
-                  class="relic-card__radio"
-                  type="radio"
-                  name="relic-selection"
-                  :value="relic.className"
-                  :checked="selectedClassName === relic.className"
-                  :disabled="claimed"
-                  @change="handleSelect(relic.className)"
-                />
-                <div class="relic-card__icon">{{ relic.icon }}</div>
-                <div class="relic-card__body">
-                  <div class="relic-card__title">{{ relic.name }}</div>
-                  <div class="relic-card__type">種別: {{ relic.usageType }}</div>
-                  <p class="relic-card__description">{{ relic.description }}</p>
-                </div>
-              </label>
-            </div>
-            <div class="actions">
-              <button type="button" class="action-button" :disabled="!canClaim" @click="handleClaim">
-                獲得
-              </button>
-              <button
-                type="button"
-                class="action-button action-button--next"
-                :disabled="!drawnRelics.length"
-                @click="handleProceed"
-              >
-                次に進む
-              </button>
-            </div>
-          </main>
+  <MainGameLayout>
+  <div class="relic-reward-view">
+      <header class="header">
+        <h1>レリック獲得</h1>
+        <div class="header-status">
+          <span>HP: {{ playerStatus.hp }} / {{ playerStatus.maxHp }}</span>
+          <span>デッキ枚数: {{ playerStatus.deckCount }}</span>
         </div>
+      </header>
+
+      <div class="layout">
+        <main class="main">
+          <div v-if="firstRelic" class="relic-card-wrapper">
+            <RelicCard :icon="firstRelic.icon" :name="firstRelic.name" :description="firstRelic.description" />
+          </div>
+          <p class="card-note">
+            {{
+              firstRelic
+                ? 'このレリックを獲得し、フィールドへ戻ります。'
+                : '獲得できるレリックがありません。'
+            }}
+          </p>
+          <div class="actions">
+            <button
+              type="button"
+              class="action-button"
+              :disabled="!canClaim"
+              @click="handleClaim"
+            >
+              獲得してフィールドに戻る
+            </button>
+            <p v-if="claimError" class="action-error">{{ claimError }}</p>
+          </div>
+        </main>
       </div>
-    </template>
-  </GameLayout>
+    </div>
+  </MainGameLayout>
 </template>
 
 <style scoped>
@@ -201,101 +180,61 @@ async function handleProceed(): Promise<void> {
 
 .layout {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.player-area {
-  width: 280px;
-}
-
-.main h2 {
-  margin: 0 0 12px;
-}
-
-.relic-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
-.relic-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(24, 20, 30, 0.85);
-  align-items: center;
-  cursor: pointer;
-  transition: border-color 120ms ease, transform 120ms ease;
-}
-
-.relic-card--selected {
-  border-color: rgba(255, 214, 102, 0.8);
-  box-shadow: 0 8px 20px rgba(255, 214, 102, 0.2);
-}
-
-.relic-card--claimed {
-  opacity: 0.7;
-  cursor: default;
-}
-
-.relic-card__radio {
-  margin: 0;
-}
-
-.relic-card__icon {
-  font-size: 24px;
-}
-
-.relic-card__body {
+.main {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
 }
 
-.relic-card__title {
-  font-weight: 800;
-  letter-spacing: 0.08em;
+.relic-card-wrapper {
+  max-width: 360px;
 }
 
-.relic-card__type {
+.card-note {
+  margin: 8px 4px 0;
   font-size: 12px;
-  color: rgba(245, 242, 255, 0.7);
-}
-
-.relic-card__description {
-  margin: 0;
-  font-size: 13px;
-  color: rgba(245, 242, 255, 0.9);
+  color: rgba(245, 242, 255, 0.72);
 }
 
 .actions {
-  margin-top: 12px;
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
 }
 
 .action-button {
-  background: rgba(255, 227, 115, 0.9);
+  background: rgba(255, 227, 115, 0.95);
   color: #2d1a0f;
   border: none;
-  border-radius: 10px;
-  padding: 8px 14px;
+  border-radius: 12px;
+  padding: 10px 18px;
   font-weight: 800;
   cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
 }
 
 .action-button:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-.action-button--next {
-  background: linear-gradient(90deg, #78ffd6, #6e8bff);
-  color: #0d0d1a;
+.action-button:not(:disabled):hover,
+.action-button:not(:disabled):focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+}
+
+.action-error {
+  margin: 0;
+  font-size: 12px;
+  color: #ffb4c1;
 }
 </style>

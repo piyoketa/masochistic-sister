@@ -21,8 +21,8 @@ export class GiantSlugKingEnemy extends Enemy {
     )
     super({
       name: '大王なめくじ',
-      maxHp: 100,
-      currentHp: 100,
+      maxHp: 200,
+      currentHp: 200,
       actions: [new SummonAllyAction(), flurry],
       states: [new LargeState()],
       image: '/assets/enemies/slug-king.jpg',

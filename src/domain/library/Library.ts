@@ -24,8 +24,9 @@ import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { createStateActionFromState } from '@/domain/entities/Card'
 import { Damages } from '@/domain/entities/Damages'
 import { getRelicInfo, type RelicInfo } from '@/domain/entities/relics/relicLibrary'
+import { StateAction } from '../entities/Action/StateAction'
 // storeから切り出したデッキカード識別子
-export type DeckCardType =
+export type BaseDeckCardType =
   | 'heaven-chain'
   | 'battle-prep'
   | 'masochistic-aura'
@@ -41,6 +42,10 @@ export type DeckCardType =
   | 'acid-spit'
   | 'poison-sting'
   | 'blood-suck'
+
+export type StateDeckCardType = `state-${string}`
+
+export type DeckCardType = BaseDeckCardType | StateDeckCardType
 
 export interface DeckCardBlueprint {
   type: DeckCardType
@@ -67,7 +72,7 @@ type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
 
 // デッキカードの一覧定義をLibraryへ集約し、storeやオーバーレイ等が参照できるようにする。
-const cardFactories: Record<DeckCardType, () => Card> = {
+const baseCardFactories: Record<BaseDeckCardType, () => Card> = {
   'heaven-chain': () => new Card({ action: new HeavenChainAction() }),
   'battle-prep': () => new Card({ action: new BattlePrepAction() }),
   'masochistic-aura': () => new Card({ action: new MasochisticAuraAction() }),
@@ -83,6 +88,13 @@ const cardFactories: Record<DeckCardType, () => Card> = {
   'acid-spit': () => new Card({ action: new AcidSpitAction() }),
   'poison-sting': () => new Card({ action: new PoisonStingAction() }),
   'blood-suck': () => new Card({ action: new BloodSuckAction() }),
+}
+
+const stateCardFactories: Record<StateDeckCardType, () => Card> = buildStateCardFactories()
+
+const cardFactories: Record<DeckCardType, () => Card> = {
+  ...baseCardFactories,
+  ...stateCardFactories,
 }
 
 const actionConstructorMap = new Map<Function, DeckCardType>([
@@ -103,7 +115,7 @@ const actionConstructorMap = new Map<Function, DeckCardType>([
   [BloodSuckAction, 'blood-suck'],
 ])
 
-export function createCardFromBlueprint(blueprint: DeckCardBlueprint): Card {
+export function createCardFromBlueprint(blueprint: DeckCardBlueprint, repository?: { create: (factory: () => Card) => Card }): Card {
   const factory = cardFactories[blueprint.type]
   if (!factory) {
     throw new Error(`未対応のカード種別 "${blueprint.type}" です`)
@@ -119,10 +131,10 @@ export function createCardFromBlueprint(blueprint: DeckCardBlueprint): Card {
       const clonedAction = action.cloneWithDamages(
         new Damages({ baseAmount: amount, baseCount: count, type: base.type }),
       )
-      return new Card({ action: clonedAction })
+      return repository ? repository.create(() => new Card({ action: clonedAction })) : new Card({ action: clonedAction })
     }
   }
-  return baseCard
+  return repository ? repository.create(() => baseCard) : baseCard
 }
 
 export function buildCardInfoFromBlueprint(blueprint: DeckCardBlueprint, idPrefix = 'deck'): CardInfo | null {
@@ -135,6 +147,12 @@ export function buildCardInfoFromBlueprint(blueprint: DeckCardBlueprint, idPrefi
 }
 
 export function mapActionToDeckCardType(action: Action): DeckCardType | null {
+  if (action instanceof StateAction) {
+    const stateId = action.state?.id
+    if (stateId) {
+      return `state-${stateId}` as StateDeckCardType
+    }
+  }
   const key = actionConstructorMap.get(action.constructor as Function)
   return key ?? null
 }
@@ -271,4 +289,40 @@ export class Library {
   private buildCardInfo(card: Card, identifier: string): CardInfo | null {
     return buildCardInfoFromCard(card, { id: identifier })
   }
+}
+
+function buildStateCardFactories(): Record<StateDeckCardType, () => Card> {
+  const factories: Record<StateDeckCardType, () => Card> = {}
+  for (const candidate of Object.values(stateModules)) {
+    const state = instantiateStateForFactory(candidate)
+    if (!state) {
+      continue
+    }
+    const deckType = `state-${state.id}` as StateDeckCardType
+    factories[deckType] = () => {
+      const instance = instantiateStateForFactory(candidate)
+      if (!instance) {
+        throw new Error(`Stateカード生成に失敗しました: ${deckType}`)
+      }
+      const action = createStateActionFromState(instance)
+      return new Card({ action })
+    }
+  }
+  return factories
+}
+
+function instantiateStateForFactory(candidate: unknown): StateType | null {
+  if (typeof candidate !== 'function') {
+    return null
+  }
+  try {
+    // eslint-disable-next-line new-cap
+    const state = new (candidate as StateConstructor)()
+    if (state instanceof State && state.cardDefinitionBase) {
+      return state
+    }
+  } catch {
+    // 無引数で生成できない状態はスキップ
+  }
+  return null
 }

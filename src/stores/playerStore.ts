@@ -16,7 +16,7 @@ interface DeckPreviewEntry {
   type: DeckCardType
 }
 
-const DEFAULT_RELICS: string[] = ['MemorySaintRelic']
+const DEFAULT_RELICS: string[] = []
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -45,9 +45,9 @@ export const usePlayerStore = defineStore('player', {
       this.deck = [...blueprints]
       this.initialized = true
     },
-    buildDeck(_cardRepository: CardRepository): Card[] {
+    buildDeck(cardRepository: CardRepository): Card[] {
       this.ensureInitialized()
-      const cards = this.deck.map((blueprint) => createCardFromBlueprint(blueprint))
+      const cards = this.deck.map((blueprint) => createCardFromBlueprint(blueprint, cardRepository))
       // 状態異常カードは山札の先頭に集め、各グループ内でシャッフルする
       const statusCards = cards.filter((card) => card.type === 'status')
       const otherCards = cards.filter((card) => card.type !== 'status')
@@ -57,7 +57,7 @@ export const usePlayerStore = defineStore('player', {
     getDeckPreview(): DeckPreviewEntry[] {
       this.ensureInitialized()
       return this.deck.map((blueprint, index) => {
-        const card = createCardFromBlueprint(blueprint)
+        const card = createCardFromBlueprint(blueprint, new CardRepository())
         return {
           id: index,
           title: card.title,

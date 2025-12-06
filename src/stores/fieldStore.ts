@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { SampleField } from '@/fields/domains/SampleField'
+import { FirstField } from '@/fields/domains/FirstField'
 import type { Field } from '@/fields/domains/Field'
 import type { FieldNode } from '@/fields/domains/FieldNode'
 import { usePlayerStore } from './playerStore'
@@ -28,6 +29,18 @@ export const useFieldStore = defineStore('field', {
       const playerStore = usePlayerStore()
       playerStore.ensureInitialized()
       this.field = new SampleField(playerStore.relics)
+      this.currentLevelIndex = 0
+      this.currentNodeIndex = 0
+      this.clearedNodes = new Set<string>(['start-1'])
+    },
+    initializeField(fieldId?: string): void {
+      const playerStore = usePlayerStore()
+      playerStore.ensureInitialized()
+      if (fieldId === 'first-field') {
+        this.field = new FirstField(playerStore.relics)
+      } else {
+        this.field = new SampleField(playerStore.relics)
+      }
       this.currentLevelIndex = 0
       this.currentNodeIndex = 0
       this.clearedNodes = new Set<string>(['start-1'])

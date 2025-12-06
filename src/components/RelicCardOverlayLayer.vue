@@ -7,6 +7,7 @@ Componentの責務: マウス付近にレリック情報カードを表示する
 import { computed } from 'vue'
 import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
 import { getRelicInfoByClassName } from '@/domain/library/Library'
+import RelicCard from '@/components/RelicCard.vue'
 
 const { state } = useRelicCardOverlay()
 
@@ -25,13 +26,7 @@ const overlayRelic = computed(() => {
 <template>
   <teleport to="body">
     <div v-if="state.visible && overlayRelic" class="relic-card-overlay" :style="overlayStyle">
-      <div class="relic-card">
-        <div class="relic-card__title-row">
-          <span class="relic-card__icon">{{ overlayRelic.icon }}</span>
-          <span class="relic-card__title">{{ overlayRelic.name }}</span>
-        </div>
-        <div class="relic-card__body">{{ overlayRelic.description }}</div>
-      </div>
+      <RelicCard :icon="overlayRelic.icon" :name="overlayRelic.name" :description="overlayRelic.description" />
     </div>
   </teleport>
 </template>
@@ -44,35 +39,4 @@ const overlayRelic = computed(() => {
   width: 280px;
 }
 
-.relic-card {
-  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.16), transparent 40%),
-    linear-gradient(180deg, rgba(18, 16, 28, 0.94), rgba(10, 10, 18, 0.94));
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 14px;
-  padding: 12px;
-  color: #f4f1ff;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
-}
-
-.relic-card__title-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.relic-card__icon {
-  font-size: 20px; /* RelicListヘッダーのアイコンサイズに合わせる */
-  line-height: 1;
-}
-
-.relic-card__title {
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.relic-card__body {
-  font-size: 13px;
-  line-height: 1.5;
-}
 </style>

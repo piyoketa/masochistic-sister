@@ -19,6 +19,7 @@ export interface RewardCardEntry {
 
 export interface PendingReward {
   battleId: string
+  hpHeal: number
   defeatedCount: number
   cards: RewardCardEntry[]
 }

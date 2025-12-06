@@ -19,6 +19,7 @@ export interface RewardCardCandidate {
 
 export interface ComputedBattleReward {
   defeatedCount: number
+  hpHeal: number
   cards: RewardCardCandidate[]
 }
 
@@ -32,8 +33,10 @@ export class BattleReward {
     const defeatedCount = this.battle.enemyTeam.members.length
     const newCards = this.collectNewCards()
     const cardEntries = newCards.map((card, index) => this.toRewardCard(card, index))
+    // HP回復は固定値 75 とする
     return {
       defeatedCount,
+      hpHeal: 75,
       cards: cardEntries.filter((entry): entry is RewardCardCandidate => Boolean(entry)),
     }
   }

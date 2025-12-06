@@ -9,9 +9,15 @@ import RelicList from '@/components/RelicList.vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import { mapClassNamesToDisplay, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
 
-const props = defineProps<{
-  sticky?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    sticky?: boolean
+    enableGlow?: boolean
+  }>(),
+  {
+    enableGlow: true,
+  },
+)
 
 const emit = defineEmits<{
   (event: 'relic-hover', relic: RelicDisplayEntry, ev: MouseEvent | FocusEvent): void
@@ -37,7 +43,7 @@ const playerStatus = computed(() => ({
       <RelicList
         class="relic-icon-list"
         :relics="playerRelics"
-        :enable-glow="true"
+        :enable-glow="props.enableGlow"
         @hover="(relic: RelicDisplayEntry, ev: MouseEvent | FocusEvent) => emit('relic-hover', relic, ev)"
         @leave="emit('relic-leave')"
         @click="(relic: RelicDisplayEntry) => emit('relic-click', relic)"

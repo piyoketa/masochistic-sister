@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { FieldNode } from '@/fields/domains/FieldNode'
+import { FirstField } from '@/fields/domains/FirstField'
 import PlayerStatusHeader from '@/components/battle/PlayerStatusHeader.vue'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { useAudioStore } from '@/stores/audioStore'
@@ -23,6 +24,12 @@ import {
   GiantSlugEliteTeam,
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
+
+type FieldViewProps = {
+  fieldId?: string
+}
+
+const props = defineProps<FieldViewProps>()
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -49,6 +56,7 @@ const deckCardInfos = computed<CardInfo[]>(() => {
 
 const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
 const levels = computed(() => fieldStore.field.levels)
+const playerHp = computed(() => ({ current: playerStore.hp, max: playerStore.maxHp }))
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),
@@ -127,6 +135,9 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
 audioStore.playBgm('/sounds/bgm/field.mp3')
 
 onMounted(() => {
+  if (props.fieldId === 'first-field') {
+    fieldStore.initializeField(props.fieldId)
+  }
   audioStore.playBgm('/sounds/bgm/field.mp3')
 })
 
@@ -139,6 +150,7 @@ onUnmounted(() => {
   <div class="field-view">
     <PlayerStatusHeader
       class="field-header"
+      :enable-glow="false"
       @relic-hover="(relic, e) => showDescription(relic.description, { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY })"
       @relic-leave="hideDescription"
       @relic-click="() => undefined"
@@ -146,6 +158,7 @@ onUnmounted(() => {
     >
       <template #actions>
         <div class="field-header__actions">
+          <span class="field-header__item">HP: {{ playerHp.current }} / {{ playerHp.max }}</span>
           <span class="field-header__item">現在Lv: {{ currentLevel }}</span>
           <button type="button" class="deck-button" @click="router.push('/deck')">デッキ確認</button>
         </div>

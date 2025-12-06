@@ -21,6 +21,7 @@ const props = defineProps<{
   playerSelectionTheme?: EnemySelectionTheme
   playerStates?: string[]
   playerPredictedHp?: number | null
+  relicGlow?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -61,6 +62,7 @@ defineExpose({ getPlayerCardRect })
       <div class="battle-layout" @contextmenu.prevent="emit('contextmenu')">
         <slot name="overlays" />
         <PlayerStatusHeader
+          :enable-glow="props.relicGlow !== false"
           @relic-hover="(relic, event) => emit('relic-hover', relic, event)"
           @relic-leave="emit('relic-leave')"
           @relic-click="(relic) => emit('relic-click', relic)"

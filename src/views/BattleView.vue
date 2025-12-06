@@ -518,6 +518,7 @@ async function handleOpenReward(): Promise<void> {
   const reward = new BattleReward(battle).compute()
   rewardStore.setReward({
     battleId: battle.id,
+    hpHeal: reward.hpHeal,
     defeatedCount: reward.defeatedCount,
     cards: reward.cards,
   })

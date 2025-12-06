@@ -11,7 +11,7 @@ export class ThoroughPreparationRelic extends Relic {
   private activated = false
 
   description(): string {
-    return '戦闘開始時の初期ドロー枚数+2'
+    return '戦闘開始時の初期ドロー枚数+1'
   }
 
   override isActive(context?: { battle?: import('@/domain/battle/Battle').Battle; player?: import('../Player').Player }): boolean {

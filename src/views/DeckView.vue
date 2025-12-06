@@ -11,55 +11,29 @@ import {
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { Card } from '@/domain/entities/Card'
 import { Attack } from '@/domain/entities/Action'
-import { HeavenChainAction } from '@/domain/entities/actions/HeavenChainAction'
-import { BattlePrepAction } from '@/domain/entities/actions/BattlePrepAction'
-import { MasochisticAuraAction } from '@/domain/entities/actions/MasochisticAuraAction'
-import { ScarRegenerationAction } from '@/domain/entities/actions/ScarRegenerationAction'
-import { ReloadAction } from '@/domain/entities/actions/ReloadAction'
-import { NonViolencePrayerAction } from '@/domain/entities/actions/NonViolencePrayerAction'
-import { LifeDrainSkillAction } from '@/domain/entities/actions/LifeDrainSkillAction'
-import { DailyRoutineAction } from '@/domain/entities/actions/DailyRoutineAction'
-import { PredicamentAction } from '@/domain/entities/actions/PredicamentAction'
-import { TackleAction } from '@/domain/entities/actions/TackleAction'
-import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
-import { MucusShotAction } from '@/domain/entities/actions/MucusShotAction'
-import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
-import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
-import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { Damages } from '@/domain/entities/Damages'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { shopManager } from '@/domain/shop/ShopManager'
 import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
+import { useActionCardOverlay } from '@/composables/actionCardOverlay'
+import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
+import { useAudioStore } from '@/stores/audioStore'
+import { createCardFromBlueprint } from '@/domain/library/Library'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
+const audioStore = useAudioStore()
+const actionOverlay = useActionCardOverlay()
+const relicOverlay = useRelicCardOverlay()
 // デッキ編集画面に入るタイミングでショップ品揃えを最低限保証しておく
 shopManager.ensureOffers(playerStore.relics)
-
-const blueprintFactories: Record<DeckCardType, () => Card> = {
-  'heaven-chain': () => new Card({ action: new HeavenChainAction() }),
-  'battle-prep': () => new Card({ action: new BattlePrepAction() }),
-  'masochistic-aura': () => new Card({ action: new MasochisticAuraAction() }),
-  'scar-regeneration': () => new Card({ action: new ScarRegenerationAction() }),
-  reload: () => new Card({ action: new ReloadAction() }),
-  'non-violence-prayer': () => new Card({ action: new NonViolencePrayerAction() }),
-  'life-drain-skill': () => new Card({ action: new LifeDrainSkillAction() }),
-  'daily-routine': () => new Card({ action: new DailyRoutineAction() }),
-  predicament: () => new Card({ action: new PredicamentAction() }),
-  tackle: () => new Card({ action: new TackleAction() }),
-  flurry: () => new Card({ action: new FlurryAction() }),
-  'mucus-shot': () => new Card({ action: new MucusShotAction() }),
-  'acid-spit': () => new Card({ action: new AcidSpitAction() }),
-  'poison-sting': () => new Card({ action: new PoisonStingAction() }),
-  'blood-suck': () => new Card({ action: new BloodSuckAction() }),
-}
 
 const deckCards = computed<CardInfo[]>(() => {
   const repository = new CardRepository()
   const entries = playerStore.deck
     .map((blueprint, index) => {
-      const card = createCardFromBlueprint(repository, blueprint)
+      const card = createCardFromBlueprint(blueprint, repository)
       const info = buildCardInfo(card, index)
       return info ? { info, deckIndex: index } : null
     })
@@ -83,8 +57,8 @@ const addableOptions: Array<{ value: DeckCardType; label: string }> = [
   { value: 'heaven-chain', label: '天の鎖' },
   { value: 'battle-prep', label: '戦いの準備' },
   { value: 'masochistic-aura', label: '被虐のオーラ' },
-  { value: 'scar-regeneration', label: '傷の癒やし' },
-  { value: 'reload', label: 'リロード' },
+  { value: 'scar-regeneration', label: '疼き' },
+  { value: 'reload', label: '再装填' },
   { value: 'non-violence-prayer', label: '不殺の祈り' },
   { value: 'life-drain-skill', label: 'ライフドレイン' },
   { value: 'daily-routine', label: '日課' },
@@ -111,7 +85,7 @@ const playerGold = computed(() => playerStore.gold)
 const editHp = ref<number>(playerStore.hp)
 const editMaxHp = ref<number>(playerStore.maxHp)
 const editGold = ref<number>(playerStore.gold)
-const shopState = computed(() => shopManager.getOffers())
+const shopState = ref(shopManager.getOffers())
 
 function applyPlayerStatus(): void {
   // デッキ編集画面ではHP/最大HP/所持金も調整できるようにする
@@ -122,6 +96,10 @@ function applyPlayerStatus(): void {
   editHp.value = playerStore.hp
   editMaxHp.value = playerStore.maxHp
   editGold.value = playerStore.gold
+}
+
+function refreshShopState(): void {
+  shopState.value = shopManager.getOffers()
 }
 
 function selectedIndex(): number {
@@ -186,7 +164,10 @@ function buyHeal(): void {
   }
   playerStore.spendGold(price)
   playerStore.healHp(shopState.value.heal.amount)
+  audioStore.playSe('/sounds/fields/gain_hp.mp3')
   syncStatusEditors()
+  shopManager.markHealPurchased()
+  refreshShopState()
 }
 
 function buyCard(offer: (typeof shopState.value.cards)[number]): void {
@@ -196,6 +177,8 @@ function buyCard(offer: (typeof shopState.value.cards)[number]): void {
   playerStore.spendGold(offer.price)
   playerStore.addCard(offer.deckType)
   syncStatusEditors()
+  shopManager.markCardSold(offer.deckType)
+  refreshShopState()
 }
 
 function buyRelic(offer: (typeof shopState.value.relics)[number]): void {
@@ -208,6 +191,8 @@ function buyRelic(offer: (typeof shopState.value.relics)[number]): void {
   playerStore.spendGold(offer.price)
   playerStore.addRelic(offer.relicClassName)
   syncStatusEditors()
+  shopManager.markRelicSold(offer.relicClassName)
+  refreshShopState()
 }
 
 function syncStatusEditors(): void {
@@ -223,6 +208,22 @@ function resolveCardLabel(deckType: DeckCardType): string {
 
 function resolveRelicLabel(className: string): string {
   return getRelicInfo(className)?.name ?? className
+}
+
+function showCardOverlay(deckType: DeckCardType, event: MouseEvent): void {
+  actionOverlay.showFromBlueprint({ type: deckType }, { x: event.clientX, y: event.clientY })
+}
+
+function hideCardOverlay(): void {
+  actionOverlay.hide()
+}
+
+function showRelicOverlay(className: string, event: MouseEvent): void {
+  relicOverlay.showByClassName(className, { x: event.clientX, y: event.clientY })
+}
+
+function hideRelicOverlay(): void {
+  relicOverlay.hide()
 }
 
 function syncAttackEditor(): void {
@@ -250,27 +251,6 @@ function applyAttackOverride(): void {
 }
 
 syncAttackEditor()
-
-function createCardFromBlueprint(repository: CardRepository, blueprint: DeckCardBlueprint): Card {
-  const factory = blueprintFactories[blueprint.type]
-  if (!factory) {
-    throw new Error(`未対応のカード種別 "${blueprint.type}" です`)
-  }
-  const baseCard = factory()
-  const action = baseCard.action
-  if (action instanceof Attack) {
-    const base = action.baseDamages
-    const amount = blueprint.overrideAmount ?? base.baseAmount
-    const count = blueprint.overrideCount ?? base.baseCount
-    if (amount !== base.baseAmount || count !== base.baseCount) {
-      const cloned = action.cloneWithDamages(
-        new Damages({ baseAmount: amount, baseCount: count, type: base.type }),
-      )
-      return repository.create(() => new Card({ action: cloned }))
-    }
-  }
-  return repository.create(() => baseCard)
-}
 
 function buildCardInfo(card: Card, index: number): CardInfo | null {
   return buildCardInfoFromCard(card, {
@@ -407,7 +387,13 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
           <ul class="shop-list">
             <li v-for="offer in shopState.cards" :key="offer.deckType" class="shop-item">
               <div>
-                <span class="shop-item__name">{{ resolveCardLabel(offer.deckType) }}</span>
+                <span
+                  class="shop-item__name"
+                  @mouseenter="(e) => showCardOverlay(offer.deckType, e as MouseEvent)"
+                  @mouseleave="hideCardOverlay"
+                >
+                  {{ resolveCardLabel(offer.deckType) }}
+                </span>
                 <span v-if="offer.sale" class="shop-badge">SALE</span>
               </div>
               <div class="shop-item__actions">
@@ -429,7 +415,13 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
           <ul class="shop-list">
             <li v-for="offer in shopState.relics" :key="offer.relicClassName" class="shop-item">
               <div>
-                <span class="shop-item__name">{{ resolveRelicLabel(offer.relicClassName) }}</span>
+                <span
+                  class="shop-item__name"
+                  @mouseenter="(e) => showRelicOverlay(offer.relicClassName, e as MouseEvent)"
+                  @mouseleave="hideRelicOverlay"
+                >
+                  {{ resolveRelicLabel(offer.relicClassName) }}
+                </span>
                 <span v-if="offer.sale" class="shop-badge">SALE</span>
               </div>
               <div class="shop-item__actions">
@@ -629,6 +621,7 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
+  padding-bottom: 150px;
 }
 
 .shop-card {

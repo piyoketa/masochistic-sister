@@ -1,51 +1,27 @@
 <!--
 RandomCardRewardView の責務:
-- フィールドのランダムカード獲得マスに入った際、事前に決定された3枚の候補から1枚だけ選択・獲得させる。
-- プレイヤーの基本ステータス表示と、獲得処理、フィールドへの復帰導線を提供する。
+- フィールドのランダムカード獲得マスで、事前に決定された候補（例: スキル3枚）から1枚だけ選択させる。
+- プレイヤー状態を表示しつつ、選択カードの獲得とフィールドへの復帰を1ボタンで行う。
 
 非責務:
-- フィールド全体の遷移管理やノード生成。候補決定は SampleField 側で実施済みの前提。
+- 候補決定やフィールド遷移管理（フィールド生成は Field 側の責務）。
 -->
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import GameLayout from '@/components/GameLayout.vue'
-import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
-import type { CardInfo } from '@/types/battle'
-import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import MainGameLayout from '@/components/battle/MainGameLayout.vue'
+import CardList from '@/components/CardList.vue'
 import { usePlayerStore, type DeckCardType } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
+import type { CardInfo } from '@/types/battle'
+import { createCardFromBlueprint } from '@/domain/library/Library'
 import { CardRepository } from '@/domain/repository/CardRepository'
-import { Card } from '@/domain/entities/Card'
-import { Attack } from '@/domain/entities/Action'
-import { Damages } from '@/domain/entities/Damages'
-import {
-  HeavenChainAction,
-  BattlePrepAction,
-  MasochisticAuraAction,
-  ScarRegenerationAction,
-  ReloadAction,
-  NonViolencePrayerAction,
-  LifeDrainSkillAction,
-  DailyRoutineAction,
-  PredicamentAction,
-  TackleAction,
-  FlurryAction,
-  MucusShotAction,
-  AcidSpitAction,
-  PoisonStingAction,
-  BloodSuckAction,
-} from '@/domain/entities/actions'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
 const router = useRouter()
-
-const selectionTheme = ref<EnemySelectionTheme>('default')
-const outcomes: [] = []
-const states: string[] = []
 
 const selectedActions = computed<DeckCardType[]>(() => {
   const node = fieldStore.currentNode
@@ -56,162 +32,110 @@ const selectedActions = computed<DeckCardType[]>(() => {
 })
 
 const cardInfos = ref<CardInfo[]>([])
-const selectedType = ref<DeckCardType | null>(null)
-const claimed = ref(false)
+const selectedCardId = ref<string | null>(null)
+const isProcessing = ref(false)
+const claimError = ref<string | null>(null)
 
-const playerHp = computed(() => ({
-  current: playerStore.hp,
-  max: playerStore.maxHp,
+const playerStatus = computed(() => ({
+  hp: playerStore.hp,
+  maxHp: playerStore.maxHp,
+  deckCount: playerStore.deck.length,
 }))
 
-const canClaim = computed(() => !!selectedType.value && !claimed.value)
+const canClaim = computed(() => Boolean(selectedCardId.value) && !isProcessing.value)
 
 onMounted(() => {
-  cardInfos.value = selectedActions.value.map((type, index) => buildCardInfo(createCard(type), `choice-${index}`)!)
+  const repo = new CardRepository()
+  cardInfos.value = selectedActions.value
+    .map((type, index) => {
+      const card = createCardFromBlueprint({ type }, repo)
+      return buildCardInfoFromCard(card, {
+        id: `choice-${card.id ?? index}`,
+        affordable: true,
+        disabled: false,
+      })
+    })
+    .filter((info): info is CardInfo => info !== null)
+  // 初期状態では何も選択しない
+  selectedCardId.value = null
 })
 
-function createCardFromType(repository: CardRepository, type: DeckCardType): Card {
-  const map: Record<DeckCardType, () => Card> = {
-    'heaven-chain': () => new Card({ action: new HeavenChainAction() }),
-    'battle-prep': () => new Card({ action: new BattlePrepAction() }),
-    'masochistic-aura': () => new Card({ action: new MasochisticAuraAction() }),
-    'scar-regeneration': () => new Card({ action: new ScarRegenerationAction() }),
-    reload: () => new Card({ action: new ReloadAction() }),
-    'non-violence-prayer': () => new Card({ action: new NonViolencePrayerAction() }),
-    'life-drain-skill': () => new Card({ action: new LifeDrainSkillAction() }),
-    'daily-routine': () => new Card({ action: new DailyRoutineAction() }),
-    predicament: () => new Card({ action: new PredicamentAction() }),
-    tackle: () => new Card({ action: new TackleAction() }),
-    flurry: () => new Card({ action: new FlurryAction() }),
-    'mucus-shot': () => new Card({ action: new MucusShotAction() }),
-    'acid-spit': () => new Card({ action: new AcidSpitAction() }),
-    'poison-sting': () => new Card({ action: new PoisonStingAction() }),
-    'blood-suck': () => new Card({ action: new BloodSuckAction() }),
+function resolveDeckTypeById(id: string | null): DeckCardType | null {
+  if (!id) return null
+  const idx = cardInfos.value.findIndex((info) => info.id === id)
+  if (idx < 0) return null
+  return selectedActions.value[idx] ?? null
+}
+
+async function handleClaim(): Promise<void> {
+  if (!canClaim.value) return
+  isProcessing.value = true
+  claimError.value = null
+  try {
+    const deckType = resolveDeckTypeById(selectedCardId.value)
+    if (deckType) {
+      playerStore.addCard(deckType)
+    }
+    fieldStore.markCurrentCleared()
+    await router.push('/field')
+  } catch (error) {
+    claimError.value = error instanceof Error ? error.message : String(error)
+    isProcessing.value = false
   }
-  const factory = map[type]
-  if (!factory) {
-    throw new Error(`未対応のカード種別: ${type}`)
-  }
-  const baseCard = factory()
-  const action = baseCard.action
-  if (action instanceof Attack) {
-    const base = action.baseDamages
-    const cloned = action.cloneWithDamages(
-      new Damages({ baseAmount: base.baseAmount, baseCount: base.baseCount, type: base.type }),
-    )
-    return repository.create(() => new Card({ action: cloned }))
-  }
-  return repository.create(() => baseCard)
-}
-
-function createCard(type: DeckCardType): Card {
-  const repo = new CardRepository()
-  return createCardFromType(repo, type)
-}
-
-function buildCardInfo(card: Card, id: string): CardInfo | null {
-  return buildCardInfoFromCard(card, {
-    id,
-    affordable: true,
-    disabled: false,
-  })
-}
-
-function handleSelect(type: DeckCardType): void {
-  if (claimed.value) return
-  selectedType.value = type
-}
-
-function handleClaim(): void {
-  if (!selectedType.value || claimed.value) return
-  playerStore.addCard(selectedType.value)
-  claimed.value = true
-}
-
-async function handleProceed(): Promise<void> {
-  fieldStore.markCurrentCleared()
-  await router.push('/field')
 }
 </script>
 
 <template>
-  <GameLayout>
-    <template #window>
-      <div class="card-reward-view">
-        <header class="header">
-          <h1>カード獲得（3択）</h1>
-          <div class="header-status">
-            <span>HP: {{ playerHp.current }} / {{ playerHp.max }}</span>
-            <span>デッキ枚数: {{ playerStore.deck.length }}</span>
-          </div>
-        </header>
-
-        <div class="layout">
-          <aside class="player-area">
-            <PlayerCardComponent
-              :pre-hp="playerHp"
-              :post-hp="playerHp"
-              :outcomes="outcomes"
-              :selection-theme="selectionTheme"
-              :states="states"
-              :show-hp-gauge="false"
-            />
-          </aside>
-          <main class="main">
-            <div class="card-grid">
-              <label
-                v-for="(card, idx) in cardInfos"
-                :key="card.id"
-                class="card-option"
-                :class="{
-                  'card-option--selected': selectedType === selectedActions[idx],
-                  'card-option--claimed': claimed,
-                }"
-              >
-                <input
-                  class="card-option__radio"
-                  type="radio"
-                  name="card-selection"
-                  :value="selectedActions[idx]"
-                  :checked="selectedType === selectedActions[idx]"
-                  :disabled="claimed"
-                  @change="handleSelect(selectedActions[idx]!)"
-                />
-                <div class="card-option__body">
-                  <div class="card-option__title">{{ card.title }}</div>
-                  <div class="card-option__cost">コスト: {{ card.cost }}</div>
-                  <p class="card-option__description">
-                    {{ card.descriptionSegments?.map((segment) => segment.text).join(' ') ?? '' }}
-                  </p>
-                </div>
-              </label>
-            </div>
-            <div class="actions">
-              <button type="button" class="action-button" :disabled="!canClaim" @click="handleClaim">
-                獲得
-              </button>
-              <button
-                type="button"
-                class="action-button action-button--next"
-                :disabled="!cardInfos.length"
-                @click="handleProceed"
-              >
-                次に進む
-              </button>
-            </div>
-          </main>
+  <MainGameLayout>
+    <div class="card-reward-view">
+      <header class="header">
+        <h1>カード獲得（選択）</h1>
+        <div class="header-status">
+          <span>HP: {{ playerStatus.hp }} / {{ playerStatus.maxHp }}</span>
+          <span>デッキ枚数: {{ playerStatus.deckCount }}</span>
         </div>
-      </div>
-    </template>
-  </GameLayout>
+      </header>
+
+      <section class="card-section">
+        <CardList
+          v-if="cardInfos.length"
+          :cards="cardInfos"
+          :gap="16"
+          :height="260"
+          :hover-effect="true"
+          :force-playable="true"
+          selectable
+          :selected-card-id="selectedCardId"
+          @update:selected-card-id="(id) => {
+            selectedCardId = (id as string) ?? null
+          }"
+        />
+        <p class="card-note">
+          {{
+            cardInfos.length
+              ? '提示されたカードから１枚選んで獲得します。'
+              : '獲得できるカードがありません。'
+          }}
+        </p>
+      </section>
+
+      <footer class="actions">
+        <button type="button" class="action-button" :disabled="!canClaim" @click="handleClaim">
+          獲得してフィールドに戻る
+        </button>
+        <p v-if="claimError" class="action-error">{{ claimError }}</p>
+      </footer>
+    </div>
+  </MainGameLayout>
 </template>
 
 <style scoped>
 .card-reward-view {
-  padding: 24px clamp(20px, 5vw, 64px);
-  background: radial-gradient(circle at top, rgba(34, 28, 63, 0.95), rgba(9, 9, 14, 0.95));
+  padding: 24px clamp(20px, 5vw, 48px);
   color: #f5f2ff;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .header {
@@ -219,7 +143,7 @@ async function handleProceed(): Promise<void> {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 .header h1 {
@@ -231,93 +155,59 @@ async function handleProceed(): Promise<void> {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(245, 242, 255, 0.85);
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 20px;
-  align-items: start;
+.card-section {
+  background: rgba(16, 14, 24, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 12px 14px 16px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
-.player-area {
-  position: sticky;
-  top: 20px;
-}
-
-.main {
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.card-option {
-  position: relative;
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card-option--selected {
-  border-color: #f6d365;
-  box-shadow: 0 0 0 2px rgba(246, 211, 101, 0.4);
-}
-
-.card-option__radio {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-}
-
-.card-option__title {
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.card-option__cost {
-  font-size: 13px;
-  color: rgba(245, 242, 255, 0.7);
-}
-
-.card-option__description {
-  font-size: 13px;
-  line-height: 1.4;
-  color: rgba(245, 242, 255, 0.85);
+.card-note {
+  margin: 8px 4px 0;
+  font-size: 12px;
+  color: rgba(245, 242, 255, 0.72);
 }
 
 .actions {
-  margin-top: 16px;
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
 }
 
 .action-button {
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: #f6d365;
-  color: #1a132b;
+  background: rgba(255, 227, 115, 0.95);
+  color: #2d1a0f;
   border: none;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 800;
   cursor: pointer;
-  font-weight: 700;
+  letter-spacing: 0.06em;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
 }
 
 .action-button:disabled {
-  opacity: 0.4;
+  opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-.action-button--next {
-  background: #8bd3dd;
+.action-button:not(:disabled):hover,
+.action-button:not(:disabled):focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+}
+
+.action-error {
+  margin: 0;
+  font-size: 12px;
+  color: #ffb4c1;
 }
 </style>

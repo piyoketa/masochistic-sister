@@ -15,17 +15,20 @@ import CardList from '@/components/CardList.vue'
 import { useRewardStore, type RewardCardEntry } from '@/stores/rewardStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
+import { useAudioStore } from '@/stores/audioStore'
 
 const rewardStore = useRewardStore()
 const playerStore = usePlayerStore()
 const fieldStore = useFieldStore()
 const router = useRouter()
+const audioStore = useAudioStore()
 
 playerStore.ensureInitialized()
 
 const reward = computed(() => rewardStore.pending)
 const isProcessing = ref(false)
 const claimError = ref<string | null>(null)
+const selectedCardId = ref<string | null>(null)
 
 const rewardSummary = computed(() => ({
   defeatedCount: reward.value?.defeatedCount ?? 0,
@@ -35,13 +38,15 @@ const rewardSummary = computed(() => ({
 const rewardCardInfos = computed(() => reward.value?.cards.map((entry) => entry.info) ?? [])
 
 const hasRewardCards = computed(() => rewardSummary.value.cardCount > 0)
-const canClaim = computed(() => Boolean(reward.value) && !isProcessing.value)
+const canClaim = computed(() => Boolean(reward.value) && !isProcessing.value && selectedCardId.value !== null)
 
 onMounted(() => {
   if (!reward.value) {
     // バトルを経由せずに直接アクセスされた場合はフィールドへ戻す。
     void router.replace('/field')
+    return
   }
+  selectedCardId.value = reward.value.cards[0]?.id ?? null
 })
 
 function addCardToDeck(entry: RewardCardEntry): void {
@@ -62,13 +67,22 @@ function addCardToDeck(entry: RewardCardEntry): void {
 }
 
 async function handleClaimAll(): Promise<void> {
-  if (!reward.value || isProcessing.value) {
+  if (!reward.value || isProcessing.value || !selectedCardId.value) {
     return
   }
   isProcessing.value = true
   claimError.value = null
   try {
-    reward.value.cards.forEach((entry) => addCardToDeck(entry))
+    // 選択したカードのみ追加
+    const chosen = reward.value.cards.find((entry) => entry.id === selectedCardId.value)
+    if (chosen) {
+      addCardToDeck(chosen)
+    }
+    // HP回復を適用
+    if (reward.value.hpHeal > 0) {
+      playerStore.healHp(reward.value.hpHeal)
+      audioStore.playSe('/sounds/fields/gain_hp.mp3')
+    }
     fieldStore.markCurrentCleared()
     rewardStore.clear()
     await router.push('/field')
@@ -84,40 +98,38 @@ async function handleClaimAll(): Promise<void> {
     <div class="reward-view">
       <header class="reward-header">
         <div class="reward-heading">
-          <p class="eyebrow">VICTORY REWARD</p>
-          <h1>褒章カードを獲得</h1>
-          <p class="subtitle">戦闘で刻まれた「傷の記憶」をすべてデッキに編入します。</p>
+          <h1>報酬を獲得</h1>
+          <p class="subtitle">デッキに加えるカードを１枚選んでください。</p>
         </div>
         <div class="reward-summary">
-          <div class="summary-chip">
+          <!-- <div class="summary-chip">
             <span class="chip-label">撃破</span>
             <span class="chip-value">{{ rewardSummary.defeatedCount }} 体</span>
-          </div>
+          </div> -->
           <div class="summary-chip">
+            <span class="chip-label">HP回復</span>
+            <span class="chip-value">+{{ reward?.hpHeal ?? 0 }}</span>
+          </div>
+          <!-- <div class="summary-chip">
             <span class="chip-label">褒章カード</span>
             <span class="chip-value">{{ rewardSummary.cardCount }} 枚</span>
-          </div>
+          </div> -->
         </div>
       </header>
 
-      <section v-if="reward" class="card-section">
-        <CardList
-          v-if="hasRewardCards"
-          :cards="rewardCardInfos"
-          :gap="16"
-          :height="200"
-          :hover-effect="true"
-          :force-playable="true"
-        />
-        <p class="card-note">
-          {{
-            hasRewardCards
-              ? '表示されている褒章カードはすべて自動でデッキに追加されます。'
-              : '今回追加される褒章カードはありません。'
-          }}
-        </p>
-      </section>
-      <div v-else class="reward-empty">受け取れる報酬がありません。フィールドへ戻ります。</div>
+      <CardList
+        v-if="hasRewardCards"
+        :cards="rewardCardInfos"
+        :gap="16"
+        :height="240"
+        :hover-effect="true"
+        :force-playable="true"
+        selectable
+        :selected-card-id="selectedCardId"
+        @update:selected-card-id="(id) => {
+          selectedCardId = (id as string) ?? null
+        }"
+      />
 
       <footer class="reward-actions">
         <button

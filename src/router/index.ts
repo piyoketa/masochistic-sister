@@ -63,6 +63,12 @@ const router = createRouter({
       component: () => import('@/views/FieldView.vue'),
     },
     {
+      path: '/field/first',
+      name: 'field-first',
+      component: () => import('@/views/FieldView.vue'),
+      props: { fieldId: 'first-field' },
+    },
+    {
       path: '/lab/action-cards',
       name: 'action-card-lab',
       component: () => import('@/views/ActionCardLabView.vue'),

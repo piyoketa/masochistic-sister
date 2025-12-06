@@ -38,7 +38,6 @@ export class WeakState extends BadState {
   }
 
   override description(): string {
-    const percent = Math.floor((this.magnitude ?? 0) * 33)
     return `与ダメージが2/3になる`
   }
 

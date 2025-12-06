@@ -7,8 +7,8 @@ import type { CardRepository } from '../../repository/CardRepository'
 export interface DefaultDeckResult {
   deck: Card[]
   heavenChains: readonly [Card, Card, Card, Card, Card]
-  battlePreps: readonly [Card]
-  masochisticAuras: readonly [Card, Card, Card]
+  battlePreps: readonly [Card, Card]
+  masochisticAuras: readonly [Card, Card]
 }
 
 export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckResult {
@@ -16,13 +16,13 @@ export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckRes
     cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
   ) as [Card, Card, Card, Card, Card]
 
-  const battlePreps = Array.from({ length: 1 }, () =>
+  const battlePreps = Array.from({ length: 2 }, () =>
     cardRepository.create(() => new Card({ action: new BattlePrepAction() })),
-  ) as [Card]
+  ) as [Card, Card]
 
-  const masochisticAuras = Array.from({ length: 3 }, () =>
+  const masochisticAuras = Array.from({ length: 2 }, () =>
     cardRepository.create(() => new Card({ action: new MasochisticAuraAction() })),
-  ) as [Card, Card, Card]
+  ) as [Card, Card]
 
   const pool: Card[] = [...heavenChains, ...battlePreps, ...masochisticAuras]
   const deck = shuffle([...pool])
