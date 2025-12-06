@@ -34,7 +34,7 @@ export class CorrosionState extends BadState {
 
   override description(): string {
     const bonus = (this.magnitude ?? 0) * 10
-    return `被ダメージ+${bonus}（累積）`
+    return `被ダメージ+${bonus}\n（累積可）`
   }
 
   override get priority(): number {

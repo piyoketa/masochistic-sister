@@ -37,7 +37,10 @@ export function buildCardInfoFromCard(
   const categoryTags = toTagInfos(card.categoryTags, (tag) => tag.name ?? tag.id ?? '')
   const seenTagIds = new Set<string>()
 
-  addPrimaryTags(definition, primaryTags, seenTagIds)
+  // 状態異常カードは「種別/ターゲット」をヘッダに表示しない方針のため primaryTags を空にする
+  if (card.type !== 'status') {
+    addPrimaryTags(definition, primaryTags, seenTagIds)
+  }
 
   const cost =
     options?.costContext !== undefined ? card.calculateCost(options.costContext) : card.cost
