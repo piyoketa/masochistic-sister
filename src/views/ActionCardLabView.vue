@@ -14,11 +14,25 @@ ActionCardLabView の責務:
 -->
 <script setup lang="ts">
 import CardList from '@/components/CardList.vue'
-import { Library } from '@/domain/library/Library'
+import { buildCardInfoFromBlueprint, type DeckCardBlueprint } from '@/domain/library/Library'
+import type { CardInfo } from '@/types/battle'
 
-const SAMPLE_LIMIT = 3
-const library = new Library()
-const showcaseCards = library.listActionCards(SAMPLE_LIMIT)
+// 実験に使うカードは、Libraryが生成する定義の中から手動でピックアップする。
+const cardBlueprints: DeckCardBlueprint[] = [
+  { type: 'heaven-chain' }, // 天の鎖
+  { type: 'battle-prep' }, // 戦いの準備
+  { type: 'masochistic-aura' }, // 被虐のオーラ
+  { type: 'acid-spit' }, // 酸を吐く
+  { type: 'blood-suck' }, // 吸血
+  { type: 'flurry' }, // 乱れ突き
+  { type: 'tackle' }, // たいあたり
+  { type: 'state-state-corrosion' }, // 腐食（状態異常カード）
+  { type: 'state-state-evil-thought' }, // 邪念（状態異常カード）
+]
+
+const showcaseCards: CardInfo[] = cardBlueprints
+  .map((blueprint, index) => buildCardInfoFromBlueprint(blueprint, `lab-${index}`))
+  .filter((card): card is CardInfo => card !== null)
 const skillAttackCards = showcaseCards.filter((card) => card.type !== 'status')
 const statusComparisonCards = showcaseCards.filter((card) => card.type === 'status')
 </script>
@@ -27,18 +41,9 @@ const statusComparisonCards = showcaseCards.filter((card) => card.type === 'stat
   <main class="card-lab">
     <header class="card-lab__intro">
       <h1>ActionCard実験場</h1>
-      <p>
-        Library から取得した代表的なカードを並べ、最終採用した「上下逆転グラデーション」デザインを確認できます。
-      </p>
     </header>
 
     <section class="card-lab__section card-lab__section--experimental-c">
-      <h2>実験的デザインC（上下逆転グラデーション）</h2>
-      <p>
-        スキル: 従来配色の上下をひっくり返し、穏やかな色味を下に配置。<br />
-        アタック: 実験デザインの上下を逆転させ、炎の起点をカード中央付近へ寄せる。<br />
-        状態異常: 赤紫のグラデーションと毒の靄をイメージしたサークルを重ね、毒々しいムードを強調。
-      </p>
       <CardList
         :cards="[...skillAttackCards, ...statusComparisonCards]"
         :height="360"

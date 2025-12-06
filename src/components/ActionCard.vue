@@ -322,9 +322,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 
         <header class="card-header">
           <h4>{{ props.title }}</h4>
-          <div v-if="primaryTagText" class="primary-tag-text">
-            {{ primaryTagText }}
-          </div>
+          <span class="card-category">被虐の記憶</span>
         </header>
 
         <section class="card-body">
@@ -359,6 +357,9 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
               <br v-if="index < (props.description ?? '').split('\n').length - 1" />
             </template>
           </p>
+          <div v-if="primaryTagText" class="primary-tag-text">
+            {{ primaryTagText }}
+          </div>
           <div v-if="effectTagList.length" class="tag-list tag-list--effect">
             <span
               v-for="tag in effectTagList"
@@ -369,7 +370,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
             >
               {{ tag.label }}
             </span>
-          </div>
+          </div>          
         </section>
 
         <div v-if="categoryTagList.length" class="category-tag-list">
@@ -481,6 +482,12 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   letter-spacing: 0.06em;
   font-size: 14px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  font-family: 'Zen Old Mincho', 'Hina Mincho', serif;
+    text-shadow:
+    -0.5px -0.5px 0 #fdfdfc,
+    0.5px -0.5px 0 #fdfdfc,
+    -0.5px 0.5px 0 #fdfdfc,
+    0.5px 0.5px 0 #fdfdfc;  
 }
 
 .card-cost--unavailable {
@@ -494,23 +501,49 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 2px;
   margin-bottom: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   min-height: 42px;
+  font-family: 'Zen Old Mincho', 'Hina Mincho', serif;
 }
 
 .card-header h4 {
   margin: 0;
   font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--card-text-color, #f5f5f5);
+  color: #2f1506;
+  text-shadow:
+    -1px -0.5px 0 hsl(35, 43%, 95%),
+    1px -0.5px 0 hsl(35, 43%, 95%),
+    -1px 0.5px 0 hsl(35, 43%, 95%),
+    1px 0.5px 0 hsl(35, 43%, 95%);
+}
+
+/* アタックと状態異常は従来の白抜き+暗赤シャドウを維持 */
+.action-card--attack .card-header h4,
+.action-card--status .card-header h4 {
+  color: #fdfdfc;
+  text-shadow:
+    -2px -0.5px 0 #6b060f,
+    0.5px -0.5px 0 #6b060f,
+    -0.5px 0.5px 0 #6b060f,
+    0.5px 0.5px 0 #6b060f;
+}
+
+.card-category {
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  padding: 0px 10px;
+  background: linear-gradient(90deg, rgba(20, 20, 20, 0), rgba(20, 20, 20, 0.7) 20%, rgba(20, 20, 20, 0.7) 80%, rgba(20, 20, 20, 0) 100%);
+  color: #fdfdfc;
 }
 
 .primary-tag-text {
-  margin-top: 0;
+  margin-top: 6px;
   margin-bottom: 0;
-  font-size: 9px;
+  font-size: 8px;
   letter-spacing: 0.08em;
   color: var(--card-muted-color, rgba(245, 245, 245, 0.75));
   text-align: center;
@@ -569,7 +602,6 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
   color: var(--card-text-color, rgba(245, 245, 245, 0.92));
 }
 
@@ -590,7 +622,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   align-items: baseline;
   justify-content: center;
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   color: var(--card-text-color, #2f1b08);
 }
 
