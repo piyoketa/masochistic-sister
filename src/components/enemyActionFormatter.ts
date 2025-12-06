@@ -7,7 +7,7 @@ function formatStateText(prefixIcon: string, name: string, magnitude?: number): 
 
 export interface FormattedEnemyActionLabel {
   label: string
-  segments: Array<{ text: string; highlighted?: boolean }>
+  segments: Array<{ text: string; highlighted?: boolean; change?: 'up' | 'down'; showOverlay?: boolean }>
 }
 
 export function formatEnemyActionLabel(
@@ -15,7 +15,7 @@ export function formatEnemyActionLabel(
   options: { includeTitle?: boolean } = {},
 ): FormattedEnemyActionLabel {
   const includeTitle = options.includeTitle ?? true
-  const segments: Array<{ text: string; highlighted?: boolean }> = []
+  const segments: Array<{ text: string; highlighted?: boolean; change?: 'up' | 'down'; showOverlay?: boolean }> = []
   const appendTarget = () => {
     if (!action.targetName) {
       return
@@ -42,18 +42,32 @@ export function formatEnemyActionLabel(
     const isMulti = attackPattern === 'multi'
     const damageIcon = isMulti ? '⚔️' : '💥'
 
-    if (includeTitle) {
-      segments.push({ text: action.title })
-    }
-
-    segments.push({ text: damageIcon })
+    segments.push({ text: damageIcon, showOverlay: true })
 
     const amountChanged = baseAmount !== undefined && amount !== baseAmount
-    segments.push({ text: `${amount}`, highlighted: amountChanged })
+    const amountChange: 'up' | 'down' | undefined =
+      amountChanged && baseAmount !== undefined
+        ? amount > baseAmount
+          ? 'up'
+          : 'down'
+        : undefined
+    segments.push({
+      text: `${amount}`,
+      highlighted: amountChanged,
+      change: amountChange,
+      showOverlay: true,
+    })
 
     if (isMulti) {
       const countChanged = baseCount !== undefined && count !== baseCount
-      segments.push({ text: `×${count}`, highlighted: countChanged })
+      const countChange: 'up' | 'down' | undefined =
+        countChanged && baseCount !== undefined ? (count > baseCount ? 'up' : 'down') : undefined
+      segments.push({
+        text: `×${count}`,
+        highlighted: countChanged,
+        change: countChange,
+        showOverlay: true,
+      })
     }
 
     const status = action.status
@@ -68,18 +82,19 @@ export function formatEnemyActionLabel(
   }
 
   if (action.type === 'skill') {
-    const state = action.selfState
+    const state = action.selfState ?? action.status
     if (state) {
       if (includeTitle) {
         segments.push({ text: `${action.title}：` })
       }
-      segments.push({ text: formatStateText('🔱', state.name, state.magnitude) })
+      const icon = action.selfState ? '🔱' : '🌀'
+      segments.push({ text: formatStateText(icon, state.name, state.magnitude) })
       appendTarget()
       const label = segments.map((segment) => segment.text).join('')
       return { label, segments }
     }
 
-    if (includeTitle) {
+    if (includeTitle && action.description) {
       segments.push({ text: action.title })
       segments.push({ text: '✨' })
       appendTarget()

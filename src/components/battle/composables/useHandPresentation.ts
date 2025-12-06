@@ -106,6 +106,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   const effectTags: CardTagInfo[] = []
   const categoryTags: CardTagInfo[] = []
   const seenTagIds = new Set<string>()
+  const subtitle = resolveSubtitle(card)
 
   let description = card.description
   let descriptionSegments: DescriptionSegment[] = []
@@ -117,9 +118,11 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   let damageAmountReduced = false
   let damageCountReduced = false
 
-  addTagEntry(definition.type, primaryTags, seenTagIds, (tag) => tag.name)
-  if ('target' in definition) {
-    addTagEntry(definition.target, primaryTags, seenTagIds, (tag) => tag.name)
+  if (card.type !== 'status') {
+    addTagEntry(definition.type, primaryTags, seenTagIds, (tag) => tag.name)
+    if ('target' in definition) {
+      addTagEntry(definition.target, primaryTags, seenTagIds, (tag) => tag.name)
+    }
   }
   addTagEntries(effectTags, card.effectTags)
   addTagEntries(categoryTags, card.categoryTags, (tag) => tag.name)
@@ -220,6 +223,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   const baseInfo = {
     id: card.id !== undefined ? `card-${card.id}` : `card-${index}`,
     title: card.title,
+    subtitle,
     cost: card.cost,
     primaryTags,
     categoryTags,
@@ -343,4 +347,23 @@ function trimDamageSegments(segments: DescriptionSegment[]): DescriptionSegment[
     trimmed = trimmed.slice(1)
   }
   return trimmed
+}
+
+function resolveSubtitle(card: Card): string | undefined {
+  if (card.type === 'attack') {
+    return '被虐の記憶'
+  }
+  if (card.type === 'status') {
+    return '状態異常'
+  }
+  if (card.type === 'skill') {
+    return normalizeSubtitle((card.definition as any)?.subtitle)
+  }
+  return normalizeSubtitle((card.definition as any)?.subtitle)
+}
+
+function normalizeSubtitle(value?: string): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
 }

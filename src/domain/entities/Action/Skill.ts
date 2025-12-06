@@ -51,6 +51,10 @@ export abstract class Skill extends Action {
     }
   }
 
+  get inflictStatePreviews(): State[] {
+    return this.inflictStateFactories.map((factory) => factory())
+  }
+
   protected override perform(context: import('./ActionBase').ActionContext): void {
     const target =
       context.target ??

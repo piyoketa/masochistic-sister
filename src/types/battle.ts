@@ -49,6 +49,7 @@ export type EnemyActionHint = {
   }
   acted?: boolean
   icon?: string
+  cardInfo?: CardInfo
 }
 
 export type EnemyInfo = {

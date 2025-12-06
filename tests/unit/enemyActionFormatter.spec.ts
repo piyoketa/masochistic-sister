@@ -25,11 +25,10 @@ describe('formatEnemyActionLabel', () => {
         pattern: { amount: 20, count: 1, type: 'single' },
       }),
     )
-    expect(label).toBe('たいあたり💥20')
+    expect(label).toBe('💥20')
     expect(segments).toEqual([
-      { text: 'たいあたり' },
-      { text: '💥' },
-      { text: '20', highlighted: false },
+      { text: '💥', showOverlay: true },
+      { text: '20', highlighted: false, change: undefined, showOverlay: true },
     ])
   })
 
@@ -42,11 +41,10 @@ describe('formatEnemyActionLabel', () => {
         status: { name: '腐食', magnitude: 1 },
       }),
     )
-    expect(label).toBe('酸を吐く💥5+🌀腐食(1)')
+    expect(label).toBe('💥5+🌀腐食(1)')
     expect(segments).toEqual([
-      { text: '酸を吐く' },
-      { text: '💥' },
-      { text: '5', highlighted: false },
+      { text: '💥', showOverlay: true },
+      { text: '5', highlighted: false, change: undefined, showOverlay: true },
       { text: '+' },
       { text: '🌀腐食(1)' },
     ])
@@ -60,12 +58,11 @@ describe('formatEnemyActionLabel', () => {
         pattern: { amount: 10, count: 3, type: 'multi' },
       }),
     )
-    expect(label).toBe('乱れ突き⚔️10×3')
+    expect(label).toBe('⚔️10×3')
     expect(segments).toEqual([
-      { text: '乱れ突き' },
-      { text: '⚔️' },
-      { text: '10', highlighted: false },
-      { text: '×3', highlighted: false },
+      { text: '⚔️', showOverlay: true },
+      { text: '10', highlighted: false, change: undefined, showOverlay: true },
+      { text: '×3', highlighted: false, change: undefined, showOverlay: true },
     ])
   })
 
@@ -77,11 +74,8 @@ describe('formatEnemyActionLabel', () => {
         selfState: { name: '筋肉強化', magnitude: 10 },
       }),
     )
-    expect(label).toBe('ビルドアップ：🔱筋肉強化(10)')
-    expect(segments).toEqual([
-      { text: 'ビルドアップ：' },
-      { text: '🔱筋肉強化(10)' },
-    ])
+    expect(label).toBe('🔱筋肉強化(10)')
+    expect(segments).toEqual([{ text: '🔱筋肉強化(10)' }])
   })
 
   it('formats skip action', () => {
@@ -92,7 +86,7 @@ describe('formatEnemyActionLabel', () => {
 
   it('formats other skills with sparkle', () => {
     const { label, segments } = formatEnemyActionLabel(
-      baseHint({ title: '手札入れ替え', type: 'skill' }),
+      baseHint({ title: '手札入れ替え', type: 'skill', description: '手札を1枚捨てて1枚引く' }),
     )
     expect(label).toBe('手札入れ替え✨')
     expect(segments).toEqual([{ text: '手札入れ替え' }, { text: '✨' }])
@@ -117,9 +111,9 @@ describe('formatEnemyActionLabel', () => {
     )
     expect(label).toBe('⚔️10×2')
     expect(segments).toEqual([
-      { text: '⚔️' },
-      { text: '10', highlighted: false },
-      { text: '×2', highlighted: false },
+      { text: '⚔️', showOverlay: true },
+      { text: '10', highlighted: false, change: undefined, showOverlay: true },
+      { text: '×2', highlighted: false, change: undefined, showOverlay: true },
     ])
   })
 
@@ -132,12 +126,11 @@ describe('formatEnemyActionLabel', () => {
         calculatedPattern: { amount: 15, count: 4 },
       }),
     )
-    expect(label).toBe('乱れ突き⚔️15×4')
+    expect(label).toBe('⚔️15×4')
     expect(segments).toEqual([
-      { text: '乱れ突き' },
-      { text: '⚔️' },
-      { text: '15', highlighted: true },
-      { text: '×4', highlighted: true },
+      { text: '⚔️', showOverlay: true },
+      { text: '15', highlighted: true, change: 'up', showOverlay: true },
+      { text: '×4', highlighted: true, change: 'up', showOverlay: true },
     ])
   })
 })

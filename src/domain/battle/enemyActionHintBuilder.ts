@@ -4,6 +4,8 @@ import type { Enemy } from '../entities/Enemy'
 import { Attack, Action as BattleAction, AllyBuffSkill } from '../entities/Action'
 import { Damages } from '../entities/Damages'
 import { SkipTurnAction } from '../entities/actions/SkipTurnAction'
+import { Card } from '../entities/Card'
+import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
 export function buildEnemyActionHints(battle: Battle, enemy: Enemy): EnemyActionHint[] {
   const planned = enemy.plannedActionsForDisplay
@@ -70,17 +72,23 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
     },
     status: primaryState
       ? {
-          name: primaryState.name,
-          magnitude: primaryState.magnitude ?? 1,
-          description: primaryState.description(),
-        }
+      name: primaryState.name,
+      magnitude: primaryState.magnitude ?? 1,
+      description: primaryState.description(),
+    }
       : undefined,
     description: action.describe(),
+    cardInfo: buildCardInfoFromCard(new Card({ action }), {
+      id: `enemy-action-${enemy.id}-${action.name}`,
+      affordable: true,
+      disabled: false,
+    }) ?? undefined,
   }
 }
 
 function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyActionHint {
   const gainState = action.gainStatePreviews[0]
+  const inflictState = 'inflictStatePreviews' in action ? (action as any).inflictStatePreviews?.[0] as import('../entities/State').State | undefined : undefined
   let targetName: string | undefined
   if (action instanceof AllyBuffSkill) {
     const plannedTargetId = action.getPlannedTarget?.()
@@ -101,6 +109,13 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
           name: gainState.name,
           magnitude: gainState.magnitude ?? 1,
           description: gainState.description(),
+        }
+      : undefined,
+    status: inflictState
+      ? {
+          name: inflictState.name,
+          magnitude: inflictState.magnitude ?? 1,
+          description: inflictState.description(),
         }
       : undefined,
   }

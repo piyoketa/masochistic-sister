@@ -51,12 +51,13 @@ const ENEMY_AUDIO_CUES = {
 interface ActionChipEntry {
   key: string
   icon: string
-  segments: Array<{ text: string; highlighted?: boolean }>
+  segments: Array<{ text: string; highlighted?: boolean; change?: 'up' | 'down'; showOverlay?: boolean }>
   label: string
   description: string
   tooltips: Partial<Record<number, string>>
   tooltipKey: string
   disabled: boolean
+  cardInfo?: import('@/types/battle').CardInfo
 }
 
 const classes = computed(() => ({
@@ -84,16 +85,35 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
   const next = props.enemy.nextActions ?? []
   if (next.length > 0) {
     return next.map((action, index) => {
-      const formatted = formatEnemyActionLabel(action)
+      const includeTitle =
+        action.type !== 'attack' &&
+        !action.selfState &&
+        !action.status &&
+        Boolean(action.description)
+      const formatted = formatEnemyActionLabel(action, { includeTitle })
       const tooltips: Partial<Record<number, string>> = {}
       const descriptionText = action.description ?? action.title ?? formatted.label
+      const addTooltipIfPossible = (segmentIndex: number | undefined, text?: string) => {
+        if (
+          segmentIndex === undefined ||
+          segmentIndex < 0 ||
+          !text ||
+          formatted.segments[segmentIndex]?.showOverlay
+        ) {
+          return
+        }
+        tooltips[segmentIndex] = text
+      }
+
       if (formatted.segments.length > 0 && descriptionText) {
-        tooltips[0] = descriptionText
+        const firstNonOverlay = formatted.segments.findIndex((segment) => !segment.showOverlay)
+        addTooltipIfPossible(firstNonOverlay === -1 ? undefined : firstNonOverlay, descriptionText)
       }
 
       const stateDescription = action.status?.description ?? action.selfState?.description
       if (stateDescription && formatted.segments.length > 0) {
-        tooltips[formatted.segments.length - 1] = stateDescription
+        const lastIndex = formatted.segments.length - 1
+        addTooltipIfPossible(lastIndex, stateDescription)
       }
 
       return {
@@ -105,6 +125,7 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
         tooltips,
         tooltipKey: `enemy-action-${props.enemy.id}-${index}`,
         disabled: Boolean(action.acted),
+        cardInfo: action.cardInfo,
       }
     })
   }
