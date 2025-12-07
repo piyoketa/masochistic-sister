@@ -20,14 +20,14 @@ type BattleInstance = import('../../battle/Battle').Battle
 export class FlashbackAction extends Skill {
   constructor() {
     super({
-      name: 'フラッシュバック',
+      name: '蘇る記憶',
       cardDefinition: {
-        title: 'フラッシュバック',
+        title: '蘇る記憶',
         cardType: 'skill',
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 1,
-        subtitle: '記憶再生',
+        subtitle: '',
       },
     })
   }
