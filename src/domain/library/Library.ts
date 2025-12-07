@@ -53,6 +53,7 @@ import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { FlashbackAction } from '@/domain/entities/actions/FlashbackAction'
 import { PeelingScabAction } from '@/domain/entities/actions/PeelingScabAction'
 import { SoloBodyAction } from '@/domain/entities/actions/SoloBodyAction'
+import { DeepBreathAction } from '@/domain/entities/actions/DeepBreathAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 
@@ -80,6 +81,7 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   FlashbackAction,
   PeelingScabAction,
   SoloBodyAction,
+  DeepBreathAction,
 ]
 
 const actionCardFactories: Record<ActionCardId, () => Card> = buildActionCardFactories(DECK_ACTION_CLASSES)
@@ -101,6 +103,7 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   LifeDrainSkillAction,
   FlashbackAction,
   SoloBodyAction,
+  DeepBreathAction,
 ]
 
 // フィールド報酬スキルの候補（旧 SKILL_CARD_CANDIDATES 相当）
@@ -115,6 +118,7 @@ const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   DailyRoutineAction,
   PredicamentAction,
   SoloBodyAction,
+  DeepBreathAction,
 ]
 
 // ラボやデモで見せるサンプルカードセット

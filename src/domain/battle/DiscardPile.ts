@@ -29,6 +29,10 @@ export class DiscardPile {
     return snapshot
   }
 
+  size(): number {
+    return this.cards.length
+  }
+
   replace(cards: Card[]): void {
     this.cards.length = 0
     this.cards.push(...cards)
