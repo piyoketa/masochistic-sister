@@ -11,18 +11,7 @@ ShopManager.ts の責務:
 - DeckView など、カード売買を行うビュー。`calculateSellPrice` / `getOffers` を用いて価格と品揃えを取得する。
 */
 import type { CardInfo } from '@/types/battle'
-import type { DeckCardType } from '@/domain/library/Library'
-
-export const CARD_CANDIDATES: DeckCardType[] = [
-  'battle-prep',
-  'daily-routine',
-  'predicament',
-  'non-violence-prayer',
-  'reload',
-  'scar-regeneration',
-  'life-drain-skill',
-  'flashback',
-]
+import { listStandardShopCardBlueprints, type CardBlueprint } from '@/domain/library/Library'
 
 export const RELIC_CANDIDATES = [
   'LightweightCombatRelic',
@@ -33,7 +22,7 @@ export const RELIC_CANDIDATES = [
 ]
 
 export type CardOffer = {
-  deckType: DeckCardType
+  blueprint: CardBlueprint
   price: number
   sale: boolean
 }
@@ -71,9 +60,9 @@ export class ShopManager {
    */
   setupOffers(params: { ownedRelics: string[] }): void {
     const { ownedRelics } = params
-    const cardTypes = pickUnique(CARD_CANDIDATES, 4)
-    const cardOffers: CardOffer[] = cardTypes.map((deckType) => ({
-      deckType,
+    const cardBlueprints = pickUnique(listStandardShopCardBlueprints(), 4)
+    const cardOffers: CardOffer[] = cardBlueprints.map((blueprint) => ({
+      blueprint,
       price: CARD_PRICE,
       sale: false,
     }))
@@ -104,8 +93,8 @@ export class ShopManager {
     }
   }
 
-  markCardSold(deckType: DeckCardType): void {
-    this.state.cards = this.state.cards.filter((offer) => offer.deckType !== deckType)
+  markCardSold(blueprint: CardBlueprint): void {
+    this.state.cards = this.state.cards.filter((offer) => offer.blueprint.type !== blueprint.type)
   }
 
   markRelicSold(className: string): void {

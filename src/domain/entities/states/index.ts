@@ -66,7 +66,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-large': () => new LargeState(),
   'state-fury-awakening': () => new FuryAwakeningState(),
   'state-intoxication': (m) => new IntoxicationState(m),
-  'state-weak': (m) => new WeakState(m),
+  'state-weak': () => new WeakState(),
   'state-joint-damage': (m) => new JointDamageState(m),
   'state-charge': (m) => new ChargeState(m),
   'state-evil-thought': (m) => new EvilThoughtState(m),

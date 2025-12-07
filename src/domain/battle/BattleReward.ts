@@ -7,20 +7,12 @@
  */
 import type { Battle } from './Battle'
 import type { Card } from '../entities/Card'
-import type { CardInfo } from '@/types/battle'
-import { mapActionToDeckCardType, type DeckCardType } from '@/domain/library/Library'
-import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
-
-export interface RewardCardCandidate {
-  id: string
-  info: CardInfo
-  deckType: DeckCardType | null
-}
+import { buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
 
 export interface ComputedBattleReward {
   defeatedCount: number
   hpHeal: number
-  cards: RewardCardCandidate[]
+  cards: CardBlueprint[]
 }
 
 const NEW_TAG_ID = 'tag-newly-created'
@@ -32,12 +24,14 @@ export class BattleReward {
   compute(): ComputedBattleReward {
     const defeatedCount = this.battle.enemyTeam.members.length
     const newCards = this.collectNewCards()
-    const cardEntries = newCards.map((card, index) => this.toRewardCard(card, index))
+    const cardBlueprints = newCards
+      .map((card) => this.toRewardBlueprint(card))
+      .filter((entry): entry is CardBlueprint => Boolean(entry))
     // HP回復は固定値 75 とする
     return {
       defeatedCount,
       hpHeal: 75,
-      cards: cardEntries.filter((entry): entry is RewardCardCandidate => Boolean(entry)),
+      cards: cardBlueprints,
     }
   }
 
@@ -52,26 +46,11 @@ export class BattleReward {
     return piles.filter((card) => card.hasTag(NEW_TAG_ID))
   }
 
-  private toRewardCard(card: Card, index: number): RewardCardCandidate | null {
-    const cardInfo = buildCardInfoFromCard(card, {
-      id: `reward-card-${card.id ?? index}`,
-      affordable: true,
-      disabled: false,
-    })
-    if (!cardInfo || !this.isSupportedCardType(cardInfo.type)) {
+  private toRewardBlueprint(card: Card): CardBlueprint | null {
+    try {
+      return buildBlueprintFromCard(card)
+    } catch {
       return null
     }
-
-    const deckType = card.action ? mapActionToDeckCardType(card.action) : null
-
-    return {
-      id: cardInfo.id,
-      info: cardInfo,
-      deckType,
-    }
-  }
-
-  private isSupportedCardType(type: CardInfo['type'] | string | undefined): type is CardInfo['type'] {
-    return type === 'attack' || type === 'skill' || type === 'status' || type === 'skip'
   }
 }

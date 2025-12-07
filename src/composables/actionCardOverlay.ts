@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
 import type { CardInfo } from '@/types/battle'
-import type { DeckCardBlueprint } from '@/domain/library/Library'
+import type { CardBlueprint } from '@/domain/library/Library'
 
 interface OverlayPosition {
   x: number
@@ -10,7 +10,7 @@ interface OverlayPosition {
 interface ActionCardOverlayState extends OverlayPosition {
   visible: boolean
   card: CardInfo | null
-  blueprint: DeckCardBlueprint | null
+  blueprint: CardBlueprint | null
 }
 
 const overlayState = reactive<ActionCardOverlayState>({
@@ -30,7 +30,7 @@ export function useActionCardOverlay() {
     overlayState.visible = true
   }
 
-  const showFromBlueprint = (blueprint: DeckCardBlueprint, position: OverlayPosition) => {
+  const showFromBlueprint = (blueprint: CardBlueprint, position: OverlayPosition) => {
     overlayState.blueprint = blueprint
     overlayState.card = null
     overlayState.x = position.x

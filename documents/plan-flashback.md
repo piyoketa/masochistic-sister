@@ -2,7 +2,7 @@
 
 ### 目的
 - コスト1のスキルカード「フラッシュバック」を追加し、捨て札のアタック1枚をランダムに手札へ加える挙動を実装する。
-- 捨て札から手札へ戻すための新しいアニメーション（deck-draw類似、開始位置のみ捨て札）を追加し、UI/UXを破綻させずに導入する。
+- 捨て札から手札へ戻すための新しいアニメーション（discard-draw。deck-drawとほぼ同じ形式で実装する。開始位置のみ捨て札）を追加し、UI/UXを破綻させずに導入する。
 
 ### スコープと完了条件
 - ドメイン: Card/Action定義、Libraryへの登録、初期デッキ組込の要否判断。
@@ -60,3 +60,40 @@
 - バトルロジック: ActionLog/AnimationInstruction 発火部位（既存 Action 実装内で完結の見込み）
 - アニメーション: `ViewManager` / `BattleView`（捨て札起点移動の描画）
 - テスト: Action 単体テスト、type-check
+
+---
+
+## 追加計画: Action に発動条件（isActive）概念を導入する
+
+### 目的
+- フラッシュバック実装で必要になる「使用可能かどうか」を Action 側で判定できるフックを追加し、手札表示やクリック可否に反映できるようにする。
+- これを共通化することで、捨て札に攻撃カードがない場合のフラッシュバック無効化などをシンプルに実装する。
+
+### スコープと完了条件
+- `Action` 基底に発動可否を問い合わせるメソッド（例: `isActive(context)`）を追加。
+- Battle/Hand 表示ロジックが `isActive` を参照して「disabled/affordable ではないがそもそも発動不可」状態を扱えるようにする。
+- 既存カードの挙動に影響しない（デフォルトは常に true を返す）ことを確認。
+
+### 作業ステップ
+1. **API 追加**  
+   - `ActionBase` に `isActive(context: { battle: Battle; source: Player | Enemy }): boolean` を追加し、デフォルト `true`。
+   - `Skill`/`Attack` は基底実装を継承するだけ（オーバーライドなし）。
+
+2. **コンテキストの通し方**  
+   - 手札ビルド（`useHandPresentation` など）で `isActive` を評価するため、バトルとプレイヤー参照を渡して判定する。
+   - 判定結果を `CardInfo.disabled` もしくは新しいフラグで反映し、ActionCard でグレーアウト・クリック無効化。
+
+3. **フラッシュバックでの利用**  
+   - 捨て札に攻撃がない場合 `isActive` が false を返すように `FlashbackAction` でオーバーライド。
+   - 見た目とクリック可否が揃うことを手動確認。
+
+4. **テスト/確認**  
+   - `npm run type-check`。可能ならユニットテストで isActive=false 時にハンドが disabled になるか検証。
+
+### 不明点・要確認事項
+1. **isActive の UI 反映方法**  
+   - `CardInfo.disabled` を使うか、別フラグで「使用不可だがコスト不足とは別」状態を出すか。  
+   - 推奨: 現行フラグに統合（disabled=true）で簡素化する。
+2. **Battle 外の表示**  
+   - デッキ編集や報酬画面など、Battle コンテキストがない場面では常に true 扱いでよいか。  
+   - 推奨: Battle コンテキストが無い場合は true でスルー。

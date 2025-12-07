@@ -7,23 +7,18 @@ RewardDemoView の責務:
 import { useRouter } from 'vue-router'
 import GameLayout from '@/components/GameLayout.vue'
 import { useRewardStore, type PendingReward } from '@/stores/rewardStore'
-import { Library } from '@/domain/library/Library'
+import { listStandardSampleCardBlueprints } from '@/domain/library/Library'
 
 const router = useRouter()
 const rewardStore = useRewardStore()
 
-const library = new Library()
-const demoCards = library.listActionCards(3)
+const demoCards = listStandardSampleCardBlueprints()
 
 const demoReward: PendingReward = {
   battleId: 'demo-battle',
   hpHeal: 75,
   defeatedCount: 1,
-  cards: demoCards.map((info, idx) => ({
-    id: info.id ?? `demo-card-${idx}`,
-    deckType: 'heaven-chain',
-    info: { ...info, affordable: true, disabled: false },
-  })),
+  cards: demoCards,
 }
 
 function setRewardAndGo(): void {

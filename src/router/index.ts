@@ -79,11 +79,6 @@ const router = createRouter({
       component: () => import('@/views/CardAnimationLabView.vue'),
     },
     {
-      path: '/lab/card-eliminate',
-      name: 'card-eliminate-lab',
-      component: () => import('@/views/CardEliminateLabView.vue'),
-    },
-    {
       path: '/lab/card-draw',
       name: 'card-draw-lab',
       component: () => import('@/views/CardDrawLabView.vue'),

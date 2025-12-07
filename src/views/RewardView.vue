@@ -12,10 +12,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import CardList from '@/components/CardList.vue'
-import { useRewardStore, type RewardCardEntry } from '@/stores/rewardStore'
+import { useRewardStore } from '@/stores/rewardStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { useAudioStore } from '@/stores/audioStore'
+import { buildCardInfosFromBlueprints, type CardBlueprint } from '@/domain/library/Library'
 
 const rewardStore = useRewardStore()
 const playerStore = usePlayerStore()
@@ -35,7 +36,8 @@ const rewardSummary = computed(() => ({
   cardCount: reward.value?.cards.length ?? 0,
 }))
 
-const rewardCardInfos = computed(() => reward.value?.cards.map((entry) => entry.info) ?? [])
+const rewardBlueprints = computed<CardBlueprint[]>(() => reward.value?.cards ?? [])
+const rewardCardInfos = computed(() => buildCardInfosFromBlueprints(rewardBlueprints.value, 'reward'))
 
 const hasRewardCards = computed(() => rewardSummary.value.cardCount > 0)
 const canClaim = computed(() => Boolean(reward.value) && !isProcessing.value && selectedCardId.value !== null)
@@ -50,21 +52,19 @@ onMounted(() => {
   selectedCardId.value = null
 })
 
-function addCardToDeck(entry: RewardCardEntry): void {
-  if (!entry.deckType) {
-    // deckType が解決できない褒章カードは破損データ扱いとし、追加をスキップする。
-    return
+function resolveSelectedBlueprint(): CardBlueprint | null {
+  if (!reward.value || !selectedCardId.value) {
+    return null
   }
-  const info = entry.info
-  let overrideAmount: number | undefined
-  let overrideCount: number | undefined
-  if (info.type === 'attack') {
-    overrideAmount = info.damageAmount
-    // 攻撃カテゴリは attackStyle で判定する。連続攻撃のダメージ回数は状態異常で変動してもカテゴリが変わらないため、
-    // count の実値だけで一回攻撃かどうかを推定しない。
-    overrideCount = info.attackStyle === 'multi' ? info.damageCount : 1
+  const idx = rewardCardInfos.value.findIndex((info) => info.id === selectedCardId.value)
+  if (idx < 0) {
+    return null
   }
-  playerStore.addCard(entry.deckType, { amount: overrideAmount, count: overrideCount })
+  return rewardBlueprints.value[idx] ?? null
+}
+
+function addCardToDeck(blueprint: CardBlueprint): void {
+  playerStore.addCard(blueprint)
 }
 
 async function handleClaimAll(): Promise<void> {
@@ -75,7 +75,7 @@ async function handleClaimAll(): Promise<void> {
   claimError.value = null
   try {
     // 選択したカードのみ追加
-    const chosen = reward.value.cards.find((entry) => entry.id === selectedCardId.value)
+    const chosen = resolveSelectedBlueprint()
     if (chosen) {
       addCardToDeck(chosen)
     }

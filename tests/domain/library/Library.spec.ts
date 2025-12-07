@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Library, createCardFromBlueprint, buildCardInfoFromBlueprint, mapActionToDeckCardType } from '@/domain/library/Library'
+import { Library, createCardFromBlueprint, buildCardInfoFromBlueprint, mapActionToCardId } from '@/domain/library/Library'
 import { TackleAction } from '@/domain/entities/actions/TackleAction'
 import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
 
@@ -26,9 +26,9 @@ describe('Library', () => {
     expect(info.damageCount).toBe(3)
   })
 
-  it('ActionをDeckCardTypeにマッピングできる', () => {
-    expect(mapActionToDeckCardType(new TackleAction())).toBe('tackle')
-    expect(mapActionToDeckCardType(new FlurryAction())).toBe('flurry')
+  it('ActionをCardIdにマッピングできる', () => {
+    expect(mapActionToCardId(new TackleAction())).toBe('tackle')
+    expect(mapActionToCardId(new FlurryAction())).toBe('flurry')
   })
 
   it('listActionCardsがCardInfoを返す', () => {

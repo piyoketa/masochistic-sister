@@ -113,11 +113,6 @@ const demoLinks: LinkEntry[] = [
     to: '/lab/card-animations',
   },
   {
-    label: 'Card Eliminate Sand Ash',
-    description: '砂化アニメーションの単体デモ',
-    to: '/lab/card-eliminate',
-  },
-  {
     label: 'Card Draw Lab',
     description: '山札から手札へカードを引く演出を検証',
     to: '/lab/card-draw',

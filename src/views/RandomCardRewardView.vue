@@ -11,22 +11,20 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import CardList from '@/components/CardList.vue'
-import { usePlayerStore, type DeckCardType } from '@/stores/playerStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { CardInfo } from '@/types/battle'
-import { createCardFromBlueprint } from '@/domain/library/Library'
-import { CardRepository } from '@/domain/repository/CardRepository'
-import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
+import { buildCardInfosFromBlueprints, type CardBlueprint } from '@/domain/library/Library'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
 const router = useRouter()
 
-const selectedActions = computed<DeckCardType[]>(() => {
+const selectedActions = computed<CardBlueprint[]>(() => {
   const node = fieldStore.currentNode
   if (node && fieldStore.field.isRandomCardRewardNode(node)) {
-    return node.selectedActions as DeckCardType[]
+    return node.selectedActions as CardBlueprint[]
   }
   return []
 })
@@ -45,22 +43,12 @@ const playerStatus = computed(() => ({
 const canClaim = computed(() => Boolean(selectedCardId.value) && !isProcessing.value)
 
 onMounted(() => {
-  const repo = new CardRepository()
-  cardInfos.value = selectedActions.value
-    .map((type, index) => {
-      const card = createCardFromBlueprint({ type }, repo)
-      return buildCardInfoFromCard(card, {
-        id: `choice-${card.id ?? index}`,
-        affordable: true,
-        disabled: false,
-      })
-    })
-    .filter((info): info is CardInfo => info !== null)
+  cardInfos.value = buildCardInfosFromBlueprints(selectedActions.value, 'choice')
   // 初期状態では何も選択しない
   selectedCardId.value = null
 })
 
-function resolveDeckTypeById(id: string | null): DeckCardType | null {
+function resolveBlueprintById(id: string | null): CardBlueprint | null {
   if (!id) return null
   const idx = cardInfos.value.findIndex((info) => info.id === id)
   if (idx < 0) return null
@@ -72,9 +60,9 @@ async function handleClaim(): Promise<void> {
   isProcessing.value = true
   claimError.value = null
   try {
-    const deckType = resolveDeckTypeById(selectedCardId.value)
-    if (deckType) {
-      playerStore.addCard(deckType)
+    const blueprint = resolveBlueprintById(selectedCardId.value)
+    if (blueprint) {
+      playerStore.addCard(blueprint)
     }
     fieldStore.markCurrentCleared()
     await router.push('/field')

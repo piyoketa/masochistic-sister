@@ -11,17 +11,17 @@ import { computed, ref } from 'vue'
 import GameLayout from '@/components/GameLayout.vue'
 import { useActionCardOverlay } from '@/composables/actionCardOverlay'
 import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
-import type { DeckCardBlueprint } from '@/domain/library/Library'
+import type { CardBlueprint } from '@/domain/library/Library'
 
 const actionOverlay = useActionCardOverlay()
 const relicOverlay = useRelicCardOverlay()
-const corrosionBlueprint: DeckCardBlueprint = { type: 'acid-spit', overrideAmount: 5, overrideCount: 1 }
-const tackleBlueprint: DeckCardBlueprint = { type: 'tackle' }
+const corrosionBlueprint: CardBlueprint = { type: 'acid-spit', overrideAmount: 5, overrideCount: 1 }
+const tackleBlueprint: CardBlueprint = { type: 'tackle' }
 const pinnedBlueprint = corrosionBlueprint
 
 const pinned = ref(false)
 
-function showActionCard(blueprint: DeckCardBlueprint, event: MouseEvent): void {
+function showActionCard(blueprint: CardBlueprint, event: MouseEvent): void {
   actionOverlay.showFromBlueprint(blueprint, { x: event.clientX, y: event.clientY })
 }
 

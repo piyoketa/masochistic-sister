@@ -8,7 +8,7 @@ import { computed } from 'vue'
 import { useActionCardOverlay } from '@/composables/actionCardOverlay'
 import ActionCard from '@/components/ActionCard.vue'
 import type { CardInfo } from '@/types/battle'
-import { buildCardInfoFromBlueprint, createCardFromBlueprint } from '@/domain/library/Library'
+import { buildCardInfoFromBlueprint } from '@/domain/library/Library'
 
 const { state } = useActionCardOverlay()
 

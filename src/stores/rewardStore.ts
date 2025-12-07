@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import type { CardInfo } from '@/types/battle'
-import type { DeckCardType } from './playerStore'
+import type { CardBlueprint } from '@/domain/library/Library'
 
 /**
  * rewardStore の責務:
@@ -11,17 +10,11 @@ import type { DeckCardType } from './playerStore'
  * - 報酬の計算ロジック（BattleReward に委譲）。
  * - 褒章カードの実追加処理（RewardView 側で playerStore を更新）。
  */
-export interface RewardCardEntry {
-  id: string
-  info: CardInfo
-  deckType: DeckCardType | null
-}
-
 export interface PendingReward {
   battleId: string
   hpHeal: number
   defeatedCount: number
-  cards: RewardCardEntry[]
+  cards: CardBlueprint[]
 }
 
 export const useRewardStore = defineStore('reward', {

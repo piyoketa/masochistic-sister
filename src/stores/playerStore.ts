@@ -2,19 +2,11 @@ import { defineStore } from 'pinia'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildDefaultDeck } from '@/domain/entities/decks'
 import { listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
-import { createCardFromBlueprint, mapActionToDeckCardType, type DeckCardBlueprint, type DeckCardType } from '@/domain/library/Library'
+import { createCardFromBlueprint, buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
 import { Card } from '@/domain/entities/Card'
-import type { Action } from '@/domain/entities/Action'
 
 // store外からデッキ型を参照できるように明示的に再エクスポートする
-export type { DeckCardType, DeckCardBlueprint } from '@/domain/library/Library'
-
-interface DeckPreviewEntry {
-  id: number
-  title: string
-  description: string
-  type: DeckCardType
-}
+export type { CardId, CardBlueprint } from '@/domain/library/Library'
 
 const DEFAULT_RELICS: string[] = []
 
@@ -23,7 +15,7 @@ export const usePlayerStore = defineStore('player', {
     hp: 150,
     maxHp: 150,
     gold: 0,
-    deck: [] as DeckCardBlueprint[],
+    deck: [] as CardBlueprint[],
     relics: [] as string[],
     initialized: false,
   }),
@@ -41,7 +33,7 @@ export const usePlayerStore = defineStore('player', {
       this.relics = [...DEFAULT_RELICS]
       this.initialized = true
     },
-    setDeck(blueprints: DeckCardBlueprint[]): void {
+    setDeck(blueprints: CardBlueprint[]): void {
       this.deck = [...blueprints]
       this.initialized = true
     },
@@ -54,28 +46,9 @@ export const usePlayerStore = defineStore('player', {
       const ordered = [...shuffle(statusCards), ...shuffle(otherCards)]
       return ordered
     },
-    getDeckPreview(): DeckPreviewEntry[] {
+    addCard(blueprint: CardBlueprint): void {
       this.ensureInitialized()
-      return this.deck.map((blueprint, index) => {
-        const card = createCardFromBlueprint(blueprint, new CardRepository())
-        return {
-          id: index,
-          title: card.title,
-          description: card.description,
-          type: blueprint.type,
-        }
-      })
-    },
-    addCard(type: DeckCardType, overrides?: { amount?: number; count?: number }): void {
-      this.ensureInitialized()
-      const next: DeckCardBlueprint = { type }
-      if (typeof overrides?.amount === 'number') {
-        next.overrideAmount = overrides.amount
-      }
-      if (typeof overrides?.count === 'number') {
-        next.overrideCount = overrides.count
-      }
-      this.deck = [...this.deck, next]
+      this.deck = [...this.deck, { ...blueprint }]
       this.initialized = true
     },
     removeCardAt(index: number): void {
@@ -169,16 +142,8 @@ export const usePlayerStore = defineStore('player', {
   },
 })
 
-function cardToBlueprint(card: Card): DeckCardBlueprint {
-  const action = card.action
-  if (!action) {
-    throw new Error('デッキのカードにアクションが設定されていません')
-  }
-  const key = mapActionToDeckCardType(action)
-  if (!key) {
-    throw new Error(`未対応のカードアクション "${action.constructor.name}" です`)
-  }
-  return { type: key }
+function cardToBlueprint(card: Card): CardBlueprint {
+  return buildBlueprintFromCard(card)
 }
 
 function shuffle<T>(items: T[]): T[] {

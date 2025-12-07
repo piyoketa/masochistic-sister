@@ -22,7 +22,7 @@ import {
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
-import { CARD_CANDIDATES, RELIC_CANDIDATES, shopManager } from '@/domain/shop/ShopManager'
+import { shopManager } from '@/domain/shop/ShopManager'
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),

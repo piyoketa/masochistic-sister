@@ -21,11 +21,7 @@ import type { CardInfo } from '@/types/battle'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
-import { CardRepository } from '@/domain/repository/CardRepository'
-import type { Card } from '@/domain/entities/Card'
-import type { DeckCardType } from '@/stores/playerStore'
-import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
-import { createCardFromBlueprint } from '@/domain/library/Library'
+import { buildCardInfoFromBlueprint, type CardBlueprint } from '@/domain/library/Library'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -36,10 +32,10 @@ const selectionTheme = ref<EnemySelectionTheme>('default')
 const outcomes: [] = []
 const states: string[] = []
 
-const candidateTypes = computed<DeckCardType[]>(() => {
+const candidateBlueprints = computed<CardBlueprint[]>(() => {
   const node = fieldStore.currentNode
   if (node && fieldStore.field.isCardRewardNode(node)) {
-    return node.candidateActions as DeckCardType[]
+    return node.candidateActions as CardBlueprint[]
   }
   return []
 })
@@ -54,7 +50,7 @@ const drawCount = computed(() => {
 
 interface DrawnCardEntry {
   info: CardInfo
-  type: DeckCardType
+  blueprint: CardBlueprint
 }
 
 const drawnCards = ref<DrawnCardEntry[]>([])
@@ -69,22 +65,19 @@ const playerHp = computed(() => ({
 const canProceed = computed(() => Boolean(drawnCards.value.length))
 
 onMounted(() => {
-  drawnCards.value = drawCards(candidateTypes.value, drawCount.value)
+  drawnCards.value = drawCards(candidateBlueprints.value, drawCount.value)
 })
 
-function drawCards(types: DeckCardType[], count: number): DrawnCardEntry[] {
-  if (count <= 0 || types.length === 0) {
+function drawCards(blueprints: CardBlueprint[], count: number): DrawnCardEntry[] {
+  if (count <= 0 || blueprints.length === 0) {
     return []
   }
-  const repo = new CardRepository()
   const results: DrawnCardEntry[] = []
   for (let i = 0; i < count; i += 1) {
-    const randomType = types[Math.floor(Math.random() * types.length)] as DeckCardType
-    // DeckCardType が分かっているので Blueprint ベースで直接生成する
-    const card = createCardFromBlueprint({ type: randomType }, repo)
-    const info = buildCardInfo(card, `${randomType}-${i}`)
+    const randomBlueprint = blueprints[Math.floor(Math.random() * blueprints.length)] as CardBlueprint
+    const info = buildCardInfoFromBlueprint(randomBlueprint, `${randomBlueprint.type}-${i}`)
     if (info) {
-      results.push({ info, type: randomType })
+      results.push({ info, blueprint: randomBlueprint })
     }
   }
   return results
@@ -92,8 +85,8 @@ function drawCards(types: DeckCardType[], count: number): DrawnCardEntry[] {
 
 function handleClaim(): void {
   if (claimed.value) return
-  for (const { type } of drawnCards.value) {
-    playerStore.addCard(type)
+  for (const { blueprint } of drawnCards.value) {
+    playerStore.addCard(blueprint)
   }
   claimed.value = true
 }
@@ -101,14 +94,6 @@ function handleClaim(): void {
 async function handleProceed(): Promise<void> {
   fieldStore.markCurrentCleared()
   await router.push('/field')
-}
-
-function buildCardInfo(card: Card, id: string): CardInfo | null {
-  return buildCardInfoFromCard(card, {
-    id,
-    affordable: true,
-    disabled: false,
-  })
 }
 </script>
 

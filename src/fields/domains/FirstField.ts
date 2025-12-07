@@ -9,9 +9,9 @@ import type {
 } from './FieldNode'
 import { SnailTeam, IronBloomTeam, HummingbirdAlliesTeam, OrcWrestlerTeam, HighOrcBandTeam, OrcHeroEliteTeam } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
-import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
+import { listStandardSkillRewardBlueprints } from '@/domain/library/Library'
 
-const SKILL_CARD_CANDIDATES = ['heaven-chain', 'battle-prep', 'masochistic-aura', 'scar-regeneration', 'reload', 'non-violence-prayer', 'life-drain-skill', 'daily-routine', 'predicament']
+const SKILL_CARD_CANDIDATES = listStandardSkillRewardBlueprints()
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),

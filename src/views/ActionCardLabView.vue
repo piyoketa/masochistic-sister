@@ -14,21 +14,11 @@ ActionCardLabView の責務:
 -->
 <script setup lang="ts">
 import CardList from '@/components/CardList.vue'
-import { buildCardInfoFromBlueprint, type DeckCardBlueprint } from '@/domain/library/Library'
+import { buildCardInfoFromBlueprint, listStandardSampleCardBlueprints, type CardBlueprint } from '@/domain/library/Library'
 import type { CardInfo } from '@/types/battle'
 
-// 実験に使うカードは、Libraryが生成する定義の中から手動でピックアップする。
-const cardBlueprints: DeckCardBlueprint[] = [
-  { type: 'heaven-chain' }, // 天の鎖
-  { type: 'battle-prep' }, // 戦いの準備
-  { type: 'masochistic-aura' }, // 被虐のオーラ
-  { type: 'acid-spit' }, // 酸を吐く
-  { type: 'blood-suck' }, // 吸血
-  { type: 'flurry' }, // 乱れ突き
-  { type: 'tackle' }, // たいあたり
-  { type: 'state-state-corrosion' }, // 腐食（状態異常カード）
-  { type: 'state-state-evil-thought' }, // 邪念（状態異常カード）
-]
+// 実験に使うカードは、Libraryが返すサンプルセットをそのまま利用する。
+const cardBlueprints: CardBlueprint[] = listStandardSampleCardBlueprints()
 
 const showcaseCards: CardInfo[] = cardBlueprints
   .map((blueprint, index) => buildCardInfoFromBlueprint(blueprint, `lab-${index}`))

@@ -25,31 +25,13 @@ import { createStateActionFromState } from '@/domain/entities/Card'
 import { Damages } from '@/domain/entities/Damages'
 import { getRelicInfo, type RelicInfo } from '@/domain/entities/relics/relicLibrary'
 import { StateAction } from '../entities/Action/StateAction'
-// storeから切り出したデッキカード識別子
-export type BaseDeckCardType =
-  | 'heaven-chain'
-  | 'battle-prep'
-  | 'masochistic-aura'
-  | 'scar-regeneration'
-  | 'reload'
-  | 'non-violence-prayer'
-  | 'life-drain-skill'
-  | 'daily-routine'
-  | 'predicament'
-  | 'tackle'
-  | 'flurry'
-  | 'mucus-shot'
-  | 'acid-spit'
-  | 'poison-sting'
-  | 'blood-suck'
-  | 'flashback'
+// デッキに入るカード ID と Blueprint
+export type ActionCardId = string
+export type StateCardId = `state-${string}`
+export type CardId = ActionCardId | StateCardId
 
-export type StateDeckCardType = `state-${string}`
-
-export type DeckCardType = BaseDeckCardType | StateDeckCardType
-
-export interface DeckCardBlueprint {
-  type: DeckCardType
+export interface CardBlueprint {
+  type: CardId
   overrideAmount?: number
   overrideCount?: number
 }
@@ -69,57 +51,91 @@ import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
 import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { FlashbackAction } from '@/domain/entities/actions/FlashbackAction'
+import { CorrosionState } from '@/domain/entities/states/CorrosionState'
+import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
+type CardRepositoryLike = { create: (factory: () => Card) => Card }
 
-// デッキカードの一覧定義をLibraryへ集約し、storeやオーバーレイ等が参照できるようにする。
-const baseCardFactories: Record<BaseDeckCardType, () => Card> = {
-  'heaven-chain': () => new Card({ action: new HeavenChainAction() }),
-  'battle-prep': () => new Card({ action: new BattlePrepAction() }),
-  'masochistic-aura': () => new Card({ action: new MasochisticAuraAction() }),
-  'scar-regeneration': () => new Card({ action: new ScarRegenerationAction() }),
-  reload: () => new Card({ action: new ReloadAction() }),
-  'non-violence-prayer': () => new Card({ action: new NonViolencePrayerAction() }),
-  'life-drain-skill': () => new Card({ action: new LifeDrainSkillAction() }),
-  'daily-routine': () => new Card({ action: new DailyRoutineAction() }),
-  predicament: () => new Card({ action: new PredicamentAction() }),
-  tackle: () => new Card({ action: new TackleAction() }),
-  flurry: () => new Card({ action: new FlurryAction() }),
-  'mucus-shot': () => new Card({ action: new MucusShotAction() }),
-  'acid-spit': () => new Card({ action: new AcidSpitAction() }),
-  'poison-sting': () => new Card({ action: new PoisonStingAction() }),
-  'blood-suck': () => new Card({ action: new BloodSuckAction() }),
-  flashback: () => new Card({ action: new FlashbackAction() }),
-}
+// デッキに入る Action クラスの一覧。ID はクラス名から kebab-case 化して決定する。
+const DECK_ACTION_CLASSES: ActionConstructor[] = [
+  HeavenChainAction,
+  BattlePrepAction,
+  MasochisticAuraAction,
+  ScarRegenerationAction,
+  ReloadAction,
+  NonViolencePrayerAction,
+  LifeDrainSkillAction,
+  DailyRoutineAction,
+  PredicamentAction,
+  TackleAction,
+  FlurryAction,
+  MucusShotAction,
+  AcidSpitAction,
+  PoisonStingAction,
+  BloodSuckAction,
+  FlashbackAction,
+]
 
-const stateCardFactories: Record<StateDeckCardType, () => Card> = buildStateCardFactories()
+const actionCardFactories: Record<ActionCardId, () => Card> = buildActionCardFactories(DECK_ACTION_CLASSES)
+const stateCardFactories: Record<StateCardId, () => Card> = buildStateCardFactories()
 
-const cardFactories: Record<DeckCardType, () => Card> = {
-  ...baseCardFactories,
+const cardFactories: Record<CardId, () => Card> = {
+  ...actionCardFactories,
   ...stateCardFactories,
 }
 
-const actionConstructorMap = new Map<Function, DeckCardType>([
-  [HeavenChainAction, 'heaven-chain'],
-  [BattlePrepAction, 'battle-prep'],
-  [MasochisticAuraAction, 'masochistic-aura'],
-  [ScarRegenerationAction, 'scar-regeneration'],
-  [ReloadAction, 'reload'],
-  [NonViolencePrayerAction, 'non-violence-prayer'],
-  [LifeDrainSkillAction, 'life-drain-skill'],
-  [DailyRoutineAction, 'daily-routine'],
-  [PredicamentAction, 'predicament'],
-  [TackleAction, 'tackle'],
-  [FlurryAction, 'flurry'],
-  [MucusShotAction, 'mucus-shot'],
-  [AcidSpitAction, 'acid-spit'],
-  [PoisonStingAction, 'poison-sting'],
-  [BloodSuckAction, 'blood-suck'],
-  [FlashbackAction, 'flashback'],
-])
+// ショップで取り扱う標準ラインナップ（旧 CARD_CANDIDATES 相当）
+const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
+  BattlePrepAction,
+  DailyRoutineAction,
+  PredicamentAction,
+  NonViolencePrayerAction,
+  ReloadAction,
+  ScarRegenerationAction,
+  LifeDrainSkillAction,
+  FlashbackAction,
+]
 
-export function createCardFromBlueprint(blueprint: DeckCardBlueprint, repository?: { create: (factory: () => Card) => Card }): Card {
+// フィールド報酬スキルの候補（旧 SKILL_CARD_CANDIDATES 相当）
+const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
+  HeavenChainAction,
+  BattlePrepAction,
+  MasochisticAuraAction,
+  ScarRegenerationAction,
+  ReloadAction,
+  NonViolencePrayerAction,
+  LifeDrainSkillAction,
+  DailyRoutineAction,
+  PredicamentAction,
+]
+
+// ラボやデモで見せるサンプルカードセット
+const STANDARD_SAMPLE_ACTION_CLASSES: ActionConstructor[] = [
+  HeavenChainAction,
+  BattlePrepAction,
+  MasochisticAuraAction,
+  AcidSpitAction,
+  BloodSuckAction,
+  FlurryAction,
+  TackleAction,
+]
+const STANDARD_SAMPLE_STATE_CLASSES: StateConstructor[] = [CorrosionState, EvilThoughtState]
+
+/**
+ * CardId ごとのカードファクトリと Action 名をまとめた一覧を返す。
+ * デッキ編集などで全カードを追加候補に出す際に利用する。
+ */
+export function listCardIdOptions(): Array<{ type: CardId; label: string }> {
+  return Object.entries(cardFactories).map(([type, factory]) => {
+    const card = factory()
+    const label = card.action?.name ?? type
+    return { type: type as CardId, label }
+  })
+}
+
+export function createCardFromBlueprint(blueprint: CardBlueprint, repository?: CardRepositoryLike): Card {
   const factory = cardFactories[blueprint.type]
   if (!factory) {
     throw new Error(`未対応のカード種別 "${blueprint.type}" です`)
@@ -141,7 +157,7 @@ export function createCardFromBlueprint(blueprint: DeckCardBlueprint, repository
   return repository ? repository.create(() => baseCard) : baseCard
 }
 
-export function buildCardInfoFromBlueprint(blueprint: DeckCardBlueprint, idPrefix = 'deck'): CardInfo | null {
+export function buildCardInfoFromBlueprint(blueprint: CardBlueprint, idPrefix = 'deck'): CardInfo | null {
   const card = createCardFromBlueprint(blueprint)
   return buildCardInfoFromCard(card, {
     id: `${idPrefix}-${card.id ?? blueprint.type}`,
@@ -150,15 +166,43 @@ export function buildCardInfoFromBlueprint(blueprint: DeckCardBlueprint, idPrefi
   })
 }
 
-export function mapActionToDeckCardType(action: Action): DeckCardType | null {
+export function mapActionToCardId(action: Action): CardId | null {
   if (action instanceof StateAction) {
-    const stateId = action.state?.id
-    if (stateId) {
-      return `state-${stateId}` as StateDeckCardType
+    const stateCardId = toStateCardIdFromId(action.state?.id)
+    if (stateCardId) {
+      return stateCardId
     }
   }
-  const key = actionConstructorMap.get(action.constructor as Function)
-  return key ?? null
+  const actionId = toActionCardId(action.constructor as ActionConstructor)
+  return actionId && actionId in actionCardFactories ? actionId : null
+}
+
+export function buildBlueprintFromCard(card: Card): CardBlueprint {
+  const action = card.action
+  if (!action) {
+    throw new Error('デッキのカードにアクションが設定されていません')
+  }
+  const blueprint = buildBlueprintFromAction(action)
+  if (!blueprint) {
+    throw new Error(`未対応のカードアクション "${action.constructor.name}" です`)
+  }
+  return blueprint
+}
+
+export function listStandardShopCardBlueprints(): CardBlueprint[] {
+  return STANDARD_SHOP_ACTION_CLASSES.map(buildActionBlueprintFromCtor)
+}
+
+export function listStandardSkillRewardBlueprints(): CardBlueprint[] {
+  return STANDARD_SKILL_REWARD_CLASSES.map(buildActionBlueprintFromCtor)
+}
+
+export function listStandardSampleCardBlueprints(): CardBlueprint[] {
+  const actionBlueprints = STANDARD_SAMPLE_ACTION_CLASSES.map(buildActionBlueprintFromCtor)
+  const stateBlueprints = STANDARD_SAMPLE_STATE_CLASSES.map(buildStateBlueprintFromCtor).filter(
+    (entry): entry is CardBlueprint => entry !== null,
+  )
+  return [...actionBlueprints, ...stateBlueprints]
 }
 
 export function getRelicInfoByClassName(className: string): RelicInfo | null {
@@ -295,14 +339,45 @@ export class Library {
   }
 }
 
-function buildStateCardFactories(): Record<StateDeckCardType, () => Card> {
-  const factories: Record<StateDeckCardType, () => Card> = {}
+export function buildCardInfosFromBlueprints(blueprints: CardBlueprint[], idPrefix = 'deck'): CardInfo[] {
+  return blueprints
+    .map((blueprint, index) => buildCardInfoFromBlueprint(blueprint, `${idPrefix}-${index}`))
+    .filter((info): info is CardInfo => info !== null)
+}
+
+function buildActionBlueprintFromCtor(ctor: ActionConstructor): CardBlueprint {
+  return { type: toActionCardId(ctor) }
+}
+
+function buildStateBlueprintFromCtor(ctor: StateConstructor): CardBlueprint | null {
+  const state = instantiateStateForFactory(ctor)
+  if (!state) {
+    return null
+  }
+  const id = toStateCardId(state)
+  return id ? { type: id } : null
+}
+
+function buildActionCardFactories(constructors: ActionConstructor[]): Record<ActionCardId, () => Card> {
+  const entries: Array<[ActionCardId, () => Card]> = []
+  for (const ctor of constructors) {
+    const cardId = toActionCardId(ctor)
+    entries.push([cardId, () => new Card({ action: new ctor() })])
+  }
+  return Object.fromEntries(entries)
+}
+
+function buildStateCardFactories(): Record<StateCardId, () => Card> {
+  const factories: Record<StateCardId, () => Card> = {}
   for (const candidate of Object.values(stateModules)) {
     const state = instantiateStateForFactory(candidate)
     if (!state) {
       continue
     }
-    const deckType = `state-${state.id}` as StateDeckCardType
+    const deckType = toStateCardId(state)
+    if (!deckType) {
+      continue
+    }
     factories[deckType] = () => {
       const instance = instantiateStateForFactory(candidate)
       if (!instance) {
@@ -329,4 +404,63 @@ function instantiateStateForFactory(candidate: unknown): StateType | null {
     // 無引数で生成できない状態はスキップ
   }
   return null
+}
+
+function buildBlueprintFromAction(action: Action): CardBlueprint | null {
+  const cardId = mapActionToCardId(action)
+  if (!cardId) {
+    return null
+  }
+  const blueprint: CardBlueprint = { type: cardId }
+  if (action instanceof Attack) {
+    const base = action.baseDamages
+    const defaultAction = instantiateActionForComparison(action.constructor as ActionConstructor)
+    const defaultProfile = defaultAction instanceof Attack ? defaultAction.baseDamages : undefined
+    const defaultAmount = defaultProfile?.baseAmount
+    const defaultCount = defaultProfile?.baseCount
+    if (defaultAmount === undefined || base.baseAmount !== defaultAmount) {
+      blueprint.overrideAmount = base.baseAmount
+    }
+    if (defaultCount === undefined || base.baseCount !== defaultCount) {
+      blueprint.overrideCount = base.baseCount
+    }
+  }
+  return blueprint
+}
+
+function instantiateActionForComparison(candidate: ActionConstructor): Action | null {
+  try {
+    // eslint-disable-next-line new-cap
+    return new candidate()
+  } catch {
+    return null
+  }
+}
+
+function toActionCardId(constructor: ActionConstructor): ActionCardId {
+  const className = constructor.name ?? ''
+  const trimmed = className.endsWith('Action') ? className.slice(0, -6) : className
+  const kebab = trimmed
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase()
+  return kebab as ActionCardId
+}
+
+function toStateCardId(state: StateType): StateCardId | null {
+  const id = state.id
+  if (typeof id !== 'string') {
+    return null
+  }
+  if (!id.startsWith('state-')) {
+    return null
+  }
+  return id as StateCardId
+}
+
+function toStateCardIdFromId(id: string | undefined): StateCardId | null {
+  if (!id || !id.startsWith('state-')) {
+    return null
+  }
+  return id as StateCardId
 }

@@ -5,20 +5,19 @@ import CardList from '@/components/CardList.vue'
 import type { CardInfo, CardTagInfo, DescriptionSegment, AttackStyle } from '@/types/battle'
 import {
   usePlayerStore,
-  type DeckCardBlueprint,
-  type DeckCardType,
+  type CardBlueprint,
+  type CardId,
 } from '@/stores/playerStore'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { Card } from '@/domain/entities/Card'
 import { Attack } from '@/domain/entities/Action'
-import { Damages } from '@/domain/entities/Damages'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { shopManager } from '@/domain/shop/ShopManager'
 import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
 import { useActionCardOverlay } from '@/composables/actionCardOverlay'
 import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
 import { useAudioStore } from '@/stores/audioStore'
-import { createCardFromBlueprint, listDeckCardOptions } from '@/domain/library/Library'
+import { createCardFromBlueprint, listCardIdOptions } from '@/domain/library/Library'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -52,13 +51,13 @@ const deckCards = computed<CardInfo[]>(() => {
 
 const selectedCardId = ref<string | null>(null)
 // Library のカードファクトリ一覧から追加候補を生成する。Action.name をそのままラベルに利用する。
-const addableOptions: Array<{ value: DeckCardType; label: string }> = listDeckCardOptions().map(
+const addableOptions: Array<{ value: CardId; label: string }> = listCardIdOptions().map(
   (entry) => ({
     value: entry.type,
     label: entry.label,
   }),
 )
-const newCardType = ref<DeckCardType>(addableOptions[0]?.value ?? 'heaven-chain')
+const newCardType = ref<CardId>(addableOptions[0]?.value ?? 'heaven-chain')
 
 function handleCardClick(card: CardInfo): void {
   selectedCardId.value = selectedCardId.value === card.id ? null : card.id
@@ -128,7 +127,7 @@ function duplicateSelected(): void {
 }
 
 function addCard(): void {
-  playerStore.addCard(newCardType.value)
+  playerStore.addCard({ type: newCardType.value })
 }
 
 const editAmount = ref<number | null>(null)
@@ -164,9 +163,9 @@ function buyCard(offer: (typeof shopState.value.cards)[number]): void {
     return
   }
   playerStore.spendGold(offer.price)
-  playerStore.addCard(offer.deckType)
+  playerStore.addCard(offer.blueprint)
   syncStatusEditors()
-  shopManager.markCardSold(offer.deckType)
+  shopManager.markCardSold(offer.blueprint)
   refreshShopState()
 }
 
@@ -190,7 +189,7 @@ function syncStatusEditors(): void {
   editGold.value = playerStore.gold
 }
 
-function resolveCardLabel(deckType: DeckCardType): string {
+function resolveCardLabel(deckType: CardId): string {
   const found = addableOptions.find((opt) => opt.value === deckType)
   return found?.label ?? deckType
 }
@@ -199,8 +198,8 @@ function resolveRelicLabel(className: string): string {
   return getRelicInfo(className)?.name ?? className
 }
 
-function showCardOverlay(deckType: DeckCardType, event: MouseEvent): void {
-  actionOverlay.showFromBlueprint({ type: deckType }, { x: event.clientX, y: event.clientY })
+function showCardOverlay(blueprint: CardBlueprint, event: MouseEvent): void {
+  actionOverlay.showFromBlueprint(blueprint, { x: event.clientX, y: event.clientY })
 }
 
 function hideCardOverlay(): void {
@@ -374,14 +373,14 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
         <div class="shop-card">
           <div class="shop-title">カード</div>
           <ul class="shop-list">
-            <li v-for="offer in shopState.cards" :key="offer.deckType" class="shop-item">
+            <li v-for="offer in shopState.cards" :key="offer.blueprint.type" class="shop-item">
               <div>
                 <span
                   class="shop-item__name"
-                  @mouseenter="(e) => showCardOverlay(offer.deckType, e as MouseEvent)"
+                  @mouseenter="(e) => showCardOverlay(offer.blueprint, e as MouseEvent)"
                   @mouseleave="hideCardOverlay"
                 >
-                  {{ resolveCardLabel(offer.deckType) }}
+                  {{ resolveCardLabel(offer.blueprint.type) }}
                 </span>
                 <span v-if="offer.sale" class="shop-badge">SALE</span>
               </div>

@@ -1,3 +1,5 @@
+import type { CardBlueprint } from '@/domain/library/Library'
+
 export type FieldNodeType =
   | 'start'
   | 'enemy'
@@ -28,7 +30,7 @@ export interface EnemyNode extends FieldNode {
 
 export interface CardRewardNode extends FieldNode {
   type: 'card-reward'
-  candidateActions: string[]
+  candidateActions: CardBlueprint[]
   drawCount: number
 }
 
@@ -40,8 +42,8 @@ export interface RelicRewardNode extends FieldNode {
 
 export interface RandomCardRewardNode extends FieldNode {
   type: 'random-card-reward'
-  candidateActions: string[]
-  selectedActions: string[]
+  candidateActions: CardBlueprint[]
+  selectedActions: CardBlueprint[]
   drawCount: number
 }
 
