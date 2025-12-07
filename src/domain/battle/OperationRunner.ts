@@ -637,6 +637,7 @@ export class OperationRunner {
     entry: Extract<BattleActionLogEntry, { type: 'enemy-act' }>,
     summary: EnemyTurnActionSummary | undefined,
     drainedEvents: DrainedAnimationEvents,
+    memoryEvents: MemoryCardAnimationEvent[],
   ): AnimationInstruction[] {
     if (summary?.skipped) {
       const skipInstruction = this.buildSkippedEnemyActInstruction(summary, entry)
@@ -660,6 +661,12 @@ export class OperationRunner {
 
     const stateEvents = summary?.stateCardEvents ?? drainedEvents.stateCardEvents
     instructions.push(...this.buildStateCardInstructions(stateEvents))
+
+    const rememberedEvents = summary?.memoryCardEvents ?? memoryEvents
+    if (rememberedEvents.length > 0) {
+      // ダメージ演出と記憶カード生成を同一バッチにまとめ、演出の分断を防ぐ
+      instructions.push(...this.buildMemoryCardInstructions(rememberedEvents))
+    }
 
     const audioConfig = summary ? this.resolveEnemyActionAudioConfig(summary) : undefined
     if (audioConfig) {
@@ -1018,18 +1025,12 @@ export class OperationRunner {
     ]
     batches.push(this.createBatch(baseSnapshot, highlightInstructions, this.nextBatchId('enemy-act-start')))
 
-    const enemyActionInstructions = this.buildEnemyActionInstructions(entry, summary, drainedEvents)
+    const memoryEvents = summary?.memoryCardEvents ?? drainedEvents.memoryCardEvents
+    const enemyActionInstructions = this.buildEnemyActionInstructions(entry, summary, drainedEvents, memoryEvents)
     if (enemyActionInstructions.length > 0) {
       batches.push(
-        this.createBatch(baseSnapshot, enemyActionInstructions, this.nextBatchId('enemy-action')),
-      )
-    }
-
-    const memoryEvents = summary?.memoryCardEvents ?? drainedEvents.memoryCardEvents
-    const rememberInstructions = this.buildMemoryCardInstructions(memoryEvents)
-    if (rememberInstructions.length > 0) {
-      batches.push(
-        this.createBatch(snapshot, rememberInstructions, this.nextBatchId('remember-enemy-attack')),
+        // enemy-action バッチでは生成後の snapshot を適用して手札出現とダメージ演出を同時に扱う
+        this.createBatch(snapshot, enemyActionInstructions, this.nextBatchId('enemy-action')),
       )
     }
 

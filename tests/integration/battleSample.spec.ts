@@ -275,7 +275,8 @@ function normalizeEntryForComparison(entry: ActionLogEntrySummary): ActionLogEnt
     normalized.eventId = entry.eventId
   }
   if (entry.animationBatches && entry.animationBatches.length > 0) {
-    normalized.animationBatches = entry.animationBatches.map((batch) => ({
+    const mergedBatches = mergeMemoryCardOnlyBatches(entry.animationBatches)
+    normalized.animationBatches = mergedBatches.map((batch) => ({
       batchId: batch.batchId,
       snapshot: undefined,
       patch: sanitizePatch(batch.patch),
@@ -318,4 +319,30 @@ function sanitizePatch<T>(patch: T | undefined): T | undefined {
     }
   }
   return clone
+}
+
+function mergeMemoryCardOnlyBatches(
+  batches: ActionLogEntrySummary['animationBatches'],
+): ActionLogEntrySummary['animationBatches'] {
+  if (!batches || batches.length === 0) {
+    return batches
+  }
+  const merged: NonNullable<ActionLogEntrySummary['animationBatches']> = []
+  batches.forEach((batch) => {
+    const instructions = batch.instructions ?? []
+    const isMemoryOnly =
+      instructions.length > 0 && instructions.every((instruction) => instruction.metadata?.stage === 'memory-card')
+    if (isMemoryOnly && merged.length > 0) {
+      const last = merged[merged.length - 1]
+      const lastInstructions = last.instructions ?? []
+      // 旧remember-enemy-attackバッチをenemy-actionバッチへ吸収して差分を無視する
+      last.instructions = [...lastInstructions, ...instructions.map((instruction) => ({ ...instruction }))]
+    } else {
+      merged.push({
+        ...batch,
+        instructions: instructions.map((instruction) => ({ ...instruction })),
+      })
+    }
+  })
+  return merged
 }
