@@ -40,27 +40,25 @@ function handleCancel(): void {
 </script>
 
 <template>
-  <transition name="pile-choice-overlay">
-    <div v-if="visible" class="pile-choice-overlay" @contextmenu.prevent="handleCancel">
-      <div class="pile-choice-overlay__window">
-        <div class="pile-choice-overlay__header">
-          <div class="pile-choice-overlay__title">{{ title ?? 'カードを選択' }}</div>
-          <button type="button" class="pile-choice-overlay__close" aria-label="閉じる" @click="handleCancel">×</button>
-        </div>
-        <div class="pile-choice-overlay__body">
-          <p v-if="message" class="pile-choice-overlay__message">{{ message }}</p>
-          <CardList
-            :cards="candidates"
-            :gap="16"
-            :selectable="true"
-            :force-playable="true"
-            class="pile-choice-overlay__list"
-            @card-click="handleSelect"
-          />
-        </div>
-      </div>
+<div v-if="visible" class="pile-choice-overlay" @contextmenu.prevent="handleCancel">
+  <div class="pile-choice-overlay__window">
+    <div class="pile-choice-overlay__header">
+      <div class="pile-choice-overlay__title">{{ title ?? 'カードを選択' }}</div>
+      <button type="button" class="pile-choice-overlay__close" aria-label="閉じる" @click="handleCancel">×</button>
     </div>
-  </transition>
+    <div class="pile-choice-overlay__body">
+      <p v-if="message" class="pile-choice-overlay__message">{{ message }}</p>
+      <CardList
+        :cards="candidates"
+        :gap="16"
+        :selectable="true"
+        :force-playable="true"
+        class="pile-choice-overlay__list"
+        @card-click="handleSelect"
+      />
+    </div>
+  </div>
+</div>
 </template>
 
 <style scoped>
@@ -138,13 +136,4 @@ function handleCancel(): void {
   justify-content: flex-start;
 }
 
-.pile-choice-overlay-enter-active,
-.pile-choice-overlay-leave-active {
-  transition: opacity 180ms ease;
-}
-
-.pile-choice-overlay-enter-from,
-.pile-choice-overlay-leave-to {
-  opacity: 0;
-}
 </style>
