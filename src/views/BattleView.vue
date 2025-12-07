@@ -495,7 +495,6 @@ function buildCardInfos(cards: Card[], prefix: string): CardInfo[] {
       buildCardInfoFromCard(card, {
         id: `${prefix}-${card.id ?? index}`,
         affordable: true,
-        disabled: true,
         costContext,
       }),
     )

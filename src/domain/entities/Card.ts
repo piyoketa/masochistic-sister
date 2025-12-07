@@ -14,6 +14,7 @@ import { StateAction } from './Action/StateAction'
 import type { State } from './State'
 
 const RUNTIME_COST_KEY = Symbol('runtimeCostOverride')
+const RUNTIME_ACTIVE_KEY = Symbol('runtimeActiveOverride')
 
 export interface CardProps {
   action: Action
@@ -192,6 +193,16 @@ export class Card {
   setRuntimeCost(cost: number | undefined): void {
     const store = this as unknown as Record<symbol, number | undefined>
     store[RUNTIME_COST_KEY] = cost
+  }
+
+  getRuntimeActive(): boolean | undefined {
+    const store = this as unknown as Record<symbol, boolean | undefined>
+    return store[RUNTIME_ACTIVE_KEY]
+  }
+
+  setRuntimeActive(active: boolean | undefined): void {
+    const store = this as unknown as Record<symbol, boolean | undefined>
+    store[RUNTIME_ACTIVE_KEY] = active
   }
 
   play(battle: Battle, operations: CardOperation[] = []): void {

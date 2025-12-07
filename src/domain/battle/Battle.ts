@@ -372,12 +372,10 @@ export class Battle {
         return { className, active }
       }) ?? []
 
-    const deckWithCost = this.deckValue.list().map((card) => this.applyCardRuntimeCost(card))
-    const handWithCost = this.handValue.list().map((card) => this.applyCardRuntimeCost(card))
-    const discardWithCost = this.discardPileValue
-      .list()
-      .map((card) => this.applyCardRuntimeCost(card))
-    const exileWithCost = this.exilePileValue.list().map((card) => this.applyCardRuntimeCost(card))
+    const deckWithCost = this.deckValue.list()
+    const handWithRuntime = this.handValue.list().map((card) => this.applyCardRuntime(card))
+    const discardWithCost = this.discardPileValue.list()
+    const exileWithCost = this.exilePileValue.list()
 
     return {
       id: this.idValue,
@@ -414,7 +412,7 @@ export class Battle {
         }
       }),
       deck: deckWithCost,
-      hand: handWithCost,
+      hand: handWithRuntime,
       discardPile: discardWithCost,
       exilePile: exileWithCost,
       events: this.eventsValue.list(),
@@ -1211,13 +1209,23 @@ export class Battle {
     }))
   }
 
-  private applyCardRuntimeCost(card: Card): Card {
+  private applyCardRuntime(card: Card): Card {
     const computedCost = card.calculateCost({
       battle: this,
       source: this.playerValue,
       cardTags: card.cardTags ?? [],
     })
     card.setRuntimeCost(computedCost)
+    const active = card.action?.isActive({
+      battle: this,
+      source: this.playerValue,
+      cardTags: card.cardTags ?? [],
+    })
+    card.setRuntimeActive(active)
+    // Vue側でプレーンオブジェクトとしてスナップショットを扱う際に失われないよう、列挙可能なプロパティにも保持しておく
+    ;(card as any).runtimeCost = computedCost
+    ;(card as any).runtimeActive = active
+    console.log(`Card ${card.title} (ID: ${card.id}) runtime - cost: ${computedCost}, active: ${active}`)
     return card
   }
 

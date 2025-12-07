@@ -3,6 +3,9 @@ import { Attack } from '@/domain/entities/Action'
 import type { CardDefinition } from '@/domain/entities/CardDefinition'
 import type { CardTag } from '@/domain/entities/CardTag'
 import type { DamagePattern } from '@/domain/entities/Damages'
+import type { Battle } from '@/domain/battle/Battle'
+import type { Player } from '@/domain/entities/Player'
+import type { Enemy } from '@/domain/entities/Enemy'
 import type {
   AttackStyle,
   CardInfo,
@@ -25,6 +28,7 @@ export function buildCardInfoFromCard(
     affordable?: boolean
     disabled?: boolean
     costContext?: import('@/domain/entities/Action/ActionBase').ActionCostContext
+    activeContext?: CardActiveContext
   },
 ): CardInfo | null {
   if (!isSupportedCardType(card.type)) {
@@ -37,7 +41,10 @@ export function buildCardInfoFromCard(
   const categoryTags = toTagInfos(card.categoryTags, (tag) => tag.name ?? tag.id ?? '')
   const seenTagIds = new Set<string>()
   const subtitle = resolveSubtitle(card)
-  const active = resolveIsActive(card, options?.costContext)
+  const active = resolveIsActive(
+    card,
+    options?.activeContext ?? toActiveContextFromCost(options?.costContext),
+  )
 
   // 状態異常カードは「種別/ターゲット」をヘッダに表示しない方針のため primaryTags を空にする
   if (card.type !== 'status') {
@@ -45,7 +52,7 @@ export function buildCardInfoFromCard(
   }
 
   const cost =
-    options?.costContext !== undefined ? card.calculateCost(options.costContext) : card.cost
+    options?.costContext !== undefined ? card.calculateCost(options.costContext) : (card as any).runtimeCost ?? card.cost
   const baseInfo = {
     id: options?.id ?? `card-${card.id ?? 'unknown'}`,
     title: card.title,
@@ -186,17 +193,48 @@ function normalizeSubtitle(value?: string): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
-function resolveIsActive(
-  card: Card,
-  context?: import('@/domain/entities/Action/ActionBase').ActionCostContext,
-): boolean {
+export type CardActiveContext = {
+  battle?: Battle
+  source?: Player | Enemy
+  cardTags?: CardTag[]
+}
+
+/**
+ * Action.isActive を呼び出して発動可否を判定する共通ヘルパー。
+ * battle が無い場合は常に true を返し、UI 側のプレイ不可判定に利用する。
+ */
+export function resolveIsActive(card: Card, context?: CardActiveContext): boolean {
   const action = card.action
   if (!action || typeof (action as any).isActive !== 'function') {
     return true
   }
+  const runtimeProp = (card as any).runtimeActive
+  if (runtimeProp !== undefined) {
+    return Boolean(runtimeProp)
+  }
+  const runtime = card.getRuntimeActive?.()
+  if (runtime !== undefined) {
+    return runtime
+  }
+  if (!context?.battle) {
+    return true
+  }
   return (action as any).isActive({
-    battle: context?.battle,
-    source: context?.source,
-    cardTags: context?.cardTags ?? card.cardTags ?? [],
+    battle: context.battle,
+    source: context.source,
+    cardTags: context.cardTags ?? card.cardTags ?? [],
   })
+}
+
+function toActiveContextFromCost(
+  context?: import('@/domain/entities/Action/ActionBase').ActionCostContext,
+): CardActiveContext | undefined {
+  if (!context) {
+    return undefined
+  }
+  return {
+    battle: context.battle,
+    source: context.source,
+    cardTags: context.cardTags,
+  }
 }

@@ -109,7 +109,8 @@ const tabIndex = computed(() => (props.disabled || isFrameVariant.value ? -1 : 0
 const cardRole = computed(() => (isFrameVariant.value ? undefined : 'button'))
 const costClasses = computed(() => [
   'card-cost',
-  { 'card-cost--unavailable': props.affordable === false },
+  // コスト不足だけでなく、カード自体が disabled の場合もグレー表示にする
+  { 'card-cost--unavailable': props.affordable === false || props.disabled === true },
 ])
 const subtitleText = computed(() => {
   const raw = props.subtitle ?? ''
@@ -507,7 +508,6 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 
 .card-cost--unavailable {
   background: rgba(112, 112, 118, 1);
-  color: rgba(235, 235, 235, 0.85);
   box-shadow: none;
 }
 

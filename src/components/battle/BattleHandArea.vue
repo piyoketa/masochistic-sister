@@ -222,6 +222,7 @@ defineExpose({ resetSelection, cancelSelection })
           :selected="interactionState.selectedCardKey === entry.key"
           :selection-theme="interactionState.selectionTheme"
           :disabled="isCardDisabled(entry)"
+          :class="{ 'hand-card--disabled': isCardDisabled(entry) }"
           @click="handleCardClick(entry)"
           @mouseenter="() => handleCardHoverStart(entry)"
           @mouseleave="handleCardHoverEnd"
@@ -417,6 +418,10 @@ defineExpose({ resetSelection, cancelSelection })
 .hand-card-wrapper--hovered {
   z-index: 3;
   transform: translateY(-8px);
+}
+
+.hand-card--disabled {
+  pointer-events: none;
 }
 
 .hand-card-wrapper--adjacent-left {

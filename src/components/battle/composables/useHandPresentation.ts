@@ -8,6 +8,7 @@ import type { ViewManager } from '@/view/ViewManager'
 import type { CardTag } from '@/domain/entities/CardTag'
 import type { CardInfo, CardTagInfo, AttackStyle, DescriptionSegment } from '@/types/battle'
 import type { OperationContext } from '@/domain/entities/operations'
+import { resolveIsActive } from '@/utils/cardInfoBuilder'
 
 export interface HandEntry {
   key: string
@@ -16,6 +17,7 @@ export interface HandEntry {
   id?: number
   operations: string[]
   affordable: boolean
+  disabled: boolean
 }
 
 export interface UseHandPresentationOptions {
@@ -97,6 +99,7 @@ function buildHandEntry(
     id: card.id,
     operations,
     affordable,
+    disabled: presentation.disabled ?? false,
   }
 }
 
@@ -107,7 +110,11 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   const categoryTags: CardTagInfo[] = []
   const seenTagIds = new Set<string>()
   const subtitle = resolveSubtitle(card)
-  const active = resolveIsActive(card, options.props.viewManager.battle)
+  const active = resolveIsActive(card, {
+    battle: options.props.viewManager.battle ?? undefined,
+    source: options.props.viewManager.battle?.player,
+    cardTags: card.cardTags ?? [],
+  })
 
   let description = card.description
   let descriptionSegments: DescriptionSegment[] = []
@@ -369,16 +376,4 @@ function normalizeSubtitle(value?: string): string | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
-}
-
-function resolveIsActive(card: Card, battle?: import('@/domain/battle/Battle').Battle | null): boolean {
-  const action = card.action
-  if (!action || typeof (action as any).isActive !== 'function') {
-    return true
-  }
-  return (action as any).isActive({
-    battle: battle ?? undefined,
-    source: battle?.player,
-    cardTags: card.cardTags ?? [],
-  })
 }

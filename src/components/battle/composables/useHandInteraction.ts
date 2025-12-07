@@ -62,6 +62,9 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
     if (options.props.isInputLocked) {
       return true
     }
+    if (entry.disabled) {
+      return true
+    }
     if (!options.props.isPlayerTurn) {
       return true
     }
@@ -91,6 +94,9 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
   }
 
   async function handleCardClick(entry: HandEntry): Promise<void> {
+    if (isCardDisabled(entry)) {
+      return
+    }
     if (handSelectionRequest.value) {
       handleHandSelectionClick(entry)
       return
