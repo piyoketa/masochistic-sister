@@ -58,7 +58,12 @@ function buildLevels(ownedRelics: string[]): FieldLevel[] {
   ]
 
   const level5: RandomCardRewardNode[] = [
-    createRandomSkillRewardNode(5, 0),
+    createRandomSkillRewardNode(5, 0, [
+      'SoloBodyAction',
+      'OpenWoundAction',
+      'PeelingScabAction',
+      'LifeDrainSkillAction',
+    ]),
   ]
 
   const level6: EnemyNode[] = [
@@ -127,14 +132,18 @@ function createRelicRewardNode(level: number, idx: number, owned: string[]): Rel
   }
 }
 
-function createRandomSkillRewardNode(level: number, idx: number): RandomCardRewardNode {
-  const selected = pickUnique(SKILL_CARD_CANDIDATES, 3)
+function createRandomSkillRewardNode(
+  level: number,
+  idx: number,
+  candidates: string[] = SKILL_CARD_CANDIDATES,
+): RandomCardRewardNode {
+  const selected = pickUnique(candidates, 3)
   return {
     id: `random-skill-${level}-${idx}`,
     type: 'random-card-reward',
     level,
     label: 'スキルカード褒賞（３枚から１枚）',
-    candidateActions: [...SKILL_CARD_CANDIDATES],
+    candidateActions: [...candidates],
     selectedActions: selected,
     drawCount: 1,
     nextNodeIndices: [],

@@ -108,6 +108,7 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   DeepBreathAction,
   OpenWoundAction,
   StackedStressAction,
+  PeelingScabAction,
 ]
 
 // フィールド報酬スキルの候補（旧 SKILL_CARD_CANDIDATES 相当）
@@ -124,6 +125,7 @@ const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   DeepBreathAction,
   OpenWoundAction,
   StackedStressAction,
+  PeelingScabAction,
 ]
 
 // ラボやデモで見せるサンプルカードセット

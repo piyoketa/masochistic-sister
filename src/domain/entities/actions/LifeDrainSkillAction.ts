@@ -40,14 +40,22 @@ export class LifeDrainSkillAction extends Skill {
   }
 
   protected override description(): string {
-    return 'このターン、手札の[一回攻撃]1枚に[ドレイン]を付与'
+    return 'このターン、手札の一回攻撃1枚に[ドレイン]を付与'
+  }
+
+  protected override isActive(context?: { battle?: ActionContext['battle'] }): boolean {
+    const battle = context?.battle
+    if (!battle) {
+      return false
+    }
+    return battle.hand.list().some((card) => this.isSingleAttackCard(card))
   }
 
   protected override buildOperations(): Operation[] {
     return [
       new SelectHandCardOperation({
         filter: (card) => this.isSingleAttackCard(card),
-        filterMessage: '選択できるのは[単撃]のカードのみです',
+        filterMessage: '選択できるのは一回攻撃のカードのみです',
       }),
     ]
   }
