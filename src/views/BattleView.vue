@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BattleEnemyArea from '@/components/battle/BattleEnemyArea.vue'
 import BattleHandArea from '@/components/battle/BattleHandArea.vue'
@@ -57,6 +57,7 @@ import { BattleReward } from '@/domain/battle/BattleReward'
 import { useAudioStore } from '@/stores/audioStore'
 import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
+import PileChoiceOverlay from '@/components/battle/PileChoiceOverlay.vue'
 import type { CardInfo } from '@/types/battle'
 import type { Card } from '@/domain/entities/Card'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
@@ -118,6 +119,21 @@ const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
+const pileChoiceState = reactive<{
+  visible: boolean
+  title?: string
+  message?: string
+  candidates: CardInfo[]
+  onSelect?: (cardId: number) => void
+  onCancel?: () => void
+}>({
+  visible: false,
+  title: undefined,
+  message: undefined,
+  candidates: [],
+  onSelect: undefined,
+  onCancel: undefined,
+})
 const playerDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 const cutInRef = ref<InstanceType<typeof CutInOverlay> | null>(null)
 const playerDamageOutcomes = ref<DamageOutcome[]>([])
@@ -462,6 +478,41 @@ function openDiscardOverlay(): void {
   logPileSnapshot('discard')
 }
 
+function handleOpenPileChoice(payload: {
+  title?: string
+  message?: string
+  candidates: CardInfo[]
+  onSelect: (cardId: number) => void
+  onCancel: () => void
+}): void {
+  pileChoiceState.visible = true
+  pileChoiceState.title = payload.title
+  pileChoiceState.message = payload.message
+  pileChoiceState.candidates = [...payload.candidates]
+  pileChoiceState.onSelect = payload.onSelect
+  pileChoiceState.onCancel = payload.onCancel
+}
+
+function handlePileChoiceSelect(cardId: number): void {
+  pileChoiceState.visible = false
+  const callback = pileChoiceState.onSelect
+  cleanupPileChoiceCallbacks()
+  callback?.(cardId)
+}
+
+function handlePileChoiceCancel(): void {
+  pileChoiceState.visible = false
+  const callback = pileChoiceState.onCancel
+  cleanupPileChoiceCallbacks()
+  callback?.()
+}
+
+function cleanupPileChoiceCallbacks(): void {
+  pileChoiceState.onSelect = undefined
+  pileChoiceState.onCancel = undefined
+  pileChoiceState.candidates = []
+}
+
 function shuffleCardInfosForDisplay(cards: CardInfo[]): CardInfo[] {
   // 山札の表示順は実際のドロー順を秘匿したいので、都度シャッフルしたコピーを返す。
   const shuffled = [...cards]
@@ -526,6 +577,9 @@ async function handleOpenReward(): Promise<void> {
 }
 
 function handleHandPlayCard(payload: { cardId: number; operations: CardOperation[] }): void {
+  // デバッグ用: HandArea からのプレイ要求を記録
+  // eslint-disable-next-line no-console
+  console.info('[BattleView] handleHandPlayCard', payload)
   viewManager.queuePlayerAction({ type: 'play-card', cardId: payload.cardId, operations: payload.operations })
   resetErrorMessage()
 }
@@ -914,8 +968,17 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         @clear-enemy-selection-hints="handleClearEnemySelectionHints"
         @open-deck-overlay="openDeckOverlay"
         @open-discard-overlay="openDiscardOverlay"
+        @open-pile-choice="handleOpenPileChoice"
       />
     </main>
+    <PileChoiceOverlay
+      :visible="pileChoiceState.visible"
+      :title="pileChoiceState.title"
+      :message="pileChoiceState.message"
+      :candidates="pileChoiceState.candidates"
+      @select="handlePileChoiceSelect"
+      @cancel="handlePileChoiceCancel"
+    />
     <transition name="result-overlay">
       <div v-if="isGameOver" class="battle-gameover-overlay">
         <div class="gameover-text">GAME OVER</div>

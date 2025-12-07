@@ -211,6 +211,9 @@ export class ViewManager {
             payload:
               op.payload === undefined ? undefined : sourceLog.resolveValue(op.payload, battle),
           })) ?? undefined
+        // デバッグ用: OperationRunner へ渡す直前の情報を記録
+        // eslint-disable-next-line no-console
+        console.info('[ViewManager] executeOperationWithRunner play-card', { cardId, resolvedOperations })
         runner.playCard(cardId, resolvedOperations)
         break
       }

@@ -2,12 +2,15 @@ import { ref } from 'vue'
 import {
   TargetEnemyOperation,
   SelectHandCardOperation,
+  SelectPileCardOperation,
   type CardOperation,
   type TargetEnemyAvailabilityEntry,
   type OperationContext,
 } from '@/domain/entities/operations'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import type { HandEntry } from './useHandPresentation'
+import type { CardInfo } from '@/types/battle'
+import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
 export interface HandSelectionRequest {
   allowedIds: Set<number>
@@ -32,6 +35,7 @@ export interface UseHandInteractionOptions {
     (event: 'hide-overlay'): void
     (event: 'show-enemy-selection-hints', hints: TargetEnemyAvailabilityEntry[]): void
     (event: 'clear-enemy-selection-hints'): void
+    (event: 'open-pile-choice', payload: { title?: string; message?: string; candidates: CardInfo[]; onSelect: (cardId: number) => void; onCancel: () => void }): void
   }
   interactionState: {
     selectedCardKey: string | null
@@ -45,6 +49,7 @@ export interface UseHandInteractionOptions {
 const supportedOperations = new Set<string>([
   TargetEnemyOperation.TYPE,
   SelectHandCardOperation.TYPE,
+  SelectPileCardOperation.TYPE,
 ])
 
 export function useHandInteraction(options: UseHandInteractionOptions) {
@@ -197,6 +202,14 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
         })
         continue
       }
+      if (operationType === SelectPileCardOperation.TYPE) {
+        const targetCardId = await requestPileCardSelection(entry)
+        collectedOperations.push({
+          type: SelectPileCardOperation.TYPE,
+          payload: targetCardId,
+        })
+        continue
+      }
 
       throw new Error(`未対応の操作 ${operationType} です`)
     }
@@ -205,7 +218,9 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
     if (cardId === null) {
       throw new Error('カード使用に必要な情報が不足しています')
     }
-
+    // デバッグ用: play-card emit 前の情報を記録
+    // eslint-disable-next-line no-console
+    console.info('[HandInteraction] play-card emit', { cardId, operations: collectedOperations })
     options.emit('play-card', { cardId, operations: collectedOperations })
     resetSelection({ keepSelection: false })
   }
@@ -336,6 +351,55 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
     cancelHandSelectionRequest('カード選択がキャンセルされました')
   }
 
+  async function requestPileCardSelection(entry: HandEntry): Promise<number> {
+    const action = entry.card.action
+    const context = options.buildOperationContext()
+    if (!action || !context) {
+      throw new Error('山札のカード選択を開始できませんでした')
+    }
+    const candidates = action.describePileSelectionCandidates(context)
+    if (!candidates || candidates.cardIds.length === 0) {
+      throw new Error('選択可能なカードが山札に存在しません')
+    }
+    return new Promise<number>((resolve, reject) => {
+      options.emit('open-pile-choice', {
+        title: '山札から選択',
+        message: 'カードを1枚選択してください',
+        candidates: buildPileCardInfos(context, candidates.pile, candidates.cardIds),
+        onSelect: (cardId) => {
+          resolve(cardId)
+        },
+        onCancel: () => {
+          reject(new Error('カード選択がキャンセルされました'))
+        },
+      })
+    })
+  }
+
+  function buildPileCardInfos(
+    context: OperationContext,
+    pile: 'deck' | 'discard' | 'exile',
+    cardIds: number[],
+  ): CardInfo[] {
+    const source =
+      pile === 'discard'
+        ? context.battle.discardPile.list()
+        : pile === 'exile'
+        ? context.battle.exilePile.list()
+        : context.battle.deck.list()
+
+    return source
+      .filter((card) => card.id !== undefined && cardIds.includes(card.id as number))
+      .map((card, index) =>
+        buildCardInfoFromCard(card, {
+          id: `${card.id ?? index}`,
+          affordable: true,
+          disabled: false,
+        }),
+      )
+      .filter((info): info is CardInfo => info !== null)
+  }
+
   return {
     hoveredCardKey,
     handSelectionRequest,
@@ -350,5 +414,6 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
     resetSelection,
     cancelSelection,
     cancelHandSelectionRequest,
+    requestPileCardSelection,
   }
 }

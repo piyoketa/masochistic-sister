@@ -6,3 +6,4 @@ operations モジュールのエントリーポイント:
 export * from './OperationBase'
 export * from './TargetEnemyOperation'
 export * from './SelectHandCardOperation'
+export * from './SelectPileCardOperation'

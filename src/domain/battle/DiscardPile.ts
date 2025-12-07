@@ -33,4 +33,8 @@ export class DiscardPile {
     this.cards.length = 0
     this.cards.push(...cards)
   }
+
+  find(cardId: number): Card | undefined {
+    return this.cards.find((card) => card.id === cardId)
+  }
 }

@@ -51,6 +51,7 @@ import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
 import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { FlashbackAction } from '@/domain/entities/actions/FlashbackAction'
+import { PeelingScabAction } from '@/domain/entities/actions/PeelingScabAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 
@@ -76,6 +77,7 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   PoisonStingAction,
   BloodSuckAction,
   FlashbackAction,
+  PeelingScabAction,
 ]
 
 const actionCardFactories: Record<ActionCardId, () => Card> = buildActionCardFactories(DECK_ACTION_CLASSES)

@@ -52,6 +52,7 @@ const emit = defineEmits<{
   (event: 'clear-enemy-selection-hints'): void
   (event: 'open-deck-overlay'): void
   (event: 'open-discard-overlay'): void
+  (event: 'open-pile-choice', payload: { title?: string; message?: string; candidates: CardInfo[]; onSelect: (cardId: number) => void; onCancel: () => void }): void
 }>()
 
 const interactionState = reactive<{
@@ -153,6 +154,7 @@ const {
   resetSelection,
   cancelSelection,
   cancelHandSelectionRequest,
+  requestPileCardSelection,
 } = useHandInteraction({
   props,
   emit,

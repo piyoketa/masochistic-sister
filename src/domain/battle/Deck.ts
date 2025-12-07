@@ -52,6 +52,19 @@ export class Deck {
     }
   }
 
+  /**
+   * 指定したカードIDのカードを山札先頭から検索して取り除き、返却する。
+   * 見つからなければ undefined を返す。
+   */
+  take(cardId: number): Card | undefined {
+    const index = this.cards.findIndex((card) => card.id === cardId)
+    if (index < 0) {
+      return undefined
+    }
+    const [card] = this.cards.splice(index, 1)
+    return card
+  }
+
   size(): number {
     return this.cards.length
   }
@@ -67,5 +80,9 @@ export class Deck {
   replace(cards: Card[]): void {
     this.cards.length = 0
     this.cards.push(...cards)
+  }
+
+  find(cardId: number): Card | undefined {
+    return this.cards.find((card) => card.id === cardId)
   }
 }

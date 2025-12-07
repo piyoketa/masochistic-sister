@@ -941,6 +941,20 @@ export class Battle {
     return events
   }
 
+  /**
+   * 手札追加を deck-draw 演出で扱うためのアニメーションイベントを積む。
+   */
+  recordDrawAnimation(event: { cardIds: number[]; drawnCount?: number; handOverflow?: boolean }): void {
+    if (!event.cardIds || event.cardIds.length === 0) {
+      return
+    }
+    this.pendingDrawAnimationEvents.push({
+      cardIds: [...event.cardIds],
+      drawnCount: event.drawnCount,
+      handOverflow: event.handOverflow,
+    })
+  }
+
   consumeDiscardDrawAnimationEvents(): Array<{ cardIds: number[]; handOverflow?: boolean }> {
     const events = this.pendingDiscardDrawAnimationEvents
     this.pendingDiscardDrawAnimationEvents = []
@@ -1104,6 +1118,26 @@ export class Battle {
     }
 
     this.discardPileValue.add(card)
+  }
+
+  /**
+   * 山札から指定したカードIDのカードを引き、手札へ加える。
+   * 手札がいっぱいの場合は既存の addCardToPlayerHand の挙動に従う（捨て札送りなど）。
+   * 手札に加わった場合は deck-draw 演出用のイベントを積む。
+   */
+  drawSpecificCard(cardId: number): Card | undefined {
+    if (!Number.isInteger(cardId)) {
+      return undefined
+    }
+    const card = this.deckValue.take(cardId)
+    if (!card) {
+      return undefined
+    }
+    this.addCardToPlayerHand(card)
+    if (card.id !== undefined) {
+      this.recordDrawAnimation({ cardIds: [card.id] })
+    }
+    return card
   }
 
   executeActionLog(actionLog: ActionLog, targetIndex?: number): void {
@@ -1275,7 +1309,6 @@ export class Battle {
     // Vue側でプレーンオブジェクトとしてスナップショットを扱う際に失われないよう、列挙可能なプロパティにも保持しておく
     ;(card as any).runtimeCost = computedCost
     ;(card as any).runtimeActive = active
-    console.log(`Card ${card.title} (ID: ${card.id}) runtime - cost: ${computedCost}, active: ${active}`)
     return card
   }
 
