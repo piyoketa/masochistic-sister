@@ -107,6 +107,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   const categoryTags: CardTagInfo[] = []
   const seenTagIds = new Set<string>()
   const subtitle = resolveSubtitle(card)
+  const active = resolveIsActive(card, options.props.viewManager.battle)
 
   let description = card.description
   let descriptionSegments: DescriptionSegment[] = []
@@ -232,6 +233,8 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     damageCountReduced,
     damageAmountBoosted,
     damageCountBoosted,
+    disabled: !active,
+    affordable: card.cost <= (options.props.snapshot?.player.currentMana ?? card.cost),
   }
 
   if (card.type === 'attack') {
@@ -366,4 +369,16 @@ function normalizeSubtitle(value?: string): string | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
+}
+
+function resolveIsActive(card: Card, battle?: import('@/domain/battle/Battle').Battle | null): boolean {
+  const action = card.action
+  if (!action || typeof (action as any).isActive !== 'function') {
+    return true
+  }
+  return (action as any).isActive({
+    battle: battle ?? undefined,
+    source: battle?.player,
+    cardTags: card.cardTags ?? [],
+  })
 }

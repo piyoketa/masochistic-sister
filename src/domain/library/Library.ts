@@ -42,6 +42,7 @@ export type BaseDeckCardType =
   | 'acid-spit'
   | 'poison-sting'
   | 'blood-suck'
+  | 'flashback'
 
 export type StateDeckCardType = `state-${string}`
 
@@ -67,6 +68,7 @@ import { MucusShotAction } from '@/domain/entities/actions/MucusShotAction'
 import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
 import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
+import { FlashbackAction } from '@/domain/entities/actions/FlashbackAction'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
@@ -88,6 +90,7 @@ const baseCardFactories: Record<BaseDeckCardType, () => Card> = {
   'acid-spit': () => new Card({ action: new AcidSpitAction() }),
   'poison-sting': () => new Card({ action: new PoisonStingAction() }),
   'blood-suck': () => new Card({ action: new BloodSuckAction() }),
+  flashback: () => new Card({ action: new FlashbackAction() }),
 }
 
 const stateCardFactories: Record<StateDeckCardType, () => Card> = buildStateCardFactories()
@@ -113,6 +116,7 @@ const actionConstructorMap = new Map<Function, DeckCardType>([
   [AcidSpitAction, 'acid-spit'],
   [PoisonStingAction, 'poison-sting'],
   [BloodSuckAction, 'blood-suck'],
+  [FlashbackAction, 'flashback'],
 ])
 
 export function createCardFromBlueprint(blueprint: DeckCardBlueprint, repository?: { create: (factory: () => Card) => Card }): Card {

@@ -42,6 +42,7 @@ import {
   AcidSpitAction,
   PoisonStingAction,
   BloodSuckAction,
+  FlashbackAction,
 } from '@/domain/entities/actions'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
@@ -147,6 +148,7 @@ function createCardFromType(repository: CardRepository, type: DeckCardType): Car
     'acid-spit': () => new Card({ action: new AcidSpitAction() }),
     'poison-sting': () => new Card({ action: new PoisonStingAction() }),
     'blood-suck': () => new Card({ action: new BloodSuckAction() }),
+    flashback: () => new Card({ action: new FlashbackAction() }),
   }
   const factory = map[type]
   if (!factory) {

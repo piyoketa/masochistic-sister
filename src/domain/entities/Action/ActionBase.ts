@@ -147,6 +147,14 @@ export abstract class Action {
     return ''
   }
 
+  /**
+   * カードが発動可能かを判定するためのフック。
+   * デフォルトでは常に true を返し、個別の Action が条件付き発動をしたい場合にオーバーライドする。
+   */
+  isActive(_context?: { battle?: Battle; source?: Player | Enemy; cardTags?: CardTag[] }): boolean {
+    return true
+  }
+
   createCardDefinition(context?: ActionContext): CardDefinition {
     const base = this.cardDefinitionBase
     const operations = this.buildOperations().map((operation) => operation.type)

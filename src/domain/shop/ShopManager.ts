@@ -21,6 +21,7 @@ export const CARD_CANDIDATES: DeckCardType[] = [
   'reload',
   'scar-regeneration',
   'life-drain-skill',
+  'flashback',
 ]
 
 export const RELIC_CANDIDATES = [

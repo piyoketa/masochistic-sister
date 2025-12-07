@@ -36,6 +36,8 @@ export function buildCardInfoFromCard(
   const effectTags = toTagInfos(card.effectTags)
   const categoryTags = toTagInfos(card.categoryTags, (tag) => tag.name ?? tag.id ?? '')
   const seenTagIds = new Set<string>()
+  const subtitle = resolveSubtitle(card)
+  const active = resolveIsActive(card, options?.costContext)
 
   // 状態異常カードは「種別/ターゲット」をヘッダに表示しない方針のため primaryTags を空にする
   if (card.type !== 'status') {
@@ -44,8 +46,6 @@ export function buildCardInfoFromCard(
 
   const cost =
     options?.costContext !== undefined ? card.calculateCost(options.costContext) : card.cost
-  const subtitle = resolveSubtitle(card)
-
   const baseInfo = {
     id: options?.id ?? `card-${card.id ?? 'unknown'}`,
     title: card.title,
@@ -54,7 +54,7 @@ export function buildCardInfoFromCard(
     primaryTags,
     categoryTags,
     affordable: options?.affordable,
-    disabled: options?.disabled,
+    disabled: options?.disabled ?? !active,
   }
 
   const action = card.action
@@ -184,4 +184,19 @@ function normalizeSubtitle(value?: string): string | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
+}
+
+function resolveIsActive(
+  card: Card,
+  context?: import('@/domain/entities/Action/ActionBase').ActionCostContext,
+): boolean {
+  const action = card.action
+  if (!action || typeof (action as any).isActive !== 'function') {
+    return true
+  }
+  return (action as any).isActive({
+    battle: context?.battle,
+    source: context?.source,
+    cardTags: context?.cardTags ?? card.cardTags ?? [],
+  })
 }
