@@ -39,7 +39,8 @@ interface AppendOptions {
 }
 
 interface DrainedAnimationEvents {
-  drawEvents: Array<{ cardIds: number[] }>
+  drawEvents: Array<{ cardIds: number[]; drawnCount?: number; handOverflow?: boolean }>
+  discardDrawEvents: Array<{ cardIds: number[]; handOverflow?: boolean }>
   manaEvents: Array<{ amount: number }>
   damageEvents: DamageAnimationEvent[]
   defeatEvents: number[]
@@ -218,6 +219,7 @@ export class OperationRunner {
   private drainAnimationEvents(): DrainedAnimationEvents {
     return {
       drawEvents: this.battle.consumeDrawAnimationEvents(),
+      discardDrawEvents: this.battle.consumeDiscardDrawAnimationEvents(),
       manaEvents: this.battle.consumeManaAnimationEvents(),
       damageEvents: this.battle.consumeDamageAnimationEvents(),
       defeatEvents: this.battle.consumeDefeatAnimationEvents(),
@@ -431,6 +433,12 @@ export class OperationRunner {
     const drawInstruction = this.buildAggregatedDeckDrawInstruction(drainedEvents.drawEvents)
     if (drawInstruction) {
       actionInstructions.push(drawInstruction)
+    }
+    const discardDrawInstruction = this.buildAggregatedDiscardDrawInstruction(
+      drainedEvents.discardDrawEvents,
+    )
+    if (discardDrawInstruction) {
+      actionInstructions.push(discardDrawInstruction)
     }
 
     if (context?.audio) {
@@ -867,6 +875,7 @@ export class OperationRunner {
     }
 
     batches.push(...this.buildDeckDrawBatches(drainedEvents.drawEvents, snapshot))
+    batches.push(...this.buildDiscardDrawBatches(drainedEvents.discardDrawEvents, snapshot))
     batches.push(...this.buildManaBatches(drainedEvents.manaEvents, snapshot))
     batches.push(...this.buildDefeatBatches(drainedEvents.defeatEvents, snapshot))
     batches.push(...this.buildCardTrashBatches(drainedEvents.cardTrashEvents, snapshot))
@@ -900,6 +909,12 @@ export class OperationRunner {
     if (deckDrawInstruction) {
       instructions.push(deckDrawInstruction)
     }
+    const discardDrawInstruction = this.buildAggregatedDiscardDrawInstruction(
+      drainedEvents.discardDrawEvents,
+    )
+    if (discardDrawInstruction) {
+      instructions.push(discardDrawInstruction)
+    }
 
     return this.createBatch(snapshot, instructions, this.nextBatchId('turn-start'))
   }
@@ -926,6 +941,30 @@ export class OperationRunner {
         stage: 'deck-draw',
         cardIds: aggregatedCardIds,
         draw: totalDrawn > 0 ? totalDrawn : undefined,
+        durationMs: durationMs || undefined,
+        ...(handOverflow ? { handOverflow: true } : {}),
+      },
+    }
+  }
+
+  private buildAggregatedDiscardDrawInstruction(
+    drawEvents: Array<{ cardIds: number[]; handOverflow?: boolean }> = [],
+  ): AnimationInstruction | undefined {
+    if (!drawEvents.length) {
+      return undefined
+    }
+    const aggregatedCardIds = drawEvents.flatMap((event) => event.cardIds ?? [])
+    const handOverflow = drawEvents.some((event) => event.handOverflow)
+    if (aggregatedCardIds.length === 0 && !handOverflow) {
+      return undefined
+    }
+    const durationMs =
+      aggregatedCardIds.length > 0 ? this.calculateDeckDrawDuration(aggregatedCardIds.length) : 0
+    return {
+      waitMs: durationMs,
+      metadata: {
+        stage: 'discard-draw',
+        cardIds: aggregatedCardIds,
         durationMs: durationMs || undefined,
         ...(handOverflow ? { handOverflow: true } : {}),
       },
@@ -1049,6 +1088,37 @@ export class OperationRunner {
         }
         if (event.handOverflow) {
           metadata.handOverflow = true
+        }
+        return this.createBatch(
+          snapshot,
+          [
+            {
+              waitMs: 0,
+              metadata,
+            },
+          ],
+          batchId,
+        )
+      })
+  }
+
+  private buildDiscardDrawBatches(
+    drawEvents: Array<{ cardIds: number[]; handOverflow?: boolean }>,
+    snapshot: BattleSnapshot,
+  ): AnimationBatch[] {
+    if (!drawEvents || drawEvents.length === 0) {
+      return []
+    }
+    return drawEvents
+      .filter((event) => (event.cardIds?.length ?? 0) > 0 || event.handOverflow)
+      .map((event) => {
+        const batchId = this.nextBatchId('discard-draw')
+        const durationMs = this.calculateDeckDrawDuration(event.cardIds.length || 1)
+        const metadata: AnimationStageMetadata = {
+          stage: 'discard-draw',
+          cardIds: event.cardIds ?? [],
+          durationMs,
+          ...(event.handOverflow ? { handOverflow: true } : {}),
         }
         return this.createBatch(
           snapshot,

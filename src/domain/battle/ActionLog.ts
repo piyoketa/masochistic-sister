@@ -41,7 +41,7 @@ export type AnimationStageMetadata =
   | { stage: 'card-trash'; cardIds: number[]; cardTitles?: string[] }
   | { stage: 'card-eliminate'; cardIds: number[]; cardTitles?: string[] }
   | { stage: 'deck-draw'; cardIds: number[]; durationMs?: number; draw?: number; handOverflow?: boolean }
-  | { stage: 'discard-draw'; cardIds: number[]; durationMs?: number }
+  | { stage: 'discard-draw'; cardIds: number[]; durationMs?: number; handOverflow?: boolean }
   | { stage: 'mana'; amount?: number; eventId?: string }
   | {
       stage: 'escape'

@@ -9,6 +9,7 @@ interface UseHandStageEventsOptions {
   cardTitleMap: ComputedRef<Map<number, string>>
   findHandEntryByCardId: (cardId: number) => HandEntry | undefined
   startDeckDrawAnimation: (cardId: number, options?: { durationMs?: number }) => void
+  startDiscardDrawAnimation: (cardId: number, options?: { durationMs?: number }) => void
   startCardCreateAnimation: (cardId: number, options?: { simple?: boolean }) => void
   startCardRemovalAnimation: (
     cardId: number,
@@ -20,6 +21,7 @@ interface UseHandStageEventsOptions {
 }
 
 type DeckDrawStageMetadata = Extract<StageEventMetadata, { stage: 'deck-draw' }>
+type DiscardDrawStageMetadata = Extract<StageEventMetadata, { stage: 'discard-draw' }>
 type CardTrashStageMetadata = Extract<StageEventMetadata, { stage: 'card-trash' }>
 type CardEliminateStageMetadata = Extract<StageEventMetadata, { stage: 'card-eliminate' }>
 type CreateStateCardStageMetadata = Extract<StageEventMetadata, { stage: 'create-state-card' }>
@@ -36,7 +38,10 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   const processedStageBatchIds = new Set<string>()
   const processedStageInstructionIds = new Set<string>()
   const previousHandIds = ref<Set<number>>(new Set())
-  const pendingDeckAnimations = new Map<number, { durationMs?: number; delayMs?: number }>()
+  const pendingDrawAnimations = new Map<
+    number,
+    { durationMs?: number; delayMs?: number; starter: 'deck' | 'discard' }
+  >()
   const pendingCreateAnimations = new Map<number, { simple: boolean }>()
   let handOverflowTimer: number | null = null
 
@@ -70,6 +75,9 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     switch (metadata.stage) {
       case 'deck-draw':
         void handleDeckDrawStage(metadata)
+        break
+      case 'discard-draw':
+        void handleDiscardDrawStage(metadata)
         break
       case 'card-trash':
         handleCardTrashStage(metadata)
@@ -107,15 +115,18 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       if (newlyAdded.length > 0) {
         logHandStageDebug('snapshot手札差分', {
           newlyAdded,
-          pendingDeck: [...pendingDeckAnimations.keys()],
+          pendingDeck: [...pendingDrawAnimations.keys()],
           pendingCreate: [...pendingCreateAnimations.keys()],
         })
       }
       newlyAdded.forEach((cardId) => {
-        const deckAnim = pendingDeckAnimations.get(cardId)
-        if (deckAnim) {
-          pendingDeckAnimations.delete(cardId)
-          startDeckDrawAnimationWithCleanup(cardId, deckAnim)
+        const drawAnim = pendingDrawAnimations.get(cardId)
+        if (drawAnim) {
+          pendingDrawAnimations.delete(cardId)
+          startDrawAnimationWithCleanup(cardId, drawAnim.starter, {
+            durationMs: drawAnim.durationMs,
+            delayMs: drawAnim.delayMs,
+          })
         }
         const createAnim = pendingCreateAnimations.get(cardId)
         if (createAnim) {
@@ -129,6 +140,17 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
   )
 
   async function handleDeckDrawStage(metadata: DeckDrawStageMetadata): Promise<void> {
+    await handleGenericDrawStage(metadata, 'deck')
+  }
+
+  async function handleDiscardDrawStage(metadata: DiscardDrawStageMetadata): Promise<void> {
+    await handleGenericDrawStage(metadata, 'discard')
+  }
+
+  async function handleGenericDrawStage(
+    metadata: DeckDrawStageMetadata | DiscardDrawStageMetadata,
+    starter: 'deck' | 'discard',
+  ): Promise<void> {
     if (metadata.handOverflow) {
       showHandOverflowOverlay()
     }
@@ -144,10 +166,10 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
       const delayMs = index * DRAW_STAGGER_DELAY_MS
       const config = { durationMs, delayMs }
       if (currentHandIds.has(id)) {
-        triggerDeckAnimation(id, config)
+        triggerDrawAnimation(id, starter, config)
       } else {
-        pendingDeckAnimations.set(id, config)
-        logHandStageDebug('deck-draw pending', { cardId: id, config })
+        pendingDrawAnimations.set(id, { ...config, starter })
+        logHandStageDebug(`${starter}-draw pending`, { cardId: id, config })
       }
     })
   }
@@ -216,11 +238,15 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     dispose,
   }
 
-  function triggerDeckAnimation(cardId: number, config: { durationMs?: number; delayMs?: number }): void {
+  function triggerDrawAnimation(
+    cardId: number,
+    starter: 'deck' | 'discard',
+    config: { durationMs?: number; delayMs?: number },
+  ): void {
     void nextTick(() => {
-      pendingDeckAnimations.delete(cardId)
-      startDeckDrawAnimationWithCleanup(cardId, config)
-      logHandStageDebug('deck-draw即時適用', { cardId, config })
+      pendingDrawAnimations.delete(cardId)
+      startDrawAnimationWithCleanup(cardId, starter, config)
+      logHandStageDebug(`${starter}-draw即時適用`, { cardId, config })
     })
   }
 
@@ -232,10 +258,15 @@ export function useHandStageEvents(options: UseHandStageEventsOptions) {
     })
   }
 
-  function startDeckDrawAnimationWithCleanup(
+  function startDrawAnimationWithCleanup(
     cardId: number,
+    starter: 'deck' | 'discard',
     config: { durationMs?: number; delayMs?: number },
   ): void {
+    if (starter === 'discard') {
+      options.startDiscardDrawAnimation(cardId, config)
+      return
+    }
     options.startDeckDrawAnimation(cardId, config)
   }
 }

@@ -15,6 +15,7 @@ FlashbackAction.ts の責務:
 import { Skill, type ActionContext } from '../Action'
 import { SkillTypeCardTag, SelfTargetCardTag } from '../cardTags'
 import { Card } from '../Card'
+type BattleInstance = import('../../battle/Battle').Battle
 
 export class FlashbackAction extends Skill {
   constructor() {
@@ -35,10 +36,14 @@ export class FlashbackAction extends Skill {
     return '捨て札のアタック1枚をランダムに手札へ加える'
   }
 
-  override isActive(context?: { battle?: import('../../battle/Battle').Battle }): boolean {
+  override isActive(context?: { battle?: BattleInstance }): boolean {
     const battle = context?.battle
     if (!battle) {
       return true
+    }
+    // 手札が満杯なら発動させても効果がないため無効扱いとする
+    if (battle.hand.isAtLimit()) {
+      return false
     }
     return this.findCandidate(battle) !== undefined
   }
@@ -47,14 +52,13 @@ export class FlashbackAction extends Skill {
     const battle = context.battle
     const candidate = this.findCandidate(battle)
     if (!candidate) {
-      // 対象がいない場合は何も起きない
       return
     }
-
-    // TODO 実際の実装を行う
+    const result = battle.drawFromDiscard(candidate)
+    // handOverflow 時もここでは特別な処理は行わない（アニメは別途積まれている）
   }
 
-  private findCandidate(battle: import('../../battle/Battle').Battle): Card | undefined {
+  private findCandidate(battle: BattleInstance): Card | undefined {
     const attacks = battle.discardPile
       .list()
       .filter((card) => card.definition.cardType === 'attack')

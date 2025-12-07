@@ -161,6 +161,56 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     }
   }
 
+  function startDiscardDrawAnimation(
+    cardId: number,
+    config?: { durationMs?: number; delayMs?: number },
+    attempt = 0,
+  ): void {
+    const cardElement = cardElementRefs.get(cardId)
+    const discardElement = options.discardCounterRef.value
+    if (!cardElement || !discardElement) {
+      if (attempt >= 3) {
+        console.error('[BattleHandArea][discard-draw] 必要なDOM要素を取得できずアニメーションを省略しました', {
+          cardId,
+          hasCardElement: Boolean(cardElement),
+          hasDiscardElement: Boolean(discardElement),
+        })
+        return
+      }
+      const retryDelay = 50 * (attempt + 1)
+      const startTimer = window.setTimeout(
+        () => startDiscardDrawAnimation(cardId, config, attempt + 1),
+        retryDelay,
+      )
+      drawAnimationStartTimers.set(cardId, startTimer)
+      return
+    }
+    const duration = normalizeDuration(config?.durationMs)
+    const delayMs = Math.max(0, config?.delayMs ?? 0)
+    cleanupDrawAnimation(cardId)
+    if (delayMs > 0) {
+      prepareCardForDelayedAnimation(cardElement)
+    }
+
+    const startAnimation = () => {
+      drawAnimationStartTimers.delete(cardId)
+      logHandAnimationDebug('discard-draw transform適用', { cardId, duration, delayMs })
+      audioStore.playSe('/sounds/card-animations/draw.mp3')
+      applyDrawTransform(cardElement, discardElement, duration)
+      const cleanupTimer = window.setTimeout(() => {
+        cleanupDrawAnimation(cardId)
+      }, duration + DRAW_ANIMATION_CLEANUP_BUFFER_MS)
+      drawAnimationCleanupTimers.set(cardId, cleanupTimer)
+    }
+
+    if (delayMs > 0) {
+      const startTimer = window.setTimeout(startAnimation, delayMs)
+      drawAnimationStartTimers.set(cardId, startTimer)
+    } else {
+      startAnimation()
+    }
+  }
+
   function startCardCreateAnimation(cardId: number, config?: { simple?: boolean }): void {
     startCardCreateAnimationInternal(cardId, config, 0)
   }
@@ -558,6 +608,7 @@ export function useHandAnimations(options: UseHandAnimationsOptions) {
     isCardVisible,
     registerCardElement,
     startDeckDrawAnimation,
+    startDiscardDrawAnimation,
     startCardCreateAnimation,
     startCardRemovalAnimation,
     cleanup,

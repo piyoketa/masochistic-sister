@@ -203,6 +203,10 @@ export class Battle {
     drawnCount?: number
     handOverflow?: boolean
   }> = []
+  private pendingDiscardDrawAnimationEvents: Array<{
+    cardIds: number[]
+    handOverflow?: boolean
+  }> = []
   private pendingStateCardAnimationEvents: StateCardAnimationEvent[] = []
   private pendingMemoryCardAnimationEvents: MemoryCardAnimationEvent[] = []
   private interruptEnemyActionQueue: QueuedInterruptEnemyAction[] = []
@@ -604,6 +608,46 @@ export class Battle {
     return { drawn, skippedDueToHandLimit }
   }
 
+  /**
+   * 捨て札から指定カードを手札へ戻すユーティリティ。
+   * - 呼び出し元で抽選済みのカードを受け取り、手札上限チェックと移動のみを担当する。
+   * - handOverflow 時はアニメーションイベントのみ積み、カードは移動しない。
+   */
+  drawFromDiscard(card: Card): { movedCard?: Card; handOverflow: boolean } {
+    if (this.hand.isAtLimit()) {
+      this.pendingDiscardDrawAnimationEvents.push({ cardIds: [], handOverflow: true })
+      return { handOverflow: true }
+    }
+
+    const discardCards = this.discardPile.list()
+    const index = discardCards.findIndex(
+      (candidate) => candidate === card || (card.id !== undefined && candidate.id === card.id),
+    )
+    if (index === -1) {
+      return { handOverflow: false }
+    }
+
+    const removed = discardCards.splice(index, 1)
+    const selected = removed[0]
+    if (!selected) {
+      return { handOverflow: false }
+    }
+    this.discardPile.replace(discardCards)
+
+    const added = this.hand.add(selected)
+    if (!added) {
+      // 想定外だが、同フレームで手札が埋まった場合は捨て札へ戻して終了
+      this.discardPile.add(selected)
+      return { handOverflow: true }
+    }
+
+    if (selected.id !== undefined) {
+      this.pendingDiscardDrawAnimationEvents.push({ cardIds: [selected.id] })
+    }
+
+    return { movedCard: selected, handOverflow: false }
+  }
+
   playCard(cardId: number, operations: CardOperation[] = []): void {
     if (this.turn.current.activeSide !== 'player') {
       throw new Error('It is not the player turn')
@@ -894,6 +938,12 @@ export class Battle {
   consumeDrawAnimationEvents(): Array<{ cardIds: number[]; drawnCount?: number; handOverflow?: boolean }> {
     const events = this.pendingDrawAnimationEvents
     this.pendingDrawAnimationEvents = []
+    return events
+  }
+
+  consumeDiscardDrawAnimationEvents(): Array<{ cardIds: number[]; handOverflow?: boolean }> {
+    const events = this.pendingDiscardDrawAnimationEvents
+    this.pendingDiscardDrawAnimationEvents = []
     return events
   }
 
