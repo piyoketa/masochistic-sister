@@ -72,6 +72,7 @@ function buildLevels(ownedRelics: string[]): FieldLevel[] {
 
   const level8: EnemyNode[] = [
     createEnemyNode('high-orc-band', 8, 0),
+    createEnemyNode('orc-sumo-squad', 8, 1),
   ]
 
   const level9: EnemyNode[] = [

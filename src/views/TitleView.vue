@@ -69,6 +69,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: '大王なめくじ＋なめくじの召喚エリート',
     to: '/battle/giant-slug-elite',
   },
+  {
+    label: 'Orc Sumo Squad',
+    description: 'オーク相撲チーム（固定構成）',
+    to: '/battle/orc-sumo-squad',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [
