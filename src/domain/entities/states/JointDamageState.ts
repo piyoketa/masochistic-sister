@@ -16,7 +16,7 @@ class JointDamageStateAction extends StateAction {
   }
 }
 
-// 関節損傷: 「たいあたり」（TackleAction）による被ダメージをスタックごとに+20する
+// 関節損傷: 「一回攻撃」（singleカテゴリ）の被ダメージをスタックごとに+20する
 export class JointDamageState extends BadState {
   constructor(magnitude = 1) {
     super({
@@ -40,7 +40,7 @@ export class JointDamageState extends BadState {
 
   override description(): string {
     const bonus = 20 * (this.magnitude ?? 0)
-    return `たいあたりの被ダメージ+${bonus}（累積可）`
+    return `一回攻撃の被ダメージ+${bonus}（累積可）`
   }
 
   override affectsDefender(): boolean {
@@ -53,9 +53,9 @@ export class JointDamageState extends BadState {
 
   override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
     if (params.role !== 'defender') return params
-    // 判定はクラス名ベースで行い、名称依存や攻撃回数依存にしない（同期importでの循環回避のためconstructor.nameを利用）
-    const isTackle = isTackleAction(params.context?.attack)
-    if (!isTackle) return params
+    // 攻撃カテゴリを確認し、single（単発攻撃）以外は無視する
+    const attackType = params.context?.profile?.type
+    if (attackType !== 'single') return params
     const bonus = 20 * (this.magnitude ?? 0)
     return {
       ...params,
@@ -67,10 +67,4 @@ export class JointDamageState extends BadState {
   override action(tags?: CardTag[]): StateAction {
     return new JointDamageStateAction(this, tags)
   }
-}
-
-function isTackleAction(attack: unknown): boolean {
-  if (!attack) return false
-  const constructorName = (attack as { constructor?: { name?: string } }).constructor?.name
-  return constructorName === 'TackleAction'
 }
