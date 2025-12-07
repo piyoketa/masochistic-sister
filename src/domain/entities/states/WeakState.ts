@@ -18,11 +18,10 @@ class WeakStateAction extends StateAction {
 
 // 弱気: 攻撃側にかかる乗算デバフ（ダメージを割合減少）
 export class WeakState extends BadState {
-  constructor(magnitude = 1) {
+  constructor() {
     super({
       id: 'state-weak',
       name: '弱気',
-      magnitude,
       cardDefinition: {
         title: '弱気',
         cardType: 'status',
@@ -38,7 +37,7 @@ export class WeakState extends BadState {
   }
 
   override description(): string {
-    return `与ダメージが2/3になる`
+    return `与ダメージが2/3になる\n（累積しない）`
   }
 
   override affectsAttacker(): boolean {
@@ -51,7 +50,7 @@ export class WeakState extends BadState {
 
   override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
     if (params.role !== 'attacker') return params
-    const rate = Math.max(0, 1 - 0.33 * (this.magnitude ?? 0))
+    const rate = 2 / 3
     return {
       ...params,
       amount: Math.max(0, Math.floor(params.amount * rate)),
