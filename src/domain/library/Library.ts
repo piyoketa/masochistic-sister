@@ -57,6 +57,7 @@ import { DeepBreathAction } from '@/domain/entities/actions/DeepBreathAction'
 import { OpenWoundAction } from '@/domain/entities/actions/OpenWoundAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
+import { StackedStressAction } from '@/domain/entities/actions/StackedStressAction'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
@@ -83,6 +84,7 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   SoloBodyAction,
   DeepBreathAction,
   OpenWoundAction,
+  StackedStressAction,
 ]
 
 const actionCardFactories: Record<ActionCardId, () => Card> = buildActionCardFactories(DECK_ACTION_CLASSES)
@@ -105,6 +107,7 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   SoloBodyAction,
   DeepBreathAction,
   OpenWoundAction,
+  StackedStressAction,
 ]
 
 // フィールド報酬スキルの候補（旧 SKILL_CARD_CANDIDATES 相当）
@@ -120,6 +123,7 @@ const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   SoloBodyAction,
   DeepBreathAction,
   OpenWoundAction,
+  StackedStressAction,
 ]
 
 // ラボやデモで見せるサンプルカードセット

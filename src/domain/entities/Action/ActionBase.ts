@@ -62,6 +62,7 @@ export interface ActionCostContext {
   battle?: Battle
   source?: Player | Enemy
   cardTags?: CardTag[]
+  action?: Action
 }
 
 export abstract class Action {
@@ -110,6 +111,7 @@ export abstract class Action {
                       owner: source as Player | Enemy,
                       cardTags,
                       cardType: this.cardDefinitionBase.cardType,
+                      action: this,
                     })
                   : 0),
               0,
