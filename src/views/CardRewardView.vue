@@ -17,34 +17,15 @@ import { useRouter } from 'vue-router'
 import GameLayout from '@/components/GameLayout.vue'
 import PlayerCardComponent from '@/components/PlayerCardComponent.vue'
 import CardList from '@/components/CardList.vue'
-import type { CardInfo, CardTagInfo, DescriptionSegment } from '@/types/battle'
+import type { CardInfo } from '@/types/battle'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { CardRepository } from '@/domain/repository/CardRepository'
-import { Card } from '@/domain/entities/Card'
-import { Attack } from '@/domain/entities/Action'
-import { Damages } from '@/domain/entities/Damages'
+import type { Card } from '@/domain/entities/Card'
 import type { DeckCardType } from '@/stores/playerStore'
-import {
-  HeavenChainAction,
-  BattlePrepAction,
-  MasochisticAuraAction,
-  ScarRegenerationAction,
-  ReloadAction,
-  NonViolencePrayerAction,
-  LifeDrainSkillAction,
-  DailyRoutineAction,
-  PredicamentAction,
-  TackleAction,
-  FlurryAction,
-  MucusShotAction,
-  AcidSpitAction,
-  PoisonStingAction,
-  BloodSuckAction,
-  FlashbackAction,
-} from '@/domain/entities/actions'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
+import { createCardFromBlueprint } from '@/domain/library/Library'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -55,10 +36,10 @@ const selectionTheme = ref<EnemySelectionTheme>('default')
 const outcomes: [] = []
 const states: string[] = []
 
-const candidateTypes = computed(() => {
+const candidateTypes = computed<DeckCardType[]>(() => {
   const node = fieldStore.currentNode
   if (node && fieldStore.field.isCardRewardNode(node)) {
-    return node.candidateActions
+    return node.candidateActions as DeckCardType[]
   }
   return []
 })
@@ -71,8 +52,14 @@ const drawCount = computed(() => {
   return 0
 })
 
-const drawnCards = ref<CardInfo[]>([])
+interface DrawnCardEntry {
+  info: CardInfo
+  type: DeckCardType
+}
+
+const drawnCards = ref<DrawnCardEntry[]>([])
 const claimed = ref(false)
+const drawnCardInfos = computed(() => drawnCards.value.map((entry) => entry.info))
 
 const playerHp = computed(() => ({
   current: playerStore.hp,
@@ -85,18 +72,19 @@ onMounted(() => {
   drawnCards.value = drawCards(candidateTypes.value, drawCount.value)
 })
 
-function drawCards(types: string[], count: number): CardInfo[] {
+function drawCards(types: DeckCardType[], count: number): DrawnCardEntry[] {
   if (count <= 0 || types.length === 0) {
     return []
   }
   const repo = new CardRepository()
-  const results: CardInfo[] = []
+  const results: DrawnCardEntry[] = []
   for (let i = 0; i < count; i += 1) {
     const randomType = types[Math.floor(Math.random() * types.length)] as DeckCardType
-    const card = createCardFromType(repo, randomType)
+    // DeckCardType が分かっているので Blueprint ベースで直接生成する
+    const card = createCardFromBlueprint({ type: randomType }, repo)
     const info = buildCardInfo(card, `${randomType}-${i}`)
     if (info) {
-      results.push(info)
+      results.push({ info, type: randomType })
     }
   }
   return results
@@ -104,8 +92,7 @@ function drawCards(types: string[], count: number): CardInfo[] {
 
 function handleClaim(): void {
   if (claimed.value) return
-  for (const card of drawnCards.value) {
-    const type = mapTitleToDeckType(card.title)
+  for (const { type } of drawnCards.value) {
     playerStore.addCard(type)
   }
   claimed.value = true
@@ -116,72 +103,12 @@ async function handleProceed(): Promise<void> {
   await router.push('/field')
 }
 
-function mapTitleToDeckType(title: string): DeckCardType {
-  if (title.includes('乱れ突き')) return 'flurry'
-  if (title.includes('粘液')) return 'mucus-shot'
-  if (title.includes('酸')) return 'acid-spit'
-  if (title.includes('毒')) return 'poison-sting'
-  if (title.includes('血')) return 'blood-suck'
-  if (title.includes('再装填')) return 'reload'
-  if (title.includes('不殺')) return 'non-violence-prayer'
-  if (title.includes('傷の癒やし')) return 'scar-regeneration'
-  if (title.includes('日課')) return 'daily-routine'
-  if (title.includes('窮地')) return 'predicament'
-  if (title.includes('戦いの準備')) return 'battle-prep'
-  return 'heaven-chain'
-}
-
-function createCardFromType(repository: CardRepository, type: DeckCardType): Card {
-  const map: Record<DeckCardType, () => Card> = {
-    'heaven-chain': () => new Card({ action: new HeavenChainAction() }),
-    'battle-prep': () => new Card({ action: new BattlePrepAction() }),
-    'masochistic-aura': () => new Card({ action: new MasochisticAuraAction() }),
-    'scar-regeneration': () => new Card({ action: new ScarRegenerationAction() }),
-    reload: () => new Card({ action: new ReloadAction() }),
-    'non-violence-prayer': () => new Card({ action: new NonViolencePrayerAction() }),
-    'life-drain-skill': () => new Card({ action: new LifeDrainSkillAction() }),
-    'daily-routine': () => new Card({ action: new DailyRoutineAction() }),
-    predicament: () => new Card({ action: new PredicamentAction() }),
-    tackle: () => new Card({ action: new TackleAction() }),
-    flurry: () => new Card({ action: new FlurryAction() }),
-    'mucus-shot': () => new Card({ action: new MucusShotAction() }),
-    'acid-spit': () => new Card({ action: new AcidSpitAction() }),
-    'poison-sting': () => new Card({ action: new PoisonStingAction() }),
-    'blood-suck': () => new Card({ action: new BloodSuckAction() }),
-    flashback: () => new Card({ action: new FlashbackAction() }),
-  }
-  const factory = map[type]
-  if (!factory) {
-    throw new Error(`未対応のカード種別: ${type}`)
-  }
-  const baseCard = factory()
-  const action = baseCard.action
-  if (action instanceof Attack) {
-    const base = action.baseDamages
-    const cloned = action.cloneWithDamages(
-      new Damages({ baseAmount: base.baseAmount, baseCount: base.baseCount, type: base.type }),
-    )
-    return repository.create(() => new Card({ action: cloned }))
-  }
-  return repository.create(() => baseCard)
-}
-
 function buildCardInfo(card: Card, id: string): CardInfo | null {
   return buildCardInfoFromCard(card, {
     id,
     affordable: true,
     disabled: false,
   })
-}
-
-function toTagInfos(tags?: { id?: string; name?: string; description?: string }[]): CardTagInfo[] {
-  if (!tags) return []
-  return tags
-    .filter(
-      (tag): tag is { id: string; name: string; description?: string } =>
-        Boolean(tag.id) && Boolean(tag.name),
-    )
-    .map((tag) => ({ id: tag.id, label: tag.name, description: tag.description }))
 }
 </script>
 
@@ -210,22 +137,22 @@ function toTagInfos(tags?: { id?: string; name?: string; description?: string }[
         </aside>
         <main class="main">
           <h2>獲得カード ({{ drawnCards.length }}枚)</h2>
-        <CardList
-          :cards="drawnCards"
-          :force-playable="true"
-          :gap="50"
-          :selectable="false"
-          :hover-effect="!claimed"
-        />
-        <div class="actions">
-          <button type="button" class="action-button" :disabled="!canProceed || claimed" @click="handleClaim">
-            獲得
-          </button>
-          <button type="button" class="action-button action-button--next" :disabled="!canProceed" @click="handleProceed">
-            次に進む
-          </button>
-        </div>
-      </main>
+          <CardList
+            :cards="drawnCardInfos"
+            :force-playable="true"
+            :gap="50"
+            :selectable="false"
+            :hover-effect="!claimed"
+          />
+          <div class="actions">
+            <button type="button" class="action-button" :disabled="!canProceed || claimed" @click="handleClaim">
+              獲得
+            </button>
+            <button type="button" class="action-button action-button--next" :disabled="!canProceed" @click="handleProceed">
+              次に進む
+            </button>
+          </div>
+        </main>
       </div>
     </div>
   </template>

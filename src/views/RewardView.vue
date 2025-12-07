@@ -46,7 +46,8 @@ onMounted(() => {
     void router.replace('/field')
     return
   }
-  selectedCardId.value = reward.value.cards[0]?.id ?? null
+  // 初期状態ではカードを自動選択せず、プレイヤーに明示的な選択操作を要求する
+  selectedCardId.value = null
 })
 
 function addCardToDeck(entry: RewardCardEntry): void {

@@ -18,7 +18,7 @@ import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
 import { useActionCardOverlay } from '@/composables/actionCardOverlay'
 import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
 import { useAudioStore } from '@/stores/audioStore'
-import { createCardFromBlueprint } from '@/domain/library/Library'
+import { createCardFromBlueprint, listDeckCardOptions } from '@/domain/library/Library'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -51,25 +51,14 @@ const deckCards = computed<CardInfo[]>(() => {
 })
 
 const selectedCardId = ref<string | null>(null)
-const newCardType = ref<DeckCardType>('heaven-chain')
-
-const addableOptions: Array<{ value: DeckCardType; label: string }> = [
-  { value: 'heaven-chain', label: '天の鎖' },
-  { value: 'battle-prep', label: '戦いの準備' },
-  { value: 'masochistic-aura', label: '被虐のオーラ' },
-  { value: 'scar-regeneration', label: '疼き' },
-  { value: 'reload', label: '再装填' },
-  { value: 'non-violence-prayer', label: '不殺の祈り' },
-  { value: 'life-drain-skill', label: 'ライフドレイン' },
-  { value: 'daily-routine', label: '日課' },
-  { value: 'predicament', label: '窮地' },
-  { value: 'tackle', label: 'たいあたり' },
-  { value: 'flurry', label: '乱れ突き' },
-  { value: 'mucus-shot', label: '体液をかける' },
-  { value: 'acid-spit', label: '酸を吐く' },
-  { value: 'poison-sting', label: '毒針' },
-  { value: 'blood-suck', label: '血吸い' },
-]
+// Library のカードファクトリ一覧から追加候補を生成する。Action.name をそのままラベルに利用する。
+const addableOptions: Array<{ value: DeckCardType; label: string }> = listDeckCardOptions().map(
+  (entry) => ({
+    value: entry.type,
+    label: entry.label,
+  }),
+)
+const newCardType = ref<DeckCardType>(addableOptions[0]?.value ?? 'heaven-chain')
 
 function handleCardClick(card: CardInfo): void {
   selectedCardId.value = selectedCardId.value === card.id ? null : card.id
