@@ -13,7 +13,7 @@
 ### 対応方針（推奨）
 1. **Operation定義**: `SelectPileCardOperation` を新設（type: `select-pile-card`）。`payload` は `{ cardId }` のみ受け付け、resolve 時に deck/discard からカード実体を検索する。metadata には `selectedPileCardId` を格納。UI には「選択可能な候補のみ」を渡す前提とし、非選択理由の説明は不要とする（デバッグ用の理由出力も省略）。
 2. **Action実装（剥がれた瘡蓋）**:  
-   - コスト1の Skill。発動条件: 山札に「ダメージ5のアタック」カードが1枚以上。条件を満たさなければ play 不可扱いにする（isAvailable 相当の実装要）。  
+   - コスト1の Skill。発動条件: 山札に「ダメージ5のアタック」カードが1枚以上。条件を満たさなければ play 不可扱いにする（isActive 相当の実装要）。  
    - operations: `select-pile-card` を1件。フィルターは「山札にある damage amount=5 の攻撃カード」。  
    - perform: 選択カードを山札から取り除き `Battle.drawSpecificCard` に相当するメソッド（存在しなければ新設）で手札へ移動させ、AnimationEvent に deck-draw を積む。
 3. **候補判定の基準**: カードの DamagePattern を参照し、`pattern.amount === 5` かつ `cardDefinition.cardType === 'attack'` を満たすものを候補にする。`count` や状態異常による回数変動で判定しない（カテゴリ判定は DamagePattern の type を厳守）。
@@ -32,7 +32,7 @@
 ### タスク一覧
 1. ドメイン調査: Attackカードのダメージ定義場所（DamagePattern参照方法）、山札から特定カードを抜き出しつつ draw アニメを積むメソッド有無を確認。
 2. Operation: `SelectPileCardOperation` 実装と `operations/index` エクスポート、availability API 追加。
-3. Action: `剥がれた瘡蓋` クラス新規作成。isAvailable / operations / perform を実装し、Library への登録とカードデータ（タグ等）の決定。
+3. Action: `剥がれた瘡蓋` クラス新規作成。isActive / operations / perform を実装し、Library への登録とカードデータ（タグ等）の決定。
 4. View入力: `useHandInteraction` 相当ロジックに `select-pile-card` 分岐を追加し、PileChoiceOverlay を開くための状態・イベントを BattleView へ伝搬。
 5. UI: `PileChoiceOverlay` コンポーネントと専用ストア（必要なら）を新設。選択/キャンセルイベントと不可理由表示、z-index 調整。
 6. アニメーション連携: 選択カードを deck-draw stage で出すための Battle 側イベント積み込みを確認/追加し、手札差分ウォッチが動くことを確認。

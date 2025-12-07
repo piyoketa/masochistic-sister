@@ -52,6 +52,7 @@ import { PoisonStingAction } from '@/domain/entities/actions/PoisonStingAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { FlashbackAction } from '@/domain/entities/actions/FlashbackAction'
 import { PeelingScabAction } from '@/domain/entities/actions/PeelingScabAction'
+import { SoloBodyAction } from '@/domain/entities/actions/SoloBodyAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 
@@ -78,6 +79,7 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   BloodSuckAction,
   FlashbackAction,
   PeelingScabAction,
+  SoloBodyAction,
 ]
 
 const actionCardFactories: Record<ActionCardId, () => Card> = buildActionCardFactories(DECK_ACTION_CLASSES)
@@ -98,6 +100,7 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   ScarRegenerationAction,
   LifeDrainSkillAction,
   FlashbackAction,
+  SoloBodyAction,
 ]
 
 // フィールド報酬スキルの候補（旧 SKILL_CARD_CANDIDATES 相当）
@@ -111,6 +114,7 @@ const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   LifeDrainSkillAction,
   DailyRoutineAction,
   PredicamentAction,
+  SoloBodyAction,
 ]
 
 // ラボやデモで見せるサンプルカードセット
