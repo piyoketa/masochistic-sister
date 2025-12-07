@@ -54,6 +54,7 @@ import { FlashbackAction } from '@/domain/entities/actions/FlashbackAction'
 import { PeelingScabAction } from '@/domain/entities/actions/PeelingScabAction'
 import { SoloBodyAction } from '@/domain/entities/actions/SoloBodyAction'
 import { DeepBreathAction } from '@/domain/entities/actions/DeepBreathAction'
+import { OpenWoundAction } from '@/domain/entities/actions/OpenWoundAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 
@@ -66,7 +67,6 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   HeavenChainAction,
   BattlePrepAction,
   MasochisticAuraAction,
-  ScarRegenerationAction,
   ReloadAction,
   NonViolencePrayerAction,
   LifeDrainSkillAction,
@@ -82,6 +82,7 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   PeelingScabAction,
   SoloBodyAction,
   DeepBreathAction,
+  OpenWoundAction,
 ]
 
 const actionCardFactories: Record<ActionCardId, () => Card> = buildActionCardFactories(DECK_ACTION_CLASSES)
@@ -99,11 +100,11 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   PredicamentAction,
   NonViolencePrayerAction,
   ReloadAction,
-  ScarRegenerationAction,
   LifeDrainSkillAction,
   FlashbackAction,
   SoloBodyAction,
   DeepBreathAction,
+  OpenWoundAction,
 ]
 
 // フィールド報酬スキルの候補（旧 SKILL_CARD_CANDIDATES 相当）
@@ -111,7 +112,6 @@ const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   HeavenChainAction,
   BattlePrepAction,
   MasochisticAuraAction,
-  ScarRegenerationAction,
   ReloadAction,
   NonViolencePrayerAction,
   LifeDrainSkillAction,
@@ -119,6 +119,7 @@ const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   PredicamentAction,
   SoloBodyAction,
   DeepBreathAction,
+  OpenWoundAction,
 ]
 
 // ラボやデモで見せるサンプルカードセット
