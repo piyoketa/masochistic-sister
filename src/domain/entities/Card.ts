@@ -229,19 +229,8 @@ export class Card {
     context.metadata.cardTags = (this.cardTags ?? []).map((tag) => tag.id)
 
     battle.player.spendMana(resolvedCost, { battle })
+    // 効果実行前に手札から退避させておく。手札生成系の効果で自分自身が邪魔にならないよう先に移動する。
     battle.hand.remove(this)
-    action.execute(context)
-
-    battle.recordPlayCardAnimationContext({
-      cardId: this.id,
-      audio: this.extractAudioCueFromContext(context),
-      cutin: this.extractCutInCueFromContext(context),
-      cardTags: Array.isArray(context.metadata.cardTags)
-        ? [...(context.metadata.cardTags as string[])]
-        : undefined,
-    })
-
-    // 状態カード（StateAction化）はExileへ送る
     if (action instanceof StateAction && action.shouldExileOnPlay) {
       battle.exilePile.add(this)
       if (this.id !== undefined) {
@@ -254,6 +243,17 @@ export class Card {
     } else {
       this.moveToNextZone(battle)
     }
+
+    action.execute(context)
+
+    battle.recordPlayCardAnimationContext({
+      cardId: this.id,
+      audio: this.extractAudioCueFromContext(context),
+      cutin: this.extractCutInCueFromContext(context),
+      cardTags: Array.isArray(context.metadata.cardTags)
+        ? [...(context.metadata.cardTags as string[])]
+        : undefined,
+    })
   }
 
   private extractAudioCueFromContext(context: ActionContext): ActionAudioCue | undefined {
