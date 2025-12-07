@@ -4,6 +4,7 @@ import { buildDefaultDeck } from '@/domain/entities/decks'
 import { listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
 import { createCardFromBlueprint, buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
 import { Card } from '@/domain/entities/Card'
+import { deleteSlot, listSlots, loadSlot, saveSlot, type PlayerSaveData, type SaveSlotSummary } from '@/utils/saveStorage'
 
 // store外からデッキ型を参照できるように明示的に再エクスポートする
 export type { CardId, CardBlueprint } from '@/domain/library/Library'
@@ -138,6 +139,43 @@ export const usePlayerStore = defineStore('player', {
     },
     removeRelic(className: string): void {
       this.relics = this.relics.filter((name) => name !== className)
+    },
+    saveCurrentToSlot(slotId: string): { success: boolean; message: string } {
+      this.ensureInitialized()
+      const payload: PlayerSaveData = {
+        version: 'v1',
+        savedAt: Date.now(),
+        hp: this.hp,
+        maxHp: this.maxHp,
+        gold: this.gold,
+        deck: this.deck.map((b) => ({ ...b })),
+        relics: [...this.relics],
+      }
+      return saveSlot(slotId, payload)
+    },
+    loadFromSlot(slotId: string): { success: boolean; message: string } {
+      const data = loadSlot(slotId)
+      if (!data) {
+        return { success: false, message: 'セーブデータの読み込みに失敗しました' }
+      }
+      // 保存されている値で上書きする
+      this.hp = data.hp
+      this.maxHp = data.maxHp
+      // HPが最大値を超えないように念のため丸める
+      if (this.hp > this.maxHp) {
+        this.hp = this.maxHp
+      }
+      this.gold = data.gold
+      this.deck = data.deck.map((b) => ({ ...b }))
+      this.relics = [...data.relics]
+      this.initialized = true
+      return { success: true, message: 'セーブデータを読み込みました' }
+    },
+    listSaveSlots(): SaveSlotSummary[] {
+      return listSlots()
+    },
+    deleteSaveSlot(slotId: string): void {
+      deleteSlot(slotId)
     },
   },
 })

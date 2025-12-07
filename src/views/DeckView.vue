@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import CardList from '@/components/CardList.vue'
 import type { CardInfo, CardTagInfo, DescriptionSegment, AttackStyle } from '@/types/battle'
@@ -18,6 +18,7 @@ import { useActionCardOverlay } from '@/composables/actionCardOverlay'
 import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
 import { useAudioStore } from '@/stores/audioStore'
 import { createCardFromBlueprint, listCardIdOptions } from '@/domain/library/Library'
+import type { SaveSlotSummary } from '@/utils/saveStorage'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -74,6 +75,10 @@ const editHp = ref<number>(playerStore.hp)
 const editMaxHp = ref<number>(playerStore.maxHp)
 const editGold = ref<number>(playerStore.gold)
 const shopState = ref(shopManager.getOffers())
+const saveSlots = ref<SaveSlotSummary[]>([])
+const saveSlotName = ref<string>('')
+const saveMessage = ref<string | null>(null)
+const saveError = ref<string | null>(null)
 
 function applyPlayerStatus(): void {
   // デッキ編集画面ではHP/最大HP/所持金も調整できるようにする
@@ -88,6 +93,10 @@ function applyPlayerStatus(): void {
 
 function refreshShopState(): void {
   shopState.value = shopManager.getOffers()
+}
+
+function refreshSaveSlots(): void {
+  saveSlots.value = playerStore.listSaveSlots()
 }
 
 function selectedIndex(): number {
@@ -237,6 +246,54 @@ function applyAttackOverride(): void {
   const count = editCount.value ?? undefined
   playerStore.updateAttackOverride(index, { amount, count })
 }
+
+function handleSaveSlot(): void {
+  saveMessage.value = null
+  saveError.value = null
+  const name = saveSlotName.value.trim()
+  if (!name) {
+    saveError.value = 'スロット名を入力してください'
+    return
+  }
+  const exists = saveSlots.value.some((slot) => slot.slotId === name)
+  if (exists && !window.confirm(`「${name}」を上書き保存しますか？`)) {
+    return
+  }
+  const result = playerStore.saveCurrentToSlot(name)
+  if (result.success) {
+    saveMessage.value = result.message
+    refreshSaveSlots()
+  } else {
+    saveError.value = result.message
+  }
+}
+
+function handleLoadSlot(slotId: string): void {
+  saveMessage.value = null
+  saveError.value = null
+  const result = playerStore.loadFromSlot(slotId)
+  if (result.success) {
+    saveMessage.value = result.message
+  } else {
+    saveError.value = result.message
+  }
+}
+
+function handleDeleteSlot(slotId: string): void {
+  if (!window.confirm(`「${slotId}」を削除しますか？`)) {
+    return
+  }
+  playerStore.deleteSaveSlot(slotId)
+  refreshSaveSlots()
+}
+
+function formatSavedAt(timestamp: number): string {
+  return new Date(timestamp).toLocaleString()
+}
+
+onMounted(() => {
+  refreshSaveSlots()
+})
 
 syncAttackEditor()
 
@@ -427,6 +484,34 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
           </ul>
         </div>
       </div>
+    </div>
+    <div class="save-section">
+      <h2>セーブ / ロード</h2>
+      <div class="save-form">
+        <label for="save-slot">スロット名</label>
+        <input id="save-slot" v-model="saveSlotName" type="text" placeholder="例: slot-1" />
+        <button type="button" class="deck-button" @click="handleSaveSlot">保存する</button>
+      </div>
+      <p class="save-note">最大5件まで保存できます。上書き時は確認ダイアログを表示します。</p>
+      <div class="save-messages">
+        <p v-if="saveMessage" class="save-message">{{ saveMessage }}</p>
+        <p v-if="saveError" class="save-error">{{ saveError }}</p>
+      </div>
+      <ul class="save-list">
+        <li v-for="slot in saveSlots" :key="slot.slotId" class="save-item">
+          <div class="save-item__info">
+            <strong class="save-item__name">{{ slot.slotId }}</strong>
+            <span class="save-item__time">{{ formatSavedAt(slot.savedAt) }}</span>
+          </div>
+          <div class="save-item__actions">
+            <button type="button" class="deck-button" @click="handleLoadSlot(slot.slotId)">ロード</button>
+            <button type="button" class="deck-button deck-button--danger" @click="handleDeleteSlot(slot.slotId)">
+              削除
+            </button>
+          </div>
+        </li>
+        <li v-if="saveSlots.length === 0" class="save-item save-item--empty">セーブデータがありません</li>
+      </ul>
     </div>
   </div>
 </template>
@@ -669,5 +754,97 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
   font-size: 11px;
   margin-left: 6px;
   border: 1px solid rgba(120, 205, 255, 0.5);
+}
+
+.save-section {
+  margin-top: 28px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(14, 12, 22, 0.8);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.save-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.save-form input {
+  background: rgba(18, 18, 28, 0.9);
+  color: #f4f1ff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.save-note {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: rgba(244, 241, 255, 0.75);
+}
+
+.save-messages {
+  min-height: 20px;
+}
+
+.save-message {
+  margin: 0;
+  color: #b1ffc6;
+  font-size: 12px;
+}
+
+.save-error {
+  margin: 0;
+  color: #ffb4c1;
+  font-size: 12px;
+}
+
+.save-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.save-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(24, 20, 32, 0.7);
+}
+
+.save-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.save-item__name {
+  letter-spacing: 0.05em;
+}
+
+.save-item__time {
+  font-size: 12px;
+  color: rgba(244, 241, 255, 0.7);
+}
+
+.save-item__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.save-item--empty {
+  justify-content: center;
+  color: rgba(244, 241, 255, 0.65);
 }
 </style>
