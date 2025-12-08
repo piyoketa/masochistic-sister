@@ -31,16 +31,8 @@ import { TurnManager } from '@/domain/battle/TurnManager'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import {
+  buildEnemyTeamFactoryMap,
   SnailTeam,
-  IronBloomTeam,
-  HummingbirdAlliesTeam,
-  OrcHeroEliteTeam,
-  TestSlug5HpTeam,
-  OrcWrestlerTeam,
-  GunGoblinTeam,
-  HighOrcBandTeam,
-  BeamCannonEliteTeam,
-  GiantSlugEliteTeam,
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
@@ -829,19 +821,7 @@ function createBattleFromPlayerStore(
 
 const DEFAULT_ENEMY_TEAM_FACTORY = () => new SnailTeam()
 
-const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
-  snail: DEFAULT_ENEMY_TEAM_FACTORY,
-  'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
-  'iron-bloom-scripted': () => new IronBloomTeam({ mode: 'scripted' }),
-  'hummingbird-allies': () => new HummingbirdAlliesTeam(),
-  'orc-hero-elite': () => new OrcHeroEliteTeam(),
-  'orc-wrestler-team': () => new OrcWrestlerTeam(),
-  'test-slug-5hp': () => new TestSlug5HpTeam(),
-  'gun-goblin-team': () => new GunGoblinTeam(),
-  'high-orc-band': () => new HighOrcBandTeam(),
-  'beam-cannon-elite': () => new BeamCannonEliteTeam(),
-  'giant-slug-elite': () => new GiantSlugEliteTeam(),
-}
+const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = buildEnemyTeamFactoryMap()
 
 /**
  * teamId で該当する factory が取れない場合には snail チームを使って

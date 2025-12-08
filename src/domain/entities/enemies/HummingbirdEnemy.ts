@@ -12,8 +12,8 @@ export class HummingbirdEnemy extends Enemy {
 
     super({
       name: 'ハチドリ',
-      maxHp: 5,
-      currentHp: 5,
+      maxHp: 10,
+      currentHp: 10,
       actions: [flurry, new TailwindAction()],
       states: [new FlightState(1)],
       image: '/assets/enemies/hummingbird.jpg',

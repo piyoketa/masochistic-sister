@@ -132,12 +132,7 @@ const demoLinks: LinkEntry[] = [
 const fieldLinks: LinkEntry[] = [
   {
     label: 'フィールドに出る',
-    description: '次の戦闘へ進むためのフィールド画面',
-    to: '/field',
-  },
-  {
-    label: 'First Field',
-    description: '新しい固定構成フィールド',
+    description: 'First Field へ進む',
     to: { name: 'field-first' },
   },
 ]
