@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
@@ -37,6 +37,7 @@ const fieldStore = useFieldStore()
 const pileOverlayStore = usePileOverlayStore()
 
 const router = useRouter()
+const debugMode = ref(false)
 
 const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
 const audioStore = useAudioStore()
@@ -95,6 +96,10 @@ function resolveTeamInfo(teamId: string): { name: string; members: string[] } | 
 }
 
 function isReachable(levelIndex: number, nodeIndex: number): boolean {
+  // デバッグ時は到達制約を無視して全マス解放する。
+  if (debugMode.value) {
+    return true
+  }
   if (levelIndex !== fieldStore.nextLevelIndex) {
     return false
   }
@@ -106,7 +111,10 @@ function openDeckOverlay(): void {
 }
 
 async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: number): Promise<void> {
-  if (!isReachable(levelIndex, nodeIndex) || fieldStore.isNodeCleared(node.id)) {
+  const reachable = isReachable(levelIndex, nodeIndex)
+  const alreadyCleared = fieldStore.isNodeCleared(node.id)
+  // デバッグモードでは到達制約・クリア済みを無視して再訪問を許可する。
+  if (!debugMode.value && (!reachable || alreadyCleared)) {
     return
   }
   fieldStore.selectNextNode(nodeIndex)
@@ -142,11 +150,9 @@ onMounted(() => {
   if (props.fieldId === 'first-field') {
     fieldStore.initializeField(props.fieldId)
   }
+  // フィールド系BGMは報酬画面への遷移でも途切れさせないため、アンマウント時に stop しない。
+  // BattleView などで別のBGMを再生する際は audioHub 側で切り替わる想定。
   audioStore.playBgm('/sounds/bgm/field.mp3')
-})
-
-onUnmounted(() => {
-  audioStore.stopBgm()
 })
 </script>
 
@@ -165,6 +171,10 @@ onUnmounted(() => {
           <span class="field-header__item">HP: {{ playerHp.current }} / {{ playerHp.max }}</span>
           <span class="field-header__item">現在Lv: {{ currentLevel }}</span>
           <button type="button" class="deck-button" @click="router.push('/deck')">デッキ確認</button>
+          <label class="debug-toggle">
+            <input v-model="debugMode" type="checkbox">
+            デバッグ: 全マス解放
+          </label>
         </div>
       </template>
     </PlayerStatusHeader>
@@ -205,7 +215,7 @@ onUnmounted(() => {
               <button
                 type="button"
                 class="enter-button"
-                :disabled="!isReachable(levelIdx, idx) || fieldStore.isNodeCleared(node.id)"
+                :disabled="(!isReachable(levelIdx, idx) || fieldStore.isNodeCleared(node.id)) && !debugMode"
                 @click="handleEnter(node, levelIdx, idx)"
               >
                 進む
@@ -247,6 +257,17 @@ onUnmounted(() => {
   gap: 12px;
   color: rgba(245, 242, 255, 0.85);
   font-size: 14px;
+}
+
+.debug-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.debug-toggle input {
+  accent-color: #f6d365;
 }
 
 .field-section {
