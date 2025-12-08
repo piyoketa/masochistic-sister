@@ -60,7 +60,7 @@ const OPERATION_EXPECTATIONS = [
   { name: '日課でデッキトップから2枚を補充', lastActionIndex: 3 },
   { name: '戦いの準備で次ターンのマナを予約', lastActionIndex: 4 },
   { name: 'ターン終了 → 敵行動と次ターン開始まで', lastActionIndex: 11 },
-  { name: 'たいあたり(記憶)でかたつむりへ反撃', lastActionIndex: 12 },
+  { name: '殴打(記憶)でかたつむりへ反撃', lastActionIndex: 12 },
   { name: '酸を吐く(記憶)で触手へ腐食付与', lastActionIndex: 13 },
   { name: '体液をかける(記憶)で触手を撃破', lastActionIndex: 14 },
   { name: '腐食カードを使用', lastActionIndex: 15 },
@@ -193,7 +193,7 @@ function buildOperationEntries(references: ReturnType<typeof collectScenarioRefe
   entries.push({ type: 'end-player-turn' })
   entries.push({
     type: 'play-card',
-    card: (battle: Battle) => findMemoryCardId(battle, 'たいあたり'),
+    card: (battle: Battle) => findMemoryCardId(battle, '殴打'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
   })
   entries.push({

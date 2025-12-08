@@ -73,7 +73,7 @@ function togglePinned(event: Event): void {
               @mouseenter="(e) => showActionCard(tackleBlueprint, e as MouseEvent)"
               @mouseleave="hideActionCard"
             >
-              たいあたり
+              殴打
             </span>
           </div>
           <div class="demo-block">

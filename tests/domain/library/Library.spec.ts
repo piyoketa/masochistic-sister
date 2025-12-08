@@ -6,7 +6,7 @@ import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
 describe('Library', () => {
   it('blueprintからカードを生成し、オーバーライドを反映する', () => {
     const card = createCardFromBlueprint({ type: 'tackle', overrideAmount: 40, overrideCount: 2 })
-    expect(card.title).toBe('たいあたり')
+    expect(card.title).toBe('殴打')
     const action = card.action
     if (!action || !('baseDamages' in action)) {
       throw new Error('Attack expected')

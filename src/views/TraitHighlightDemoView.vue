@@ -25,7 +25,7 @@ const baseEnemy: EnemyInfo = {
   hp: { current: 80, max: 120 },
   nextActions: [
     {
-      title: 'たいあたり',
+      title: '殴打',
       type: 'attack',
       description: 'シンプルな攻撃',
       pattern: { amount: 20, count: 1, type: 'single' },

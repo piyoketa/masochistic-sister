@@ -84,7 +84,7 @@ describe('DefaultEnemyActionQueue', () => {
   let actionB: LogSkillAction
 
   beforeEach(() => {
-    actionA = new LogSkillAction('たいあたり')
+    actionA = new LogSkillAction('殴打')
     actionB = new LogSkillAction('酸を吐く')
   })
 
@@ -109,7 +109,7 @@ describe('DefaultEnemyActionQueue', () => {
     const logs = battle.log.list().map((entry) => entry.message)
     expect(logs).toEqual([
       'かたつむりは酸を吐くを使った',
-      'かたつむりはたいあたりを使った',
+      'かたつむりは殴打を使った',
     ])
   })
 

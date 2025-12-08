@@ -43,14 +43,14 @@ const references = collectScenarioReferences(battleFactory().getSnapshot())
 const operationEntries: OperationLogEntryConfig[] = [{ type: 'end-player-turn' }]
 
 describe('敵行動予測のSnapshot固定', () => {
-  it('ターン1開始時点でオークの予測が「たいあたり」になる', () => {
+  it('ターン1開始時点でオークの予測が「殴打」になる', () => {
     const entries = buildActionLogEntries(-1)
     const startTurnEntries = entries.filter((entry) => entry.type === 'start-player-turn')
     expect(startTurnEntries.length).toBeGreaterThan(0)
     const firstTurnAnimations = flattenEntryAnimations(startTurnEntries[0])
     const firstTurnSnapshot = firstTurnAnimations[0]?.snapshot
     expect(extractNextActionTitles(firstTurnSnapshot, references.enemyIds.orc)).toEqual([
-      'たいあたり',
+      '殴打',
     ])
   })
 
@@ -66,7 +66,7 @@ describe('敵行動予測のSnapshot固定', () => {
     expect(snailHighlightSnapshot).toBeDefined()
     expect(
       extractNextActionTitles(snailHighlightSnapshot, references.enemyIds.orc),
-    ).toEqual(['たいあたり'])
+    ).toEqual(['殴打'])
   })
 
   it('かたつむりの行動完了後、ターン2開始でオークの予測が「ビルドアップ」に更新される', () => {

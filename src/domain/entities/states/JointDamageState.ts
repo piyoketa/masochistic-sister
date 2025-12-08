@@ -34,7 +34,7 @@ export class JointDamageState extends BadState {
   }
 
   override get priority(): number {
-    // 「たいあたり」への固定加算を他の加減算系と同タイミングで扱うため、20に調整
+    // 「殴打」への固定加算を他の加減算系と同タイミングで扱うため、20に調整
     return 20
   }
 

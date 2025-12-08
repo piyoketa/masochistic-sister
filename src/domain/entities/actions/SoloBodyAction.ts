@@ -1,10 +1,10 @@
 /*
 SoloBodyAction.ts（カード「身一つ」）の責務:
-- 山札にある「たいあたり」(TackleAction) を手札上限の許す限りまとめて手札に加える。
+- 山札にある「殴打」(TackleAction) を手札上限の許す限りまとめて手札に加える。
 - 入力操作は不要で、効果実行時に山札を上から走査し、候補を順次移動する。
 
 責務ではないこと:
-- たいあたり以外のカード移動や、手札が満杯の場合の強制移動。空きがある分だけ移動し、それ以上は処理しない。
+- 殴打以外のカード移動や、手札が満杯の場合の強制移動。空きがある分だけ移動し、それ以上は処理しない。
 - 手札へ加えたカードの演出制御の細分化。deck-draw 演出を再利用し、個別の移動演出は追加しない。
 
 主要な通信相手とインターフェース:
@@ -34,7 +34,7 @@ export class SoloBodyAction extends Skill {
   }
 
   protected override description(): string {
-    return '山札の「たいあたり」を可能な限り手札に加える'
+    return '山札の「殴打」を可能な限り手札に加える'
   }
 
   protected override isActive(context: ActionContext): boolean {

@@ -237,7 +237,7 @@ export function createBattleScenario(): BattleScenario {
   registerOperation('endPlayerTurn1', { type: 'end-player-turn' })
   registerOperation('playTackleOnSnail', {
     type: 'play-card',
-    card: (battle: Battle) => findMemoryCardId(battle, 'たいあたり'),
+    card: (battle: Battle) => findMemoryCardId(battle, '殴打'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
   })
   registerOperation('playAcidSpitOnTentacle', {

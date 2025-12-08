@@ -10,7 +10,7 @@
 1. `Battle.recordStateCardAnimation` / `recordMemoryCardAnimation` の記録タイミングを見直し、**敵行動中に Player へ付与される状態だけ**が `create-state-card` を発火するようにする。  
    - 現状 `end-player-turn` でまとめて処理しているステートもあるため、`Battle.applyEnemyAction` 内で付与直後にイベントを enqueue する形へ移行する。
 2. `OperationRunner.attachEnemyActAnimations`（仮称）を整理し、`enemy-action` バッチに「`player-damage` → `create-state-card`（任意）→ `audio`（任意）」が並ぶようにする。  
-   - State を付与しない攻撃（例: たいあたり）では `create-state-card` を発行しない。
+   - State を付与しない攻撃（例: 殴打）では `create-state-card` を発行しない。
 3. `remember-enemy-attack` バッチを `memory-card` イベント発生直後に生成する。  
    - `ScarRegenerationAction`（疼き）による `memory-card` だけは例外的にプレイヤーアクション側のバッチへ入れる。
 4. `SkipTurnAction` など `action.type === 'skip'` の敵行動には `audio` ステージ（`skills/OtoLogic_Electric-Shock02-Short.mp3`）のみを積む特別パスを追加する。

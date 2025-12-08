@@ -30,7 +30,7 @@ const scenarios: Scenario[] = [
   {
     id: 'slam',
     label: 'Slam Heavy',
-    description: '単発たいあたり（slam）',
+    description: '単発殴打（slam）',
     outcomes: [{ damage: 28, effectType: 'slam' }],
   },
   {

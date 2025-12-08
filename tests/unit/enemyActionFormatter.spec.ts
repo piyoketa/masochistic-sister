@@ -20,7 +20,7 @@ describe('formatEnemyActionLabel', () => {
   it('formats single damage attack', () => {
     const { label, segments } = formatEnemyActionLabel(
       baseHint({
-        title: 'たいあたり',
+        title: '殴打',
         type: 'attack',
         pattern: { amount: 20, count: 1, type: 'single' },
       }),
