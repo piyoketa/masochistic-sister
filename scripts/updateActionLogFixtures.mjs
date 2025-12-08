@@ -32,7 +32,7 @@ const useFixtureSource = process.env.USE_FIXTURE_SOURCE === '1'
 const scenarioSpecificAdjustments = {
   'tests/fixtures/battleSampleExpectedActionLog.ts': {
     alreadyActedEnemyEntries: {
-      10: { enemyId: 3, actionName: '酸を吐く' },
+      10: { enemyId: 3, actionName: '溶かす' },
     },
     playCardMemoryCardOverrides: {
       23: {

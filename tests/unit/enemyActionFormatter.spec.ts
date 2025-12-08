@@ -35,7 +35,7 @@ describe('formatEnemyActionLabel', () => {
   it('formats status inflicting single attack', () => {
     const { label, segments } = formatEnemyActionLabel(
       baseHint({
-        title: '酸を吐く',
+        title: '溶かす',
         type: 'attack',
         pattern: { amount: 5, count: 1, type: 'single' },
         status: { name: '腐食', magnitude: 1 },

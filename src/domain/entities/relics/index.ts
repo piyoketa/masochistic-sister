@@ -14,6 +14,21 @@ import { RepulsionRelic } from './RepulsionRelic'
 import { DeathMatchRelic } from './DeathMatchRelic'
 
 export type { Relic } from './Relic'
+export {
+  SacrificialAwarenessRelic,
+  AdversityExcitementRelic,
+  LightweightCombatRelic,
+  ActionForceRelic,
+  PureBodyRelic,
+  NoViolenceRelic,
+  SlipperyTouchRelic,
+  DevoutBelieverRelic,
+  ArcaneAdaptationRelic,
+  ThoroughPreparationRelic,
+  MemorySaintRelic,
+  RepulsionRelic,
+  DeathMatchRelic,
+}
 
 export const DEFAULT_PLAYER_RELICS: Relic[] = [
   new MemorySaintRelic(),

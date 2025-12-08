@@ -33,7 +33,7 @@ export class FlashbackAction extends Skill {
   }
 
   protected override description(): string {
-    return '捨て札のアタック1枚をランダムに手札へ加える'
+    return '捨て札から\n被虐の記憶1枚を\nランダムに手札へ加える'
   }
 
   override isActive(context?: { battle?: BattleInstance }): boolean {

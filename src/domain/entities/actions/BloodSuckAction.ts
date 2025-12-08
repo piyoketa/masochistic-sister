@@ -23,11 +23,11 @@ import {
 export class BloodSuckAction extends Attack {
   constructor() {
     super({
-      name: '吸われた',
+      name: '吸血',
       baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
       // effectType: 'bite',
       cardDefinition: {
-        title: '吸われた',
+        title: '吸血',
         cardType: 'attack',
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),

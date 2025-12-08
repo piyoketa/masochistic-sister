@@ -19,20 +19,20 @@ import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 export class ReloadAction extends Skill {
   constructor() {
     super({
-      name: '再装填',
+      name: '日の終わり',
       cardDefinition: {
-        title: '再装填',
+        title: '日の終わり',
         cardType: 'skill',
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 1,
-        subtitle: '',
+        subtitle: '祈り',
       },
     })
   }
 
   protected override description(): string {
-    return '状態異常以外の手札を捨て、同じ枚数だけ引き直す'
+    return '手札を全て捨て同じ枚数ドロー\n（状態異常を除く）'
   }
 
   protected override perform(context: ActionContext): void {

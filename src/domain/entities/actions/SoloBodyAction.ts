@@ -20,9 +20,9 @@ import type { Card } from '../Card'
 export class SoloBodyAction extends Skill {
   constructor() {
     super({
-      name: '身一つ',
+      name: 'この身一つ',
       cardDefinition: {
-        title: '身一つ',
+        title: 'この身一つ',
         cardType: 'skill',
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),

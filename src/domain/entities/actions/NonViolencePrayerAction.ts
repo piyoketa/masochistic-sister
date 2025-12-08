@@ -22,14 +22,14 @@ import type { Card } from '../Card'
 export class NonViolencePrayerAction extends Skill {
   constructor() {
     super({
-      name: '非暴力の祈り',
+      name: '平和',
       cardDefinition: {
-        title: '非暴力の祈り',
+        title: '平和',
         cardType: 'skill',
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),
         cost: 0,
-        subtitle: '',
+        subtitle: '祈り',
       },
     })
   }

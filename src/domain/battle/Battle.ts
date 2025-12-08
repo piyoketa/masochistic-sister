@@ -1264,10 +1264,10 @@ export class Battle {
     }
 
     const acidMemories = cards.filter(
-      (card) => this.isMemoryCard(card) && card.action?.name === '酸を吐く',
+      (card) => this.isMemoryCard(card) && card.action?.name === '溶かす',
     )
     const others = cards.filter(
-      (card) => !(this.isMemoryCard(card) && card.action?.name === '酸を吐く'),
+      (card) => !(this.isMemoryCard(card) && card.action?.name === '溶かす'),
     )
 
     return [...acidMemories, ...others]
