@@ -111,6 +111,14 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   PeelingScabAction,
 ]
 
+// アタック支援カード（指定IDでピックする用途向け）
+const ATTACK_SUPPORT_ACTION_CLASSES: ActionConstructor[] = [
+  SoloBodyAction,
+  OpenWoundAction,
+  PeelingScabAction,
+  LifeDrainSkillAction,
+]
+
 // フィールド報酬スキルの候補（旧 SKILL_CARD_CANDIDATES 相当）
 const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   HeavenChainAction,
@@ -212,6 +220,10 @@ export function listStandardShopCardBlueprints(): CardBlueprint[] {
 
 export function listStandardSkillRewardBlueprints(): CardBlueprint[] {
   return STANDARD_SKILL_REWARD_CLASSES.map(buildActionBlueprintFromCtor)
+}
+
+export function listAttackSupportRewardBlueprints(): CardBlueprint[] {
+  return ATTACK_SUPPORT_ACTION_CLASSES.map(buildActionBlueprintFromCtor)
 }
 
 export function listStandardSampleCardBlueprints(): CardBlueprint[] {
