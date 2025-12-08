@@ -6,6 +6,7 @@ import { Damages } from '../entities/Damages'
 import { SkipTurnAction } from '../entities/actions/SkipTurnAction'
 import { Card } from '../entities/Card'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
+import { buildCardInfoFromBlueprint, mapActionToCardId } from '../library/Library'
 
 export function buildEnemyActionHints(battle: Battle, enemy: Enemy): EnemyActionHint[] {
   const planned = enemy.plannedActionsForDisplay
@@ -48,6 +49,7 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
   const damages = action.baseDamages
   const states = action.inflictStatePreviews
   const primaryState = states[0]
+  const cardId = mapActionToCardId(action)
 
   const calculatedDamages = new Damages({
     baseAmount: damages.baseAmount,
@@ -57,19 +59,32 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
     defenderStates: battle.player.getStates(battle),
   })
 
+  const calculatedPattern = {
+    amount: calculatedDamages.amount,
+    count: calculatedDamages.count,
+    type: calculatedDamages.type,
+  }
+
+  const blueprint =
+    cardId !== null
+      ? {
+          type: cardId,
+          overrideAmount: calculatedPattern.amount,
+          overrideCount: calculatedPattern.count,
+        }
+      : null
+
   return {
     title: action.name,
     type: 'attack',
+    cardId: cardId ?? undefined,
     icon: '',
     pattern: {
       amount: damages.baseAmount,
       count: damages.baseCount,
       type: damages.type,
     },
-    calculatedPattern: {
-      amount: calculatedDamages.amount,
-      count: calculatedDamages.count,
-    },
+    calculatedPattern,
     status: primaryState
       ? {
       name: primaryState.name,
@@ -78,11 +93,13 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
     }
       : undefined,
     description: action.describe(),
-    cardInfo: buildCardInfoFromCard(new Card({ action }), {
-      id: `enemy-action-${enemy.id}-${action.name}`,
-      affordable: true,
-      disabled: false,
-    }) ?? undefined,
+    cardInfo:
+      (blueprint ? buildCardInfoFromBlueprint(blueprint, `enemy-action-${enemy.id}`) : null) ??
+      (buildCardInfoFromCard(new Card({ action }), {
+        id: `enemy-action-${enemy.id}-${action.name}`,
+        affordable: true,
+        disabled: false,
+      }) ?? undefined),
   }
 }
 

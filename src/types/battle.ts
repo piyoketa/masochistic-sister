@@ -25,6 +25,8 @@ export type StateSnapshot = BadStateSnapshot | BuffStateSnapshot | TraitStateSna
 export type EnemyActionHint = {
   title: string
   type: 'attack' | 'skill' | 'skip'
+  /** 対応するカードID（Action起点）。計算済みダメージで CardInfo を生成するために使用。 */
+  cardId?: import('@/domain/library/Library').CardId
   description?: string
   targetName?: string
   pattern?: {
