@@ -11,6 +11,8 @@ export class HummingbirdAlliesTeam extends EnemyTeam {
       name: 'ハチドリ隊',
       members: [
         new OrcLancerEnemy({
+          maxHp: 50,
+          currentHp: 50,
           actionQueueFactory: () =>
             new DefaultEnemyActionQueue({ initialActionType: BattleDanceAction }),
         }),

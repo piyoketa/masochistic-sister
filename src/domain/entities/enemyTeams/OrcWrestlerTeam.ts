@@ -4,9 +4,6 @@ import { BatEnemy } from '../enemies/BatEnemy'
 import { GhostEnemy } from '../enemies/GhostEnemy'
 import { SnailEnemy } from '../enemies/SnailEnemy'
 import { OrcWrestlerEnemy } from '../enemies/OrcWrestlerEnemy'
-import { TackleAction } from '../actions/TackleAction'
-import { ScareAction } from '../actions/ScareAction'
-import { JointLockAction } from '../actions/JointLockAction'
 
 export class OrcWrestlerTeam extends EnemyTeam {
   constructor() {
