@@ -14,7 +14,7 @@ export function formatEnemyActionLabel(
   action: EnemyActionHint,
   options: { includeTitle?: boolean } = {},
 ): FormattedEnemyActionLabel {
-  const includeTitle = options.includeTitle ?? true
+  const includeTitle = true
   const segments: Array<{ text: string; highlighted?: boolean; change?: 'up' | 'down'; showOverlay?: boolean }> = []
   const appendTarget = () => {
     if (!action.targetName) {
@@ -41,6 +41,11 @@ export function formatEnemyActionLabel(
     const attackPattern = calculatedPattern?.type ?? pattern?.type ?? 'single'
     const isMulti = attackPattern === 'multi'
     const damageIcon = isMulti ? '⚔️' : '💥'
+
+    if (includeTitle && action.title) {
+      // 技名に hover した際も ActionCardOverlay を出すため showOverlay を付与する。
+      segments.push({ text: `${action.title}: `, showOverlay: true })
+    }
 
     segments.push({ text: damageIcon, showOverlay: true })
 
