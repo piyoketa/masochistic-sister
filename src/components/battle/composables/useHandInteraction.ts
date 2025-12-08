@@ -220,7 +220,7 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
     }
     // デバッグ用: play-card emit 前の情報を記録
     // eslint-disable-next-line no-console
-    console.info('[HandInteraction] play-card emit', { cardId, operations: collectedOperations })
+    // console.info('[HandInteraction] play-card emit', { cardId, operations: collectedOperations })
     options.emit('play-card', { cardId, operations: collectedOperations })
     resetSelection({ keepSelection: false })
   }

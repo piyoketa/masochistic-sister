@@ -585,7 +585,7 @@ async function handleOpenReward(): Promise<void> {
 function handleHandPlayCard(payload: { cardId: number; operations: CardOperation[] }): void {
   // デバッグ用: HandArea からのプレイ要求を記録
   // eslint-disable-next-line no-console
-  console.info('[BattleView] handleHandPlayCard', payload)
+  // console.info('[BattleView] handleHandPlayCard', payload)
   viewManager.queuePlayerAction({ type: 'play-card', cardId: payload.cardId, operations: payload.operations })
   resetErrorMessage()
 }

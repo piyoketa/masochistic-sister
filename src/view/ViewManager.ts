@@ -213,7 +213,7 @@ export class ViewManager {
           })) ?? undefined
         // デバッグ用: OperationRunner へ渡す直前の情報を記録
         // eslint-disable-next-line no-console
-        console.info('[ViewManager] executeOperationWithRunner play-card', { cardId, resolvedOperations })
+        // console.info('[ViewManager] executeOperationWithRunner play-card', { cardId, resolvedOperations })
         runner.playCard(cardId, resolvedOperations)
         break
       }
