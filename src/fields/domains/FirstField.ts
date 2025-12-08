@@ -9,11 +9,12 @@ import type {
 } from './FieldNode'
 import { SnailTeam, IronBloomTeam, HummingbirdAlliesTeam, OrcWrestlerTeam, HighOrcBandTeam, OrcHeroEliteTeam } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
-import { listStandardSkillRewardBlueprints } from '@/domain/library/Library'
+import { listStandardSkillRewardBlueprints, type CardBlueprint } from '@/domain/library/Library'
 
 const SKILL_CARD_CANDIDATES = listStandardSkillRewardBlueprints()
 const LEVEL2_RELIC_CANDIDATES = ['ArcaneAdaptationRelic', 'NoViolenceRelic', 'PureBodyRelic', 'ActionForceRelic']
 const LEVEL6_RELIC_CANDIDATES = ['LightweightCombatRelic', 'AdversityExcitementRelic']
+const LEVEL5_SKILL_IDS = ['solo-body', 'open-wound', 'peeling-scab', 'life-drain-skill']
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),
@@ -60,12 +61,7 @@ function buildLevels(_ownedRelics: string[]): FieldLevel[] {
   ]
 
   const level5: RandomCardRewardNode[] = [
-    createRandomSkillRewardNode(5, 0, [
-      'SoloBodyAction',
-      'OpenWoundAction',
-      'PeelingScabAction',
-      'LifeDrainSkillAction',
-    ]),
+    createRandomSkillRewardNode(5, 0, filterSkillCandidates(LEVEL5_SKILL_IDS)),
   ]
 
   const level6: RandomRelicRewardNode[] = [
@@ -141,10 +137,16 @@ function createRandomRelicRewardNode(
   }
 }
 
+function filterSkillCandidates(ids: string[]): CardBlueprint[] {
+  const allowed = new Set(ids)
+  // 提示候補は blueprint の type で突き合わせ、余計な候補を混入させない。
+  return SKILL_CARD_CANDIDATES.filter((entry) => allowed.has(entry.type))
+}
+
 function createRandomSkillRewardNode(
   level: number,
   idx: number,
-  candidates: string[] = SKILL_CARD_CANDIDATES,
+  candidates: CardBlueprint[] = SKILL_CARD_CANDIDATES,
 ): RandomCardRewardNode {
   const selected = pickUnique(candidates, 3)
   return {
