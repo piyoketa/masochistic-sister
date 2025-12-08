@@ -13,21 +13,8 @@ StackedStressState.ts（状態「重なるストレス」）の責務:
 */
 import { BuffState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
-import { StateAction } from '../Action/StateAction'
 import { Attack } from '../Action'
 import type { CardTag } from '../CardTag'
-
-class StackedStressStateAction extends StateAction {
-  constructor(state: StackedStressState, tags?: CardTag[]) {
-    super({
-      name: state.name,
-      cardDefinition: state.createCardDefinition(),
-      tags,
-      stateId: state.id,
-      sourceState: state,
-    })
-  }
-}
 
 export class StackedStressState extends BuffState {
   constructor() {
@@ -49,9 +36,9 @@ export class StackedStressState extends BuffState {
     return 'このターン、ダメージ5の攻撃カードのコスト-1'
   }
 
-  override onTurnStart(_battle: import('../../battle/Battle').Battle): void {
-    // ターン開始時に自動で消滅させる（一時的なバフのため）
-    this.setExpired(true)
+  override onTurnStart(context: { battle: import('../../battle/Battle').Battle; owner: import('../Player').Player | import('../Enemy').Enemy }): void {
+    // ターン開始時に自動で消滅させる（一時的なバフのため）。
+    this.removeFromOwner(context.owner)
   }
 
   override costAdjustment(context?: { cardTags?: CardTag[]; action?: Attack }): number {
@@ -66,7 +53,9 @@ export class StackedStressState extends BuffState {
     return -1
   }
 
-  override action(tags?: CardTag[]): StateAction {
-    return new StackedStressStateAction(this, tags)
+  private removeFromOwner(owner: import('../Player').Player | import('../Enemy').Enemy): void {
+    if ('removeState' in owner && typeof owner.removeState === 'function') {
+      owner.removeState(this.id)
+    }
   }
 }
