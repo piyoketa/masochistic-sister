@@ -274,16 +274,22 @@ const projectedPlayerHp = computed(() => {
   }
   return Math.max(0, currentHp - total)
 })
-const playerStates = computed(() => {
-  const ids = new Set<string>()
+// 手札で State カードとして表示されるものと重複しないよう、表示用IDとチップ用スナップショットを分離する。
+const playerStates = computed(() =>
+  (snapshot.value?.player.states ?? []).map((state) => state.id),
+)
+const playerStateSnapshots = computed(() => {
+  const handStateIds = new Set<string>()
   const hand = snapshot.value?.hand ?? []
   for (const card of hand) {
     const stateId = (card as { state?: { id?: string } } | undefined)?.state?.id
     if (stateId) {
-      ids.add(stateId)
+      handStateIds.add(stateId)
     }
   }
-  return Array.from(ids)
+  const states = snapshot.value?.player.states ?? []
+  // 手札の StateAction が存在する場合はそちらで状態を示せているので、重複表示を避ける。
+  return states.filter((state) => !handStateIds.has(state.id))
 })
 const previousSnapshot = ref<typeof snapshot.value | null>(null)
 watch(
@@ -863,6 +869,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
     :player-outcomes="playerDamageOutcomes"
     :player-selection-theme="enemySelectionTheme"
     :player-states="playerStates"
+    :player-state-snapshots="playerStateSnapshots"
     :player-predicted-hp="projectedPlayerHp ?? undefined"
     @contextmenu="handleContextMenu"
     @relic-hover="(relic, event) => handleRelicHover(event, relic)"

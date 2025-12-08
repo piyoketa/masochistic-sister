@@ -11,6 +11,7 @@ import PlayerStatusHeader from '@/components/battle/PlayerStatusHeader.vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import type { DamageOutcome } from '@/domain/entities/Damages'
+import type { StateSnapshot } from '@/types/battle'
 import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
 
 const props = defineProps<{
@@ -20,6 +21,7 @@ const props = defineProps<{
   playerOutcomes?: DamageOutcome[]
   playerSelectionTheme?: EnemySelectionTheme
   playerStates?: string[]
+  playerStateSnapshots?: StateSnapshot[]
   playerPredictedHp?: number | null
   relicGlow?: boolean
 }>()
@@ -47,6 +49,7 @@ const resolvedPostHp = computed(() => props.playerPostHp ?? { current: playerSta
 const resolvedSelectionTheme = computed<EnemySelectionTheme>(() => props.playerSelectionTheme ?? 'default')
 const resolvedOutcomes = computed<DamageOutcome[]>(() => props.playerOutcomes ?? [])
 const resolvedStates = computed<string[]>(() => props.playerStates ?? [])
+const resolvedStateSnapshots = computed<StateSnapshot[]>(() => props.playerStateSnapshots ?? [])
 
 function getPlayerCardRect(): DOMRect | null {
   const el = playerCardRef.value?.$el as HTMLElement | undefined
@@ -83,6 +86,7 @@ defineExpose({ getPlayerCardRect })
                 :outcomes="resolvedOutcomes"
                 :selection-theme="resolvedSelectionTheme"
                 :states="resolvedStates"
+                :state-snapshots="resolvedStateSnapshots"
                 :predicted-hp="playerPredictedHp ?? undefined"
               />
             </div>

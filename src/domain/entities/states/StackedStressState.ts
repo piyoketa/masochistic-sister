@@ -11,7 +11,7 @@ StackedStressState.ts（状態「重なるストレス」）の責務:
 - `Action.costAdjustment` 相当で参照されるため、`costAdjustment` を実装し、ダメージ5の Attack かどうかを判定して -1 を返す。
 - `StateAction` を経由してカード化し、手札上限や消滅処理は既存 StateAction の仕組みに従う。
 */
-import { GoodState } from '../State'
+import { BuffState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import { StateAction } from '../Action/StateAction'
 import { Attack } from '../Action'
@@ -29,7 +29,7 @@ class StackedStressStateAction extends StateAction {
   }
 }
 
-export class StackedStressState extends GoodState {
+export class StackedStressState extends BuffState {
   constructor() {
     super({
       id: 'state-stacked-stress',

@@ -4,6 +4,7 @@ PlayerCardComponent の責務:
 - ダメージ演出(DamageEffects)の開始と完了に合わせて displayHp を制御し、HpGauge/PlayerImageComponent の表示を同期させる。
 - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。
  - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。プレイヤー状態による差分も重ねる。
+- HPバー直下で EnemyStateChip 形式のステート一覧を描画し、手札では表現されないプレイヤー状態を可視化する。
 
 非責務:
 - 戦闘ロジックやダメージ計算は扱わない。pre/post HP は親から渡される値を信頼する。
@@ -15,6 +16,7 @@ PlayerCardComponent の責務:
   - outcomes: DamageOutcome[] （DamageEffectsへそのまま渡す）
   - selectionTheme: 表情差分選択用
   - states?: string[] プレイヤーに付与されている状態のID（差分表示用）
+  - stateSnapshots?: StateSnapshot[] HPバー直下に EnemyStateChip 形式で表示するステート一覧
   - showHpGauge?: HPゲージ表示を切り替えるフラグ（デフォルト true）
   - show: 表示の有無（外部リセット時の切替を許容）
 - emits: なし（内部で完結）
@@ -24,7 +26,9 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import DamageEffects from '@/components/DamageEffects.vue'
 import HpGauge from '@/components/HpGauge.vue'
 import PlayerImageComponent from '@/components/PlayerImageComponent.vue'
+import EnemyStateChip from '@/components/EnemyStateChip.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
+import type { StateSnapshot } from '@/types/battle'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 
 const debugEnabled = false;
@@ -36,6 +40,7 @@ const props = withDefaults(
     outcomes: DamageOutcome[]
     selectionTheme?: EnemySelectionTheme
     states?: string[]
+    stateSnapshots?: StateSnapshot[]
     predictedHp?: number | null
     showHpGauge?: boolean
     show?: boolean
@@ -50,6 +55,18 @@ const props = withDefaults(
 const damageRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 const displayHp = reactive<{ current: number; max: number }>({ current: 0, max: 0 })
 const isTakingDamage = ref(false)
+const stateChips = computed(() =>
+  (props.stateSnapshots ?? []).map((state) => {
+    const magnitude = state.magnitude
+    const label = magnitude !== undefined ? `${state.name}(${magnitude})` : state.name
+    return {
+      key: state.id,
+      label,
+      description: state.description ?? state.name,
+      isImportant: state.isImportant,
+    }
+  }),
+)
 
 const faceDiffOverride = computed<'damaged-arcane' | 'damaged-normal' | null>(() => {
   if (!isTakingDamage.value) {
@@ -164,7 +181,19 @@ onMounted(() => {
         :outcomes="outcomes"
         @sequence-start="isTakingDamage = true"
         @sequence-end="handleSequenceEnd"
-      />      
+      />
+      <TransitionGroup
+        v-if="stateChips.length"
+        tag="ul"
+        name="player-state"
+        class="player-card__states"
+      >
+        <EnemyStateChip
+          v-for="state in stateChips"
+          :key="state.key"
+          :chip="state"
+        />
+      </TransitionGroup>
     </div>
   </div>
 </template>
@@ -191,5 +220,14 @@ onMounted(() => {
   position: absolute;
   bottom: 120px;
   z-index: 2;
+}
+
+.player-card__states {
+  margin-top: 8px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
 }
 </style>

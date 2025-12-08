@@ -77,6 +77,7 @@ async function handleProceed(): Promise<void> {
               :outcomes="outcomes"
               :selection-theme="selectionTheme"
               :states="states"
+              :state-snapshots="[]"
               :show-hp-gauge="false"
             />
           </aside>

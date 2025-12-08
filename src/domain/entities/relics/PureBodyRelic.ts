@@ -5,7 +5,7 @@ import { Relic } from './Relic'
  */
 export class PureBodyRelic extends Relic {
   readonly id = 'pure-body'
-  readonly name = '清廉な身体'
+  readonly name = '清廉'
   readonly usageType = 'passive' as const
   readonly icon = '💧'
   private usedThisTurn = false
