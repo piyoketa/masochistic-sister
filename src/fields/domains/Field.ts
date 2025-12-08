@@ -5,6 +5,7 @@ import type {
   StartNode,
   RelicRewardNode,
   RandomCardRewardNode,
+  RandomRelicRewardNode,
   FixedRelicRewardNode,
   BossEnemyNode,
 } from './FieldNode'
@@ -45,6 +46,10 @@ export abstract class Field {
 
   isRandomCardRewardNode(node: FieldNode): node is RandomCardRewardNode {
     return node.type === 'random-card-reward'
+  }
+
+  isRandomRelicRewardNode(node: FieldNode): node is RandomRelicRewardNode {
+    return node.type === 'random-relic-reward'
   }
 
   isFixedRelicRewardNode(node: FieldNode): node is FixedRelicRewardNode {

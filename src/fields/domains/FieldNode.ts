@@ -7,6 +7,7 @@ export type FieldNodeType =
   | 'card-reward'
   | 'relic-reward'
   | 'random-card-reward'
+  | 'random-relic-reward'
   | 'fixed-relic-reward'
 
 export interface FieldNode {
@@ -44,6 +45,13 @@ export interface RandomCardRewardNode extends FieldNode {
   type: 'random-card-reward'
   candidateActions: CardBlueprint[]
   selectedActions: CardBlueprint[]
+  drawCount: number
+}
+
+export interface RandomRelicRewardNode extends FieldNode {
+  type: 'random-relic-reward'
+  candidateRelics: string[]
+  offerCount: number
   drawCount: number
 }
 

@@ -4,7 +4,7 @@ import type {
   EnemyNode,
   FieldNode,
   RandomCardRewardNode,
-  RelicRewardNode,
+  RandomRelicRewardNode,
   StartNode,
 } from './FieldNode'
 import { SnailTeam, IronBloomTeam, HummingbirdAlliesTeam, OrcWrestlerTeam, HighOrcBandTeam, OrcHeroEliteTeam } from '@/domain/entities/enemyTeams'
@@ -12,6 +12,7 @@ import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import { listStandardSkillRewardBlueprints } from '@/domain/library/Library'
 
 const SKILL_CARD_CANDIDATES = listStandardSkillRewardBlueprints()
+const LEVEL2_RELIC_CANDIDATES = ['ArcaneAdaptationRelic', 'NoViolenceRelic', 'PureBodyRelic', 'ActionForceRelic']
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),
@@ -33,7 +34,7 @@ export class FirstField extends Field {
   }
 }
 
-function buildLevels(ownedRelics: string[]): FieldLevel[] {
+function buildLevels(_ownedRelics: string[]): FieldLevel[] {
   const levels: FieldLevel[] = []
 
   const level1: StartNode = {
@@ -44,8 +45,8 @@ function buildLevels(ownedRelics: string[]): FieldLevel[] {
     nextNodeIndices: [],
   }
 
-  const level2: RelicRewardNode[] = [
-    createRelicRewardNode(2, 0, ownedRelics),
+  const level2: RandomRelicRewardNode[] = [
+    createRandomRelicRewardNode(2, 0, LEVEL2_RELIC_CANDIDATES),
   ]
 
   const level3: RandomCardRewardNode[] = [
@@ -116,17 +117,20 @@ function createEnemyNode(teamId: string, level: number, idx: number): EnemyNode 
   }
 }
 
-function createRelicRewardNode(level: number, idx: number, owned: string[]): RelicRewardNode {
-  const candidateRelics = ['LightweightCombatRelic', 'PureBodyRelic', 'NoViolenceRelic', 'ArcaneAdaptationRelic', 'ThoroughPreparationRelic']
-  const available = candidateRelics.filter((name) => !owned.includes(name))
-  const relic = available[Math.floor(Math.random() * available.length)] ?? candidateRelics[0] ?? 'PureBodyRelic'
+function createRandomRelicRewardNode(
+  level: number,
+  idx: number,
+  candidates: string[],
+): RandomRelicRewardNode {
   return {
-    id: `relic-reward-${level}-${idx}`,
-    type: 'relic-reward',
+    id: `random-relic-${level}-${idx}`,
+    type: 'random-relic-reward',
     level,
     // マップ上では具体的なレリック名を秘匿し「レリックを獲得」のみ表示する
     label: 'レリックを獲得',
-    candidateRelics,
+    candidateRelics: [...candidates],
+    offerCount: 3,
+    // 常に1つだけ獲得できる仕様に固定
     drawCount: 1,
     nextNodeIndices: [],
   }

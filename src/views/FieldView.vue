@@ -126,6 +126,10 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
     await router.push({ path: '/field/random-card-reward' })
     return
   }
+  if (node.type === 'random-relic-reward') {
+    await router.push({ path: '/field/random-relic-reward' })
+    return
+  }
   if (node.type === 'fixed-relic-reward') {
     await router.push({ path: '/field/fixed-relic-reward' })
     return

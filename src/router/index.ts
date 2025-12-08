@@ -124,6 +124,11 @@ const router = createRouter({
       component: () => import('@/views/RandomCardRewardView.vue'),
     },
     {
+      path: '/field/random-relic-reward',
+      name: 'random-relic-reward',
+      component: () => import('@/views/RandomRelicRewardView.vue'),
+    },
+    {
       path: '/field/fixed-relic-reward',
       name: 'fixed-relic-reward',
       component: () => import('@/views/FixedRelicRewardView.vue'),
