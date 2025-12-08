@@ -30,11 +30,11 @@ class HeavyweightStateAction extends StateAction {
 }
 
 export class HeavyweightState extends BadState {
-  constructor(magnitude = 1) {
+  constructor() {
     super({
       id: 'state-heavyweight',
       name: '重量化',
-      magnitude,
+      magnitude: 1,
       cardDefinition: {
         title: '重量化',
         cardType: 'status',
@@ -46,8 +46,7 @@ export class HeavyweightState extends BadState {
   }
 
   override description(): string {
-    const stacks = this.magnitude ?? 0
-    return `攻撃ダメージを${50 * stacks}%増加し、攻撃回数-${stacks}`
+    return '被ダメージ+50%\n与攻撃回数-1\n（累積しない）'
   }
 
   override get priority(): number {
@@ -67,13 +66,9 @@ export class HeavyweightState extends BadState {
       return params
     }
 
-    const stacks = Math.max(0, this.magnitude ?? 0)
-    if (stacks === 0) {
-      return params
-    }
-
-    const multiplier = 1 + stacks * 0.5
-    const reducedCount = Math.max(1, params.count - stacks)
+    // スタックしない前提で、固定倍率(+50%)と回数-1を適用する。
+    const multiplier = 1.5
+    const reducedCount = Math.max(1, params.count - 1)
 
     return {
       ...params,
