@@ -58,6 +58,7 @@ import { OpenWoundAction } from '@/domain/entities/actions/OpenWoundAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 import { StackedStressAction } from '@/domain/entities/actions/StackedStressAction'
+import { DeathMatchRelic, RepulsionRelic, LightweightCombatRelic, AdversityExcitementRelic } from '@/domain/entities/relics'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
@@ -146,6 +147,14 @@ const STANDARD_SAMPLE_ACTION_CLASSES: ActionConstructor[] = [
   FlurryAction,
   TackleAction,
 ]
+
+// 攻撃力支援レリック一覧
+const ATTACK_SUPPORT_RELICS = [
+  DeathMatchRelic,
+  RepulsionRelic,
+  LightweightCombatRelic,
+  AdversityExcitementRelic,
+]
 const STANDARD_SAMPLE_STATE_CLASSES: StateConstructor[] = [CorrosionState, EvilThoughtState]
 
 /**
@@ -232,6 +241,10 @@ export function listStandardSampleCardBlueprints(): CardBlueprint[] {
     (entry): entry is CardBlueprint => entry !== null,
   )
   return [...actionBlueprints, ...stateBlueprints]
+}
+
+export function listAttackSupportRelicClassNames(): string[] {
+  return ATTACK_SUPPORT_RELICS.map((ctor) => ctor.name)
 }
 
 export function getRelicInfoByClassName(className: string): RelicInfo | null {

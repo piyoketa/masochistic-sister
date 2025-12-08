@@ -4,11 +4,11 @@ import type { Battle } from '@/domain/battle/Battle'
 import type { Player } from '../Player'
 
 /**
- * 逆境への興奮：手札状態異常を分析し打点上昇
+ * 逆境：手札状態異常を分析し打点上昇
  */
 export class AdversityExcitementRelic extends Relic {
   readonly id = 'adversity-excitement'
-  readonly name = '逆境への興奮'
+  readonly name = '逆境'
   readonly usageType = 'passive' as const
   readonly icon = '🔥'
 

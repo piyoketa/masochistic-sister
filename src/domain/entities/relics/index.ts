@@ -11,6 +11,7 @@ import { ArcaneAdaptationRelic } from './ArcaneAdaptationRelic'
 import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
 import { MemorySaintRelic } from './MemorySaintRelic'
 import { RepulsionRelic } from './RepulsionRelic'
+import { DeathMatchRelic } from './DeathMatchRelic'
 
 export type { Relic } from './Relic'
 
@@ -27,4 +28,5 @@ export const DEFAULT_PLAYER_RELICS: Relic[] = [
   new ArcaneAdaptationRelic(),
   new ThoroughPreparationRelic(),
   new RepulsionRelic(),
+  new DeathMatchRelic(),
 ]

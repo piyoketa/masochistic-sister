@@ -12,12 +12,13 @@ import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import {
   listStandardSkillRewardBlueprints,
   listAttackSupportRewardBlueprints,
+  listAttackSupportRelicClassNames,
   type CardBlueprint,
 } from '@/domain/library/Library'
 
 const SKILL_CARD_CANDIDATES = listStandardSkillRewardBlueprints()
 const LEVEL2_RELIC_CANDIDATES = ['ArcaneAdaptationRelic', 'NoViolenceRelic', 'PureBodyRelic', 'ActionForceRelic']
-const LEVEL6_RELIC_CANDIDATES = ['LightweightCombatRelic', 'AdversityExcitementRelic']
+const LEVEL6_RELIC_CANDIDATES = listAttackSupportRelicClassNames()
 const ATTACK_SUPPORT_CARD_CANDIDATES = listAttackSupportRewardBlueprints()
 // 万が一ビルド時に候補生成が空になった場合に備え、標準スキル候補でフォールバックする。
 const LEVEL5_CARD_CANDIDATES =
