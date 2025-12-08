@@ -9,6 +9,7 @@ import { DevoutBelieverRelic } from './DevoutBelieverRelic'
 import { ArcaneAdaptationRelic } from './ArcaneAdaptationRelic'
 import { MemorySaintRelic } from './MemorySaintRelic'
 import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
+import { RepulsionRelic } from './RepulsionRelic'
 import type { Relic, RelicUsageType } from './Relic'
 
 export type RelicInfo = {
@@ -32,6 +33,7 @@ const RELIC_FACTORIES: Record<string, () => Relic> = {
   DevoutBelieverRelic: () => new DevoutBelieverRelic(),
   ArcaneAdaptationRelic: () => new ArcaneAdaptationRelic(),
   ThoroughPreparationRelic: () => new ThoroughPreparationRelic(),
+  RepulsionRelic: () => new RepulsionRelic(),
 }
 
 export function listRelicClassNames(): string[] {

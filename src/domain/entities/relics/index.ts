@@ -10,6 +10,7 @@ import { DevoutBelieverRelic } from './DevoutBelieverRelic'
 import { ArcaneAdaptationRelic } from './ArcaneAdaptationRelic'
 import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
 import { MemorySaintRelic } from './MemorySaintRelic'
+import { RepulsionRelic } from './RepulsionRelic'
 
 export type { Relic } from './Relic'
 
@@ -25,4 +26,5 @@ export const DEFAULT_PLAYER_RELICS: Relic[] = [
   new DevoutBelieverRelic(),
   new ArcaneAdaptationRelic(),
   new ThoroughPreparationRelic(),
+  new RepulsionRelic(),
 ]

@@ -17,6 +17,7 @@ import type { Battle } from '../../battle/Battle'
 import type { Enemy } from '../Enemy'
 import type { Player } from '../Player'
 import type { State } from '../State'
+import type { Relic } from '../relics'
 import { Damages, type DamageEffectType, type DamageOutcome } from '../Damages'
 import {
   TargetEnemyOperation,
@@ -89,7 +90,8 @@ export abstract class Attack extends Action {
 
     const damages = this.calcDamages(context.source, defender, context.battle)
     const baseOutcomes = this.initializeOutcomes(damages)
-    this.applyPostHitModifiers({
+    // Stateとレリックのポストヒット修正を適用し、レリックの発火だけを戻り値で把握する
+    const postHitRelicEffects = this.applyPostHitModifiers({
       battle: context.battle,
       attacker: context.source,
       defender,
@@ -129,6 +131,8 @@ export abstract class Attack extends Action {
       defender,
       damages,
       outcomes: damages.outcomes,
+      attackerRelicEffects: postHitRelicEffects.attackerRelicEffects,
+      defenderRelicEffects: postHitRelicEffects.defenderRelicEffects,
     })
 
     this.applyInflictedStates(context, defender)
@@ -232,9 +236,14 @@ export abstract class Attack extends Action {
     defender: Player | Enemy
     damages: Damages
     outcomes: DamageOutcome[]
-  }): void {
+  }): { attackerRelicEffects: Set<Relic>; defenderRelicEffects: Set<Relic> } {
     const attackerStates = this.collectStates(params.attacker, params.battle)
     const defenderStates = this.collectStates(params.defender, params.battle)
+    const relics = params.battle
+      .getRelicInstances()
+      .filter((relic) => relic.isActive({ battle: params.battle, player: params.battle.player }))
+    const attackerRelicEffects = new Set<Relic>()
+    const defenderRelicEffects = new Set<Relic>()
 
     for (let index = 0; index < params.outcomes.length; index += 1) {
       const outcome = params.outcomes[index]!
@@ -258,7 +267,31 @@ export abstract class Attack extends Action {
         index,
         role: 'defender',
       })
+
+      this.applyPostHitForRelics({
+        relics,
+        battle: params.battle,
+        attacker: params.attacker,
+        defender: params.defender,
+        damages: params.damages,
+        outcome,
+        index,
+        role: 'attacker',
+        recorded: attackerRelicEffects,
+      })
+      this.applyPostHitForRelics({
+        relics,
+        battle: params.battle,
+        attacker: params.attacker,
+        defender: params.defender,
+        damages: params.damages,
+        outcome,
+        index,
+        role: 'defender',
+        recorded: defenderRelicEffects,
+      })
     }
+    return { attackerRelicEffects, defenderRelicEffects }
   }
 
   private applyPostHitForStates(params: {
@@ -295,6 +328,45 @@ export abstract class Attack extends Action {
         beforeEffect !== params.outcome.effectType
       ) {
         params.damages.registerPostHitState(params.role, state)
+      }
+    }
+  }
+
+  private applyPostHitForRelics(params: {
+    relics: Relic[]
+    battle: Battle
+    attacker: Player | Enemy
+    defender: Player | Enemy
+    damages: Damages
+    outcome: DamageOutcome
+    index: number
+    role: 'attacker' | 'defender'
+    recorded: Set<Relic>
+  }): void {
+    for (const relic of params.relics) {
+      if (!relic.isPostHitModifier()) {
+        continue
+      }
+
+      const beforeDamage = params.outcome.damage
+      const beforeEffect = params.outcome.effectType
+      const reacted = relic.onHitResolved({
+        battle: params.battle,
+        attack: this,
+        attacker: params.attacker,
+        defender: params.defender,
+        damages: params.damages,
+        index: params.index,
+        outcome: params.outcome,
+        role: params.role,
+      })
+
+      if (
+        reacted ||
+        beforeDamage !== params.outcome.damage ||
+        beforeEffect !== params.outcome.effectType
+      ) {
+        params.recorded.add(relic)
       }
     }
   }
@@ -339,6 +411,8 @@ export abstract class Attack extends Action {
     defender: Player | Enemy
     damages: Damages
     outcomes: readonly DamageOutcome[]
+    attackerRelicEffects: Set<Relic>
+    defenderRelicEffects: Set<Relic>
   }): void {
     const context = {
       battle: params.battle,
@@ -356,6 +430,14 @@ export abstract class Attack extends Action {
     for (const state of this.resolvePostHitStates(params.defender, params.damages.postHitDefenderStateEffects)) {
       state.onDamageSequenceResolved(context)
     }
+
+    for (const relic of this.resolvePostHitRelics(params.attackerRelicEffects, params.battle)) {
+      relic.onDamageSequenceResolved(context)
+    }
+
+    for (const relic of this.resolvePostHitRelics(params.defenderRelicEffects, params.battle)) {
+      relic.onDamageSequenceResolved(context)
+    }
   }
 
   private resolvePostHitStates(entity: Player | Enemy, recorded: readonly State[]): State[] {
@@ -364,6 +446,15 @@ export abstract class Attack extends Action {
     }
 
     return this.collectStates(entity).filter((state) => state.isPostHitModifier())
+  }
+
+  private resolvePostHitRelics(recorded: Set<Relic>, battle: Battle): Relic[] {
+    if (recorded.size > 0) {
+      return Array.from(recorded)
+    }
+    return battle
+      .getRelicInstances()
+      .filter((relic) => relic.isPostHitModifier() && relic.isActive({ battle, player: battle.player }))
   }
 
   private hasDrainEffect(context: ActionContext): boolean {

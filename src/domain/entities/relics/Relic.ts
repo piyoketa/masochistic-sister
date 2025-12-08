@@ -56,4 +56,27 @@ export abstract class Relic {
   }): number {
     return 0
   }
+
+  /**
+   * レリックがポストヒット系の修正を行うかを返す。デフォルトは false。
+   */
+  isPostHitModifier(): boolean {
+    return false
+  }
+
+  /**
+   * ダメージヒット単位のフック。State と同様に、変化があれば true を返す。
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onHitResolved(_context: import('../State').DamageHitContext): boolean {
+    return false
+  }
+
+  /**
+   * ダメージシーケンス終了時のフック。State と同様のタイミングで呼ばれる。
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onDamageSequenceResolved(_context: import('../State').DamageSequenceContext): void {
+    // デフォルトは何もしない
+  }
 }
