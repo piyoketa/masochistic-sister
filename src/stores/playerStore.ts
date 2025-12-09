@@ -42,10 +42,10 @@ export const usePlayerStore = defineStore('player', {
       this.ensureInitialized()
       const cards = this.deck.map((blueprint) => createCardFromBlueprint(blueprint, cardRepository))
       // 状態異常カードは山札の先頭に集め、各グループ内でシャッフルする
-      const statusCards = cards.filter((card) => card.type === 'status')
-      const otherCards = cards.filter((card) => card.type !== 'status')
-      const ordered = [...shuffle(statusCards), ...shuffle(otherCards)]
-      return ordered
+      // const statusCards = cards.filter((card) => card.type === 'status')
+      // const otherCards = cards.filter((card) => card.type !== 'status')
+      // const ordered = [...shuffle(statusCards), ...shuffle(otherCards)]
+      return shuffle(cards)
     },
     addCard(blueprint: CardBlueprint): void {
       this.ensureInitialized()
