@@ -3,11 +3,15 @@ import type { Card } from '@/domain/entities/Card'
 
 type BattleSnapshot = Awaited<ReturnType<Battle['getSnapshot']>>
 
-export function requireCardId(card: Card | undefined, context?: string): number {
-  if (!card || card.id === undefined) {
+export function requireCardId(
+  card: (Card | undefined) & { idValue?: number },
+  context?: string,
+): number {
+  const id = card?.id ?? card?.idValue
+  if (id === undefined) {
     throw new Error(context ? `${context} のカードIDが取得できません` : 'Card missing repository id')
   }
-  return card.id
+  return id
 }
 
 export function requireEnemyId(enemies: BattleSnapshot['enemies'], name: string): number {

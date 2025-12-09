@@ -1,11 +1,10 @@
 <!--
 RewardView の責務:
-- Battle 勝利時に rewardStore に保持された褒章カード一覧を表示し、全てまとめてデッキへ追加する。
-- 受け取り処理完了後に fieldStore を更新してフィールドへ戻る遷移を提供する。
+- Battle 勝利時に rewardStore に保持された褒章カード一覧を表示し、選択したカードをデッキへ追加する。
+- HP回復・ゴールド獲得など数値報酬を適用し、受け取り後に fieldStore を更新してフィールドへ戻る遷移を提供する。
 
 非責務:
 - 報酬の計算（BattleReward に委譲）やバトル進行。
-- HP/所持金などの数値報酬付与（現仕様では取り扱わない）。
 -->
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
@@ -34,6 +33,8 @@ const selectedCardId = ref<string | null>(null)
 const rewardSummary = computed(() => ({
   defeatedCount: reward.value?.defeatedCount ?? 0,
   cardCount: reward.value?.cards.length ?? 0,
+  goldGain: reward.value?.goldGain ?? 0,
+  hpHeal: reward.value?.hpHeal ?? 0,
 }))
 
 const rewardBlueprints = computed<CardBlueprint[]>(() => reward.value?.cards ?? [])
@@ -80,9 +81,15 @@ async function handleClaimAll(): Promise<void> {
       addCardToDeck(chosen)
     }
     // HP回復を適用
-    if (reward.value.hpHeal > 0) {
-      playerStore.healHp(reward.value.hpHeal)
+    const hpHeal = reward.value.hpHeal
+    if (hpHeal > 0) {
+      playerStore.healHp(hpHeal)
       audioStore.playSe('/sounds/fields/gain_hp.mp3')
+    }
+    const goldGain = reward.value.goldGain
+    if (goldGain > 0) {
+      playerStore.addGold(goldGain)
+      // ゴールド獲得SEが未定のためHP回復と同じSEは流さず、付与のみ行う
     }
     fieldStore.markCurrentCleared()
     rewardStore.clear()
@@ -103,13 +110,13 @@ async function handleClaimAll(): Promise<void> {
           <p class="subtitle">デッキに加えるカードを１枚選んでください。</p>
         </div>
         <div class="reward-summary">
-          <!-- <div class="summary-chip">
-            <span class="chip-label">撃破</span>
-            <span class="chip-value">{{ rewardSummary.defeatedCount }} 体</span>
-          </div> -->
           <div class="summary-chip">
             <span class="chip-label">HP回復</span>
-            <span class="chip-value">+{{ reward?.hpHeal ?? 0 }}</span>
+            <span class="chip-value">+{{ rewardSummary.hpHeal }}</span>
+          </div>
+          <div class="summary-chip">
+            <span class="chip-label">ゴールド</span>
+            <span class="chip-value">+{{ rewardSummary.goldGain }}</span>
           </div>
           <!-- <div class="summary-chip">
             <span class="chip-label">褒章カード</span>

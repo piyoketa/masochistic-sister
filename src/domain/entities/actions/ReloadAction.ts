@@ -19,9 +19,9 @@ import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 export class ReloadAction extends Skill {
   constructor() {
     super({
-      name: '日の終わり',
+      name: '再装填',
       cardDefinition: {
-        title: '日の終わり',
+        title: '再装填',
         cardType: 'skill',
         type: new SkillTypeCardTag(),
         target: new SelfTargetCardTag(),

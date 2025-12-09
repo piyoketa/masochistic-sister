@@ -13,6 +13,7 @@ import type { CardBlueprint } from '@/domain/library/Library'
 export interface PendingReward {
   battleId: string
   hpHeal: number
+  goldGain: number
   defeatedCount: number
   cards: CardBlueprint[]
 }

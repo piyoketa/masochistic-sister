@@ -567,6 +567,7 @@ async function handleOpenReward(): Promise<void> {
   rewardStore.setReward({
     battleId: battle.id,
     hpHeal: reward.hpHeal,
+    goldGain: reward.goldGain,
     defeatedCount: reward.defeatedCount,
     cards: reward.cards,
   })

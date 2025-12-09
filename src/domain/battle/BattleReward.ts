@@ -2,7 +2,7 @@
  * BattleReward
  * ============
  * 勝利済み Battle から報酬を計算する責務を持つクラス。
- * - 現仕様では褒賞カード候補（[新規]タグ付き）のみを算出し、HP/所持金は扱わない。
+ * - 褒賞カード候補（[新規]タグ付き）・HP回復量・所持金を算出し、RewardView へ渡す。
  * - 付与処理は RewardView 側で行うため、ここでは純粋に計算とデータ整形のみを担う。
  */
 import type { Battle } from './Battle'
@@ -12,6 +12,7 @@ import { buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Lib
 export interface ComputedBattleReward {
   defeatedCount: number
   hpHeal: number
+  goldGain: number
   cards: CardBlueprint[]
 }
 
@@ -22,7 +23,7 @@ export class BattleReward {
 
   /** 現時点のバトル状態から報酬内容を算出する。 */
   compute(): ComputedBattleReward {
-    const defeatedCount = this.battle.enemyTeam.members.length
+    const defeatedCount = this.countDefeatedEnemies()
     const newCards = this.collectNewCards()
     const cardBlueprints = newCards
       .map((card) => this.toRewardBlueprint(card))
@@ -31,8 +32,13 @@ export class BattleReward {
     return {
       defeatedCount,
       hpHeal: 75,
+      goldGain: defeatedCount * 10,
       cards: cardBlueprints,
     }
+  }
+
+  private countDefeatedEnemies(): number {
+    return this.battle.enemyTeam.members.filter((enemy) => enemy.status === 'defeated').length
   }
 
   /** 手札・山札・捨て札から [新規] タグ付きカードを抽出する。 */
