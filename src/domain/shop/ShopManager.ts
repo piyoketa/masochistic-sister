@@ -36,11 +36,14 @@ export type RelicOffer = {
 type ShopState = {
   cards: CardOffer[]
   relics: RelicOffer[]
-  heal: { amount: number; basePrice: number; purchased: number; price: number }
+  heal: { amount: number; price: number; purchased: number }
 }
 
-const HEAL_AMOUNT = 50
-const HEAL_PRICE = 3
+const HEAL_OPTIONS: Array<{ amount: number; price: number }> = [
+  { amount: 50, price: 50 },
+  { amount: 75, price: 90 },
+  { amount: 100, price: 150 },
+]
 const CARD_PRICE = 3
 const CARD_PRICE_SALE = 1
 const RELIC_PRICE = 5
@@ -50,7 +53,7 @@ export class ShopManager {
   private state: ShopState = {
     cards: [],
     relics: [],
-    heal: { amount: HEAL_AMOUNT, basePrice: HEAL_PRICE, purchased: 0, price: HEAL_PRICE },
+    heal: { ...HEAL_OPTIONS[0], purchased: 0 },
   }
 
   /**
@@ -80,7 +83,7 @@ export class ShopManager {
     this.state = {
       cards: cardOffers,
       relics: relicOffers,
-      heal: { amount: HEAL_AMOUNT, basePrice: HEAL_PRICE, purchased: 0, price: HEAL_PRICE },
+      heal: { ...HEAL_OPTIONS[0], purchased: 0 },
     }
   }
 
@@ -102,10 +105,12 @@ export class ShopManager {
   }
 
   markHealPurchased(): void {
+    const nextIndex = Math.min(this.state.heal.purchased + 1, HEAL_OPTIONS.length - 1)
+    const nextOption = HEAL_OPTIONS[nextIndex]
     this.state.heal = {
-      ...this.state.heal,
+      amount: nextOption.amount,
+      price: nextOption.price,
       purchased: this.state.heal.purchased + 1,
-      price: this.state.heal.basePrice * (this.state.heal.purchased + 2),
     }
   }
 

@@ -127,6 +127,11 @@ const demoLinks: LinkEntry[] = [
     description: 'ActionCardの縁を光らせるアニメーション実験',
     to: '/lab/card-glow',
   },
+  {
+    label: '悪魔の像(報酬ビュー直行)',
+    description: 'DevilStatueRewardView へ直接遷移して呪い選択を確認',
+    to: { name: 'devil-statue-reward' },
+  },
 ]
 
 const fieldLinks: LinkEntry[] = [
@@ -134,6 +139,11 @@ const fieldLinks: LinkEntry[] = [
     label: 'フィールドに出る',
     description: 'First Field へ進む',
     to: { name: 'field-first' },
+  },
+  {
+    label: '悪魔の像イベント',
+    description: '呪いを選んで受け入れる単一ノードのフィールド',
+    to: { name: 'field-devil-statue' },
   },
 ]
 

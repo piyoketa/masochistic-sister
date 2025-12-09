@@ -56,6 +56,10 @@ export abstract class Field {
     return node.type === 'fixed-relic-reward'
   }
 
+  isDevilStatueNode(node: FieldNode): node is import('./FieldNode').DevilStatueNode {
+    return node.type === 'devil-statue'
+  }
+
   isBossEnemyNode(node: FieldNode): node is BossEnemyNode {
     return node.type === 'boss-enemy'
   }

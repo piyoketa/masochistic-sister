@@ -28,10 +28,10 @@ export class BattleReward {
     const cardBlueprints = newCards
       .map((card) => this.toRewardBlueprint(card))
       .filter((entry): entry is CardBlueprint => Boolean(entry))
-    // HP回復は固定値 75 とする
+    // HP回復は固定値 50 とする
     return {
       defeatedCount,
-      hpHeal: 75,
+      hpHeal: 50,
       goldGain: defeatedCount * 10,
       cards: cardBlueprints,
     }

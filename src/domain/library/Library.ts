@@ -55,6 +55,7 @@ import { PeelingScabAction } from '@/domain/entities/actions/PeelingScabAction'
 import { SoloBodyAction } from '@/domain/entities/actions/SoloBodyAction'
 import { DeepBreathAction } from '@/domain/entities/actions/DeepBreathAction'
 import { OpenWoundAction } from '@/domain/entities/actions/OpenWoundAction'
+import { JointLockAction } from '@/domain/entities/actions/JointLockAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 import { StackedStressAction } from '@/domain/entities/actions/StackedStressAction'
@@ -85,6 +86,7 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   SoloBodyAction,
   DeepBreathAction,
   OpenWoundAction,
+  JointLockAction,
   StackedStressAction,
 ]
 
@@ -108,6 +110,7 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   SoloBodyAction,
   DeepBreathAction,
   OpenWoundAction,
+  JointLockAction,
   StackedStressAction,
   PeelingScabAction,
 ]
@@ -118,6 +121,7 @@ const ATTACK_SUPPORT_ACTION_CLASSES: ActionConstructor[] = [
   OpenWoundAction,
   PeelingScabAction,
   LifeDrainSkillAction,
+  JointLockAction,
 ]
 
 // フィールド報酬スキルの候補（旧 SKILL_CARD_CANDIDATES 相当）

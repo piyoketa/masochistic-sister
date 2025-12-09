@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildDefaultDeck } from '@/domain/entities/decks'
 import { listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
+import { MemorySaintRelic } from '@/domain/entities/relics/MemorySaintRelic'
 import { createCardFromBlueprint, buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
 import { Card } from '@/domain/entities/Card'
 import { deleteSlot, listSlots, loadSlot, saveSlot, type PlayerSaveData, type SaveSlotSummary } from '@/utils/saveStorage'
@@ -9,7 +10,8 @@ import { deleteSlot, listSlots, loadSlot, saveSlot, type PlayerSaveData, type Sa
 // store外からデッキ型を参照できるように明示的に再エクスポートする
 export type { CardId, CardBlueprint } from '@/domain/library/Library'
 
-const DEFAULT_RELICS: string[] = []
+// 初期所持レリックに記憶の聖印を付与しておく
+const DEFAULT_RELICS: string[] = [MemorySaintRelic.name]
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({

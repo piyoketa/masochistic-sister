@@ -69,6 +69,12 @@ const router = createRouter({
       props: { fieldId: 'first-field' },
     },
     {
+      path: '/field/devil-statue',
+      name: 'field-devil-statue',
+      component: () => import('@/views/FieldView.vue'),
+      props: { fieldId: 'devil-statue' },
+    },
+    {
       path: '/lab/action-cards',
       name: 'action-card-lab',
       component: () => import('@/views/ActionCardLabView.vue'),
@@ -114,6 +120,11 @@ const router = createRouter({
       component: () => import('@/views/CardRewardView.vue'),
     },
     {
+      path: '/field/start-story',
+      name: 'start-story',
+      component: () => import('@/views/StartStoryView.vue'),
+    },
+    {
       path: '/field/relic-reward',
       name: 'relic-reward',
       component: () => import('@/views/RelicRewardView.vue'),
@@ -132,6 +143,11 @@ const router = createRouter({
       path: '/field/fixed-relic-reward',
       name: 'fixed-relic-reward',
       component: () => import('@/views/FixedRelicRewardView.vue'),
+    },
+    {
+      path: '/field/devil-statue-reward',
+      name: 'devil-statue-reward',
+      component: () => import('@/views/DevilStatueRewardView.vue'),
     },
     {
       path: '/reward',

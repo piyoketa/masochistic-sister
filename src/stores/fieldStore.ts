@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { SampleField } from '@/fields/domains/SampleField'
 import { FirstField } from '@/fields/domains/FirstField'
+import { DevilStatueField } from '@/fields/domains/DevilStatueField'
 import type { Field } from '@/fields/domains/Field'
 import type { FieldNode } from '@/fields/domains/FieldNode'
 import { usePlayerStore } from './playerStore'
@@ -38,6 +39,8 @@ export const useFieldStore = defineStore('field', {
       playerStore.ensureInitialized()
       if (fieldId === 'first-field') {
         this.field = new FirstField(playerStore.relics)
+      } else if (fieldId === 'devil-statue') {
+        this.field = new DevilStatueField()
       } else {
         this.field = new SampleField(playerStore.relics)
       }

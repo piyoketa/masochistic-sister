@@ -26,6 +26,8 @@ const props = withDefaults(
     selectable?: boolean
     hoverEffect?: boolean
     selectedCardId?: string | null
+    selectedIds?: string[]
+    selectionMode?: 'single' | 'multiple'
     noHeightLimit?: boolean
     forcePlayable?: boolean
   }>(),
@@ -35,6 +37,8 @@ const props = withDefaults(
     selectable: false,
     hoverEffect: true,
     selectedCardId: null,
+    selectedIds: () => [] as string[],
+    selectionMode: 'single',
     noHeightLimit: false,
     forcePlayable: false,
   },
@@ -45,6 +49,7 @@ const emit = defineEmits<{
   (event: 'card-leave', payload: CardInfo): void
   (event: 'card-click', payload: CardInfo): void
   (event: 'update:selectedCardId', value: string | null): void
+  (event: 'update:selectedIds', value: string[]): void
 }>()
 
 const hoveredCardId = ref<string | null>(null)
@@ -70,7 +75,10 @@ function itemClasses(card: CardInfo): Record<string, boolean> {
     'card-list__item--hovered': hoveredCardId.value === card.id,
     'card-list__item--selectable': props.selectable,
     'card-list__item--selected':
-      props.selectable && props.selectedCardId !== null && props.selectedCardId === card.id,
+      props.selectable &&
+      (props.selectionMode === 'multiple'
+        ? props.selectedIds.includes(card.id)
+        : props.selectedCardId !== null && props.selectedCardId === card.id),
   }
 }
 
@@ -92,8 +100,18 @@ function handleMouseLeave(card: CardInfo): void {
 
 function handleClick(card: CardInfo): void {
   if (props.selectable) {
-    const nextValue = props.selectedCardId === card.id ? null : card.id
-    emit('update:selectedCardId', nextValue)
+    if (props.selectionMode === 'multiple') {
+      const current = new Set(props.selectedIds)
+      if (current.has(card.id)) {
+        current.delete(card.id)
+      } else {
+        current.add(card.id)
+      }
+      emit('update:selectedIds', Array.from(current))
+    } else {
+      const nextValue = props.selectedCardId === card.id ? null : card.id
+      emit('update:selectedCardId', nextValue)
+    }
   }
   emit('card-click', card)
 }

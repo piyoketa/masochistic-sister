@@ -33,14 +33,12 @@ export class IntoxicationState extends BadState {
 
   override description(): string {
     const delta = this.magnitude ?? 0
-    // 将来的に Action.cost で酩酊を参照し、記憶カードのコストを delta 増加させる想定。
-    return `「記憶」タグのカードを使うとき、コストが${delta}増加する`
+    return `被虐の記憶のコスト+${delta}`
   }
 
-  override costAdjustment(context?: { cardTags?: CardTag[] }): number {
-    const tags = context?.cardTags ?? []
-    const hasMemory = tags.some((tag) => tag.id === 'tag-memory')
-    if (!hasMemory) return 0
+  override costAdjustment(context?: { cardType?: import('../CardDefinition').CardDefinition['cardType'] }): number {
+    const isAttack = context?.cardType === 'attack'
+    if (!isAttack) return 0
     return Math.max(0, Math.floor(this.magnitude ?? 0))
   }
 

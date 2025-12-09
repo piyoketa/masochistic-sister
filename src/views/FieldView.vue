@@ -117,6 +117,10 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
   if (!debugMode.value && (!reachable || alreadyCleared)) {
     return
   }
+  if (node.type === 'start') {
+    await router.push({ path: '/field/start-story' })
+    return
+  }
   fieldStore.selectNextNode(nodeIndex)
   if (fieldStore.field.isEnemyNode(node)) {
     await router.push({ path: `/battle/${node.enemyTeamId}` })
@@ -140,6 +144,10 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
   }
   if (node.type === 'fixed-relic-reward') {
     await router.push({ path: '/field/fixed-relic-reward' })
+    return
+  }
+  if (node.type === 'devil-statue') {
+    await router.push({ path: '/field/devil-statue-reward' })
     return
   }
 }

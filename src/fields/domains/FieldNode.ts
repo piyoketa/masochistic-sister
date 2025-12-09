@@ -9,6 +9,7 @@ export type FieldNodeType =
   | 'random-card-reward'
   | 'random-relic-reward'
   | 'fixed-relic-reward'
+  | 'devil-statue'
 
 export interface FieldNode {
   id: string
@@ -59,6 +60,14 @@ export interface FixedRelicRewardNode extends FieldNode {
   type: 'fixed-relic-reward'
   candidateRelics: string[]
   selectedRelic: string
+}
+
+export interface DevilStatueNode extends FieldNode {
+  type: 'devil-statue'
+  /** 呪い候補（状態異常カード） */
+  curses: CardBlueprint[]
+  /** 選択して獲得する枚数 */
+  selectionCount: number
 }
 
 export interface BossEnemyNode extends FieldNode {

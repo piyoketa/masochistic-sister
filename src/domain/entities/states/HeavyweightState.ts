@@ -46,7 +46,7 @@ export class HeavyweightState extends BadState {
   }
 
   override description(): string {
-    return '被ダメージ+50%\n与攻撃回数-1\n（累積しない）'
+    return '与ダメージ+50%\n与攻撃回数-1\n（累積しない）'
   }
 
   override get priority(): number {
