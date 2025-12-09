@@ -7,11 +7,11 @@ import { EnemySingleTargetCardTag, MultiAttackCardTag } from '../cardTags'
 export class FlurryAction extends Attack {
   constructor() {
     super({
-      name: '突き刺す',
-      baseDamage: new Damages({ baseAmount: 10, baseCount: 2, type: 'multi' }),
+      name: '乱れ突き',
+      baseDamage: new Damages({ baseAmount: 10, baseCount: 2, type: 'multi', cardId: 'flurry' }),
       effectType: 'slash',
       cardDefinition: {
-        title: '突き刺す',
+        title: '乱れ突き',
         cardType: 'attack',
         type: new MultiAttackCardTag(),
         target: new EnemySingleTargetCardTag(),

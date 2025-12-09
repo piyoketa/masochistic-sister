@@ -7,7 +7,7 @@ export class PoisonStingAction extends Attack {
   constructor() {
     super({
       name: '毒針',
-      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
+      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single', cardId: 'poison-sting' }),
       effectType: 'poison',
       inflictStates: [() => new PoisonState(5)],
       cardDefinition: {

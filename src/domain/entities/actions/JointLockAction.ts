@@ -7,7 +7,7 @@ export class JointLockAction extends Attack {
   constructor() {
     super({
       name: '締め技',
-      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
+      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single', cardId: 'joint-lock' }),
       effectType: 'grapple',
       inflictStates: [() => new JointDamageState(1)],
       cardDefinition: {

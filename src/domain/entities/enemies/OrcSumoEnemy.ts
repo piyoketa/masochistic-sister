@@ -14,6 +14,7 @@ export class OrcSumoEnemy extends Enemy {
         baseAmount: 20,
         baseCount: 2,
         type: 'multi',
+        cardId: 'flurry',
       }),
     )
     super({
@@ -21,7 +22,7 @@ export class OrcSumoEnemy extends Enemy {
       maxHp: 40,
       currentHp: 40,
       actions: [flurry, new FattenAction()],
-      states: [new HeavyweightState(1)],
+      states: [new HeavyweightState()],
       allyBuffWeights: { tailwind: 30 },
       image: '/assets/enemies/orc.jpg',
       ...overrides,

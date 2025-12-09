@@ -11,7 +11,7 @@ export class HighOrcLancerEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const flurry = new FlurryAction().cloneWithDamages(
       // 10×2の連続攻撃。FlurryActionのデフォルトと同値だが明示しておく。
-      new Damages({ baseAmount: 10, baseCount: 2, type: 'multi' }),
+      new Damages({ baseAmount: 10, baseCount: 2, type: 'multi', cardId: 'flurry' }),
     )
     super({
       name: 'ハイオークランサー',

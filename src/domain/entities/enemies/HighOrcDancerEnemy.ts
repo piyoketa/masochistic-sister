@@ -14,6 +14,7 @@ export class HighOrcDancerEnemy extends Enemy {
         baseAmount: 10,
         baseCount: 2,
         type: 'multi',
+        cardId: 'flurry',
       }),
     )
     super({

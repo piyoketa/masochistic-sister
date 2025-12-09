@@ -22,6 +22,7 @@ import type {
   TargetEnemyAvailabilityEntry,
 } from '@/domain/entities/operations'
 import type { ViewManager } from '@/view/ViewManager'
+import type { CardInfo } from '@/types/battle'
 import type { StageEventPayload } from '@/types/animation'
 import { useHandPresentation, type HandEntry } from './composables/useHandPresentation'
 import { useHandInteraction } from './composables/useHandInteraction'

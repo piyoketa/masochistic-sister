@@ -8,7 +8,7 @@ import { BuildUpAction } from '../actions/BuildUpAction'
 export class OrcHeroEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const flurry = new FlurryAction().cloneWithDamages(
-      new Damages({ baseAmount: 10, baseCount: 2, type: 'multi' }),
+      new Damages({ baseAmount: 10, baseCount: 2, type: 'multi', cardId: 'flurry' }),
     )
 
     super({

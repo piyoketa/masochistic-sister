@@ -9,7 +9,7 @@ import { Damages } from '../Damages'
 export class DrunkOrcEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const flurry = new FlurryAction().cloneWithDamages(
-      new Damages({ baseAmount: 5, baseCount: 2, type: 'multi' }),
+      new Damages({ baseAmount: 5, baseCount: 2, type: 'multi', cardId: 'flurry' }),
     )
     super({
       name: '酒飲みオーク',

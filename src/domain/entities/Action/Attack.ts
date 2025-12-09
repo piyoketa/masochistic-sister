@@ -72,6 +72,7 @@ export abstract class Attack extends Action {
       baseAmount: damages.amount,
       baseCount: damages.count,
       type: damages.type,
+      cardId: damages.cardId,
     })
     ;(clone as unknown as { props: BaseActionProps }).props = mergedProps
 
@@ -153,10 +154,12 @@ export abstract class Attack extends Action {
   protected onAfterDamage(_context: ActionContext, _damages: Damages, _defender: Player | Enemy): void {}
 
   calcDamages(attacker: Player | Enemy, defender: Player | Enemy, battle?: Battle): Damages {
+    const cardId = this.getCardId()
     return new Damages({
       baseAmount: this.baseProfile.baseAmount,
       baseCount: this.baseProfile.baseCount,
       type: this.baseProfile.type,
+      cardId,
       attackerStates: this.collectStates(attacker, battle),
       defenderStates: this.collectStates(defender, battle),
       context: battle
@@ -165,6 +168,7 @@ export abstract class Attack extends Action {
             attack: this,
             attacker,
             defender,
+            cardId,
           }
         : undefined,
     })

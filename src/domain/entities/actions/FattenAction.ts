@@ -10,9 +10,9 @@ export class FattenAction extends Attack {
   constructor() {
     super({
       name: '太らせる',
-      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
+      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single', cardId: 'fatten' }),
       effectType: 'impact',
-      inflictStates: [() => new HeavyweightState(1)],
+      inflictStates: [() => new HeavyweightState()],
       cardDefinition: {
         title: '太らせる',
         cardType: 'attack',

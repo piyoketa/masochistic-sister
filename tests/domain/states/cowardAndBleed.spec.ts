@@ -112,7 +112,7 @@ describe('臆病と出血ステート', () => {
       attack,
       attacker,
       defender: enemy,
-      damages: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
+      damages: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'test-card' }),
       index: 0,
       outcome: { damage: 10, effectType: 'slash' } as DamageOutcome,
       role: 'defender',

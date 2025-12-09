@@ -55,6 +55,7 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
     baseAmount: damages.baseAmount,
     baseCount: damages.baseCount,
     type: damages.type,
+    cardId: cardId ?? action.getCardId(),
     attackerStates: enemy.getStates(),
     defenderStates: battle.player.getStates(battle),
   })

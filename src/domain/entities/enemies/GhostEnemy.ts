@@ -6,7 +6,7 @@ import { ScareAction } from '../actions/ScareAction'
 export class GhostEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const lightTackle = new TackleAction().cloneWithDamages(
-      new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
+      new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'tackle' }),
     )
     super({
       name: 'ゴースト',

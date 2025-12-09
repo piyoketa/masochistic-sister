@@ -15,7 +15,7 @@ import { Damages } from '../Damages'
 export class KamaitachiEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const kamaitachiFlurry = new FlurryAction().cloneWithDamages(
-      new Damages({ baseAmount: 5, baseCount: 4, type: 'multi' }),
+      new Damages({ baseAmount: 5, baseCount: 4, type: 'multi', cardId: 'flurry' }),
     )
 
     super({

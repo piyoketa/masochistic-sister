@@ -18,6 +18,7 @@ import {
   buildOperationLog,
   summarizeActionLogEntry,
   type ActionLogEntrySummary,
+  type AnimationBatchSummary,
   type OperationLogEntryConfig,
 } from './utils/battleLogTestUtils'
 import {
@@ -248,17 +249,18 @@ function sanitizePatch<T>(patch: T | undefined): T | undefined {
 
 function mergeMemoryCardOnlyBatches(
   batches: ActionLogEntrySummary['animationBatches'],
-): ActionLogEntrySummary['animationBatches'] {
-  if (!batches || batches.length === 0) {
-    return batches
+): AnimationBatchSummary[] {
+  const normalized = batches ?? []
+  if (normalized.length === 0) {
+    return []
   }
-  const merged: NonNullable<ActionLogEntrySummary['animationBatches']> = []
-  batches.forEach((batch) => {
+  const merged: AnimationBatchSummary[] = []
+  normalized.forEach((batch) => {
     const instructions = batch.instructions ?? []
     const isMemoryOnly =
-      instructions.length > 0 && instructions.every((instruction) => instruction.metadata?.stage === 'memory-card')
+      instructions.length > 0 && instructions.every((instruction) => readStage(instruction.metadata) === 'memory-card')
     if (isMemoryOnly && merged.length > 0) {
-      const last = merged[merged.length - 1]
+      const last = merged[merged.length - 1]!
       const lastInstructions = last.instructions ?? []
       // 旧remember-enemy-attackバッチをenemy-actionバッチへ統合して構造差分を吸収する
       last.instructions = [...lastInstructions, ...instructions.map((instruction) => ({ ...instruction }))]
@@ -270,4 +272,14 @@ function mergeMemoryCardOnlyBatches(
     }
   })
   return merged
+}
+
+function readStage(metadata: AnimationBatchSummary['instructions'][number]['metadata']): string | undefined {
+  if (!metadata || typeof metadata !== 'object') {
+    return undefined
+  }
+  if ('stage' in metadata) {
+    return (metadata as { stage?: string }).stage
+  }
+  return undefined
 }

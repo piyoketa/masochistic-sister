@@ -61,7 +61,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-bleed': (m) => new BleedState(m),
   'state-barrier': (m) => new BarrierState(m),
   'state-guardian-petal': (m) => new GuardianPetalState(m),
-  'state-heavyweight': (m) => new HeavyweightState(m),
+  'state-heavyweight': () => new HeavyweightState(),
   'state-lightweight': (m) => new LightweightState(m),
   'state-flight': () => new FlightState(),
   'state-poison': (m) => new PoisonState(m),

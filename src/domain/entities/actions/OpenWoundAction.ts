@@ -39,10 +39,10 @@ export class OpenWoundAction extends Skill {
   }
 
   protected override description(): string {
-    return '20ダメージを受ける。手札のアタックを1枚複製して手札に加える'
+    return 'HPを20失う\n手札の被虐の記憶を1枚複製する'
   }
 
-  protected override isActive(context?: { battle?: ActionContext['battle'] }): boolean {
+  override isActive(context?: { battle?: ActionContext['battle'] }): boolean {
     const battle = context?.battle
     if (!battle) {
       return false
@@ -93,4 +93,3 @@ export class OpenWoundAction extends Skill {
 function isAttack(card: Card): boolean {
   return card.action instanceof Attack
 }
-

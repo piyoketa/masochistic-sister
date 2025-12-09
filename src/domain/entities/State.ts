@@ -71,6 +71,7 @@ export class State {
     owner?: Player | Enemy
     cardTags?: CardTag[]
     cardType?: CardDefinition['cardType']
+    action?: import('./Action').Action
   }): number {
     return 0
   }

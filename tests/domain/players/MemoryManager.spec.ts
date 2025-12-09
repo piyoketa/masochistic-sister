@@ -22,7 +22,7 @@ class TestAttack extends Attack {
         target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
-      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
+      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single', cardId: 'memory-attack' }),
       ...(overrides ?? {}),
     })
   }
@@ -41,7 +41,7 @@ describe('MemoryManager', () => {
     } as unknown as Battle
 
     const attack = new TestAttack()
-    const damages = new Damages({ baseAmount: 12, baseCount: 2, type: 'multi' })
+    const damages = new Damages({ baseAmount: 12, baseCount: 2, type: 'multi', cardId: 'memory-attack' })
 
     const card = manager.rememberEnemyAttack({
       damages,

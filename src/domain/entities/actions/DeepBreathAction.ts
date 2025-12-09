@@ -36,7 +36,7 @@ export class DeepBreathAction extends Skill {
   }
 
   // isAvailable 要件を受け、名前を isActive として実装する
-  protected override isActive(context?: { battle?: ActionContext['battle'] }): boolean {
+  override isActive(context?: { battle?: ActionContext['battle'] }): boolean {
     const battle = context?.battle
     if (!battle) {
       return false
@@ -63,4 +63,3 @@ export class DeepBreathAction extends Skill {
     context.battle.drawForPlayer(1)
   }
 }
-

@@ -6,7 +6,7 @@ import { Damages } from '../Damages'
 export class OrcDancerEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const OrcFlurry = new FlurryAction().cloneWithDamages(
-      new Damages({ baseAmount: 10, baseCount: 2, type: 'multi' }),
+      new Damages({ baseAmount: 10, baseCount: 2, type: 'multi', cardId: 'flurry' }),
     )
 
     super({

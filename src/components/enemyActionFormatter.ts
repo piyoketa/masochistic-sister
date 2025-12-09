@@ -107,6 +107,9 @@ export function formatEnemyActionLabel(
       return { label, segments }
     }
 
+    if (includeTitle && action.title) {
+      segments.push({ text: action.title })
+    }
     segments.push({ text: '✨' })
     appendTarget()
     const label = segments.map((segment) => segment.text).join('')

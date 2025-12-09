@@ -183,7 +183,7 @@ export function createCardFromBlueprint(blueprint: CardBlueprint, repository?: C
     if (amount !== base.baseAmount || count !== base.baseCount) {
       // ここでダメージオーバーライドを複製して適用する
       const clonedAction = action.cloneWithDamages(
-        new Damages({ baseAmount: amount, baseCount: count, type: base.type }),
+        new Damages({ baseAmount: amount, baseCount: count, type: base.type, cardId: blueprint.type }),
       )
       return repository ? repository.create(() => new Card({ action: clonedAction })) : new Card({ action: clonedAction })
     }

@@ -6,7 +6,7 @@ import { PoisonStingAction } from '../actions/PoisonStingAction'
 export class ScorpionEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const flurry = new FlurryAction().cloneWithDamages(
-      new Damages({ baseAmount: 5, baseCount: 4, type: 'multi' }),
+      new Damages({ baseAmount: 5, baseCount: 4, type: 'multi', cardId: 'flurry' }),
     )
 
     super({

@@ -11,7 +11,7 @@ export class BeamShotAction extends Attack {
   constructor(baseAmount: number) {
     super({
       name: 'ビーム',
-      baseDamage: new Damages({ baseAmount, baseCount: 1, type: 'single' }),
+      baseDamage: new Damages({ baseAmount, baseCount: 1, type: 'single', cardId: 'beam-shot' }),
       effectType: 'beam',
       cardDefinition: {
         title: 'ビーム',

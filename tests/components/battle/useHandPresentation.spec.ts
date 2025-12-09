@@ -16,7 +16,7 @@ class TestAttack extends Attack {
   constructor() {
     super({
       name: 'テストアタック',
-      baseDamage: new Damages({ baseAmount: 20, baseCount: 1, type: 'single' }),
+      baseDamage: new Damages({ baseAmount: 20, baseCount: 1, type: 'single', cardId: 'test-attack' }),
       effectType: 'slash',
       cardDefinition: {
         title: 'テストアタック',

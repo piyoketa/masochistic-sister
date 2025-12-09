@@ -17,6 +17,7 @@ export class GiantSlugKingEnemy extends Enemy {
         baseAmount: 10,
         baseCount: 4,
         type: 'multi',
+        cardId: 'flurry',
       }),
     )
     super({

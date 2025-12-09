@@ -16,6 +16,7 @@ import type { Attack } from './Action'
 import type { Enemy } from './Enemy'
 import type { Player } from './Player'
 import type { State } from './State'
+import type { CardId } from '@/domain/library/Library'
 
 export type DamagePattern = 'single' | 'multi'
 export type DamageEffectType = string
@@ -25,6 +26,7 @@ export interface DamageCalculationContext {
   attack?: Attack
   attacker?: Player | Enemy
   defender?: Player | Enemy
+  cardId?: CardId
 }
 
 export interface DamageCalculationParams {
@@ -32,6 +34,7 @@ export interface DamageCalculationParams {
   count: number
   type: DamagePattern
   role: 'attacker' | 'defender'
+  cardId: CardId
   context?: DamageCalculationContext
 }
 
@@ -39,6 +42,7 @@ export interface DamageInitialization {
   baseAmount: number
   baseCount: number
   type: DamagePattern
+  cardId: CardId
   attackerStates?: State[]
   defenderStates?: State[]
   context?: DamageCalculationContext
@@ -53,6 +57,7 @@ export class Damages {
   readonly baseAmount: number
   readonly baseCount: number
   readonly type: DamagePattern
+  readonly cardId: CardId
   readonly attackerStates: readonly State[]
   readonly defenderStates: readonly State[]
   readonly amount: number
@@ -74,6 +79,7 @@ export class Damages {
     this.baseAmount = init.baseAmount
     this.baseCount = init.baseCount
     this.type = init.type
+    this.cardId = init.cardId
 
     const context = init.context
 
@@ -89,7 +95,8 @@ export class Damages {
         count: currentCount,
         type: this.type,
         role: 'attacker',
-        context,
+        cardId: this.cardId,
+        context: { ...context, cardId: this.cardId },
       })
       currentAmount = result.amount
       currentCount = result.count
@@ -109,7 +116,8 @@ export class Damages {
         count: currentCount,
         type: this.type,
         role: 'defender',
-        context,
+        cardId: this.cardId,
+        context: { ...context, cardId: this.cardId },
       })
       currentAmount = result.amount
       currentCount = result.count

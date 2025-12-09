@@ -61,7 +61,7 @@ function createEnemyWithStates(states: State[] = []): Enemy {
 
 function createTentacleFlurryAction() {
   return new FlurryAction().cloneWithDamages(
-    new Damages({ baseAmount: 10, baseCount: 3, type: 'multi' }),
+    new Damages({ baseAmount: 10, baseCount: 3, type: 'multi', cardId: 'flurry' }),
   )
 }
 
@@ -70,7 +70,7 @@ class InspectableFlurryAction extends FlurryAction {
 
   constructor() {
     super()
-    const override = new Damages({ baseAmount: 10, baseCount: 3, type: 'multi' })
+    const override = new Damages({ baseAmount: 10, baseCount: 3, type: 'multi', cardId: 'flurry' })
     const clone = this.cloneWithDamages(override) as this
     Object.assign(this, clone)
   }
@@ -275,7 +275,7 @@ describe('Attack#calcDamagesの挙動', () => {
   it('重量化(1)でダメージが15、回数が2になる', () => {
     const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
-    attackerHelper.addState(new HeavyweightState(1))
+    attackerHelper.addState(new HeavyweightState())
     const defender = createEnemyWithStates()
 
     const damages = action.calcDamages(attackerHelper.player, defender)

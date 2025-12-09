@@ -44,7 +44,7 @@ export class PeelingScabAction extends Skill {
     return '山札からダメージ5の攻撃カードを1枚選んで手札に加える'
   }
 
-  protected override isActive(context: ActionContext): boolean {
+  override isActive(context: ActionContext): boolean {
     return this.findEligibleCardsInDeck(context).length > 0
   }
 
@@ -69,7 +69,7 @@ export class PeelingScabAction extends Skill {
   }
 
   /** 山札に存在する「ダメージ5のアタック」を検索する */
-  private findEligibleCardsInDeck(context: ActionContext): Card[] {
+  private findEligibleCardsInDeck(context: { battle: ActionContext['battle'] }): Card[] {
     return context.battle.deck
       .list()
       .filter((card) => isDamage5Attack(card))

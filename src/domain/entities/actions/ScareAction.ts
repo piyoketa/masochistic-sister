@@ -7,7 +7,7 @@ export class ScareAction extends Attack {
   constructor() {
     super({
       name: 'おどかす',
-      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
+      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single', cardId: 'scare' }),
       effectType: 'fear',
       // WeakState はパラメータを取らないのでそのまま付与する
       inflictStates: [() => new WeakState()],

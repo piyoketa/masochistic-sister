@@ -7,7 +7,7 @@ import { FlightState } from '../states/FlightState'
 export class HummingbirdEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     const flurry = new FlurryAction().cloneWithDamages(
-      new Damages({ baseAmount: 10, baseCount: 3, type: 'multi' }),
+      new Damages({ baseAmount: 10, baseCount: 3, type: 'multi', cardId: 'flurry' }),
     )
 
     super({

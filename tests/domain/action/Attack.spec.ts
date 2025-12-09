@@ -43,7 +43,7 @@ class TestAttack extends Attack {
         target: new EnemySingleTargetCardTag(),
         cost: 1,
       },
-      baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
+      baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'test-attack' }),
       ...(overrides ?? {}),
     })
   }
@@ -73,7 +73,9 @@ function createBattleStub(player: Player, enemy: EnemyEntity) {
 describe('Attack クラス', () => {
   it('攻撃種別のカードを複製しダメージプロファイルを更新する', () => {
     const attack = new TestAttack()
-    const clone = attack.cloneWithDamages(new Damages({ baseAmount: 25, baseCount: 3, type: 'multi' }))
+    const clone = attack.cloneWithDamages(
+      new Damages({ baseAmount: 25, baseCount: 3, type: 'multi', cardId: 'test-attack' }),
+    )
 
     expect(clone).not.toBe(attack)
     expect(clone.baseDamages.baseAmount).toBe(25)

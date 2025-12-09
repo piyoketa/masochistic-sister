@@ -27,6 +27,7 @@ import {
   type TargetEnemyAvailabilityEntry,
   type HandCardSelectionAvailabilityEntry,
 } from '../operations'
+import type { CardId } from '@/domain/library/Library'
 
 export type ActionType = 'attack' | 'skill' | 'skip'
 
@@ -82,6 +83,23 @@ export abstract class Action {
 
   get name(): string {
     return this.props.name
+  }
+
+  /**
+   * このActionに対応するCardIdを返す。クラス名からkebab-case化し、StateActionなどstate由来のidがあればそれを優先する。
+   */
+  getCardId(): CardId {
+    const maybeStateId = (this as unknown as { state?: { id?: string } }).state?.id
+    if (typeof maybeStateId === 'string' && maybeStateId.startsWith('state-')) {
+      return maybeStateId as CardId
+    }
+    const ctorName = (this.constructor as { name?: string }).name ?? ''
+    const trimmed = ctorName.endsWith('Action') ? ctorName.slice(0, -6) : ctorName
+    const kebab = trimmed
+      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+      .toLowerCase()
+    return kebab as CardId
   }
 
   protected get cardDefinitionBase(): CardDefinition {

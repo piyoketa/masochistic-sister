@@ -25,8 +25,9 @@ describe('formatEnemyActionLabel', () => {
         pattern: { amount: 20, count: 1, type: 'single' },
       }),
     )
-    expect(label).toBe('💥20')
+    expect(label).toBe('殴打: 💥20')
     expect(segments).toEqual([
+      { text: '殴打: ', showOverlay: true },
       { text: '💥', showOverlay: true },
       { text: '20', highlighted: false, change: undefined, showOverlay: true },
     ])
@@ -41,8 +42,9 @@ describe('formatEnemyActionLabel', () => {
         status: { name: '腐食', magnitude: 1 },
       }),
     )
-    expect(label).toBe('💥5+🌀腐食(1)')
+    expect(label).toBe('溶かす: 💥5+🌀腐食(1)')
     expect(segments).toEqual([
+      { text: '溶かす: ', showOverlay: true },
       { text: '💥', showOverlay: true },
       { text: '5', highlighted: false, change: undefined, showOverlay: true },
       { text: '+' },
@@ -58,8 +60,9 @@ describe('formatEnemyActionLabel', () => {
         pattern: { amount: 10, count: 3, type: 'multi' },
       }),
     )
-    expect(label).toBe('⚔️10×3')
+    expect(label).toBe('乱れ突き: ⚔️10×3')
     expect(segments).toEqual([
+      { text: '乱れ突き: ', showOverlay: true },
       { text: '⚔️', showOverlay: true },
       { text: '10', highlighted: false, change: undefined, showOverlay: true },
       { text: '×3', highlighted: false, change: undefined, showOverlay: true },
@@ -74,8 +77,8 @@ describe('formatEnemyActionLabel', () => {
         selfState: { name: '筋肉強化', magnitude: 10 },
       }),
     )
-    expect(label).toBe('🔱筋肉強化(10)')
-    expect(segments).toEqual([{ text: '🔱筋肉強化(10)' }])
+    expect(label).toBe('ビルドアップ：🔱筋肉強化(10)')
+    expect(segments).toEqual([{ text: 'ビルドアップ：' }, { text: '🔱筋肉強化(10)' }])
   })
 
   it('formats skip action', () => {
@@ -109,8 +112,9 @@ describe('formatEnemyActionLabel', () => {
       }),
       { includeTitle: false },
     )
-    expect(label).toBe('⚔️10×2')
+    expect(label).toBe('乱れ突き: ⚔️10×2')
     expect(segments).toEqual([
+      { text: '乱れ突き: ', showOverlay: true },
       { text: '⚔️', showOverlay: true },
       { text: '10', highlighted: false, change: undefined, showOverlay: true },
       { text: '×2', highlighted: false, change: undefined, showOverlay: true },
@@ -126,8 +130,9 @@ describe('formatEnemyActionLabel', () => {
         calculatedPattern: { amount: 15, count: 4 },
       }),
     )
-    expect(label).toBe('⚔️15×4')
+    expect(label).toBe('乱れ突き: ⚔️15×4')
     expect(segments).toEqual([
+      { text: '乱れ突き: ', showOverlay: true },
       { text: '⚔️', showOverlay: true },
       { text: '15', highlighted: true, change: 'up', showOverlay: true },
       { text: '×4', highlighted: true, change: 'up', showOverlay: true },

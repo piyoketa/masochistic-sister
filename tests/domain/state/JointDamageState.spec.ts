@@ -11,6 +11,7 @@ describe('関節損傷', () => {
       baseAmount: 20,
       baseCount: 1,
       type: 'single',
+      cardId: 'tackle',
       defenderStates: [state],
       context: {
         attack: new TackleAction(),
@@ -26,6 +27,7 @@ describe('関節損傷', () => {
       baseAmount: 12,
       baseCount: 2,
       type: 'multi',
+      cardId: 'flurry',
       defenderStates: [state],
       context: {
         attack: new FlurryAction(),

@@ -160,10 +160,12 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     }
 
     // 1. 基本表示（補正なし）
+    const cardId = action.getCardId()
     const baseDisplay = new Damages({
       baseAmount: damages.baseAmount,
       baseCount: damages.baseCount,
       type: damages.type,
+      cardId,
     })
     let formatted = action.describeForPlayerCard({
       baseDamages: damages,
@@ -180,6 +182,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
         baseAmount: damages.baseAmount,
         baseCount: damages.baseCount,
         type: damages.type,
+        cardId,
         attackerStates: playerStates,
         defenderStates: [],
       })
@@ -201,6 +204,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
             baseAmount: damages.baseAmount,
             baseCount: damages.baseCount,
             type: damages.type,
+            cardId,
             attackerStates: playerStates,
             defenderStates: enemy.getStates(),
           })

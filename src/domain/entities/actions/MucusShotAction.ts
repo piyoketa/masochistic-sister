@@ -9,12 +9,12 @@ import { isPlayerEntity } from '../typeGuards'
 export class MucusShotAction extends Attack {
   constructor() {
     super({
-      name: '粘液を吐く',
-      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single' }),
+      name: '体液をかける',
+      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single', cardId: 'mucus-shot' }),
       effectType: 'spit',
       inflictStates: [() => new StickyState(1)],
       cardDefinition: {
-        title: '粘液を吐く',
+        title: '体液をかける',
         cardType: 'attack',
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),

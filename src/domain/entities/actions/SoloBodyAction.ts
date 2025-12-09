@@ -37,7 +37,7 @@ export class SoloBodyAction extends Skill {
     return '山札の「殴打」を可能な限り手札に加える'
   }
 
-  protected override isActive(context: ActionContext): boolean {
+  override isActive(context: ActionContext): boolean {
     return this.countAvailable(context) > 0 && this.countHandSpace(context) > 0
   }
 
@@ -89,4 +89,3 @@ export class SoloBodyAction extends Skill {
     return results
   }
 }
-

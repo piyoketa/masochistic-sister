@@ -21,7 +21,8 @@ describe('重量化Stateの挙動', () => {
       baseAmount: 10,
       baseCount: 3,
       type: 'multi',
-      attackerStates: [new HeavyweightState(1)],
+      cardId: 'test-card',
+      attackerStates: [new HeavyweightState()],
     })
 
     expect(damages.amount).toBe(15)
@@ -35,6 +36,7 @@ describe('軽量化Stateの挙動', () => {
       baseAmount: 12,
       baseCount: 2,
       type: 'multi',
+      cardId: 'test-card',
       attackerStates: [new LightweightState(1)],
     })
 
@@ -49,6 +51,7 @@ describe('ダメージ固定Stateの挙動', () => {
       baseAmount: 20,
       baseCount: 2,
       type: 'multi',
+      cardId: 'test-card',
       defenderStates: [new FlightState(1)],
     })
 
@@ -63,6 +66,7 @@ describe('ダメージ固定と腐食の優先度', () => {
       baseAmount: 30,
       baseCount: 2,
       type: 'multi',
+      cardId: 'test-card',
       defenderStates: [new CorrosionState(1), new FlightState(1)],
     })
 
@@ -75,6 +79,7 @@ describe('ダメージ固定と腐食の優先度', () => {
       baseAmount: 25,
       baseCount: 1,
       type: 'single',
+      cardId: 'test-card',
       defenderStates: [new FlightState(1), new CorrosionState(2)],
     })
 
@@ -140,7 +145,7 @@ describe('怒りの覚醒Stateの挙動', () => {
       attack,
       attacker,
       defender: enemy,
-      damages: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
+      damages: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'test-card' }),
       index: 0,
       outcome: { damage: 10, effectType: 'slash' as const },
       role: 'defender' as const,
@@ -155,7 +160,7 @@ describe('怒りの覚醒Stateの挙動', () => {
       attack,
       attacker,
       defender: enemy,
-      damages: new Damages({ baseAmount: 10, baseCount: 1, type: 'single' }),
+      damages: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'test-card' }),
       outcomes: [],
     })
 
