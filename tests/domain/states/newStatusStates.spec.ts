@@ -9,6 +9,7 @@ import {
   CorrosionState,
   FuryAwakeningState,
   StrengthState,
+  StickyState,
 } from '@/domain/entities/states'
 import { Enemy } from '@/domain/entities/Enemy'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
@@ -42,6 +43,20 @@ describe('軽量化Stateの挙動', () => {
 
     expect(damages.amount).toBe(8)
     expect(damages.count).toBe(3)
+  })
+
+  it('重量化(攻撃側)と粘液(防御側)で回数補正が相殺される', () => {
+    const damages = new Damages({
+      baseAmount: 10,
+      baseCount: 2,
+      type: 'multi',
+      cardId: 'test-card',
+      attackerStates: [new HeavyweightState()],
+      defenderStates: [new StickyState(1)],
+    })
+
+    expect(damages.amount).toBe(15) // 重量化の+50%のみ適用
+    expect(damages.count).toBe(2) // 攻撃側-1と防御側+1で元の2回へ戻る
   })
 })
 

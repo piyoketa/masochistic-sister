@@ -46,7 +46,7 @@ export class StickyState extends BadState {
   }
 
   override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
-    if (params.role !== 'defender' || params.type !== 'multi' || params.count <= 1) {
+    if (params.role !== 'defender' || params.type !== 'multi') {
       return params
     }
 

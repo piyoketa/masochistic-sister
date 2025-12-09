@@ -20,8 +20,8 @@ export class KamaitachiEnemy extends Enemy {
 
     super({
       name: 'かまいたち',
-      maxHp: 20,
-      currentHp: 20,
+      maxHp: 30,
+      currentHp: 30,
       actions: [kamaitachiFlurry, new TailwindAction()],
       image: '/assets/enemies/kamaitachi.jpg',
       allyTags: ['acceleratable', 'multi-attack'],

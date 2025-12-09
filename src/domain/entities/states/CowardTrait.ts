@@ -20,7 +20,7 @@ export class CowardTrait extends TraitState {
   }
 
   override description(): string {
-    return '臆病な敵しかいない時、逃走する'
+    return '臆病な敵のみが残された時\n逃走する'
   }
 
   override onActionResolved(context: ActionResolvedContext): void {
