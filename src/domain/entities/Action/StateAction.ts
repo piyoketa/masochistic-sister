@@ -70,7 +70,7 @@ export class StateAction extends Action {
       pureBody?.markUsed()
 
       if (this.stateId) {
-        battle.player.removeState(this.stateId)
+        battle.player.removeState(this.stateId, { stateRef: this.state })
       }
     }
   }

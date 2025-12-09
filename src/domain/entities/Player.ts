@@ -155,8 +155,13 @@ export class Player {
     })
   }
 
-  removeState(stateId: string): void {
-    const poolIndex = this.baseStatePool.findIndex((entry) => entry.id === stateId)
+  removeState(stateId: string, options?: { stateRef?: State; cardId?: number }): void {
+    const poolIndex = this.baseStatePool.findIndex((entry) => {
+      if (options?.stateRef) {
+        return entry === options.stateRef
+      }
+      return entry.id === stateId
+    })
     if (poolIndex >= 0) {
       this.baseStatePool.splice(poolIndex, 1)
       return
@@ -167,9 +172,15 @@ export class Player {
       return
     }
 
-    const targetCard = hand
-      .list()
-      .find((card) => card.state?.id === stateId)
+    const targetCard = hand.list().find((card) => {
+      if (options?.stateRef && card.state) {
+        return card.state === options.stateRef
+      }
+      if (options?.cardId !== undefined) {
+        return card.id === options.cardId
+      }
+      return card.state?.id === stateId
+    })
 
     if (targetCard) {
       hand.remove(targetCard)
