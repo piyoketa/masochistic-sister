@@ -10,6 +10,7 @@ export { HighOrcBandTeam } from './HighOrcBandTeam'
 export { BeamCannonEliteTeam } from './BeamCannonEliteTeam'
 export { GiantSlugEliteTeam } from './GiantSlugEliteTeam'
 export { OrcSumoSquad } from './OrcSumoSquad'
+export { HighOrcSquad } from './HighOrcSquad'
 
 import type { EnemyTeam } from '../EnemyTeam'
 import { SnailTeam } from './SnailTeam'
@@ -24,6 +25,7 @@ import { HighOrcBandTeam } from './HighOrcBandTeam'
 import { BeamCannonEliteTeam } from './BeamCannonEliteTeam'
 import { GiantSlugEliteTeam } from './GiantSlugEliteTeam'
 import { OrcSumoSquad } from './OrcSumoSquad'
+import { HighOrcSquad } from './HighOrcSquad'
 
 /**
  * 敵チームIDとファクトリ関数のマッピングを返す。
@@ -44,5 +46,6 @@ export function buildEnemyTeamFactoryMap(): Record<string, () => EnemyTeam> {
     'beam-cannon-elite': () => new BeamCannonEliteTeam(),
     'giant-slug-elite': () => new GiantSlugEliteTeam(),
     'orc-sumo-squad': () => new OrcSumoSquad(),
+    'high-orc-squad': () => new HighOrcSquad(),
   }
 }

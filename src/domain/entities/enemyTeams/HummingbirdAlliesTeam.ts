@@ -18,10 +18,7 @@ export class HummingbirdAlliesTeam extends EnemyTeam {
         new OrcSumoEnemy(),
         new KamaitachiEnemy(),
         new HummingbirdEnemy(),
-        new SlugEnemy({
-          actionQueueFactory: () =>
-            new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
-        }),
+        new SlugEnemy(),
       ],
     })
   }

@@ -20,7 +20,11 @@ export class HighOrcBandTeam extends EnemyTeam {
       actionQueueFactory: () =>
         new DefaultEnemyActionQueue(),
     })
-    const dancer = new HighOrcDancerEnemy({
+    const dancerA = new HighOrcDancerEnemy({
+      actionQueueFactory: () =>
+        new DefaultEnemyActionQueue(),
+    })
+    const dancerB = new HighOrcDancerEnemy({
       actionQueueFactory: () =>
         new DefaultEnemyActionQueue(),
     })
@@ -28,7 +32,7 @@ export class HighOrcBandTeam extends EnemyTeam {
     super({
       id: 'high-orc-band',
       name: 'ハイオーク一味',
-      members: [lancerA, lancerB, dancer],
+      members: [lancerA, lancerB, dancerA, dancerB],
     })
   }
 }

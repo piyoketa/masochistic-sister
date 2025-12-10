@@ -7,7 +7,18 @@ import type {
   RandomRelicRewardNode,
   StartNode,
 } from './FieldNode'
-import { SnailTeam, IronBloomTeam, HummingbirdAlliesTeam, OrcWrestlerTeam, HighOrcBandTeam, OrcHeroEliteTeam } from '@/domain/entities/enemyTeams'
+import {
+  SnailTeam,
+  IronBloomTeam,
+  HummingbirdAlliesTeam,
+  OrcWrestlerTeam,
+  HighOrcBandTeam,
+  OrcHeroEliteTeam,
+  TestEnemyTeam,
+  GunGoblinTeam,
+  BeamCannonEliteTeam,
+  HighOrcSquad,
+} from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import {
   listStandardSkillRewardBlueprints,
@@ -24,10 +35,14 @@ const LEVEL4_RELIC_CANDIDATES = listAttackSupportRelicClassNames()
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),
   'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
+  'test-enemy-team': () => new TestEnemyTeam(),
   'hummingbird-allies': () => new HummingbirdAlliesTeam(),
   'orc-wrestler-team': () => new OrcWrestlerTeam(),
   'high-orc-band': () => new HighOrcBandTeam(),
   'orc-hero-elite': () => new OrcHeroEliteTeam(),
+  'gun-goblin-team': () => new GunGoblinTeam(),
+  'beam-cannon-elite': () => new BeamCannonEliteTeam(),
+  'high-orc-squad': () => new HighOrcSquad(),
 }
 
 export class FirstField extends Field {
@@ -53,37 +68,26 @@ function buildLevels(_ownedRelics: string[]): FieldLevel[] {
   }
 
   const level2: EnemyNode[] = [
-    createEnemyNode('snail', 2, 0),
+    createEnemyNode('test-enemy-team', 2, 0),
     createEnemyNode('iron-bloom', 2, 1),
   ]
 
-  const level3: RandomCardRewardNode[] = [
-    createRandomSkillRewardNode(3, 0, LEVEL3_CARD_CANDIDATES),
+  const level3: EnemyNode[] = [
+    createEnemyNode('hummingbird-allies', 3, 0),
+    createEnemyNode('orc-wrestler-team', 3, 1),
   ]
 
-  const level4: RandomRelicRewardNode[] = [
-    createRandomRelicRewardNode(4, 0, LEVEL4_RELIC_CANDIDATES),
+  const level4: EnemyNode[] = [
+    createEnemyNode('gun-goblin-team', 4, 0),
+    createEnemyNode('high-orc-squad', 4, 1),
   ]
 
   const level5: EnemyNode[] = [
-    createEnemyNode('hummingbird-allies', 5, 0),
-    createEnemyNode('orc-wrestler-team', 5, 1),
+    createEnemyNode('beam-cannon-elite', 5, 0),
+    createEnemyNode('orc-hero-elite', 5, 1),
   ]
 
-  const level6: RandomCardRewardNode[] = [
-    createRandomSkillRewardNode(6, 0),
-  ]
-
-  const level7: EnemyNode[] = [
-    createEnemyNode('high-orc-band', 7, 0),
-    createEnemyNode('orc-sumo-squad', 7, 1),
-  ]
-
-  const level8: EnemyNode[] = [
-    createEnemyNode('orc-hero-elite', 8, 0),
-  ]
-
-  const nodesByLevel: FieldNode[][] = [ [level1], level2, level3, level4, level5, level6, level7, level8 ]
+  const nodesByLevel: FieldNode[][] = [[level1], level2, level3, level4, level5]
 
   nodesByLevel.forEach((nodes, idx) => {
     const next = nodesByLevel[idx + 1]

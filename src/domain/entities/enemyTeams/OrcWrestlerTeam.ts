@@ -21,7 +21,7 @@ export class OrcWrestlerTeam extends EnemyTeam {
     })
     super({
       id: 'orc-wrestler-team',
-      name: 'オークレスラー混成隊',
+      name: '盾持ちオーク',
       members: [trainer, drunk, snail, wrestler],
     })
   }
