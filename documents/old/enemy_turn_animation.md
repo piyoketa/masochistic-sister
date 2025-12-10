@@ -31,7 +31,7 @@ type BattleActionLogEntry =
 
 - ActionLog に積む段階で、Battle は「カード移動」「ダメージ」「状態変化」などの各タイミングに対応するスナップショットを生成し、それぞれを `animations` に格納する。  
 - 例: stage2 でオーク撃破 → なめくじ逃走のケース  
-  - `play-card`: 乱れ突き操作（手札→捨て札、記憶カード生成など）  
+  - `play-card`: 突き刺す操作（手札→捨て札、記憶カード生成など）  
   - `enemy-act`（kamaitachi）: HP ダメージ + オーク撃破  
   - `enemy-act`（slug flee）: 臆病で逃走  
   - `victory`: 結果オーバーレイ  
@@ -75,7 +75,7 @@ type BattleActionLogEntry =
    - CSS でカード移動/Enemy 消失のタイミングを `waitMs` と一致させる。
 4. **テスト**  
    - `ViewManager` のユニットテストに instruction 再生ケースを追加。  
-   - `Battle` のシナリオ（例: 乱れ突き→臆病→勝利）で `animations` が期待通り生成されるか検証。
+   - `Battle` のシナリオ（例: 突き刺す→臆病→勝利）で `animations` が期待通り生成されるか検証。
 
 ## 7. 実装計画
 

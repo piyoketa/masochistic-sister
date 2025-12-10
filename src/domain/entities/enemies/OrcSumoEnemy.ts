@@ -5,7 +5,7 @@ import { Damages } from '../Damages'
 import { HeavyweightState } from '../states/HeavyweightState'
 
 /**
- * オーク力士: 乱れ突きと重量化付与攻撃を行うタフな近接型。
+ * オーク力士: 突き刺すと重量化付与攻撃を行うタフな近接型。
  */
 export class OrcSumoEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {

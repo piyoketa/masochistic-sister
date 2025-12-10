@@ -261,18 +261,18 @@ export function createBattleScenario(): BattleScenario {
     operations: [
       {
         type: 'select-hand-card',
-        payload: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
+        payload: (battle: Battle) => findMemoryCardId(battle, '突き刺す'),
       },
     ],
   })
   registerOperation('playFlurryOnOrc', {
     type: 'play-card',
-    card: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle: Battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
   })
   registerOperation('playFlurryOnOrcDancer', {
     type: 'play-card',
-    card: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle: Battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
   })
 

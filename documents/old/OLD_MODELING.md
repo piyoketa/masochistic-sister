@@ -203,7 +203,7 @@ Card Action/Enemy Actionが、Manipurationに分解されるまでの過程で�
 1. Attackの場合：攻撃の点数計算
     - SingleAttack/ContinuousAttackのメソッド
         - `calcDamages(攻撃を打つ側のStates一覧、攻撃を打たれる側のStates一覧）`
-        - 乱れ突きの元の設定は、10ダメージ × 2回
+        - 突き刺すの元の設定は、10ダメージ × 2回
         - Playerは手札に「腐食」が１枚あるので、+10ダメージ。
         - オークダンサーはState「加速(1)」を持つので、攻撃回数+1
         - よって、20ダメージ × 3回。

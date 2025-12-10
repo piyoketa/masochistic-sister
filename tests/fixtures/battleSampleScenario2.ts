@@ -211,7 +211,7 @@ export function createBattleScenario2(): BattleScenario2 {
   registerOperation('endPlayerTurn1', { type: 'end-player-turn' })
   registerOperation('playFlurryOnIronBloom', {
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.ironBloom }],
   })
   registerOperation('playMasochisticAuraOnOrcLancer', {
@@ -221,7 +221,7 @@ export function createBattleScenario2(): BattleScenario2 {
   })
   registerOperation('playFlurryOnOrcLancer', {
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orcLancer }],
   })
   registerOperation('playDailyRoutine', {
@@ -235,7 +235,7 @@ export function createBattleScenario2(): BattleScenario2 {
   })
   registerOperation('playFlurryOnKamaitachi', {
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.kamaitachi }],
   })
 

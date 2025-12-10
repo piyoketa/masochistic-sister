@@ -24,7 +24,7 @@ effectTypeが指定されていない、もしくは音声ファイルが存在�
 | poison | 全て | public/sounds/poison/kurage-kosho_poison3.mp3 |
 
 ### effectType: slash
-現状では、「乱れ突き」などの連続攻撃は全て effectType: slash である。
+現状では、「突き刺す」などの連続攻撃は全て effectType: slash である。
 
 ダメージ量の大きさを以下の４階層に分ける。
 - 0~10未満: taira-komori_punch2a.mp3

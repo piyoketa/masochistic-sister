@@ -14,7 +14,7 @@ title: アニメーション再設計計画（バッチ導入）
     2. `enemy-action-batch`: `player-damage`（`waitMs=(count-1)*200+500`）、`create-state-card`（`waitMs=500`）。  
     3. `remember-enemy-attack-batch`: `memory-card`（`waitMs=1500`）。  
   - `play-card`（天の鎖）: 単一バッチ `play-card` に mana（0.3s）、card-eliminate（720ms）、音声（0.5s）をまとめる。  
-  - `play-card`（乱れ突き 10×3）: 同一バッチに mana（0.3s）、card-trash（300ms）、damage（`(count-1)*0.2+0.5`）を含める。  
+  - `play-card`（突き刺す 10×3）: 同一バッチに mana（0.3s）、card-trash（300ms）、damage（`(count-1)*0.2+0.5`）を含める。  
 - **OperationRunner/Battle の役割整理**:  
   - `OperationRunner` は `EnemyTurnActionSummary` / `PlayCard` 時に `AnimationBatch` を構築し、各 batch に snapshot と `AnimationInstruction`（`metadata`, `damageOutcomes`, `batchId` など）を添付。`create-state-card` は `Player.addState` 周りで metadata を注入し、`memory-card` は `Player.rememberEnemyAttack` の結果で発火する。  
   - `Battle` 側は `EnemyTurnActionSummary` に `snapshotAfter` を含めつつ `AnimationBatch` への参照 metadata を整理、`Player` からの state/memory イベントを `OperationRunner` に伝搬する。  

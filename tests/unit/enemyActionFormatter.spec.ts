@@ -55,14 +55,14 @@ describe('formatEnemyActionLabel', () => {
   it('formats multi hit attack', () => {
     const { label, segments } = formatEnemyActionLabel(
       baseHint({
-        title: '乱れ突き',
+        title: '突き刺す',
         type: 'attack',
         pattern: { amount: 10, count: 3, type: 'multi' },
       }),
     )
-    expect(label).toBe('乱れ突き: ⚔️10×3')
+    expect(label).toBe('突き刺す: ⚔️10×3')
     expect(segments).toEqual([
-      { text: '乱れ突き: ', showOverlay: true },
+      { text: '突き刺す: ', showOverlay: true },
       { text: '⚔️', showOverlay: true },
       { text: '10', highlighted: false, change: undefined, showOverlay: true },
       { text: '×3', highlighted: false, change: undefined, showOverlay: true },
@@ -106,15 +106,15 @@ describe('formatEnemyActionLabel', () => {
   it('omits title when requested', () => {
     const { label, segments } = formatEnemyActionLabel(
       baseHint({
-        title: '乱れ突き',
+        title: '突き刺す',
         type: 'attack',
         pattern: { amount: 10, count: 2, type: 'multi' },
       }),
       { includeTitle: false },
     )
-    expect(label).toBe('乱れ突き: ⚔️10×2')
+    expect(label).toBe('突き刺す: ⚔️10×2')
     expect(segments).toEqual([
-      { text: '乱れ突き: ', showOverlay: true },
+      { text: '突き刺す: ', showOverlay: true },
       { text: '⚔️', showOverlay: true },
       { text: '10', highlighted: false, change: undefined, showOverlay: true },
       { text: '×2', highlighted: false, change: undefined, showOverlay: true },
@@ -124,15 +124,15 @@ describe('formatEnemyActionLabel', () => {
   it('highlights changed damage values', () => {
     const { label, segments } = formatEnemyActionLabel(
       baseHint({
-        title: '乱れ突き',
+        title: '突き刺す',
         type: 'attack',
         pattern: { amount: 10, count: 3, type: 'multi' },
         calculatedPattern: { amount: 15, count: 4 },
       }),
     )
-    expect(label).toBe('乱れ突き: ⚔️15×4')
+    expect(label).toBe('突き刺す: ⚔️15×4')
     expect(segments).toEqual([
-      { text: '乱れ突き: ', showOverlay: true },
+      { text: '突き刺す: ', showOverlay: true },
       { text: '⚔️', showOverlay: true },
       { text: '15', highlighted: true, change: 'up', showOverlay: true },
       { text: '×4', highlighted: true, change: 'up', showOverlay: true },

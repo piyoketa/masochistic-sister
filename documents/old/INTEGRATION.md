@@ -22,7 +22,7 @@
         - Instruction3: 音声再生
             - 音声を再生するstageを追加します。
             - waits: 0.5s固定
-- play-card：「乱れ突き 10×3」を使用した場合
+- play-card：「突き刺す 10×3」を使用した場合
     - バッチ1: play-card
         - Instruction1: mana
             - waits: 0.3s

@@ -58,13 +58,13 @@ const OPERATION_EXPECTATIONS = [
   { name: '天の鎖でなめくじの行動を拘束', lastActionIndex: 3 },
   { name: '戦いの準備で次ターンのマナを予約', lastActionIndex: 4 },
   { name: 'ターン終了 → 敵行動と次ターン開始', lastActionIndex: 11 },
-  { name: '乱れ突き(記憶)で鉄花を攻撃', lastActionIndex: 12 },
+  { name: '突き刺す(記憶)で鉄花を攻撃', lastActionIndex: 12 },
   { name: '被虐のオーラでオークランサーに追い風', lastActionIndex: 13 },
-  { name: '乱れ突きでオークランサーに連撃', lastActionIndex: 14 },
+  { name: '突き刺すでオークランサーに連撃', lastActionIndex: 14 },
   { name: '日課で手札補充', lastActionIndex: 15 },
   { name: 'ターン終了2 → 敵行動第2セット', lastActionIndex: 23 },
   { name: '再装填で手札を更新', lastActionIndex: 24 },
-  { name: '乱れ突きでかまいたち撃破＆臆病連鎖', lastActionIndex: 27 },
+  { name: '突き刺すでかまいたち撃破＆臆病連鎖', lastActionIndex: 27 },
 ] as const
 
 function warmupActionLog(logDetails: boolean): void {
@@ -157,7 +157,7 @@ function buildOperationEntries(
   entries.push({ type: 'end-player-turn' })
   entries.push({
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.ironBloom }],
   })
   entries.push({
@@ -167,7 +167,7 @@ function buildOperationEntries(
   })
   entries.push({
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orcLancer }],
   })
   entries.push({
@@ -181,7 +181,7 @@ function buildOperationEntries(
   })
   entries.push({
     type: 'play-card',
-    card: (battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.kamaitachi }],
   })
   return entries

@@ -66,9 +66,9 @@ const OPERATION_EXPECTATIONS = [
   { name: '体液をかける(記憶)で触手を撃破', lastActionIndex: 14 },
   { name: '腐食カードを使用', lastActionIndex: 15 },
   { name: 'ターン終了 → 敵行動第2セット', lastActionIndex: 21 },
-  { name: '疼きで乱れ突き(5×5)を選択', lastActionIndex: 22 },
-  { name: '乱れ突き(10×4)でオークを撃破', lastActionIndex: 23 },
-  { name: '乱れ突き(被弾記憶)連打で勝利', lastActionIndex: 25 },
+  { name: '疼きで突き刺す(5×5)を選択', lastActionIndex: 22 },
+  { name: '突き刺す(10×4)でオークを撃破', lastActionIndex: 23 },
+  { name: '突き刺す(被弾記憶)連打で勝利', lastActionIndex: 25 },
 ] as const
 
 if (process.env.LOG_BATTLE_SAMPLE1_SUMMARY === '1') {
@@ -218,18 +218,18 @@ function buildOperationEntries(references: ReturnType<typeof collectScenarioRefe
     operations: [
       {
         type: 'select-hand-card',
-        payload: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
+        payload: (battle: Battle) => findMemoryCardId(battle, '突き刺す'),
       },
     ],
   })
   entries.push({
     type: 'play-card',
-    card: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle: Battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orc }],
   })
   entries.push({
     type: 'play-card',
-    card: (battle: Battle) => findMemoryCardId(battle, '乱れ突き'),
+    card: (battle: Battle) => findMemoryCardId(battle, '突き刺す'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.orcDancer }],
   })
   return entries

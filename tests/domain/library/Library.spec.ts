@@ -21,7 +21,7 @@ describe('Library', () => {
       throw new Error('攻撃カード情報の生成に失敗しました')
     }
     expect(info?.id).toContain('test')
-    expect(info?.title).toBe('乱れ突き')
+    expect(info?.title).toBe('突き刺す')
     expect(info.damageAmount).toBe(8)
     expect(info.damageCount).toBe(3)
   })

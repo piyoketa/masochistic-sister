@@ -4,7 +4,7 @@ import { DrunkenBreathAction } from '../actions/DrunkenBreathAction'
 import { Damages } from '../Damages'
 
 /**
- * 酒飲みオーク: 乱れ突きと酩酊付与スキルを持つサポート兼アタッカー。
+ * 酒飲みオーク: 突き刺すと酩酊付与スキルを持つサポート兼アタッカー。
  */
 export class DrunkOrcEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
