@@ -204,6 +204,21 @@ export class Enemy {
             owner: this,
           }),
         )
+        // 味方側の仲間想い系Traitへ通知する。Team全体でイベントを共有するため、敗北した本人以外のEnemyに伝播する。
+        if ('enemyTeam' in options.battle && options.battle.enemyTeam?.members) {
+          for (const ally of options.battle.enemyTeam.members) {
+            if (ally === this || !ally.isActive()) {
+              continue
+            }
+            ally.forEachState((state) =>
+              state.onAllyDefeated({
+                battle: options.battle!,
+                owner: ally,
+                ally: this,
+              }),
+            )
+          }
+        }
       }
       if (options?.battle && this.id !== undefined) {
         options.battle.recordDefeatAnimation(this.id)

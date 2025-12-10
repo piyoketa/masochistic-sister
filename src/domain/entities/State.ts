@@ -148,6 +148,10 @@ export class State {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onOwnerDefeated(_context: { battle: Battle; owner: Player | Enemy }): void {}
 
+  // 味方が撃破されたときに呼ばれる拡張ポイント。デフォルトは何もしない。
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onAllyDefeated(_context: AllyDefeatedContext): void {}
+
   protected setMagnitude(value: number | undefined): void {
     this.props.magnitude = value
   }
@@ -220,4 +224,11 @@ export interface DamageSequenceContext {
   defender: Player | Enemy
   damages: Damages
   outcomes: readonly DamageOutcome[]
+}
+
+// 味方撃破イベントのコンテキスト。デフォルト実装は何もしない。
+export interface AllyDefeatedContext {
+  battle: Battle
+  owner: Player | Enemy
+  ally: Player | Enemy
 }
