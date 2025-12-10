@@ -23,7 +23,7 @@ export class OrcSumoEnemy extends Enemy {
       currentHp: 40,
       actions: [flurry, new FattenAction()],
       states: [new HeavyweightState()],
-      allyBuffWeights: { tailwind: 30 },
+      allyBuffWeights: { tailwind: 100 },
       image: '/assets/enemies/orc.jpg',
       ...overrides,
     })

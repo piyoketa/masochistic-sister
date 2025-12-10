@@ -90,7 +90,7 @@ Vue.js側は、主にBattle Classにアクセスし、その構造体を受け�
         - Attack
             - SingleAttack
                 - 溶かす
-                - 吸血（具体的な攻撃）
+                - ドレインキス（具体的な攻撃）
             - **ContinuousAttack**
         - Skill
 - プロパティ（固定値）
@@ -119,7 +119,7 @@ Vue.js側は、主にBattle Classにアクセスし、その構造体を受け�
         - 説明文：相手の状態に「溶解」を１つ追加する
         - ToEnemy()
         - ToPlayer()
-- 吸血
+- ドレインキス
     - 具体的な攻撃（特殊効果）
 
 ## State
@@ -210,11 +210,11 @@ Card Action/Enemy Actionが、Manipurationに分解されるまでの過程で�
     - `Player.damages([20,20,20])`
         - プレイヤーのHPが20になる
 2. State追加処理：プレイヤーの手札にStateが追加される
-    - 「吸血」などのカードの効果で処理する
+    - 「ドレインキス」などのカードの効果で処理する
         - `Action.effect()`
             - `Player.addState(state)` を呼び出す
 3. カードの追加：プレイヤーの手札にアタックを追加する
-    - 「吸血」などのカードの効果で処理する
+    - 「ドレインキス」などのカードの効果で処理する
     - `Action.createCard(newDamages, 攻撃を打つ側のStates一覧、攻撃を打たれる側のStates一覧)`
         - `newDamages`: ContinuousAttackのインスタンス？
 

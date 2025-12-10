@@ -121,7 +121,7 @@ describe('生命収奪とドレイン効果', () => {
     expect((tackle.cardTags ?? []).some((tag) => tag.id === 'tag-drain')).toBe(false)
   })
 
-  it('敵の吸血攻撃でドレイン回復が発動する', () => {
+  it('敵のドレインキス攻撃でドレイン回復が発動する', () => {
     const player = new ProtagonistPlayer()
     const bloodSuck = new BloodSuckAction()
     const enemy = new Enemy({
