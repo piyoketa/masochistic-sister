@@ -57,6 +57,7 @@ import { DeepBreathAction } from '@/domain/entities/actions/DeepBreathAction'
 import { OpenWoundAction } from '@/domain/entities/actions/OpenWoundAction'
 import { JointLockAction } from '@/domain/entities/actions/JointLockAction'
 import { FattenAction } from '@/domain/entities/actions/FattenAction'
+import { ShapeUpAction } from '@/domain/entities/actions/ShapeUpAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 import { StackedStressAction } from '@/domain/entities/actions/StackedStressAction'
@@ -90,6 +91,7 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   JointLockAction,
   FattenAction,
   StackedStressAction,
+  ShapeUpAction,
 ]
 
 const actionCardFactories: Record<ActionCardId, () => Card> = buildActionCardFactories(DECK_ACTION_CLASSES)

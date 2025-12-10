@@ -6,12 +6,12 @@ import { JointDamageState } from '../states/JointDamageState'
 export class JointLockAction extends Attack {
   constructor() {
     super({
-      name: '締め技',
-      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single', cardId: 'joint-lock' }),
+      name: '叩き潰す',
+      baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'joint-lock' }),
       effectType: 'grapple',
       inflictStates: [() => new JointDamageState(1)],
       cardDefinition: {
-        title: '締め技',
+        title: '叩き潰す',
         cardType: 'attack',
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),

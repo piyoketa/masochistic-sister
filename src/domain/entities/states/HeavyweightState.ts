@@ -2,6 +2,7 @@
 HeavyweightState.ts の責務:
 - 攻撃側のヒット前ダメージを増幅しつつ、連撃回数を圧縮する重量化ステートを表現する。
 - 加算倍率（1スタックあたり+50%）とヒット数減少（1スタックごとに-1）を計算へ適用する。
+- 非スタック仕様を担保し、同一状態の重複付与で効果が強化されないようにする。
 
 責務ではないこと:
 - ヒット後処理やバリアとの整合性。これらは Attack 側および他Stateが担う。
@@ -11,7 +12,7 @@ HeavyweightState.ts の責務:
 - `Attack.calcDamages`: pre-hit段階で `modifyPreHit` が呼び出され、ダメージ倍率と回数補正を適用する。
 - `Damages`: 適用済みStateとして記録され、記憶カードなどへ情報を提供する。
 */
-import { BadState } from '../State'
+import { BadState, State } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 import { StateAction } from '../Action/StateAction'
@@ -79,5 +80,17 @@ export class HeavyweightState extends BadState {
 
   override action(tags?: CardTag[]): StateAction {
     return new HeavyweightStateAction(this, tags)
+  }
+
+  override stackWith(state: State): void {
+    if (state.id !== this.id) {
+      super.stackWith(state)
+      return
+    }
+    // 非スタック: 追加付与が来ても1段のまま据え置き。大きい方を採用しつつ最大1。
+    const incoming = Math.max(0, state.magnitude ?? 0)
+    const current = Math.max(0, this.magnitude ?? 0)
+    const next = Math.min(1, Math.max(current, incoming))
+    this.setMagnitude(next)
   }
 }

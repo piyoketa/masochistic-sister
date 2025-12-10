@@ -10,9 +10,9 @@ import { EvilThoughtState } from '../states/EvilThoughtState'
 export class ConfusingGazeAction extends Skill {
   constructor() {
     super({
-      name: '惑わす眼光',
+      name: '惑わす',
       cardDefinition: {
-        title: '惑わす眼光',
+        title: '惑わす',
         cardType: 'skill',
         type: new SkillTypeCardTag(),
         target: new EnemySingleTargetCardTag(),

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import { Enemy } from '@/domain/entities/Enemy'
 import { BattlePrepAction } from '@/domain/entities/actions/BattlePrepAction'
-import { AccelerationState, LargeState } from '@/domain/entities/states'
+import { AccelerationState, LargeState, HeavyweightState, LightweightState } from '@/domain/entities/states'
 import type { State } from '@/domain/entities/State'
 
 function createEnemyWithStates(states: State[] = []): Enemy {
@@ -33,5 +33,25 @@ describe('Enemy.addState のスタック処理', () => {
     enemy.addState(new LargeState())
 
     expect(enemy.states.filter((state) => state.id === 'state-large')).toHaveLength(1)
+  })
+
+  it('重量化は再付与しても1段のまま据え置きになる', () => {
+    const enemy = createEnemyWithStates([new HeavyweightState()])
+
+    enemy.addState(new HeavyweightState())
+
+    const heavy = enemy.states.find((state) => state.id === 'state-heavyweight')
+    expect(heavy?.magnitude).toBe(1)
+    expect(enemy.states.filter((state) => state.id === 'state-heavyweight')).toHaveLength(1)
+  })
+
+  it('軽量化も非スタックで1段のまま維持される', () => {
+    const enemy = createEnemyWithStates([new LightweightState()])
+
+    enemy.addState(new LightweightState())
+
+    const light = enemy.states.find((state) => state.id === 'state-lightweight')
+    expect(light?.magnitude).toBe(1)
+    expect(enemy.states.filter((state) => state.id === 'state-lightweight')).toHaveLength(1)
   })
 })

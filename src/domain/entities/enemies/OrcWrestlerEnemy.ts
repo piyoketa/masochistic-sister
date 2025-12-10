@@ -6,7 +6,7 @@ import { HardShellState } from '../states/HardShellState'
 export class OrcWrestlerEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     super({
-      name: 'オークレスラー',
+      name: '盾持ちオーク',
       maxHp: 40,
       currentHp: 40,
       actions: [new TackleAction(), new JointLockAction()],

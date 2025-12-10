@@ -1,7 +1,8 @@
 /*
 LightweightState.ts の責務:
-- 攻撃側のヒット前ダメージを軽量化し（1スタック毎に2/3倍）、連撃回数を増やす効果を実装する。
+- 攻撃側のヒット前ダメージを軽量化し（2/3倍）つつ、連撃回数を+1する非スタック状態を実装する。
 - pre-hitフェーズで倍率・回数の補正を行い、他フェーズの処理へ影響しないようにする。
+- 非スタック仕様を `stackWith` で明示し、同一状態の重複付与で効果が変化しないことを保証する。
 
 責務ではないこと:
 - ヒット後の演出制御や、追加スタックの発生源の管理。
@@ -11,7 +12,7 @@ LightweightState.ts の責務:
 - `Attack.calcDamages`: pre-hit計算時に `modifyPreHit` を通じて倍率・回数補正が適用される。
 - `Damages`: 適用済みの State として記録され、後続の記憶カード生成に利用される。
 */
-import { BadState } from '../State'
+import { BadState, State } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 import { StateAction } from '../Action/StateAction'
@@ -46,8 +47,7 @@ export class LightweightState extends BadState {
   }
 
   override description(): string {
-    const stacks = this.magnitude ?? 0
-    return `攻撃ダメージを(2/3)^${stacks}倍、攻撃回数+${stacks}`
+    return '与ダメージ2/3倍\n与攻撃回数+1\n（累積しない）'
   }
 
   override get priority(): number {
@@ -67,7 +67,8 @@ export class LightweightState extends BadState {
       return params
     }
 
-    const stacks = Math.max(0, this.magnitude ?? 0)
+    // 軽量化は非スタックなので1までに抑える。誤って多重付与されても効果は固定。
+    const stacks = Math.min(1, Math.max(0, this.magnitude ?? 0))
     if (stacks === 0) {
       return params
     }
@@ -83,5 +84,17 @@ export class LightweightState extends BadState {
 
   override action(tags?: CardTag[]): StateAction {
     return new LightweightStateAction(this, tags)
+  }
+
+  override stackWith(state: State): void {
+    if (state.id !== this.id) {
+      super.stackWith(state)
+      return
+    }
+    // 非スタック: 既存1段のまま据え置き。念のため強い方を採用し、最大でも1。
+    const incoming = Math.max(0, state.magnitude ?? 0)
+    const current = Math.max(0, this.magnitude ?? 0)
+    const next = Math.min(1, Math.max(current, incoming))
+    this.setMagnitude(next)
   }
 }

@@ -1,32 +1,28 @@
 import { EnemyTeam } from '../EnemyTeam'
 import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
-import { BatEnemy } from '../enemies/BatEnemy'
-import { GhostEnemy } from '../enemies/GhostEnemy'
 import { SnailEnemy } from '../enemies/SnailEnemy'
 import { OrcWrestlerEnemy } from '../enemies/OrcWrestlerEnemy'
+import { OrcTrainerEnemy } from '../enemies/OrcTrainerEnemy'
+import { DrunkOrcEnemy } from '../enemies/DrunkOrcEnemy'
 
 export class OrcWrestlerTeam extends EnemyTeam {
   constructor() {
-    const bat = new BatEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
+    const trainer = new OrcTrainerEnemy({
+      actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
-    const ghost = new GhostEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
+    const drunk = new DrunkOrcEnemy({
+      actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
     const snail = new SnailEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
+      actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
     const wrestler = new OrcWrestlerEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
+      actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
     super({
       id: 'orc-wrestler-team',
       name: 'オークレスラー混成隊',
-      members: [bat, ghost, snail, wrestler],
+      members: [trainer, drunk, snail, wrestler],
     })
   }
 }
