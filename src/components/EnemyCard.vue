@@ -317,7 +317,7 @@ defineExpose({ playDamage, playEnemySound })
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 260px;
+  height: 300px;
   padding: 10px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(18, 22, 40, 0.9), rgba(10, 12, 24, 0.95));

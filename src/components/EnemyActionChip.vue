@@ -101,6 +101,8 @@ function handleLeave(): void {
   color: rgba(255, 255, 255, 0.88);
   position: relative;
   transition: opacity 0.5s ease, filter 0.5s ease;
+  max-width: 200px;
+  flex-wrap: wrap;
 }
 
 .enemy-card__chip--disabled {
@@ -115,10 +117,15 @@ function handleLeave(): void {
 .enemy-card__chip-text {
   display: inline-flex;
   gap: 2px;
+  flex-wrap: wrap;
+  line-height: 1.2;
 }
 
 .value--changed {
   font-weight: 700;
+}
+.enemy-card__chip-text span {
+  white-space: normal;
 }
 
 .value--boosted {

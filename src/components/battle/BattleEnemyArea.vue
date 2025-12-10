@@ -416,7 +416,8 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 16px;
-  margin-bottom: 60px;
+  margin-top: 15px;
+  margin-bottom: 45px;
 }
 
 .enemy-slot {

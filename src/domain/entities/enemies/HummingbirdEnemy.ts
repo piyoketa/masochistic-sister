@@ -12,13 +12,13 @@ export class HummingbirdEnemy extends Enemy {
 
     super({
       name: 'ハチドリ',
-      maxHp: 5,
-      currentHp: 5,
+      maxHp: 6,
+      currentHp: 6,
       actions: [flurry, new TailwindAction()],
       states: [new FlightState(1)],
       image: '/assets/enemies/hummingbird.jpg',
       allyTags: ['acceleratable', 'multi-attack'],
-      allyBuffWeights: { tailwind: 50 },
+      allyBuffWeights: { tailwind: 100 },
       ...overrides,
     })
   }
