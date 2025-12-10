@@ -10,10 +10,10 @@ import { PowerChargeAction } from '../actions/PowerChargeAction'
 export class GunGoblinEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     super({
-      name: '銃ゴブリン',
-      maxHp: 30,
-      currentHp: 30,
-      actions: [new BeamShotAction(10), new PowerChargeAction(20)],
+      name: '砲台',
+      maxHp: 60,
+      currentHp: 60,
+      actions: [new BeamShotAction(20), new PowerChargeAction(40)],
       image: '/assets/enemies/kamaitachi.jpg',
       ...overrides,
     })

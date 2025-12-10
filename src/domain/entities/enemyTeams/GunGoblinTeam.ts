@@ -1,37 +1,29 @@
 import { EnemyTeam } from '../EnemyTeam'
 import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
 import { GunGoblinEnemy } from '../enemies/GunGoblinEnemy'
-import { EyeballGhostEnemy } from '../enemies/EyeballGhostEnemy'
-import { SnailEnemy } from '../enemies/SnailEnemy'
-import { OrcWrestlerEnemy } from '../enemies/OrcWrestlerEnemy'
-import { PowerChargeAction } from '../actions/PowerChargeAction'
-import { ConfusingGazeAction } from '../actions/ConfusingGazeAction'
-import { JointLockAction } from '../actions/JointLockAction'
-import { TackleAction } from '../actions/TackleAction'
+import { GhostEnemy } from '../enemies/GhostEnemy'
+import { TentacleEnemy } from '../enemies/TentacleEnemy'
+import { SuccubusEnemy } from '../enemies/SuccubusEnemy'
 
 export class GunGoblinTeam extends EnemyTeam {
   constructor() {
     const gunGoblin = new GunGoblinEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
+      actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
-    const eyeball = new EyeballGhostEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
+    const succubus = new SuccubusEnemy({
+      actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
-    const snail = new SnailEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
+    const ghost = new GhostEnemy({
+      actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
-    const wrestler = new OrcWrestlerEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
+    const tentacle = new TentacleEnemy({
+      actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
 
     super({
       id: 'gun-goblin-team',
-      name: '銃ゴブリン隊',
-      members: [gunGoblin, eyeball, snail, wrestler],
+      name: '砲台',
+      members: [gunGoblin, succubus, ghost, tentacle],
     })
   }
 }
