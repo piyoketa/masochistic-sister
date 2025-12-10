@@ -18,7 +18,7 @@ export class HummingbirdEnemy extends Enemy {
       states: [new FlightState(1)],
       image: '/assets/enemies/hummingbird.jpg',
       allyTags: ['acceleratable', 'multi-attack'],
-      allyBuffWeights: { tailwind: 100 },
+      allyBuffWeights: { tailwind: 20 },
       ...overrides,
     })
   }

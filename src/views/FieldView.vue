@@ -22,6 +22,8 @@ import {
   HighOrcBandTeam,
   BeamCannonEliteTeam,
   GiantSlugEliteTeam,
+  TestEnemyTeam,
+  HighOrcSquad,
 } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 
@@ -69,6 +71,8 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   'high-orc-band': () => new HighOrcBandTeam(),
   'beam-cannon-elite': () => new BeamCannonEliteTeam(),
   'giant-slug-elite': () => new GiantSlugEliteTeam(),
+  'test-enemy-team': () => new TestEnemyTeam(),
+  'high-orc-squad': () => new HighOrcSquad(),
 }
 
 function nodeLabel(node: FieldNode): string {

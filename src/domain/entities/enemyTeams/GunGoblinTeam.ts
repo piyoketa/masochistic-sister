@@ -1,8 +1,8 @@
 import { EnemyTeam } from '../EnemyTeam'
 import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
 import { GunGoblinEnemy } from '../enemies/GunGoblinEnemy'
-import { GhostEnemy } from '../enemies/GhostEnemy'
-import { TentacleEnemy } from '../enemies/TentacleEnemy'
+import { DrunkOrcEnemy } from '../enemies/DrunkOrcEnemy'
+import { SnailEnemy } from '../enemies/SnailEnemy'
 import { SuccubusEnemy } from '../enemies/SuccubusEnemy'
 
 export class GunGoblinTeam extends EnemyTeam {
@@ -13,17 +13,17 @@ export class GunGoblinTeam extends EnemyTeam {
     const succubus = new SuccubusEnemy({
       actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
-    const ghost = new GhostEnemy({
+    const drunk = new DrunkOrcEnemy({
       actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
-    const tentacle = new TentacleEnemy({
+    const snail = new SnailEnemy({
       actionQueueFactory: () => new DefaultEnemyActionQueue(),
     })
 
     super({
       id: 'gun-goblin-team',
       name: '砲台',
-      members: [gunGoblin, succubus, ghost, tentacle],
+      members: [gunGoblin, succubus, drunk, snail],
     })
   }
 }

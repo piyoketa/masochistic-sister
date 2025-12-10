@@ -1,10 +1,10 @@
 /*
 BatEnemy.ts の責務:
 - コウモリ敵キャラクターの初期パラメータ（HP・行動候補・タグ）を定義し、バトル開始時に一貫した挙動を提供する。
-- ドレインキス攻撃（BloodSuckAction）を行動一覧へ設定し、EnemyTeam/AI から参照可能にする。
+- 口づけ攻撃（BloodSuckAction）を行動一覧へ設定し、EnemyTeam/AI から参照可能にする。
 
 責務ではないこと:
-- ドレインキス攻撃自体のダメージ計算やドレイン処理（`BloodSuckAction` 側が担当）。
+- 口づけ攻撃自体のダメージ計算やドレイン処理（`BloodSuckAction` 側が担当）。
 - 行動順管理やターゲット決定ロジック（`EnemyActionQueue` や `EnemyTeam` が担当）。
 
 主要な連携相手とインターフェース:

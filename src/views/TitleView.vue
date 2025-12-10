@@ -140,11 +140,11 @@ const fieldLinks: LinkEntry[] = [
     description: 'First Field へ進む',
     to: { name: 'field-first' },
   },
-  {
-    label: '悪魔の像イベント',
-    description: '呪いを選んで受け入れる単一ノードのフィールド',
-    to: { name: 'field-devil-statue' },
-  },
+  // {
+  //   label: '悪魔の像イベント',
+  //   description: '呪いを選んで受け入れる単一ノードのフィールド',
+  //   to: { name: 'field-devil-statue' },
+  // },
 ]
 
 </script>

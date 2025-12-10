@@ -1,6 +1,6 @@
 /*
 BloodSuckAction.ts の責務:
-- ドレインキス攻撃カードの共通挙動（10ダメージ＋ドレイン付与）を定義し、敵味方を問わず同一ロジックで利用できるようにする。
+- 口づけ攻撃カードの共通挙動（10ダメージ＋ドレイン付与）を定義し、敵味方を問わず同一ロジックで利用できるようにする。
 - 攻撃のダメージプロファイルと `DrainCardTag` を設定して、`Attack` 基底クラスによるドレイン処理を有効化する。
 
 責務ではないこと:
@@ -23,11 +23,11 @@ import {
 export class BloodSuckAction extends Attack {
   constructor() {
     super({
-      name: 'ドレインキス',
+      name: '口づけ',
       baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'blood-suck' }),
       // effectType: 'bite',
       cardDefinition: {
-        title: 'ドレインキス',
+        title: '口づけ',
         cardType: 'attack',
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),

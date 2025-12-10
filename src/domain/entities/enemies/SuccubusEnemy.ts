@@ -20,8 +20,8 @@ export class SuccubusEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     super({
       name: '淫魔',
-      maxHp: 30,
-      currentHp: 30,
+      maxHp: 40,
+      currentHp: 40,
       actions: [new BloodSuckAction(), new ConfusingGazeAction()],
       image: '/assets/enemies/bat.jpg',
       ...overrides,
