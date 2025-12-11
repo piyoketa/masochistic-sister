@@ -55,6 +55,8 @@ import type { Card } from '@/domain/entities/Card'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
+import { createCardFromBlueprint, type CardBlueprint } from '@/domain/library/Library'
+import { createCardFromBlueprint, type CardBlueprint } from '@/domain/library/Library'
 
 declare global {
   interface Window {
@@ -134,11 +136,15 @@ const manaPulseKey = ref(0)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
-const deckCardInfos = computed<CardInfo[]>(() => buildCardInfos(snapshot.value?.deck ?? [], 'deck'))
+const deckCardInfos = computed<CardInfo[]>(() =>
+  buildCardInfosFromPlayerStoreDeck(playerStore.deck, 'player-deck'),
+)
+const battleDeckCardInfos = computed<CardInfo[]>(() => buildCardInfos(snapshot.value?.deck ?? [], 'deck'))
 const randomizedDeckCardInfos = ref<CardInfo[]>([])
 const discardCardInfos = computed<CardInfo[]>(() =>
   buildCardInfos(snapshot.value?.discardPile ?? [], 'discard'),
 )
+const deckOverlaySource = ref<'player' | 'battle'>('player')
 const audioStore = useAudioStore()
 const imageHub = createImageHub()
 provideImageHub(imageHub)
@@ -331,10 +337,22 @@ watch(
 watch(
   () => deckCardInfos.value,
   (cards) => {
-    if (pileOverlayStore.activePile !== 'deck') {
+    if (pileOverlayStore.activePile !== 'deck' || deckOverlaySource.value !== 'player') {
       return
     }
-    // デッキオーバーレイ表示中にデッキ内容が変わった場合も表示をランダム順に保つ
+    // ヘッダー経由で開いている場合はplayerStoreのID順を維持して再描画する。
+    randomizedDeckCardInfos.value = [...cards]
+    pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
+  },
+)
+
+watch(
+  () => battleDeckCardInfos.value,
+  (cards) => {
+    if (pileOverlayStore.activePile !== 'deck' || deckOverlaySource.value !== 'battle') {
+      return
+    }
+    // 山札表示中にバトルの山札が変化した場合も秘匿のため毎回シャッフルする。
     randomizedDeckCardInfos.value = shuffleCardInfosForDisplay(cards)
     pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
   },
@@ -465,8 +483,16 @@ function logPileSnapshot(pile: 'deck' | 'discard'): void {
   })
 }
 
-function openDeckOverlay(): void {
-  randomizedDeckCardInfos.value = shuffleCardInfosForDisplay(deckCardInfos.value)
+function openPlayerDeckOverlay(): void {
+  deckOverlaySource.value = 'player'
+  randomizedDeckCardInfos.value = [...deckCardInfos.value]
+  pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
+  logPileSnapshot('deck')
+}
+
+function openBattleDeckOverlay(): void {
+  deckOverlaySource.value = 'battle'
+  randomizedDeckCardInfos.value = shuffleCardInfosForDisplay(battleDeckCardInfos.value)
   pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
   logPileSnapshot('deck')
 }
@@ -544,6 +570,30 @@ function buildCardInfos(cards: Card[], prefix: string): CardInfo[] {
       buildCardInfoFromCard(card, {
         id: `${prefix}-${card.id ?? index}`,
         affordable: true,
+        costContext,
+      }),
+    )
+    .filter((info): info is CardInfo => info !== null)
+}
+
+function buildCardInfosFromPlayerStoreDeck(deck: CardBlueprint[], prefix: string): CardInfo[] {
+  const repository = new CardRepository()
+  const battle = viewManager.battle
+  const costContext =
+    battle != null
+      ? {
+          battle,
+          source: battle.player,
+        }
+      : undefined
+  const sorted = [...deck].sort((a, b) => a.type.localeCompare(b.type))
+  return sorted
+    .map((blueprint, index) => createCardFromBlueprint(blueprint, repository))
+    .map((card, index) =>
+      buildCardInfoFromCard(card, {
+        id: `${prefix}-${card.id ?? index}`,
+        affordable: true,
+        disabled: true,
         costContext,
       }),
     )
@@ -853,11 +903,11 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
     :player-state-snapshots="playerStateSnapshots"
     :player-predicted-hp="projectedPlayerHp ?? undefined"
     @contextmenu="handleContextMenu"
-    @relic-hover="(relic, event) => handleRelicHover(event, relic)"
-    @relic-leave="handleRelicLeave"
-    @relic-click="handleRelicClick"
-    @deck-click="openDeckOverlay"
-  >
+  @relic-hover="(relic, event) => handleRelicHover(event, relic)"
+  @relic-leave="handleRelicLeave"
+  @relic-click="handleRelicClick"
+  @deck-click="openPlayerDeckOverlay"
+>
     <template #overlays>
       <transition name="battle-error">
         <div v-if="errorMessage" class="battle-error-overlay" role="alert">
@@ -936,9 +986,9 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         </div>
       </div>
 
-      <BattleHandArea
-        :key="`hand-area-${viewResetToken}`"
-        ref="handAreaRef"
+  <BattleHandArea
+    :key="`hand-area-${viewResetToken}`"
+    ref="handAreaRef"
         :snapshot="snapshot"
         :hovered-enemy-id="hoveredEnemyId"
         :is-initializing="isInitializing"
@@ -954,7 +1004,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         @hide-overlay="handleHandHideOverlay"
         @show-enemy-selection-hints="handleEnemySelectionHints"
         @clear-enemy-selection-hints="handleClearEnemySelectionHints"
-        @open-deck-overlay="openDeckOverlay"
+    @open-deck-overlay="openBattleDeckOverlay"
         @open-discard-overlay="openDiscardOverlay"
         @open-pile-choice="handleOpenPileChoice"
       />

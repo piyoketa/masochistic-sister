@@ -12,6 +12,7 @@ import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { CardInfo } from '@/types/battle'
+import { createCardFromBlueprint } from '@/domain/library/Library'
 import {
   SnailTeam,
   IronBloomTeam,
@@ -45,8 +46,9 @@ const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
 const audioStore = useAudioStore()
 const deckCardInfos = computed<CardInfo[]>(() => {
   const repository = new CardRepository()
-  const cards = playerStore.buildDeck(repository)
-  return cards
+  const sorted = [...playerStore.deck].sort((a, b) => a.type.localeCompare(b.type))
+  return sorted
+    .map((blueprint, index) => createCardFromBlueprint(blueprint, repository))
     .map((card, index) =>
       buildCardInfoFromCard(card, {
         id: `player-deck-${card.id ?? index}`,
