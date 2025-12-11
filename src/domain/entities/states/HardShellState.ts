@@ -5,7 +5,7 @@ export class HardShellState extends TraitState {
   constructor(magnitude = 20) {
     super({
       id: 'state-hard-shell',
-      name: '硬い殻',
+      name: '堅固',
       magnitude,
     })
   }

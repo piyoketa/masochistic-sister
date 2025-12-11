@@ -30,6 +30,35 @@ const props = defineProps<{
   action: ActionChipEntry
 }>()
 
+const DEBUFF_ICON_SRC = '/assets/icons/debuff.png'
+const SINGLE_ATTACK_ICON_SRC = '/assets/icons/single_attack.png'
+const MULTI_ATTACK_ICON_SRC = '/assets/icons/multi_attack.png'
+const BUFF_ICON_SRC = '/assets/icons/buff.png'
+
+function isDebuff(text: string): boolean {
+  return text.startsWith('🌀')
+}
+
+function stripDebuff(text: string): string {
+  return text.replace(/^🌀/, '')
+}
+
+function isSingleAttackIcon(text: string): boolean {
+  return text === '💥'
+}
+
+function isMultiAttackIcon(text: string): boolean {
+  return text === '⚔️'
+}
+
+function isBuff(text: string): boolean {
+  return text.startsWith('🔱')
+}
+
+function stripBuff(text: string): string {
+  return text.replace(/^🔱/, '')
+}
+
 const emit = defineEmits<{
   (event: 'enter', payload: { event: MouseEvent; text?: string; key: string }): void
   (event: 'move', payload: { event: MouseEvent; text?: string; key: string }): void
@@ -73,16 +102,40 @@ function handleLeave(): void {
       <span
         v-for="(segment, segmentIndex) in props.action.segments"
         :key="segmentIndex"
-        :class="{
-          'value--boosted': segment.change === 'up',
-          'value--reduced': segment.change === 'down',
-          'value--changed': segment.highlighted,
-        }"
+      :class="{
+        'value--boosted': segment.change === 'up',
+        'value--reduced': segment.change === 'down',
+        'value--changed': segment.highlighted,
+      }"
         @mouseenter="(event) => handleEnter(segmentIndex, event)"
         @mousemove="(event) => handleMove(segmentIndex, event)"
         @mouseleave="handleLeave"
       >
-        {{ segment.text }}
+        <template v-if="isSingleAttackIcon(segment.text)">
+          <v-icon class="attack-icon" size="16">
+            <img :src="SINGLE_ATTACK_ICON_SRC" alt="一回攻撃" />
+          </v-icon>
+        </template>
+        <template v-else-if="isMultiAttackIcon(segment.text)">
+          <v-icon class="attack-icon" size="16">
+            <img :src="MULTI_ATTACK_ICON_SRC" alt="連続攻撃" />
+          </v-icon>
+        </template>
+        <template v-else-if="isBuff(segment.text)">
+          <v-icon class="buff-icon" size="14">
+            <img :src="BUFF_ICON_SRC" alt="バフ" />
+          </v-icon>
+          <span class="buff-text">{{ stripBuff(segment.text) }}</span>
+        </template>
+        <template v-else-if="isDebuff(segment.text)">
+          <v-icon class="debuff-icon" size="14">
+            <img :src="DEBUFF_ICON_SRC" alt="デバフ" />
+          </v-icon>
+          <span class="debuff-text">{{ stripDebuff(segment.text) }}</span>
+        </template>
+        <template v-else>
+          {{ segment.text }}
+        </template>
       </span>
     </span>
   </li>
@@ -126,6 +179,41 @@ function handleLeave(): void {
 }
 .enemy-card__chip-text span {
   white-space: normal;
+}
+
+.debuff-icon {
+  display: inline-flex;
+}
+
+.debuff-icon img {
+  width: 14px;
+  height: 14px;
+}
+
+.debuff-text {
+  display: inline-flex;
+}
+
+.buff-icon {
+  display: inline-flex;
+}
+
+.buff-icon img {
+  width: 14px;
+  height: 14px;
+}
+
+.buff-text {
+  display: inline-flex;
+}
+
+.attack-icon {
+  display: inline-flex;
+}
+
+.attack-icon img {
+  width: 16px;
+  height: 16px;
 }
 
 .value--boosted {

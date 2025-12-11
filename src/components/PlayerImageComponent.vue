@@ -38,8 +38,8 @@ const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme | 'damaged-arcane' |
   'damaged-normal': buildFaceDiffSrc('damaged_normal.png'),
 }
 const STATUS_DIFF_SOURCES: Partial<Record<string, string>> = {
-  'state-corrosion': buildStatusDiffSrc('CorrosionState.png'),
-  'state-sticky': buildStatusDiffSrc('StickyState.png'),
+  // 'state-corrosion': buildStatusDiffSrc('CorrosionState.png'),
+  // 'state-sticky': buildStatusDiffSrc('StickyState.png'),
 }
 const debugEnabled =
   (typeof import.meta !== 'undefined' && import.meta.env?.DEV === true) ||

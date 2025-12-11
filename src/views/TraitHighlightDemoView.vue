@@ -35,7 +35,7 @@ const baseEnemy: EnemyInfo = {
   states: [
     {
       id: 'state-hard-shell',
-      name: '硬い殻',
+      name: '堅固',
       description: '被ダメージ-20（重要Trait）',
       magnitude: 20,
       category: 'trait',
@@ -82,7 +82,7 @@ async function replay(): Promise<void> {
     <main class="demo-body">
       <EnemyCard :key="version" :enemy="enemyForRender" selectable />
       <section class="hint">
-        <p>・硬い殻 / ダメージ固定: Trait + isImportant → 縁が明るくポップします。</p>
+        <p>・堅固 / ダメージ固定: Trait + isImportant → 縁が明るくポップします。</p>
         <p>・打点上昇: Buff → 強調なしで通常表示。</p>
       </section>
     </main>

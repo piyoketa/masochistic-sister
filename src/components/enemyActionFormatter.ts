@@ -80,6 +80,13 @@ export function formatEnemyActionLabel(
       segments.push({ text: '+' })
       segments.push({ text: formatStateText('🌀', status.name, status.magnitude) })
     }
+    const effectTags = action.cardInfo?.effectTags ?? []
+    if (effectTags.length > 0) {
+      effectTags.forEach((tag, index) => {
+        segments.push({ text: index === 0 && !status ? '+' : ' ' })
+        segments.push({ text: formatStateText('', tag.label) })
+      })
+    }
 
     appendTarget()
     const label = segments.map((segment) => segment.text).join('')
@@ -94,6 +101,13 @@ export function formatEnemyActionLabel(
       }
       const icon = action.selfState ? '🔱' : '🌀'
       segments.push({ text: formatStateText(icon, state.name, state.magnitude) })
+      const effectTags = action.cardInfo?.effectTags ?? []
+      if (effectTags.length > 0) {
+        effectTags.forEach((tag) => {
+          segments.push({ text: '+' })
+          segments.push({ text: formatStateText('', tag.label) })
+        })
+      }
       appendTarget()
       const label = segments.map((segment) => segment.text).join('')
       return { label, segments }

@@ -159,6 +159,16 @@ const primaryTagText = computed(() =>
 const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updatePosition } =
   useDescriptionOverlay()
 
+const DEBUFF_ICON_SRC = '/assets/icons/debuff.png'
+
+function isDebuffSegment(segment: DescriptionSegment): boolean {
+  return segment.text.startsWith('🌀')
+}
+
+function stripDebuffEmoji(text: string): string {
+  return text.replace(/^🌀/, '')
+}
+
 const showDamagePanel = computed(() => typeof props.damageAmount === 'number' && props.damageAmount >= 0)
 const damageAmountClass = computed(() => {
   if (!showDamagePanel.value || typeof props.damageAmount !== 'number') {
@@ -356,6 +366,19 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
               <template v-for="(segment, index) in props.descriptionSegments" :key="index">
                 <br v-if="segment.text === '\n'" />
                 <span
+                  v-else-if="isDebuffSegment(segment)"
+                  class="debuff-segment"
+                  :class="{ 'value--boosted': segment.highlighted }"
+                  @mouseenter="(event) => handleSegmentEnter(event, `segment-${index}`, segment.tooltip)"
+                  @mousemove="(event) => handleSegmentMove(event, `segment-${index}`, segment.tooltip)"
+                  @mouseleave="() => handleSegmentLeave(`segment-${index}`, segment.tooltip)"
+                >
+                  <v-icon class="debuff-icon" size="14">
+                    <img :src="DEBUFF_ICON_SRC" alt="デバフ" />
+                  </v-icon>
+                  <span class="debuff-text">{{ stripDebuffEmoji(segment.text) }}</span>
+                </span>
+                <span
                   v-else
                   :class="{ 'value--boosted': segment.highlighted }"
                   @mouseenter="(event) => handleSegmentEnter(event, `segment-${index}`, segment.tooltip)"
@@ -366,6 +389,15 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
                 </span>
               </template>
             </template>
+            <span
+              v-for="tag in effectTagList"
+              :key="`effect-${tag.id}`"
+              @mouseenter="(event) => handleTagEnter(event, tag)"
+              @mousemove="(event) => handleTagMove(event, tag)"
+              @mouseleave="() => handleTagLeave(tag)"
+            >
+              💛{{ tag.label }}
+            </span>
           </p>
           <p v-if="props.type !== 'attack'" class="card-description">
             <template v-for="(line, index) in (props.description ?? '').split('\n')" :key="index">
@@ -376,20 +408,9 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
           <div v-if="primaryTagText" class="primary-tag-text">
             {{ primaryTagText }}
           </div>
-          <div v-if="effectTagList.length" class="tag-list tag-list--effect">
-            <span
-              v-for="tag in effectTagList"
-              :key="tag.id"
-              @mouseenter="(event) => handleTagEnter(event, tag)"
-              @mousemove="(event) => handleTagMove(event, tag)"
-              @mouseleave="() => handleTagLeave(tag)"
-            >
-              {{ tag.label }}
-            </span>
-          </div>          
         </section>
 
-        <div v-if="categoryTagList.length" class="category-tag-list">
+        <div v-if="categoryTagList.length || effectTagList.length" class="category-tag-list">
           <span
             v-for="tag in categoryTagList"
             :key="tag.id"
@@ -597,6 +618,12 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   justify-content: center;
 }
 
+.tag-list--effect span {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--card-text-color, inherit);
+  font-weight: 700;
+}
+
 .category-tag-list {
   display: flex;
   justify-content: flex-end;
@@ -713,5 +740,20 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   text-shadow:
     0 0 6px rgba(255, 107, 107, 0.3),
     0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.debuff-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.debuff-icon {
+  display: inline-flex;
+}
+
+.debuff-icon img {
+  width: 14px;
+  height: 14px;
 }
 </style>

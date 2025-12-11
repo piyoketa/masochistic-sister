@@ -31,7 +31,7 @@
 ## Trait：敵固有の能力
 - 例：
   - ダメージ固定 FlightState
-  - 硬い殻 HardShellState
+  - 堅固 HardShellState
   - 大型 LargeState
   - 臆病 CowardTrait
   - 怒りの覚醒 FuryAwakeningState
@@ -54,7 +54,7 @@
 - 優先度:20 被攻撃者に関わるバフ・デバフで、加減算のもの
   - 腐食 CorrosionState
   - 粘液 StickyState
-  - 硬い殻 HardShellState
+  - 堅固 HardShellState
   - 関節損傷 JointDamageState（殴打被ダメージ+20 * スタック）
 - 優先度:25 被攻撃者に関わるバフ・デバフで、掛け算のもの
 - 優先度:120 被攻撃者に関わるバフ・デバフで、特定の値に固定する（代入する）もの

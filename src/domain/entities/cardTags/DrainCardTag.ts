@@ -1,6 +1,6 @@
-import { CardTag } from '../CardTag'
+import { CardEffectTag } from './CardEffectTag'
 
-export class DrainCardTag extends CardTag {
+export class DrainCardTag extends CardEffectTag {
   constructor() {
     super({
       id: 'tag-drain',
