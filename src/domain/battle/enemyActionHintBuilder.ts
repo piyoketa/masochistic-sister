@@ -88,10 +88,11 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
     calculatedPattern,
     status: primaryState
       ? {
-      name: primaryState.name,
-      magnitude: primaryState.magnitude ?? 1,
-      description: primaryState.description(),
-    }
+          name: primaryState.name,
+          magnitude: primaryState.magnitude ?? 1,
+          description: primaryState.description(),
+          iconPath: primaryState.iconPath,
+        }
       : undefined,
     description: action.describe(),
     cardInfo:
@@ -127,6 +128,7 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
           name: gainState.name,
           magnitude: gainState.magnitude ?? 1,
           description: gainState.description(),
+          iconPath: gainState.iconPath,
         }
       : undefined,
     status: inflictState
@@ -134,6 +136,7 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
           name: inflictState.name,
           magnitude: inflictState.magnitude ?? 1,
           description: inflictState.description(),
+          iconPath: inflictState.iconPath,
         }
       : undefined,
   }

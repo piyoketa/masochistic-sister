@@ -13,6 +13,10 @@ export interface StateProps {
   magnitude?: number
   cardDefinition?: CardDefinition
   isImportant?: boolean
+  /**
+   * 状態を表すアイコンパス。デフォルトは未指定。派生クラスで上書き可能。
+   */
+  iconPath?: string
 }
 
 export type StateCategory = 'bad' | 'buff' | 'trait'
@@ -38,6 +42,13 @@ export class State {
 
   get cardDefinitionBase(): CardDefinition | undefined {
     return this.props.cardDefinition
+  }
+
+  /**
+   * UI用の状態アイコンパス。存在しない場合は undefined を返す。
+   */
+  get iconPath(): string | undefined {
+    return this.props.iconPath
   }
 
   /**
@@ -161,6 +172,10 @@ export class State {
  * プレイヤー手札に入る「悪性」状態（カード化されるもの）
  */
 export class BadState extends State {
+  constructor(props: StateProps) {
+    super({ ...props, iconPath: props.iconPath ?? '/assets/icons/debuff.png' })
+  }
+
   override getCategory(): StateCategory {
     return 'bad'
   }
@@ -184,6 +199,10 @@ export class BadState extends State {
  * バフ系（手札に入らない）
  */
 export class BuffState extends State {
+  constructor(props: StateProps) {
+    super({ ...props, iconPath: props.iconPath ?? '/assets/icons/buff.png' })
+  }
+
   override getCategory(): StateCategory {
     return 'buff'
   }

@@ -31,18 +31,8 @@ const props = defineProps<{
   action: ActionChipEntry
 }>()
 
-const DEBUFF_ICON_SRC = '/assets/icons/debuff.png'
 const SINGLE_ATTACK_ICON_SRC = '/assets/icons/single_attack.png'
 const MULTI_ATTACK_ICON_SRC = '/assets/icons/multi_attack.png'
-const BUFF_ICON_SRC = '/assets/icons/buff.png'
-
-function isDebuff(text: string): boolean {
-  return text.startsWith('🌀')
-}
-
-function stripDebuff(text: string): string {
-  return text.replace(/^🌀/, '')
-}
 
 function isSingleAttackIcon(text: string): boolean {
   return text === '💥'
@@ -50,14 +40,6 @@ function isSingleAttackIcon(text: string): boolean {
 
 function isMultiAttackIcon(text: string): boolean {
   return text === '⚔️'
-}
-
-function isBuff(text: string): boolean {
-  return text.startsWith('🔱')
-}
-
-function stripBuff(text: string): string {
-  return text.replace(/^🔱/, '')
 }
 
 const emit = defineEmits<{
@@ -128,18 +110,6 @@ function handleLeave(): void {
             <img :src="MULTI_ATTACK_ICON_SRC" alt="連続攻撃" />
           </v-icon>
         </template>
-        <template v-else-if="isBuff(segment.text)">
-          <v-icon class="buff-icon" size="14">
-            <img :src="BUFF_ICON_SRC" alt="バフ" />
-          </v-icon>
-          <span class="buff-text">{{ stripBuff(segment.text) }}</span>
-        </template>
-        <template v-else-if="isDebuff(segment.text)">
-          <v-icon class="debuff-icon" size="14">
-            <img :src="DEBUFF_ICON_SRC" alt="デバフ" />
-          </v-icon>
-          <span class="debuff-text">{{ stripDebuff(segment.text) }}</span>
-        </template>
         <template v-else>
           {{ segment.text }}
         </template>
@@ -188,19 +158,6 @@ function handleLeave(): void {
   white-space: normal;
 }
 
-.debuff-icon {
-  display: inline-flex;
-}
-
-.debuff-icon img {
-  width: 14px;
-  height: 14px;
-}
-
-.debuff-text {
-  display: inline-flex;
-}
-
 .effect-icon {
   display: inline-flex;
 }
@@ -211,19 +168,6 @@ function handleLeave(): void {
 }
 
 .effect-text {
-  display: inline-flex;
-}
-
-.buff-icon {
-  display: inline-flex;
-}
-
-.buff-icon img {
-  width: 14px;
-  height: 14px;
-}
-
-.buff-text {
   display: inline-flex;
 }
 

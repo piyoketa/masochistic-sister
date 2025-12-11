@@ -43,11 +43,13 @@ export type EnemyActionHint = {
     name: string
     magnitude?: number
     description?: string
+    iconPath?: string
   }
   selfState?: {
     name: string
     magnitude?: number
     description?: string
+    iconPath?: string
   }
   acted?: boolean
   icon?: string

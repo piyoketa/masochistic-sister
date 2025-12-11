@@ -90,7 +90,10 @@ export function formatEnemyActionLabel(
     const status = action.status
     if (status) {
       segments.push({ text: '+' })
-      segments.push({ text: formatStateText('🌀', status.name, status.magnitude) })
+      segments.push({
+        text: formatStateText('', status.name, status.magnitude),
+        iconPath: status.iconPath,
+      })
     }
     const effectTags = action.cardInfo?.effectTags ?? []
     if (effectTags.length > 0) {
@@ -111,8 +114,10 @@ export function formatEnemyActionLabel(
       if (includeTitle) {
         segments.push({ text: `${action.title}：` })
       }
-      const icon = action.selfState ? '🔱' : '🌀'
-      segments.push({ text: formatStateText(icon, state.name, state.magnitude) })
+      segments.push({
+        text: formatStateText('', state.name, state.magnitude),
+        iconPath: state.iconPath,
+      })
       const effectTags = action.cardInfo?.effectTags ?? []
       if (effectTags.length > 0) {
         effectTags.forEach((tag) => {

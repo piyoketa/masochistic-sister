@@ -39,16 +39,16 @@ describe('formatEnemyActionLabel', () => {
         title: '溶かす',
         type: 'attack',
         pattern: { amount: 5, count: 1, type: 'single' },
-        status: { name: '腐食', magnitude: 1 },
+        status: { name: '腐食', magnitude: 1, iconPath: '/assets/icons/debuff.png' },
       }),
     )
-    expect(label).toBe('溶かす: 💥5+🌀腐食(1)')
+    expect(label).toBe('溶かす: 💥5+腐食(1)')
     expect(segments).toEqual([
       { text: '溶かす: ', showOverlay: true },
       { text: '💥', showOverlay: true },
       { text: '5', highlighted: false, change: undefined, showOverlay: true },
       { text: '+' },
-      { text: '🌀腐食(1)' },
+      { text: '腐食(1)', iconPath: '/assets/icons/debuff.png' },
     ])
   })
 
@@ -74,11 +74,14 @@ describe('formatEnemyActionLabel', () => {
       baseHint({
         title: 'ビルドアップ',
         type: 'skill',
-        selfState: { name: '筋肉強化', magnitude: 10 },
+        selfState: { name: '筋肉強化', magnitude: 10, iconPath: '/assets/icons/buff.png' },
       }),
     )
-    expect(label).toBe('ビルドアップ：🔱筋肉強化(10)')
-    expect(segments).toEqual([{ text: 'ビルドアップ：' }, { text: '🔱筋肉強化(10)' }])
+    expect(label).toBe('ビルドアップ：筋肉強化(10)')
+    expect(segments).toEqual([
+      { text: 'ビルドアップ：' },
+      { text: '筋肉強化(10)', iconPath: '/assets/icons/buff.png' },
+    ])
   })
 
   it('formats skip action', () => {
