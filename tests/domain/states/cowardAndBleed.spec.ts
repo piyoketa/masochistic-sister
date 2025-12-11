@@ -91,11 +91,11 @@ describe('臆病と出血ステート', () => {
     expect(bleedEnemy.currentHp).toBe(25)
   })
 
-  it('守りの花びらはターン開始時にバリア値を3へ戻す', () => {
+  it('バリア回復はターン開始時にバリア値を3へ戻す', () => {
     const guardian = new GuardianPetalState(3)
     const barrier = new BarrierState(3)
     const enemy = new Enemy({
-      name: '守りの花びら持ち',
+      name: 'バリア回復持ち',
       maxHp: 40,
       currentHp: 40,
       actions: [new TackleAction()],

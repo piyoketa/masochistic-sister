@@ -16,7 +16,7 @@
     - SnailTeam: HardShell
     - TestEnemyTeam: HardShell
     - HummingbirdAlliesTeam: Flight（ハチドリ）
-    - IronBloomTeam: GuardianPetal（守りの花びら）
+    - IronBloomTeam: GuardianPetal（バリア回復）
     - OrcHeroEliteTeam: Large / FuryAwakening
     - TestSlug5HpTeam: なし（isImportant指定不要）
 - Snapshot 拡張: 各 State に `category: 'bad' | 'buff' | 'trait'` と `isImportant?: boolean` を付与。

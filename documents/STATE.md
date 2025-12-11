@@ -35,7 +35,7 @@
   - 大型 LargeState
   - 臆病 CowardTrait
   - 怒りの覚醒 FuryAwakeningState
-  - 守りの花びら GuardianPetalState
+  - バリア回復 GuardianPetalState
 - 特徴
   - Battle中にmagnitudeが変化したり削除されたりすることがない、敵固有の能力。
   - プレイヤーの手札にカードとして入る可能性はないので、actionsと同等のプロパティ・メソッドを持つ必要はない。

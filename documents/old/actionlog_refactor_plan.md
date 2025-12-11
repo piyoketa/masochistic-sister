@@ -13,7 +13,7 @@
 | `player-event` | 「戦いの準備」などターン開始イベントで発生する効果を記録。 | マナ＋1 などのステータス更新 |
 | `play-card` | プレイヤーがカードを使用した操作ログ。敵の即時行動は含まない。 | 手札移動、効果適用 |
 | `enemy-act` ⭐ | 敵 1 体が行動した事実を記録する。通常ターン・被虐のオーラ等すべて統一。 | 敵ハイライト、ダメージ、状態変化 |
-| `state-event` | 状態異常の tick など、プレイヤー/敵いずれかの State が自動で発動するイベントを記録。 | 毒ダメージ、臆病逃走、守りの花びらなど |
+| `state-event` | 状態異常の tick など、プレイヤー/敵いずれかの State が自動で発動するイベントを記録。 | 毒ダメージ、臆病逃走、バリア回復など |
 | `end-player-turn` | プレイヤーがターンを終了した事実のみを記録。敵行動は含まない。 | ボタン押下演出など |
 | `victory` / `gameover` | 戦闘結果を示す。 | リザルトオーバーレイ |
 
@@ -42,7 +42,7 @@ type AnimationInstruction = {
 2. **Battle 実装の変更**  
    - プレイヤーターン終了時の敵行動ループを、敵ごとに `enemy-act` エントリを積む方式へ変更。  
    - カード効果で敵を行動させる際も `play-card` → `enemy-act` の 2 ステップでログ化。  
-   - 毒・臆病・守りの花びらなどの State 処理は `state-event`、戦いの準備などは `player-event` として ActionLog に追加する。  
+   - 毒・臆病・バリア回復などの State 処理は `state-event`、戦いの準備などは `player-event` として ActionLog に追加する。  
    - `AnimationInstruction` を生成するユーティリティを実装し、手札移動／ダメージ／撃破などのパターンを共通化。
 3. **Snapshot Patch 生成**  
    - Battle 内に `createSnapshotPatch({ hand?, deck?, ... })` のようなメソッドを追加し、アニメーション単位で差分を構築。  

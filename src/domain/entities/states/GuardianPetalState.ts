@@ -22,7 +22,7 @@ export class GuardianPetalState extends TraitState {
   constructor(magnitude = 0) {
     super({
       id: 'state-guardian-petal',
-      name: '守りの花びら',
+      name: 'バリア回復',
       magnitude,
     })
   }
