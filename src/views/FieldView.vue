@@ -41,6 +41,7 @@ const pileOverlayStore = usePileOverlayStore()
 
 const router = useRouter()
 const debugMode = ref(false)
+const debugMenuOpen = ref(false)
 
 const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
 const audioStore = useAudioStore()
@@ -117,10 +118,16 @@ function resolveEffectiveHint(teamId: string): string | null {
 }
 
 function isReachable(levelIndex: number, nodeIndex: number): boolean {
+  const level = levels.value?.[levelIndex]
+  const node = level?.nodes?.[nodeIndex]
   // デバッグ時は到達制約を無視して全マス解放する。
   if (debugMode.value) {
     return true
   }
+  if (!node) {
+    return false
+  }
+  // ルール: 現在いるレベルの「次のレベル」のマスだけを選択できる
   if (levelIndex !== fieldStore.nextLevelIndex) {
     return false
   }
@@ -176,8 +183,8 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
 audioStore.playBgm('/sounds/bgm/field.mp3')
 
 onMounted(() => {
-  if (props.fieldId === 'first-field') {
-    fieldStore.initializeField(props.fieldId)
+  if (props.fieldId === 'first-field' && fieldStore.field.id !== 'first-field') {
+    fieldStore.initializeField('first-field')
   }
   // フィールド系BGMは報酬画面への遷移でも途切れさせないため、アンマウント時に stop しない。
   // BattleView などで別のBGMを再生する際は audioHub 側で切り替わる想定。
@@ -199,14 +206,22 @@ onMounted(() => {
         <div class="field-header__actions">
           <span class="field-header__item">HP: {{ playerHp.current }} / {{ playerHp.max }}</span>
           <span class="field-header__item">現在Lv: {{ currentLevel }}</span>
-          <button type="button" class="deck-button" @click="router.push('/deck')">デッキ確認</button>
-          <label class="debug-toggle">
-            <input v-model="debugMode" type="checkbox">
-            デバッグ: 全マス解放
-          </label>
         </div>
       </template>
     </PlayerStatusHeader>
+
+    <section class="debug-panel">
+      <button class="debug-accordion" type="button" @click="debugMenuOpen = !debugMenuOpen">
+        デバッグメニュー {{ debugMenuOpen ? '▲' : '▼' }}
+      </button>
+      <div v-if="debugMenuOpen" class="debug-content">
+        <button type="button" class="deck-button" @click="router.push('/deck')">デッキ確認</button>
+        <label class="debug-toggle">
+          <input v-model="debugMode" type="checkbox">
+          デバッグ: 全マス解放
+        </label>
+      </div>
+    </section>
 
     <!-- <section class="field-section">
       <h2>現在のマス (Lv.{{ currentLevel }})</h2>
@@ -248,7 +263,7 @@ onMounted(() => {
                 状態: クリア
               </div>
               <button
-                v-if="!( (!isReachable(levelIdx, idx) || fieldStore.isNodeCleared(node.id)) && !debugMode )"
+                v-if="isReachable(levelIdx, idx)"
                 type="button"
                 class="enter-button"
                 @click="handleEnter(node, levelIdx, idx)"
@@ -276,6 +291,35 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 
+.field-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(245, 242, 255, 0.85);
+  font-size: 14px;
+}
+
+.debug-panel {
+  margin-bottom: 16px;
+}
+
+.debug-accordion {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f2ff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.debug-content {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .deck-button {
   background: rgba(255, 227, 115, 0.9);
   color: #2d1a0f;
@@ -284,14 +328,6 @@ onMounted(() => {
   padding: 6px 12px;
   font-weight: 800;
   cursor: pointer;
-}
-
-.field-header__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  color: rgba(245, 242, 255, 0.85);
-  font-size: 14px;
 }
 
 .debug-toggle {

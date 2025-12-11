@@ -61,18 +61,7 @@ const router = createRouter({
       path: '/field',
       name: 'field-view',
       component: () => import('@/views/FieldView.vue'),
-    },
-    {
-      path: '/field/first',
-      name: 'field-first',
-      component: () => import('@/views/FieldView.vue'),
       props: { fieldId: 'first-field' },
-    },
-    {
-      path: '/field/devil-statue',
-      name: 'field-devil-statue',
-      component: () => import('@/views/FieldView.vue'),
-      props: { fieldId: 'devil-statue' },
     },
     {
       path: '/lab/action-cards',

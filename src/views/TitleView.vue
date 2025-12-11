@@ -137,8 +137,8 @@ const demoLinks: LinkEntry[] = [
 const fieldLinks: LinkEntry[] = [
   {
     label: 'フィールドに出る',
-    description: 'First Field へ進む',
-    to: { name: 'field-first' },
+    description: 'First Field のスタートマスへ',
+    to: { name: 'start-story' },
   },
   // {
   //   label: '悪魔の像イベント',

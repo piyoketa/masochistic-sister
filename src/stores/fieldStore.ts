@@ -1,17 +1,15 @@
 import { defineStore } from 'pinia'
-import { SampleField } from '@/fields/domains/SampleField'
 import { FirstField } from '@/fields/domains/FirstField'
-import { DevilStatueField } from '@/fields/domains/DevilStatueField'
 import type { Field } from '@/fields/domains/Field'
 import type { FieldNode } from '@/fields/domains/FieldNode'
 import { usePlayerStore } from './playerStore'
 
 export const useFieldStore = defineStore('field', {
   state: () => ({
-    field: new SampleField(usePlayerStore().relics) as Field,
+    field: new FirstField(usePlayerStore().relics) as Field,
     currentLevelIndex: 0,
     currentNodeIndex: 0,
-    clearedNodes: new Set<string>(['start-1']),
+    clearedNodes: new Set<string>([]),
   }),
   getters: {
     currentNode(state): FieldNode | undefined {
@@ -29,24 +27,18 @@ export const useFieldStore = defineStore('field', {
     reset(): void {
       const playerStore = usePlayerStore()
       playerStore.ensureInitialized()
-      this.field = new SampleField(playerStore.relics)
+      this.field = new FirstField(playerStore.relics)
       this.currentLevelIndex = 0
       this.currentNodeIndex = 0
-      this.clearedNodes = new Set<string>(['start-1'])
+      this.clearedNodes = new Set<string>([])
     },
     initializeField(fieldId?: string): void {
       const playerStore = usePlayerStore()
       playerStore.ensureInitialized()
-      if (fieldId === 'first-field') {
-        this.field = new FirstField(playerStore.relics)
-      } else if (fieldId === 'devil-statue') {
-        this.field = new DevilStatueField()
-      } else {
-        this.field = new SampleField(playerStore.relics)
-      }
+      this.field = new FirstField(playerStore.relics)
       this.currentLevelIndex = 0
       this.currentNodeIndex = 0
-      this.clearedNodes = new Set<string>(['start-1'])
+      this.clearedNodes = new Set<string>([])
     },
     isNodeCleared(nodeId: string): boolean {
       return this.clearedNodes.has(nodeId)
@@ -71,6 +63,9 @@ export const useFieldStore = defineStore('field', {
         return
       }
       this.clearedNodes.add(node.id)
+      // 現在ノードをクリアしたら次のレベルへ進める
+      this.currentLevelIndex = Math.min(this.currentLevelIndex + 1, this.field.levels.length - 1)
+      this.currentNodeIndex = 0
     },
   },
 })
