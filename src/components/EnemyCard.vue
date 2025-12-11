@@ -51,7 +51,13 @@ const ENEMY_AUDIO_CUES = {
 interface ActionChipEntry {
   key: string
   icon: string
-  segments: Array<{ text: string; highlighted?: boolean; change?: 'up' | 'down'; showOverlay?: boolean }>
+  segments: Array<{
+    text: string
+    highlighted?: boolean
+    change?: 'up' | 'down'
+    showOverlay?: boolean
+    iconPath?: string
+  }>
   label: string
   description: string
   tooltips: Partial<Record<number, string>>

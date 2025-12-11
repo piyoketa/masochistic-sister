@@ -12,6 +12,7 @@ interface SegmentEntry {
   highlighted?: boolean
   change?: 'up' | 'down'
   showOverlay?: boolean
+  iconPath?: string
 }
 
 interface ActionChipEntry {
@@ -102,16 +103,22 @@ function handleLeave(): void {
       <span
         v-for="(segment, segmentIndex) in props.action.segments"
         :key="segmentIndex"
-      :class="{
-        'value--boosted': segment.change === 'up',
-        'value--reduced': segment.change === 'down',
-        'value--changed': segment.highlighted,
-      }"
+        :class="{
+          'value--boosted': segment.change === 'up',
+          'value--reduced': segment.change === 'down',
+          'value--changed': segment.highlighted,
+        }"
         @mouseenter="(event) => handleEnter(segmentIndex, event)"
         @mousemove="(event) => handleMove(segmentIndex, event)"
         @mouseleave="handleLeave"
       >
-        <template v-if="isSingleAttackIcon(segment.text)">
+        <template v-if="segment.iconPath">
+          <v-icon class="effect-icon" size="14">
+            <img :src="segment.iconPath" alt="効果" />
+          </v-icon>
+          <span class="effect-text">{{ segment.text }}</span>
+        </template>
+        <template v-else-if="isSingleAttackIcon(segment.text)">
           <v-icon class="attack-icon" size="16">
             <img :src="SINGLE_ATTACK_ICON_SRC" alt="一回攻撃" />
           </v-icon>
@@ -191,6 +198,19 @@ function handleLeave(): void {
 }
 
 .debuff-text {
+  display: inline-flex;
+}
+
+.effect-icon {
+  display: inline-flex;
+}
+
+.effect-icon img {
+  width: 14px;
+  height: 14px;
+}
+
+.effect-text {
   display: inline-flex;
 }
 

@@ -396,7 +396,11 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
               @mousemove="(event) => handleTagMove(event, tag)"
               @mouseleave="() => handleTagLeave(tag)"
             >
-              💛{{ tag.label }}
+              <v-icon v-if="tag.iconPath" class="effect-tag-icon" size="14">
+                <img :src="tag.iconPath" alt="効果" />
+              </v-icon>
+              <template v-else>💛</template>
+              <span class="effect-tag-text">{{ tag.label }}</span>
             </span>
           </p>
           <p v-if="props.type !== 'attack'" class="card-description">
@@ -755,5 +759,20 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
 .debuff-icon img {
   width: 14px;
   height: 14px;
+}
+
+.effect-tag-icon {
+  display: inline-flex;
+}
+
+.effect-tag-icon img {
+  width: 14px;
+  height: 14px;
+}
+
+.effect-tag-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 </style>

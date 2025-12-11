@@ -7,5 +7,18 @@ import { CardTag } from '../CardTag'
  * UI上では状態異常と同列に表示し、ツールチップで説明を示す。
  */
 export class CardEffectTag extends CardTag {
-  // 現状は CardTag と同等のフィールドのみ。拡張余地を残す。
+  /**
+   * effectTags を表示する際に先頭に付与するアイコン。
+   * 絵文字ではなく、パス（例: /assets/icons/drain.png）を指定する想定。
+   */
+  readonly iconPath?: string
+
+  constructor(options: { id: string; name: string; description?: string; iconPath?: string }) {
+    super({
+      id: options.id,
+      name: options.name,
+      description: options.description,
+    })
+    this.iconPath = options.iconPath
+  }
 }

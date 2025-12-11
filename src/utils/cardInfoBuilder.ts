@@ -145,18 +145,25 @@ function addTagEntry(
     id: tag.id,
     label: formatter(tag),
     description: tag.description,
+    // CardEffectTag などで指定されたアイコンを UI 側へ渡す
+    iconPath: (tag as any).iconPath,
   })
 }
 
 function toTagInfos(
   tags?: readonly { id?: string; name?: string; description?: string }[],
-  formatter: (tag: { id?: string; name?: string; description?: string }) => string = (tag) =>
+  formatter: (tag: { id?: string; name?: string; description?: string; iconPath?: string }) => string = (tag) =>
     tag.name ?? tag.id ?? '',
 ): CardTagInfo[] {
   if (!tags) return []
   return tags
-    .filter((tag): tag is { id: string; name?: string; description?: string } => Boolean(tag.id))
-    .map((tag) => ({ id: tag.id, label: formatter(tag), description: tag.description }))
+    .filter((tag): tag is { id: string; name?: string; description?: string; iconPath?: string } => Boolean(tag.id))
+    .map((tag) => ({
+      id: tag.id,
+      label: formatter(tag),
+      description: tag.description,
+      iconPath: (tag as any).iconPath,
+    }))
 }
 
 function deriveAttackStyle(definition: CardDefinition, pattern?: DamagePattern): AttackStyle {

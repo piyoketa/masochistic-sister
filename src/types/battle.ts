@@ -76,6 +76,7 @@ export type CardTagInfo = {
   id: string
   label: string
   description?: string
+  iconPath?: string
 }
 
 export type DescriptionSegment = {

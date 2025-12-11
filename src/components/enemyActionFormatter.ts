@@ -7,7 +7,13 @@ function formatStateText(prefixIcon: string, name: string, magnitude?: number): 
 
 export interface FormattedEnemyActionLabel {
   label: string
-  segments: Array<{ text: string; highlighted?: boolean; change?: 'up' | 'down'; showOverlay?: boolean }>
+  segments: Array<{
+    text: string
+    highlighted?: boolean
+    change?: 'up' | 'down'
+    showOverlay?: boolean
+    iconPath?: string
+  }>
 }
 
 export function formatEnemyActionLabel(
@@ -15,7 +21,13 @@ export function formatEnemyActionLabel(
   options: { includeTitle?: boolean } = {},
 ): FormattedEnemyActionLabel {
   const includeTitle = true
-  const segments: Array<{ text: string; highlighted?: boolean; change?: 'up' | 'down'; showOverlay?: boolean }> = []
+  const segments: Array<{
+    text: string
+    highlighted?: boolean
+    change?: 'up' | 'down'
+    showOverlay?: boolean
+    iconPath?: string
+  }> = []
   const appendTarget = () => {
     if (!action.targetName) {
       return
@@ -84,7 +96,7 @@ export function formatEnemyActionLabel(
     if (effectTags.length > 0) {
       effectTags.forEach((tag, index) => {
         segments.push({ text: index === 0 && !status ? '+' : ' ' })
-        segments.push({ text: formatStateText('', tag.label) })
+        segments.push({ text: formatStateText('', tag.label), iconPath: tag.iconPath })
       })
     }
 
@@ -105,7 +117,7 @@ export function formatEnemyActionLabel(
       if (effectTags.length > 0) {
         effectTags.forEach((tag) => {
           segments.push({ text: '+' })
-          segments.push({ text: formatStateText('', tag.label) })
+          segments.push({ text: formatStateText('', tag.label), iconPath: tag.iconPath })
         })
       }
       appendTarget()

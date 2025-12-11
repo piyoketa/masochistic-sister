@@ -317,6 +317,7 @@ function addTagEntry(
     id: tag.id,
     label: formatter(tag),
     description: tag.description,
+    iconPath: (tag as any).iconPath,
   })
 }
 
@@ -336,6 +337,7 @@ function addTagEntries(
       id: tag.id,
       label: formatter(tag),
       description: tag.description,
+      iconPath: (tag as any).iconPath,
     })
   }
 }
