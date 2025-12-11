@@ -16,7 +16,7 @@ const demoCards = listStandardSampleCardBlueprints()
 
 const demoReward: PendingReward = {
   battleId: 'demo-battle',
-  hpHeal: 75,
+  hpHeal: 50,
   goldGain: 30,
   defeatedCount: 1,
   cards: demoCards,

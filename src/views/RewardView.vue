@@ -29,6 +29,9 @@ const reward = computed(() => rewardStore.pending)
 const isProcessing = ref(false)
 const claimError = ref<string | null>(null)
 const selectedCardId = ref<string | null>(null)
+const hpClaimed = ref(false)
+const cardClaimed = ref(false)
+const claimedCardTitle = ref<string | null>(null)
 
 const rewardSummary = computed(() => ({
   defeatedCount: reward.value?.defeatedCount ?? 0,
@@ -41,7 +44,21 @@ const rewardBlueprints = computed<CardBlueprint[]>(() => reward.value?.cards ?? 
 const rewardCardInfos = computed(() => buildCardInfosFromBlueprints(rewardBlueprints.value, 'reward'))
 
 const hasRewardCards = computed(() => rewardSummary.value.cardCount > 0)
-const canClaim = computed(() => Boolean(reward.value) && !isProcessing.value && selectedCardId.value !== null)
+const canClaimCard = computed(
+  () =>
+    Boolean(reward.value) &&
+    !isProcessing.value &&
+    selectedCardId.value !== null &&
+    !cardClaimed.value,
+)
+const canClaimHp = computed(
+  () => Boolean(reward.value) && !isProcessing.value && rewardSummary.value.hpHeal > 0 && !hpClaimed.value,
+)
+const hasRemainingRewards = computed(() => {
+  const hpRemaining = rewardSummary.value.hpHeal > 0 && !hpClaimed.value
+  const cardRemaining = hasRewardCards.value && !cardClaimed.value
+  return hpRemaining || cardRemaining
+})
 
 onMounted(() => {
   if (!reward.value) {
@@ -51,6 +68,8 @@ onMounted(() => {
   }
   // 初期状態ではカードを自動選択せず、プレイヤーに明示的な選択操作を要求する
   selectedCardId.value = null
+  hpClaimed.value = rewardSummary.value.hpHeal <= 0
+  cardClaimed.value = rewardSummary.value.cardCount <= 0
 })
 
 function resolveSelectedBlueprint(): CardBlueprint | null {
@@ -68,36 +87,49 @@ function addCardToDeck(blueprint: CardBlueprint): void {
   playerStore.addCard(blueprint)
 }
 
-async function handleClaimAll(): Promise<void> {
-  if (!reward.value || isProcessing.value || !selectedCardId.value) {
+async function handleClaimHp(): Promise<void> {
+  if (!reward.value || isProcessing.value || hpClaimed.value || rewardSummary.value.hpHeal <= 0) {
     return
   }
   isProcessing.value = true
   claimError.value = null
   try {
-    // 選択したカードのみ追加
+    playerStore.healHp(rewardSummary.value.hpHeal)
+    audioStore.playSe('/sounds/fields/gain_hp.mp3')
+    hpClaimed.value = true
+  } catch (error) {
+    claimError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+async function handleClaimCard(): Promise<void> {
+  if (!reward.value || isProcessing.value || cardClaimed.value || !selectedCardId.value) {
+    return
+  }
+  isProcessing.value = true
+  claimError.value = null
+  try {
     const chosen = resolveSelectedBlueprint()
     if (chosen) {
       addCardToDeck(chosen)
+      const claimedInfo = rewardCardInfos.value.find((info) => info.id === selectedCardId.value)
+      claimedCardTitle.value = claimedInfo?.title ?? null
+      cardClaimed.value = true
     }
-    // HP回復を適用
-    const hpHeal = reward.value.hpHeal
-    if (hpHeal > 0) {
-      playerStore.healHp(hpHeal)
-      audioStore.playSe('/sounds/fields/gain_hp.mp3')
-    }
-    const goldGain = reward.value.goldGain
-    if (goldGain > 0) {
-      playerStore.addGold(goldGain)
-      // ゴールド獲得SEが未定のためHP回復と同じSEは流さず、付与のみ行う
-    }
-    fieldStore.markCurrentCleared()
-    rewardStore.clear()
-    await router.push('/field')
   } catch (error) {
     claimError.value = error instanceof Error ? error.message : String(error)
+  } finally {
     isProcessing.value = false
   }
+}
+
+async function handleReturn(): Promise<void> {
+  // 残報酬があっても破棄してフィールドへ戻る
+  fieldStore.markCurrentCleared()
+  rewardStore.clear()
+  await router.push('/field')
 }
 </script>
 
@@ -109,20 +141,20 @@ async function handleClaimAll(): Promise<void> {
           <h1>報酬を獲得</h1>
           <p class="subtitle">デッキに加えるカードを１枚選んでください。</p>
         </div>
-        <div class="reward-summary">
-          <div class="summary-chip">
-            <span class="chip-label">HP回復</span>
-            <span class="chip-value">+{{ rewardSummary.hpHeal }}</span>
-          </div>
-          <div class="summary-chip">
-            <span class="chip-label">ゴールド</span>
-            <span class="chip-value">+{{ rewardSummary.goldGain }}</span>
-          </div>
-          <!-- <div class="summary-chip">
-            <span class="chip-label">褒章カード</span>
-            <span class="chip-value">{{ rewardSummary.cardCount }} 枚</span>
-          </div> -->
+      <div class="reward-summary">
+        <div class="summary-chip">
+          <span class="chip-label">HP回復</span>
+          <span class="chip-value">+{{ rewardSummary.hpHeal }}</span>
         </div>
+        <!-- <div class="summary-chip">
+          <span class="chip-label">ゴールド</span>
+          <span class="chip-value">+{{ rewardSummary.goldGain }}</span>
+        </div> -->
+        <!-- <div class="summary-chip">
+          <span class="chip-label">褒章カード</span>
+          <span class="chip-value">{{ rewardSummary.cardCount }} 枚</span>
+        </div> -->
+      </div>
       </header>
 
       <CardList
@@ -133,6 +165,7 @@ async function handleClaimAll(): Promise<void> {
         :hover-effect="true"
         :force-playable="true"
         selectable
+        :disabled="cardClaimed"
         :selected-card-id="selectedCardId"
         @update:selected-card-id="(id) => {
           selectedCardId = (id as string) ?? null
@@ -143,12 +176,32 @@ async function handleClaimAll(): Promise<void> {
         <button
           type="button"
           class="reward-button"
-          :disabled="!canClaim"
-          @click="handleClaimAll"
+          :disabled="!canClaimCard"
+          @click="handleClaimCard"
         >
-          報酬を獲得してフィールドに戻る
+          {{
+            cardClaimed
+              ? `獲得済み：${claimedCardTitle ?? 'カード'}`
+              : 'カード報酬を受け取る'
+          }}
         </button>
-        <p class="action-note">ボタンを押すと褒章カードを全て受け取り、フィールドへ遷移します。</p>
+        <button
+          type="button"
+          class="reward-button"
+          :disabled="!canClaimHp"
+          @click="handleClaimHp"
+        >
+          HP回復を受け取る (+{{ rewardSummary.hpHeal }})
+        </button>
+        <button
+          type="button"
+          class="reward-button"
+          :class="{ 'reward-button--secondary': hasRemainingRewards }"
+          @click="handleReturn"
+        >
+          {{ hasRemainingRewards ? '報酬を破棄してフィールドに戻る' : 'フィールドに戻る' }}
+        </button>
+        <p class="action-note">報酬は個別に受け取れます。残っている報酬は破棄されます。</p>
         <p v-if="claimError" class="action-error">{{ claimError }}</p>
       </footer>
     </div>
@@ -274,6 +327,13 @@ async function handleClaimAll(): Promise<void> {
 .reward-button:not(:disabled):focus-visible {
   transform: translateY(-1px);
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+}
+
+.reward-button--secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f2ff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: none;
 }
 
 .action-note {
