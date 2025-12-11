@@ -4,7 +4,7 @@ DevilStatueRewardView の責務:
 - 呪い選択後、デッキへカードを追加し、フィールドの該当ノードをクリア扱いにしてフィールド画面へ戻る。
 
 責務ではないこと:
-- 呪い候補の決定やフィールド構造の定義（DevilStatueField / FieldStore が担当）。
+- 呪い候補の決定やフィールド構造の定義（FieldStore が担当）。
 - 呪いカードの詳細説明生成（Library / CardInfoBuilder が担当）。
 -->
 <script setup lang="ts">
@@ -16,10 +16,15 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { CardInfo } from '@/types/battle'
 import { buildCardInfosFromBlueprints, type CardBlueprint } from '@/domain/library/Library'
-import {
-  DEVIL_STATUE_CURSE_CANDIDATES,
-  DEVIL_STATUE_SELECTION_COUNT,
-} from '@/fields/domains/DevilStatueField'
+
+const DEVIL_STATUE_CURSE_CANDIDATES: CardBlueprint[] = [
+  { type: 'state-evil-thought' }, // 邪念
+  { type: 'state-intoxication' }, // 酩酊
+  { type: 'state-corrosion' }, // 腐食
+  { type: 'state-sticky' }, // 粘液
+  { type: 'state-heavyweight' }, // 重量化
+]
+const DEVIL_STATUE_SELECTION_COUNT = 2
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()

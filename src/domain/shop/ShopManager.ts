@@ -49,11 +49,16 @@ const CARD_PRICE_SALE = 1
 const RELIC_PRICE = 5
 const RELIC_PRICE_SALE = 2
 
+function getHealOption(index: number): { amount: number; price: number } {
+  const fallback = HEAL_OPTIONS[HEAL_OPTIONS.length - 1] ?? { amount: 0, price: 0 }
+  return HEAL_OPTIONS[index] ?? fallback
+}
+
 export class ShopManager {
   private state: ShopState = {
     cards: [],
     relics: [],
-    heal: { ...HEAL_OPTIONS[0], purchased: 0 },
+    heal: { ...getHealOption(0), purchased: 0 },
   }
 
   /**
@@ -83,7 +88,7 @@ export class ShopManager {
     this.state = {
       cards: cardOffers,
       relics: relicOffers,
-      heal: { ...HEAL_OPTIONS[0], purchased: 0 },
+      heal: { ...getHealOption(0), purchased: 0 },
     }
   }
 
@@ -106,7 +111,7 @@ export class ShopManager {
 
   markHealPurchased(): void {
     const nextIndex = Math.min(this.state.heal.purchased + 1, HEAL_OPTIONS.length - 1)
-    const nextOption = HEAL_OPTIONS[nextIndex]
+    const nextOption = getHealOption(nextIndex)
     this.state.heal = {
       amount: nextOption.amount,
       price: nextOption.price,

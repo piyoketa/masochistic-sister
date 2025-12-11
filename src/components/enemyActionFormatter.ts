@@ -95,7 +95,10 @@ export function formatEnemyActionLabel(
         iconPath: status.iconPath,
       })
     }
-    const effectTags = action.cardInfo?.effectTags ?? []
+    const effectTags =
+      action.cardInfo && 'effectTags' in action.cardInfo && Array.isArray(action.cardInfo.effectTags)
+        ? action.cardInfo.effectTags
+        : []
     if (effectTags.length > 0) {
       effectTags.forEach((tag, index) => {
         segments.push({ text: index === 0 && !status ? '+' : ' ' })
@@ -118,7 +121,10 @@ export function formatEnemyActionLabel(
         text: formatStateText('', state.name, state.magnitude),
         iconPath: state.iconPath,
       })
-      const effectTags = action.cardInfo?.effectTags ?? []
+      const effectTags =
+        action.cardInfo && 'effectTags' in action.cardInfo && Array.isArray(action.cardInfo.effectTags)
+          ? action.cardInfo.effectTags
+          : []
       if (effectTags.length > 0) {
         effectTags.forEach((tag) => {
           segments.push({ text: '+' })
