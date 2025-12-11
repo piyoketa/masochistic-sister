@@ -15,8 +15,8 @@ OrcHeroEliteTeam.ts の責務:
 import { EnemyTeam } from '../EnemyTeam'
 import {
   OrcHeroEnemy,
-  BatEnemy,
-  KamaitachiEnemy,
+  SuccubusEnemy,
+  OrcSumoEnemy,
   SlugEnemy,
 } from '../enemies'
 
@@ -27,8 +27,8 @@ export class OrcHeroEliteTeam extends EnemyTeam {
       name: 'オークヒーロー隊',
       members: [
         new OrcHeroEnemy(),
-        new BatEnemy(),
-        new KamaitachiEnemy(),
+        new SuccubusEnemy(),
+        new OrcSumoEnemy(),
         new SlugEnemy(),
       ],
     })

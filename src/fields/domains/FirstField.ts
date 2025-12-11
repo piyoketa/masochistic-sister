@@ -31,6 +31,7 @@ const SKILL_CARD_CANDIDATES = listStandardSkillRewardBlueprints()
 const LEVEL2_RELIC_CANDIDATES = listAttackSupportRelicClassNames()
 const LEVEL3_CARD_CANDIDATES = listAttackSupportRewardBlueprints()
 const LEVEL4_RELIC_CANDIDATES = listAttackSupportRelicClassNames()
+const LEVEL5_BOSS_CANDIDATES = ['beam-cannon-elite', 'orc-hero-elite']
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),
@@ -63,7 +64,7 @@ function buildLevels(_ownedRelics: string[]): FieldLevel[] {
     id: 'start-1',
     type: 'start',
     level: 1,
-    label: 'スタートマス',
+    label: '入口',
     nextNodeIndices: [],
   }
 
@@ -82,10 +83,9 @@ function buildLevels(_ownedRelics: string[]): FieldLevel[] {
     createEnemyNode('high-orc-squad', 4, 1),
   ]
 
-  const level5: EnemyNode[] = [
-    createEnemyNode('beam-cannon-elite', 5, 0),
-    createEnemyNode('orc-hero-elite', 5, 1),
-  ]
+  const selectedBossTeamId =
+    pickUnique(LEVEL5_BOSS_CANDIDATES, 1)[0] ?? LEVEL5_BOSS_CANDIDATES[0] ?? 'beam-cannon-elite'
+  const level5: BossEnemyNode[] = [createBossEnemyNode(selectedBossTeamId, 5, 0)]
 
   const nodesByLevel: FieldNode[][] = [[level1], level2, level3, level4, level5]
 
@@ -114,6 +114,20 @@ function createEnemyNode(teamId: string, level: number, idx: number): EnemyNode 
     type: 'enemy',
     level,
     label: `敵「${labelName}」`,
+    enemyTeamId: teamId,
+    nextNodeIndices: [],
+  }
+}
+
+function createBossEnemyNode(teamId: string, level: number, idx: number): BossEnemyNode {
+  const teamFactory = ENEMY_TEAM_FACTORIES[teamId]
+  const team = teamFactory ? teamFactory() : new SnailTeam()
+  const labelName = team.name ?? teamId
+  return {
+    id: `boss-${level}-${idx}`,
+    type: 'boss-enemy',
+    level,
+    label: `ボス「${labelName}」`,
     enemyTeamId: teamId,
     nextNodeIndices: [],
   }

@@ -22,7 +22,7 @@ export class HighOrcSquad extends EnemyTeam {
 
     super({
       id: 'high-orc-squad',
-      name: 'ハイオーク部隊',
+      name: 'ハイオーク',
       members: [highOrc, succubus, kamaitachi, snail],
     })
   }

@@ -3,6 +3,7 @@ import { DefaultEnemyActionQueue } from '../enemy/actionQueues'
 import { GoblinBeamCannonEnemy } from '../enemies/GoblinBeamCannonEnemy'
 import { DrunkOrcEnemy } from '../enemies/DrunkOrcEnemy'
 import { GhostEnemy } from '../enemies/GhostEnemy'
+import { OrcTrainerEnemy } from '../enemies/OrcTrainerEnemy'
 import { TentacleEnemy } from '../enemies/TentacleEnemy'
 import { BeamShotAction } from '../actions/BeamShotAction'
 import { PowerChargeAction } from '../actions/PowerChargeAction'
@@ -21,7 +22,7 @@ export class BeamCannonEliteTeam extends EnemyTeam {
       actionQueueFactory: () =>
         new DefaultEnemyActionQueue(),
     })
-    const ghost = new GhostEnemy({
+    const trainer = new OrcTrainerEnemy({
       actionQueueFactory: () =>
         new DefaultEnemyActionQueue(),
     })
@@ -33,7 +34,7 @@ export class BeamCannonEliteTeam extends EnemyTeam {
     super({
       id: 'beam-cannon-elite',
       name: 'ビーム砲部隊',
-      members: [cannon, drunkOrc, ghost, tentacle],
+      members: [cannon, drunkOrc, trainer, tentacle],
     })
   }
 }

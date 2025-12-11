@@ -77,6 +77,17 @@ const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   'high-orc-squad': () => new HighOrcSquad(),
 }
 
+const ENEMY_EFFECTIVE_HINTS: Record<string, string> = {
+  'test-enemy-team': '打点',
+  'iron-bloom': '攻撃回数',
+  'orc-wrestler-team': '打点',
+  'hummingbird-allies': '攻撃回数',
+  'gun-goblin-team': 'なし',
+  'high-orc-squad': 'なし',
+  'beam-cannon-elite': '攻撃回数',
+  'orc-hero-elite': 'なし',
+}
+
 function nodeLabel(node: FieldNode): string {
   if (node.label) {
     return node.label
@@ -99,6 +110,10 @@ function resolveTeamInfo(teamId: string): { name: string; members: string[] } | 
   }
   const members = team.members.map((enemy) => enemy.name ?? `enemy-${enemy.id ?? ''}`)
   return { name: team.name ?? teamId, members }
+}
+
+function resolveEffectiveHint(teamId: string): string | null {
+  return ENEMY_EFFECTIVE_HINTS[teamId] ?? null
 }
 
 function isReachable(levelIndex: number, nodeIndex: number): boolean {
@@ -218,18 +233,24 @@ onMounted(() => {
               }"
             >
               <div class="node-title">{{ nodeLabel(node) }}</div>
+              <div
+                v-if="fieldStore.field.isEnemyNode(node)"
+                class="node-chip"
+              >
+                有効: {{ resolveEffectiveHint(node.enemyTeamId) ?? '不明' }}
+              </div>
               <ul v-if="fieldStore.field.isEnemyNode(node)" class="enemy-members">
                 <li v-for="member in resolveTeamInfo(node.enemyTeamId)?.members ?? []" :key="member">
                   {{ member }}
                 </li>
               </ul>
-              <div class="node-state">
-                状態: {{ fieldStore.isNodeCleared(node.id) ? 'クリア' : '未クリア' }}
+              <div v-if="fieldStore.isNodeCleared(node.id)" class="node-state">
+                状態: クリア
               </div>
               <button
+                v-if="!( (!isReachable(levelIdx, idx) || fieldStore.isNodeCleared(node.id)) && !debugMode )"
                 type="button"
                 class="enter-button"
-                :disabled="(!isReachable(levelIdx, idx) || fieldStore.isNodeCleared(node.id)) && !debugMode"
                 @click="handleEnter(node, levelIdx, idx)"
               >
                 進む
@@ -318,8 +339,9 @@ onMounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 12px;
-  min-width: 220px;
+  min-width: 300px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  position: relative;
 }
 
 .node-card--current {
@@ -338,6 +360,19 @@ onMounted(() => {
 .node-title {
   font-weight: 700;
   margin-bottom: 6px;
+}
+
+.node-chip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: rgba(255, 227, 115, 0.15);
+  border: 1px solid rgba(255, 227, 115, 0.55);
+  color: #ffe9a3;
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
 .node-state {
