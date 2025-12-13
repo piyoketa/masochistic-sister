@@ -14,6 +14,7 @@ export interface EnemyProps {
   image: string
   futureActions?: Action[]
   rng?: () => number
+  rngSeed?: number | string
   actionQueueFactory?: () => EnemyActionQueue
   allyTags?: string[]
   allyBuffWeights?: Record<string, number>
@@ -34,6 +35,7 @@ export class Enemy {
   private readonly stateList: State[]
   private readonly imageValue: string
   private readonly rng: () => number
+  private readonly rngSeed?: number | string
   private readonly actionHistory: Action[] = []
   private readonly actionQueue: EnemyActionQueue
   private readonly allyTagsValue: string[]
@@ -50,11 +52,12 @@ export class Enemy {
     this.actionCandidates = [...props.actions]
     this.stateList = [...(props.states ?? [])]
     this.imageValue = props.image
+    this.rngSeed = props.rngSeed
     this.rng = props.rng ?? Math.random
     this.allyTagsValue = [...(props.allyTags ?? [])]
     this.allyBuffWeightsValue = { ...(props.allyBuffWeights ?? {}) }
     this.actionQueue = props.actionQueueFactory ? props.actionQueueFactory() : new DefaultEnemyActionQueue()
-    this.actionQueue.initialize(this.actionCandidates, this.rng)
+    this.actionQueue.initialize(this.actionCandidates, this.rng, this.rngSeed)
     if (props.futureActions) {
       for (const action of props.futureActions) {
         this.actionQueue.append(action)

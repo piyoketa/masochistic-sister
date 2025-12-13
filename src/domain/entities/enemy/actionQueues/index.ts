@@ -1,5 +1,3 @@
 export { EnemyActionQueue } from './EnemyActionQueue'
 export { DefaultEnemyActionQueue } from './DefaultEnemyActionQueue'
-export { BeamEnemyActionQueue } from './BeamEnemyActionQueue'
-export { ConditionalEnemyActionQueue } from './ConditionalEnemyActionQueue'
 export type { EnemyActionQueueStateSnapshot } from './EnemyActionQueue'

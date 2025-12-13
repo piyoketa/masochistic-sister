@@ -23,11 +23,12 @@ export class DefaultEnemyActionQueue extends EnemyActionQueue {
   }
 
   protected populate(): void {
-    while (this.pending.length === 0) {
-      const next = this.pickNextAction()
-      if (!next) {
-        break
-      }
+    // 必要最小限、次のアクション1件のみを pending に積む
+    if (this.pending.length > 0) {
+      return
+    }
+    const next = this.pickNextAction()
+    if (next) {
       this.pending.push(next)
     }
   }

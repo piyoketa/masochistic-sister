@@ -26,6 +26,15 @@ import { instantiateStateFromSnapshot } from '../entities/states'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
+export type BattleTurnSide = 'player' | 'enemy'
+
+export interface BattleTurn {
+  /** 1-based のターン番号（先制行動に 0 を使う余地を残す） */
+  turn: number
+  /** 現在行動中のサイド */
+  side: BattleTurnSide
+}
+
 export interface BattleConfig {
   id: string
   player: Player
@@ -43,6 +52,8 @@ export interface BattleConfig {
 
 export interface BattleSnapshot {
   id: string
+  /** 現在のターン位置。先制行動などに備え turn=0 も許容する。 */
+  turnPosition: BattleTurn
   player: {
     id: string
     name: string
@@ -383,6 +394,10 @@ export class Battle {
 
     return {
       id: this.idValue,
+      turnPosition: {
+        turn: this.turnValue.current.turnCount,
+        side: this.turnValue.current.activeSide,
+      },
       player: {
         id: this.playerValue.id,
         name: this.playerValue.name,
@@ -1335,6 +1350,7 @@ export class Battle {
             : event.payload,
       })),
       turn: { ...source.turn },
+      turnPosition: { ...source.turnPosition },
       log: source.log.map((entry) => ({ ...entry })),
       status: source.status,
     }
