@@ -347,6 +347,15 @@ export class ViewManager {
 
     this.operationLog.truncateAfter(lastIndex - 1)
     this.rebuildFromOperations(lastIndex - 1)
+    // 調査用ログ: Undo直後の状態を確認
+    // eslint-disable-next-line no-console
+    console.debug('[ViewManager] undoLastPlayerAction', {
+      truncatedTo: lastIndex - 1,
+      battleHp: this.battleInstance?.player.currentHp,
+      snapshotHp: this.stateValue.snapshot?.player.currentHp,
+      turn: this.stateValue.snapshot?.turnPosition?.turn,
+      side: this.stateValue.snapshot?.turnPosition?.side,
+    })
     return true
   }
 
@@ -651,6 +660,7 @@ export class ViewManager {
         actionLog,
         initialSnapshot: this.initialBattleSnapshot,
         onEntryAppended: (entry, context) => this.handleRunnerEntryAppended(entry, context),
+        createBattle: () => this.createBattle(),
       })
 
       if (!this.initialBattleSnapshot) {
@@ -691,6 +701,18 @@ export class ViewManager {
     this.stateValue.input.queued.length = 0
 
     this.syncStateFromBattle()
+    // Undo/リプレイ完了直後は、前後スナップショットを一致させてHP表示の取り違いを防ぐ
+    this.stateValue.previousSnapshot = this.stateValue.snapshot
+    this.notifyState()
+    // 調査用ログ: リプレイ後のHPとスナップショットを確認
+    // eslint-disable-next-line no-console
+    console.debug('[ViewManager] rebuildFromOperations done', {
+      targetOperationIndex,
+      battleHp: this.battleInstance?.player.currentHp,
+      snapshotHp: this.stateValue.snapshot?.player.currentHp,
+      turn: this.stateValue.snapshot?.turnPosition?.turn,
+      side: this.stateValue.snapshot?.turnPosition?.side,
+    })
   }
 
   private resolveActionLogEntry(

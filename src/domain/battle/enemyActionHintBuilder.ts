@@ -1,4 +1,4 @@
-import type { EnemyActionHint } from '@/types/battle'
+import type { EnemyActionHint, StateSnapshot } from '@/types/battle'
 import type { Battle, BattleTurn } from './Battle'
 import type { Enemy } from '../entities/Enemy'
 import { Attack, Action as BattleAction, AllyBuffSkill } from '../entities/Action'
@@ -7,17 +7,30 @@ import { SkipTurnAction } from '../entities/actions/SkipTurnAction'
 import { Card } from '../entities/Card'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { buildCardInfoFromBlueprint, mapActionToCardId } from '../library/Library'
+import type { State } from '../entities/State'
+import { instantiateStateFromSnapshot } from '../entities/states'
 
-export function buildEnemyActionHints(
-  battle: Battle,
-  enemy: Enemy,
-  turnPosition: BattleTurn,
-): EnemyActionHint[] {
+type EnemyActionHintParams = {
+  battle: Battle
+  enemy: Enemy
+  turnPosition: BattleTurn
+  enemyStateSnapshots?: StateSnapshot[]
+  playerStateSnapshots?: StateSnapshot[]
+}
+
+export function buildEnemyActionHints(params: EnemyActionHintParams): EnemyActionHint[] {
+  const { battle, enemy, turnPosition, enemyStateSnapshots, playerStateSnapshots } = params
   const nextAction = enemy.confirmActionForTurn(turnPosition.turn)
   if (!nextAction) {
     return []
   }
-  const hint = summarizeEnemyAction(battle, enemy, nextAction)
+  const hint = summarizeEnemyAction({
+    battle,
+    enemy,
+    action: nextAction,
+    enemyStates: reviveStates(enemyStateSnapshots, `enemy:${enemy.id ?? enemy.name}`),
+    playerStates: reviveStates(playerStateSnapshots, 'player'),
+  })
   return [
     {
       ...hint,
@@ -26,7 +39,19 @@ export function buildEnemyActionHints(
   ]
 }
 
-function summarizeEnemyAction(battle: Battle, enemy: Enemy, action: BattleAction): EnemyActionHint {
+function summarizeEnemyAction({
+  battle,
+  enemy,
+  action,
+  enemyStates,
+  playerStates,
+}: {
+  battle: Battle
+  enemy: Enemy
+  action: BattleAction
+  enemyStates: State[]
+  playerStates: State[]
+}): EnemyActionHint {
   if (action instanceof SkipTurnAction) {
     return {
       title: action.name,
@@ -37,13 +62,25 @@ function summarizeEnemyAction(battle: Battle, enemy: Enemy, action: BattleAction
   }
 
   if (action instanceof Attack) {
-    return buildAttackActionHint(battle, enemy, action)
+    return buildAttackActionHint({ battle, enemy, action, enemyStates, playerStates })
   }
 
   return buildSkillActionHint(battle, action)
 }
 
-function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): EnemyActionHint {
+function buildAttackActionHint({
+  battle,
+  enemy,
+  action,
+  enemyStates,
+  playerStates,
+}: {
+  battle: Battle
+  enemy: Enemy
+  action: Attack
+  enemyStates: State[]
+  playerStates: State[]
+}): EnemyActionHint {
   const damages = action.baseDamages
   const states = action.inflictStatePreviews
   const primaryState = states[0]
@@ -54,8 +91,8 @@ function buildAttackActionHint(battle: Battle, enemy: Enemy, action: Attack): En
     baseCount: damages.baseCount,
     type: damages.type,
     cardId: cardId ?? action.getCardId(),
-    attackerStates: enemy.getStates(),
-    defenderStates: battle.player.getStates(battle),
+    attackerStates: enemyStates,
+    defenderStates: playerStates,
   })
 
   const calculatedPattern = {
@@ -138,4 +175,23 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
         }
       : undefined,
   }
+}
+
+function reviveStates(snapshots: StateSnapshot[] | undefined, contextLabel: string): State[] {
+  if (!snapshots) {
+    throw new Error(`[EnemyActionHint] State snapshots missing for ${contextLabel}`)
+  }
+  const revived = snapshots
+    .map((snapshot) => instantiateStateFromSnapshot(snapshot))
+    .filter((state): state is State => Boolean(state))
+  if (snapshots.length > 0 && revived.length === 0) {
+    const snapshotIds = snapshots.map((s) => s.id ?? 'undefined').join(', ')
+    // デバッグ用: どのスナップショットが復元できなかったかを明示しておく
+    // eslint-disable-next-line no-console
+    console.error('[EnemyActionHint] reviveStates failed', { contextLabel, snapshots })
+    throw new Error(
+      `[EnemyActionHint] No states could be revived from snapshots for ${contextLabel}. ids=[${snapshotIds}]`,
+    )
+  }
+  return revived
 }

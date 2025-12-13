@@ -188,6 +188,14 @@ export class Player {
   }
 
   /**
+   * スナップショット復元用に、ベースStateプールを丸ごと差し替える。
+   * 手札由来のStateはカード側に保持されるためここでは扱わない。
+   */
+  replaceBaseStates(states: State[]): void {
+    this.baseStatePool = states.map((state) => cloneState(state))
+  }
+
+  /**
    * 手札由来のState（元のState）だけを返す。
    */
   getBaseStates(): State[] {

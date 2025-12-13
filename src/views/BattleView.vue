@@ -125,7 +125,16 @@ const enemyActionHintsById = computed<Map<number, EnemyActionHint[]>>(() => {
     if (!enemy) {
       return
     }
-    map.set(enemySnapshot.id, buildEnemyActionHints(battle, enemy, turnPosition))
+    map.set(
+      enemySnapshot.id,
+      buildEnemyActionHints({
+        battle,
+        enemy,
+        turnPosition,
+        enemyStateSnapshots: enemySnapshot.states,
+        playerStateSnapshots: snap.player?.states,
+      }),
+    )
   })
   return map
 })
@@ -262,34 +271,52 @@ const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
 }))
+
+const playerPreHpForCard = computed(() => {
+  const pre = previousSnapshot.value?.player
+    ? { current: previousSnapshot.value.player.currentHp, max: previousSnapshot.value.player.maxHp }
+    : { current: playerHpGauge.value.current, max: playerHpGauge.value.max }
+  // 調査用ログ: PlayerCard に渡す preHp
+  // eslint-disable-next-line no-console
+  console.debug('[BattleView] playerPreHpForCard', pre, {
+    prevTurn: previousSnapshot.value?.turnPosition?.turn,
+    prevSide: previousSnapshot.value?.turnPosition?.side,
+    curTurn: snapshot.value?.turnPosition?.turn,
+    curSide: snapshot.value?.turnPosition?.side,
+  })
+  return pre
+})
+const playerPostHpForCard = computed(() => {
+  const post = { current: playerHpGauge.value.current, max: playerHpGauge.value.max }
+  // eslint-disable-next-line no-console
+  console.debug('[BattleView] playerPostHpForCard', post, {
+    turn: snapshot.value?.turnPosition?.turn,
+    side: snapshot.value?.turnPosition?.side,
+  })
+  return post
+})
+watch(
+  () => playerHpGauge.value,
+  (next) => {
+    // 調査用ログ: UI が参照する現在HP
+    // eslint-disable-next-line no-console
+    console.debug('[BattleView] playerHpGauge', next, {
+      turn: snapshot.value?.turnPosition?.turn,
+      side: snapshot.value?.turnPosition?.side,
+    })
+  },
+  { deep: true },
+)
 const projectedPlayerHp = computed(() => {
-  if (!snapshot.value || !isPlayerTurn.value) {
-    return null
-  }
-  const currentHp = snapshot.value.player.currentHp ?? 0
-  const enemies = snapshot.value.enemies ?? []
-  const hintMap = enemyActionHintsById.value
-  let total = 0
-  for (const enemy of enemies) {
-    // 撃破済み・行動済みの敵は予測に含めない
-    if (enemy.status !== 'active' || enemy.currentHp <= 0 || enemy.hasActedThisTurn) {
-      continue
-    }
-    const actions = hintMap.get(enemy.id) ?? []
-    for (const action of actions) {
-      if (action.type !== 'attack' || action.acted) {
-        continue
-      }
-      const pattern = action.calculatedPattern ?? action.pattern
-      if (!pattern) {
-        continue
-      }
-      const amount = typeof pattern.amount === 'number' ? pattern.amount : 0
-      const count = typeof pattern.count === 'number' ? pattern.count : 1
-      total += amount * count
-    }
-  }
-  return Math.max(0, currentHp - total)
+  const predicted = snapshot.value?.player.predictedPlayerHpAfterEndTurn
+  // 調査用ログ: スナップショットから取得できている予測値を確認
+  // eslint-disable-next-line no-console
+  console.debug('predictedPlayerHpAfterEndTurn (snapshot)', {
+    predicted,
+    turn: snapshot.value?.turnPosition?.turn,
+    side: snapshot.value?.turnPosition?.side,
+  })
+  return typeof predicted === 'number' ? predicted : null
 })
 // 手札で State カードとして表示されるものと重複しないよう、表示用IDとチップ用スナップショットを分離する。
 const playerStates = computed(() =>
@@ -802,6 +829,7 @@ function resetUiStateAfterTimelineChange(): void {
   playerDamageOutcomes.value = []
   currentAnimationId.value = null
   resetErrorMessage()
+  previousSnapshot.value = null
   viewResetToken.value += 1
 }
 
@@ -910,12 +938,8 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   <MainGameLayout
     ref="mainLayoutRef"
     :player-card-key="`player-card-${viewResetToken}`"
-    :player-pre-hp="
-      previousSnapshot?.player
-        ? { current: previousSnapshot.player.currentHp, max: previousSnapshot.player.maxHp }
-        : { current: playerHpGauge.current, max: playerHpGauge.max }
-    "
-    :player-post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
+    :player-pre-hp="playerPreHpForCard"
+    :player-post-hp="playerPostHpForCard"
     :player-outcomes="playerDamageOutcomes"
     :player-selection-theme="enemySelectionTheme"
     :player-states="playerStates"

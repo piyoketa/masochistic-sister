@@ -32,6 +32,7 @@ export interface OperationRunnerConfig {
   actionLog?: ActionLog
   initialSnapshot?: FullBattleSnapshot
   onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
+  createBattle?: () => Battle
 }
 
 interface AppendOptions {
@@ -96,6 +97,7 @@ export class OperationRunner {
   private readonly actionLog: ActionLog
   private readonly onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
   private readonly initialSnapshot: FullBattleSnapshot
+  private readonly createBattle?: () => Battle
 
   private initialized = false
   private recordedOutcome?: Battle['status']
@@ -107,12 +109,15 @@ export class OperationRunner {
     this.battle = config.battle
     this.actionLog = config.actionLog ?? new ActionLog()
     this.onEntryAppended = config.onEntryAppended
+    this.createBattle = config.createBattle
     if (config.initialSnapshot) {
       this.initialSnapshot = this.cloneFullSnapshot(config.initialSnapshot)
       this.battle.restoreFullSnapshot(this.initialSnapshot)
     } else {
       this.initialSnapshot = this.battle.captureFullSnapshot()
     }
+    // Battle からの予測計算依頼に応じるためのデリゲートをセットする
+    this.battle.setPredictionDelegate(() => this.simulateEndTurnPrediction())
   }
 
   getActionLog(): ActionLog {
@@ -758,6 +763,7 @@ export class OperationRunner {
             metadata: entry.queue.queueState.metadata
               ? { ...entry.queue.queueState.metadata }
               : undefined,
+            seed: entry.queue.queueState.seed,
           },
           actionHistory: [...entry.queue.actionHistory],
         },
@@ -768,6 +774,45 @@ export class OperationRunner {
             state: entry.state && typeof entry.state === 'object' ? { ...(entry.state as object) } : entry.state,
           }))
         : undefined,
+    }
+  }
+
+  /**
+   * 現在の操作ログを再生し、疑似的に end-player-turn を追加実行した場合のプレイヤーHPを予測する。
+   * Battle の状態は汚さない。
+   */
+  private simulateEndTurnPrediction(): number | undefined {
+    if (!this.createBattle) {
+      return undefined
+    }
+    try {
+      const simBattle = this.createBattle()
+      // 初期スナップショットを適用してからログを再生する
+      simBattle.restoreFullSnapshot(this.cloneFullSnapshot(this.initialSnapshot))
+      const simLog = new ActionLog(this.actionLog.toArray())
+      // 調査用ログ: 再生前の状態を記録
+      // eslint-disable-next-line no-console
+      console.debug('[OperationRunner] simulateEndTurnPrediction start', {
+        logLength: simLog.length,
+        playerHp: simBattle.player.currentHp,
+        turn: simBattle.turnPosition.turn,
+        side: simBattle.turnPosition.side,
+      })
+      simLog.push({ type: 'end-player-turn' })
+      simBattle.executeActionLog(simLog, simLog.length - 1)
+      const result = simBattle.player.currentHp
+      // eslint-disable-next-line no-console
+      console.debug('[OperationRunner] simulateEndTurnPrediction end', {
+        playerHpAfter: result,
+        logLength: simLog.length,
+        turnAfter: simBattle.turnPosition.turn,
+        sideAfter: simBattle.turnPosition.side,
+      })
+      return result
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('[OperationRunner] simulateEndTurnPrediction failed', error)
+      return undefined
     }
   }
 

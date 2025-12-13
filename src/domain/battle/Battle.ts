@@ -192,6 +192,8 @@ export class Battle {
   private inputLocked = false
   /** プレイヤーターンで算出した予測値を敵フェーズ中も保持するためのキャッシュ。 */
   private cachedPredictedPlayerHpAfterEndTurn: number | undefined
+  /** OperationRunner などが提供する予測計算デリゲート */
+  private predictionDelegate?: () => number | undefined
   private readonly eventsValue: BattleEventQueue
   private readonly logValue: BattleLog
   private readonly turnValue: TurnManager
@@ -400,24 +402,38 @@ export class Battle {
 
   /**
    * 「今すぐターン終了したらプレイヤーHPはいくつ残るか」を予測する。
-   * clone→endPlayerTurn を実行するため、元の戦闘状態は汚さない。
+   * OperationRunner などから委譲されたデリゲートを用いて、ログ再生込みで計算する。
    */
   private predictPlayerHpAfterEndTurn(): number | undefined {
+    // 調査用ログ: 予測計算の入口で状況を記録する
+    // eslint-disable-next-line no-console
+    console.debug('[Battle] predictPlayerHpAfterEndTurn start', {
+      activeSide: this.turnValue.current.activeSide,
+      turn: this.turnValue.current.turnCount,
+      hasDelegate: Boolean(this.predictionDelegate),
+      cached: this.cachedPredictedPlayerHpAfterEndTurn,
+    })
     if (this.turnValue.current.activeSide === 'enemy') {
       return this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
     }
-    const snapshot = this.captureFullSnapshot()
-    try {
-      this.endPlayerTurn()
-      this.cachedPredictedPlayerHpAfterEndTurn = this.playerValue.currentHp
-      return this.cachedPredictedPlayerHpAfterEndTurn
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn('[Battle] predictPlayerHpAfterEndTurn failed', error)
-      return undefined
-    } finally {
-      this.restoreFullSnapshot(snapshot)
+    if (this.predictionDelegate) {
+      try {
+        const predicted = this.predictionDelegate()
+        // eslint-disable-next-line no-console
+        console.debug('[Battle] predictPlayerHpAfterEndTurn delegate result', {
+          predicted,
+          currentHp: this.playerValue.currentHp,
+        })
+        if (typeof predicted === 'number') {
+          this.cachedPredictedPlayerHpAfterEndTurn = predicted
+          return predicted
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('[Battle] predictPlayerHpAfterEndTurn via delegate failed', error)
+      }
     }
+    return undefined
   }
 
   getSnapshot(options?: { includePrediction?: boolean }): BattleSnapshot {
@@ -520,7 +536,8 @@ export class Battle {
   }
 
   captureFullSnapshot(): FullBattleSnapshot {
-    const base = this.getSnapshot({ includePrediction: false })
+    // 予測値も含めたスナップショットを保持する
+    const base = this.getSnapshot({ includePrediction: true })
     const enemyQueues = this.enemyTeamValue.members.map((enemy) => ({
       enemyId: enemy.id ?? -1,
       queue: enemy.serializeQueueSnapshot(),
@@ -565,12 +582,19 @@ export class Battle {
     return this.relicInstances.some((relic) => relic.id === relicId && relic.isActive({ battle: this, player: this.playerValue }))
   }
 
+  setPredictionDelegate(delegate?: () => number | undefined): void {
+    this.predictionDelegate = delegate
+  }
+
   restoreFullSnapshot(state: FullBattleSnapshot): void {
     const base = state.snapshot
     this.statusValue = base.status
     this.cachedPredictedPlayerHpAfterEndTurn = base.player.predictedPlayerHpAfterEndTurn
     this.playerValue.setCurrentHp(base.player.currentHp)
     this.playerValue.setCurrentMana(base.player.currentMana)
+    // プレイヤーのステートをスナップショットに合わせて再構築する
+    const revivedPlayerStates = this.reviveStatesStrict(base.player.states, 'player')
+    this.playerValue.replaceBaseStates(revivedPlayerStates)
 
     this.deckValue.replace(base.deck)
     this.handValue.replace(base.hand)
@@ -596,11 +620,7 @@ export class Battle {
       enemy.setCurrentHp(enemySnapshot.currentHp)
       enemy.setStatus(enemySnapshot.status)
       enemy.setHasActedThisTurn(enemySnapshot.hasActedThisTurn)
-      enemy.replaceStates(
-        enemySnapshot.states
-          .map((entry) => instantiateStateFromSnapshot(entry))
-          .filter((entry): entry is State => Boolean(entry)),
-      )
+      enemy.replaceStates(this.reviveStatesStrict(enemySnapshot.states, `enemy:${enemySnapshot.id}`))
       const queueState = state.enemyQueues.find((entry) => entry.enemyId === enemySnapshot.id)
       if (queueState) {
         enemy.restoreQueueSnapshot(queueState.queue)
@@ -609,6 +629,20 @@ export class Battle {
 
     this.resolvedEventsBuffer = []
     this.stateEventBuffer = []
+  }
+
+  private reviveStatesStrict(states: StateSnapshot[] | undefined, context: string): State[] {
+    if (!states) {
+      throw new Error(`[Battle] State snapshots missing for ${context}`)
+    }
+    const revived = states
+      .map((entry) => instantiateStateFromSnapshot(entry))
+      .filter((entry): entry is State => Boolean(entry))
+    if (states.length > 0 && revived.length === 0) {
+      const ids = states.map((entry) => entry.id ?? 'undefined').join(', ')
+      throw new Error(`[Battle] Failed to revive states for ${context}. ids=[${ids}]`)
+    }
+    return revived
   }
 
   initialize(): void {
