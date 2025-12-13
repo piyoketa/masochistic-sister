@@ -12,7 +12,7 @@ export class FiveLegsState extends TraitState {
   constructor() {
     super({
       id: 'trait-five-legs',
-      name: '５本脚',
+      name: 'スタンカウント回復',
     })
   }
 
