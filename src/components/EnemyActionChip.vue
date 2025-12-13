@@ -13,6 +13,7 @@ interface SegmentEntry {
   change?: 'up' | 'down'
   showOverlay?: boolean
   iconPath?: string
+  tooltip?: string
 }
 
 interface ActionChipEntry {

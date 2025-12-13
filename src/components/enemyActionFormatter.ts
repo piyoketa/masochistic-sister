@@ -13,6 +13,7 @@ export interface FormattedEnemyActionLabel {
     change?: 'up' | 'down'
     showOverlay?: boolean
     iconPath?: string
+    tooltip?: string
   }>
 }
 
@@ -27,6 +28,7 @@ export function formatEnemyActionLabel(
     change?: 'up' | 'down'
     showOverlay?: boolean
     iconPath?: string
+    tooltip?: string
   }> = []
   const appendTarget = () => {
     if (!action.targetName) {
@@ -102,7 +104,11 @@ export function formatEnemyActionLabel(
     if (effectTags.length > 0) {
       effectTags.forEach((tag, index) => {
         segments.push({ text: index === 0 && !status ? '+' : ' ' })
-        segments.push({ text: formatStateText('', tag.label), iconPath: tag.iconPath })
+        segments.push({
+          text: formatStateText('', tag.label),
+          iconPath: tag.iconPath,
+          tooltip: tag.description,
+        })
       })
     }
 
@@ -128,7 +134,11 @@ export function formatEnemyActionLabel(
       if (effectTags.length > 0) {
         effectTags.forEach((tag) => {
           segments.push({ text: '+' })
-          segments.push({ text: formatStateText('', tag.label), iconPath: tag.iconPath })
+          segments.push({
+            text: formatStateText('', tag.label),
+            iconPath: tag.iconPath,
+            tooltip: tag.description,
+          })
         })
       }
       appendTarget()

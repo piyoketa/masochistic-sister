@@ -57,6 +57,7 @@ interface ActionChipEntry {
     change?: 'up' | 'down'
     showOverlay?: boolean
     iconPath?: string
+    tooltip?: string
   }>
   label: string
   description: string
@@ -91,14 +92,8 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
   const next = props.enemy.nextActions ?? []
   if (next.length > 0) {
     return next.map((action, index) => {
-      const includeTitle =
-        action.type !== 'attack' &&
-        !action.selfState &&
-        !action.status &&
-        Boolean(action.description)
-      const formatted = formatEnemyActionLabel(action, { includeTitle })
+      const formatted = formatEnemyActionLabel(action, { includeTitle: false })
       const tooltips: Partial<Record<number, string>> = {}
-      const descriptionText = action.description ?? action.title ?? formatted.label
       const addTooltipIfPossible = (segmentIndex: number | undefined, text?: string) => {
         if (
           segmentIndex === undefined ||
@@ -111,23 +106,19 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
         tooltips[segmentIndex] = text
       }
 
-      if (formatted.segments.length > 0 && descriptionText) {
-        const firstNonOverlay = formatted.segments.findIndex((segment) => !segment.showOverlay)
-        addTooltipIfPossible(firstNonOverlay === -1 ? undefined : firstNonOverlay, descriptionText)
-      }
-
-      const stateDescription = action.status?.description ?? action.selfState?.description
-      if (stateDescription && formatted.segments.length > 0) {
-        const lastIndex = formatted.segments.length - 1
-        addTooltipIfPossible(lastIndex, stateDescription)
-      }
+      // セグメント自身が tooltip を持つ場合はそのまま登録する
+      formatted.segments.forEach((segment, idx) => {
+        if (segment.tooltip) {
+          tooltips[idx] = segment.tooltip
+        }
+      })
 
       return {
         key: `${action.title}-${index}`,
         icon: action.icon ?? '',
         label: formatted.label,
         segments: formatted.segments,
-        description: descriptionText,
+        description: '',
         tooltips,
         tooltipKey: `enemy-action-${props.enemy.id}-${index}`,
         disabled: Boolean(action.acted),
