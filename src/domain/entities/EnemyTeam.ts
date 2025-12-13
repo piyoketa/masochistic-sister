@@ -1,7 +1,7 @@
 import type { Enemy } from './Enemy'
 import { EnemyRepository } from '../repository/EnemyRepository'
 import type { Battle } from '../battle/Battle'
-import { AllyBuffSkill } from './Action'
+import type { PlanAllyTargetSkill } from './Action/AllyStateSkill'
 import type { Player } from './Player'
 import type { Action } from './Action'
 
@@ -104,67 +104,33 @@ export class EnemyTeam {
         continue
       }
       enemy.setQueueContext({ battle, enemy, team: this })
-      // 複数回の破棄に耐えられるよう、先頭がAllyBuffSkillである限りループする
-      for (;;) {
-        const upcoming = enemy.queuedActions[0]
-        if (!(upcoming instanceof AllyBuffSkill)) {
-          break
-        }
-
-        if (!upcoming.canUse({ battle, source: enemy })) {
-          enemy.discardNextScheduledAction()
-          continue
-        }
-
-        const targetId = this.selectAllyTargetId(upcoming, enemy)
-        if (targetId === undefined) {
-          enemy.discardNextScheduledAction()
-          continue
-        }
-
-        upcoming.setPlannedTarget(targetId)
-        const targetEnemy = this.findEnemy(targetId)
-        if (targetEnemy) {
-          battle.addLogEntry({
-            message: `${enemy.name}は追い風で${targetEnemy.name}を支援しようとしている。`,
-            metadata: { enemyId: enemy.id, targetId },
-          })
-        }
-        break
-      }
+      this.planAllySupportActionIfNeeded(battle, enemy)
       enemy.refreshPlannedActionsForDisplay()
     }
   }
-
-  private selectAllyTargetId(skill: AllyBuffSkill, source: Enemy): number | undefined {
-    const candidates = this.membersValue.filter((ally) => ally.isActive())
-    const filtered = candidates.filter(
-      (ally) => ally !== source && skill.requiredAllyTags.every((tag) => ally.hasAllyTag(tag)),
-    )
-
-    if (filtered.length === 0) {
-      return undefined
-    }
-
-    const weighted = filtered
-      .map((ally) => ({ ally, weight: ally.getAllyBuffWeight(skill.affinityKey) }))
-      .filter(({ weight }) => weight > 0)
-
-    if (weighted.length === 0) {
-      return undefined
-    }
-
-    const total = weighted.reduce((sum, entry) => sum + entry.weight, 0)
-    const roll = source.sampleRng()
-    let threshold = roll * total
-    for (const entry of weighted) {
-      threshold -= entry.weight
-      if (threshold <= 0) {
-        return entry.ally.id
+  /**
+   * 味方支援系スキル（PlanAllyTargetSkill 実装）に対する事前ターゲット確定処理。
+   * Action 側が planTarget を持つ場合のみ介入し、対象が見つからなければそのアクションを破棄する。
+   */
+  private planAllySupportActionIfNeeded(battle: Battle, enemy: Enemy): void {
+    for (;;) {
+      const upcoming = enemy.queuedActions[0]
+      if (!this.isPlanAllyTargetSkill(upcoming)) {
+        return
       }
-    }
 
-    return weighted[weighted.length - 1]?.ally.id
+      const planned = upcoming.planTarget({ battle, source: enemy, team: this })
+      if (planned) {
+        return
+      }
+      enemy.discardNextScheduledAction()
+    }
+  }
+
+  private isPlanAllyTargetSkill(
+    action: Action | undefined,
+  ): action is Action & PlanAllyTargetSkill {
+    return Boolean(action) && typeof (action as any).planTarget === 'function'
   }
 
   handleActionResolved(battle: Battle, actor: Player | Enemy, action: Action): void {
