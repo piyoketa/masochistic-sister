@@ -112,6 +112,8 @@ const canPlayerAct = computed(() => isPlayerTurn.value && !isInputLocked.value)
 const enemySelectionRequest = ref<EnemySelectionRequest | null>(null)
 const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
+// 敵行動ヒントの計算済み結果を保持し、敵ターン中に行動済みの敵は再計算しない
+const lastEnemyActionHints = ref<Map<number, EnemyActionHint[]>>(new Map())
 const enemyActionHintsById = computed<Map<number, EnemyActionHint[]>>(() => {
   const battle = viewManager.battle
   const snap = snapshot.value
@@ -125,17 +127,24 @@ const enemyActionHintsById = computed<Map<number, EnemyActionHint[]>>(() => {
     if (!enemy) {
       return
     }
-    map.set(
-      enemySnapshot.id,
-      buildEnemyActionHints({
-        battle,
-        enemy,
-        turnPosition,
-        enemyStateSnapshots: enemySnapshot.states,
-        playerStateSnapshots: snap.player?.states,
-      }),
-    )
+    const actedThisTurn = snap.turnPosition?.side === 'enemy' && enemySnapshot.hasActedThisTurn
+    if (actedThisTurn) {
+      const cached = lastEnemyActionHints.value.get(enemySnapshot.id)
+      if (cached) {
+        map.set(enemySnapshot.id, cached)
+        return
+      }
+    }
+    const hints = buildEnemyActionHints({
+      battle,
+      enemy,
+      turnPosition,
+      enemyStateSnapshots: enemySnapshot.states,
+      playerStateSnapshots: snap.player?.states,
+    })
+    map.set(enemySnapshot.id, hints)
   })
+  lastEnemyActionHints.value = map
   return map
 })
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
