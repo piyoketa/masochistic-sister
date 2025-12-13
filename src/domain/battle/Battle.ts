@@ -18,8 +18,7 @@ import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
 import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
-import type { EnemyActionHint, EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
-import { buildEnemyActionHints } from './enemyActionHintBuilder'
+import type { EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
 import type { Relic } from '../entities/relics/Relic'
 import { instantiateStateFromSnapshot } from '../entities/states'
@@ -74,7 +73,6 @@ export interface BattleSnapshot {
     hasActedThisTurn: boolean
     status: EnemyStatus
     skills: EnemySkill[]
-    nextActions?: EnemyActionHint[]
   }>
   deck: Card[]
   hand: Card[]
@@ -275,6 +273,17 @@ export class Battle {
     return this.exilePileValue
   }
 
+  /**
+   * 現在のターン位置を Battle インスタンスから直接参照したいケース向けの簡易ゲッター。
+   * スナップショットを介さず、最新状態の turn/side を取得する。
+   */
+  get turnPosition(): BattleTurn {
+    return {
+      turn: this.turnValue.current.turnCount,
+      side: this.turnValue.current.activeSide,
+    }
+  }
+
   get events(): BattleEventQueue {
     return this.eventsValue
   }
@@ -427,7 +436,6 @@ export class Battle {
             name: action.name,
             detail: action.describe(),
           })),
-          nextActions: buildEnemyActionHints(this, enemy, this.turnValue.current.turnCount),
         }
       }),
       deck: deckWithCost,

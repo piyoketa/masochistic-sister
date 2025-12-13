@@ -11,13 +11,14 @@ BattleEnemyArea の責務:
 主な通信相手とインターフェース:
 - BattleView（親）: props で snapshot / 選択状態を受け取り、hover-start・hover-end・enemy-click・cancel-selection を emit する。
 - EnemyCard: 各敵カードを描画する。`enemy: EnemyInfo`、`selectable: boolean` 等の既存インターフェースを利用。
-  `EnemyInfo` は `@/types/battle` の型で、スナップショットから生成した情報を格納する。類似する型として `BattleSnapshot['enemies'][number]` があるが、
-  EnemyInfo はビュー描画向けに nextActions や states の整形済み情報を持つ点が異なる。
+  `EnemyInfo` は `@/types/battle` の型で、スナップショット + Battle インスタンスから生成した情報を格納する。類似する型として `BattleSnapshot['enemies'][number]` があるが、
+  EnemyInfo はビュー描画向けに行動予測（nextActions）や states の整形済み情報を持つ点が異なる。
 -->
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
+import type { Battle } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
 import type { EnemyInfo, EnemyActionHint, EnemyStatus, StateSnapshot } from '@/types/battle'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
@@ -32,6 +33,7 @@ interface EnemySelectionHint {
 }
 
 const props = defineProps<{
+  battle?: Battle
   snapshot: BattleSnapshot | undefined
   isInitializing: boolean
   isSelectingEnemy: boolean
@@ -39,6 +41,7 @@ const props = defineProps<{
   stageEvent: StageEventPayload | null
   selectionHints?: EnemySelectionHint[]
   selectionTheme?: EnemySelectionTheme
+  actionHintsByEnemyId?: Map<number, EnemyActionHint[]>
 }>()
 
 const emit = defineEmits<{
@@ -78,6 +81,7 @@ const selectionHintMap = computed<Map<number, EnemySelectionHint>>(() => {
 
 const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
+  const hintsMap = props.actionHintsByEnemyId ?? new Map<number, EnemyActionHint[]>()
   if (!current) {
     return []
   }
@@ -87,7 +91,7 @@ const enemySlots = computed<EnemySlot[]>(() => {
     const isDefeated = enemySnapshot.status === 'defeated'
     const isEscaped = enemySnapshot.status === 'escaped'
     const shouldDisplay = !isEscaped
-    const baseNextActions: EnemyActionHint[] = enemySnapshot.nextActions ?? []
+    const actionHints = hintsMap.get(enemySnapshot.id) ?? []
     const enemyInfo = shouldDisplay
       ? {
           id: enemySnapshot.id,
@@ -98,7 +102,7 @@ const enemySlots = computed<EnemySlot[]>(() => {
             current: enemySnapshot.currentHp,
             max: enemySnapshot.maxHp,
           },
-          nextActions: baseNextActions,
+          nextActions: actionHints,
           skills: enemySnapshot.skills ?? [],
           states: mapStatesToEntries(enemySnapshot.states) ?? [],
         }

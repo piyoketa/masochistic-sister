@@ -31,18 +31,18 @@
 - `BattleSnapshot` に敵の行動予測（Next Action）を含めていないため、`BattleEnemyArea` は毎回 `battle.enemyTeam.findEnemy()` 経由で “現在の” キューを読み取っている。  
 - `OperationRunner` は `end-player-turn` の直後に `start-player-turn` エントリを追加するので、敵フェイズ演出の最中でも `Enemy` 実体は「次ターン状態」へ更新済み。結果として表示が先走る。
 
-### 改修案
-1. **BattleSnapshot に Next Action 情報を付加**  
-   - `Battle.captureFullSnapshot()` の `snapshot.enemies[]` に `nextActions`（配列 or 単一要素）を追加。  
-   - ActionLogEntry には `[アニメーション時点の snapshot + nextActions]` が保存されるため、UI は `nextActions` をそのタイミングで凍結された情報として表示できる。
-2. **View を Snapshot 参照に統一**  
-   - `BattleEnemyArea` は snapshot 付属の `nextActions` を描画し、`Battle` 本体を参照しない。  
-   - `hasActedThisTurn` も snapshot 側で判定済み値を持たせ、ビューは “行動済み” の敵には予測を表示しない。
-3. **OperationRunner スナップショット処理**  
-   - `OperationRunner` が `BattleSnapshot` を作る際に `EnemyActionQueue` から次行動を読み取り、snapshot に埋め込む。  
-   - カードで行動を書き換えた場合は、`BattleSnapshot` 用の nextActions を再計算し、ActionLog へ保存。
+### 改修案（最新方針）
+1. **行動予測は Battle インスタンスから直接取得**  
+   - Snapshot に `nextActions` を詰め込むのはやめ、フロントは `Battle.enemyTeam.findEnemy()` と `enemyActionHintBuilder` を通じて、現在ターンの行動予測を逐次取得する。  
+   - 乱数シードをキュー生成時に保持しているため、リプレイ時も同じ行動列が得られる。
+2. **View は Snapshot + Battle の併用**  
+   - 描画の基礎データは引き続き `BattleSnapshot` を利用しつつ、行動予測だけは `Battle` を参照して計算する。  
+   - `hasActedThisTurn` は Snapshot 側で保持し、予測表示の抑制に利用する。
+3. **OperationRunner / ActionLog**  
+   - ActionLogEntry は従来通り Snapshot を保存するが、行動予測は含まない。  
+   - 乱数シードと敵キューの派生シードを Battle 初期化時に固定し、リプレイでも同じ予測が得られるようにする。
 
-このアプローチであれば、ActionLogEntry/postEntrySnapshot だけを参照するフロントが「アニメーション再生時点の Next Action」を描画でき、敵ターン中に次ターン予測が露出する問題を解消できる。
+この方針により、行動予測の表示は「常に最新の Battle 状態に基づく」一方で、乱数シードを固定することでリプレイ時の決定性を確保する。
 
 ---
 

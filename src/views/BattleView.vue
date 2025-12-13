@@ -34,6 +34,7 @@ import {
   buildEnemyTeamFactoryMap,
   SnailTeam,
 } from '@/domain/entities/enemyTeams'
+import { buildEnemyActionHints } from '@/domain/battle/enemyActionHintBuilder'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
@@ -51,6 +52,7 @@ import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
 import PileChoiceOverlay from '@/components/battle/PileChoiceOverlay.vue'
 import type { CardInfo } from '@/types/battle'
+import type { EnemyActionHint } from '@/types/battle'
 import type { Card } from '@/domain/entities/Card'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
@@ -110,6 +112,23 @@ const canPlayerAct = computed(() => isPlayerTurn.value && !isInputLocked.value)
 const enemySelectionRequest = ref<EnemySelectionRequest | null>(null)
 const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
+const enemyActionHintsById = computed<Map<number, EnemyActionHint[]>>(() => {
+  const battle = viewManager.battle
+  const snap = snapshot.value
+  if (!battle || !snap) {
+    return new Map<number, EnemyActionHint[]>()
+  }
+  const turnNumber = battle.turnPosition.turn
+  const map = new Map<number, EnemyActionHint[]>()
+  snap.enemies.forEach((enemySnapshot) => {
+    const enemy = battle.enemyTeam.findEnemy(enemySnapshot.id)
+    if (!enemy) {
+      return
+    }
+    map.set(enemySnapshot.id, buildEnemyActionHints(battle, enemy, turnNumber))
+  })
+  return map
+})
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
 const pileChoiceState = reactive<{
@@ -249,15 +268,16 @@ const projectedPlayerHp = computed(() => {
   }
   const currentHp = snapshot.value.player.currentHp ?? 0
   const enemies = snapshot.value.enemies ?? []
+  const hintMap = enemyActionHintsById.value
   let total = 0
   for (const enemy of enemies) {
     // 撃破済み・行動済みの敵は予測に含めない
     if (enemy.status !== 'active' || enemy.currentHp <= 0 || enemy.hasActedThisTurn) {
       continue
     }
-    const actions = enemy.nextActions ?? []
+    const actions = hintMap.get(enemy.id) ?? []
     for (const action of actions) {
-      if (action.type !== 'attack') {
+      if (action.type !== 'attack' || action.acted) {
         continue
       }
       const pattern = action.calculatedPattern ?? action.pattern
@@ -950,6 +970,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
     <main class="battle-main">
       <BattleEnemyArea
         :key="`enemy-area-${viewResetToken}`"
+        :battle="viewManager.battle"
         :snapshot="snapshot"
         :is-initializing="isInitializing"
         :stage-event="latestStageEvent"
@@ -957,6 +978,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         :hovered-enemy-id="hoveredEnemyId"
         :selection-hints="enemySelectionHints"
         :selection-theme="enemySelectionTheme"
+        :action-hints-by-enemy-id="enemyActionHintsById"
         @hover-start="handleEnemyHoverStart"
         @hover-end="handleEnemyHoverEnd"
         @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
