@@ -103,6 +103,7 @@ export class EnemyTeam {
         enemy.clearPlannedActionsForDisplay()
         continue
       }
+      enemy.setQueueContext({ battle, enemy, team: this })
       // 複数回の破棄に耐えられるよう、先頭がAllyBuffSkillである限りループする
       for (;;) {
         const upcoming = enemy.queuedActions[0]

@@ -120,6 +120,10 @@ export class Enemy {
     return this.actionQueue.getDisplayPlan()
   }
 
+  setQueueContext(context: Record<string, unknown>): void {
+    this.actionQueue.setContext(context)
+  }
+
   refreshPlannedActionsForDisplay(): void {
     this.actionQueue.snapshotDisplayPlan()
   }
