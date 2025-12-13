@@ -1269,6 +1269,8 @@ export class Battle {
           this.drawForPlayer(entry.draw)
         }
         this.resolveEvents()
+        // プレイヤーターン開始時に敵の次アクションを確定させ、ヒント生成に依存しないようにする
+        this.enemyTeam.ensureActionsForTurn(this, this.turnPosition.turn)
         this.enemyTeam.planUpcomingActions(this)
         break
       case 'play-card': {

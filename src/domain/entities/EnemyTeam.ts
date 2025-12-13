@@ -97,6 +97,20 @@ export class EnemyTeam {
     return this.membersValue.every((enemy) => !enemy.isActive())
   }
 
+  /**
+   * 指定ターンの行動を全敵について確定させる。
+   * - プレイヤーターン開始時に呼び出し、ヒント生成に依存せず次ターンの行動を固める。
+   */
+  ensureActionsForTurn(battle: Battle, turn: number): void {
+    for (const enemy of this.membersValue) {
+      if (!enemy.isActive()) {
+        continue
+      }
+      enemy.setQueueContext({ battle, enemy, team: this })
+      enemy.confirmActionForTurn(turn)
+    }
+  }
+
   planUpcomingActions(battle: Battle): void {
     for (const enemy of this.membersValue) {
       if (!enemy.isActive()) {
