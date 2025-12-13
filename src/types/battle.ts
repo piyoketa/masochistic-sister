@@ -95,6 +95,7 @@ export type BaseCardInfo = {
   subtitle?: string // サブタイトル（例: 祈り／状態異常など）
   primaryTags: CardTagInfo[] // タイプなど主要タグ
   categoryTags: CardTagInfo[] // カテゴリタグ（魔/神聖など）
+  destinationTags?: CardTagInfo[] // 消滅などの行き先タグ
   affordable?: boolean // 手札でプレイ可能かどうかのフラグ
   disabled?: boolean // 選択不可・無効化のフラグ（UIでグレーアウト）
   descriptionSegments?: DescriptionSegment[] // 説明文をセグメント化した配列（攻撃以外は任意）
@@ -108,6 +109,7 @@ export type AttackSingleCardInfo = BaseCardInfo & {
   damageAmountReduced?: boolean // 打点が低下したかどうか（攻撃用表示フラグ）
   damageAmountBoosted?: boolean // 打点が強化済みかどうか（攻撃用表示フラグ）
   effectTags: CardTagInfo[]
+  destinationTags?: CardTagInfo[]
   descriptionSegments: DescriptionSegment[] // 説明文をセグメント化した配列
 }
 
@@ -122,6 +124,7 @@ export type AttackMultiCardInfo = BaseCardInfo & {
   damageAmountBoosted?: boolean // 打点が強化済みかどうか（攻撃用表示フラグ）
   damageCountBoosted?: boolean // 攻撃回数が増加しているかどうか（攻撃用表示フラグ）
   effectTags: CardTagInfo[]
+  destinationTags?: CardTagInfo[]
   descriptionSegments: DescriptionSegment[] // 説明文をセグメント化した配列
 }
 
@@ -130,6 +133,7 @@ export type SkillCardInfo = BaseCardInfo & {
   type: 'skill'
   description: string
   effectTags?: CardTagInfo[]
+  destinationTags?: CardTagInfo[]
 }
 
 // 状態異常カード
@@ -137,6 +141,7 @@ export type StatusCardInfo = BaseCardInfo & {
   type: 'status'
   description: string
   effectTags?: CardTagInfo[]
+  destinationTags?: CardTagInfo[]
 }
 
 // スキップカード（実質表示なし、最小限）

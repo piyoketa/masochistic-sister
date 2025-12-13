@@ -70,6 +70,7 @@ const props = defineProps<{
   attackStyle?: AttackStyle
   primaryTags?: CardTagInfo[]
   effectTags?: CardTagInfo[]
+  destinationTags?: CardTagInfo[]
   categoryTags?: CardTagInfo[]
   operations?: string[]
   selected?: boolean
@@ -151,6 +152,7 @@ const cardStyleVars = computed(() => {
 
 const primaryTagList = computed(() => props.primaryTags ?? [])
 const effectTagList = computed(() => props.effectTags ?? [])
+const destinationTagList = computed(() => props.destinationTags ?? [])
 const categoryTagList = computed(() => props.categoryTags ?? [])
 const primaryTagText = computed(() =>
   primaryTagList.value.length > 0 ? primaryTagList.value.map((tag) => tag.label).join('/') : '',
@@ -409,11 +411,21 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
               <br v-if="index < (props.description ?? '').split('\n').length - 1" />
             </template>
           </p>
-          <div v-if="primaryTagText" class="primary-tag-text">
-            {{ primaryTagText }}
+        <div v-if="primaryTagText" class="primary-tag-text">
+          {{ primaryTagText }}
+        </div>
+      </section>
+          <div v-if="destinationTagList.length" class="tag-list tag-list--destination">
+            <span
+              v-for="tag in destinationTagList"
+              :key="tag.id"
+              @mouseenter="(event) => handleTagEnter(event, tag)"
+              @mousemove="(event) => handleTagMove(event, tag)"
+              @mouseleave="() => handleTagLeave(tag)"
+            >
+              {{ tag.label }}
+            </span>
           </div>
-        </section>
-
         <div v-if="categoryTagList.length || effectTagList.length" class="category-tag-list">
           <span
             v-for="tag in categoryTagList"
@@ -622,10 +634,22 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   justify-content: center;
 }
 
+.tag-list--destination {
+  margin-top: 6px;
+  justify-content: center;
+}
+
 .tag-list--effect span {
   background: rgba(255, 255, 255, 0.16);
   color: var(--card-text-color, inherit);
   font-weight: 700;
+}
+
+.tag-list--destination span {
+  background: var(--card-tag-bg, rgba(0, 0, 0, 0.08));
+  padding: 0 6px;
+  border-radius: 10px;
+  color: var(--card-text-color, inherit);
 }
 
 .category-tag-list {

@@ -1,7 +1,7 @@
 import type { Card } from '@/domain/entities/Card'
 import { Attack } from '@/domain/entities/Action'
 import type { CardDefinition } from '@/domain/entities/CardDefinition'
-import type { CardTag } from '@/domain/entities/CardTag'
+import { CardDestinationTag, type CardTag } from '@/domain/entities/CardTag'
 import type { DamagePattern } from '@/domain/entities/Damages'
 import type { Battle } from '@/domain/battle/Battle'
 import type { Player } from '@/domain/entities/Player'
@@ -37,7 +37,12 @@ export function buildCardInfoFromCard(
 
   const definition = card.definition
   const primaryTags: CardTagInfo[] = []
-  const effectTags = toTagInfos(card.effectTags)
+  const destinationTags = toTagInfos(
+    (card.effectTags ?? []).filter((tag): tag is CardTag & CardDestinationTag => tag instanceof CardDestinationTag),
+  )
+  const effectTags = toTagInfos(
+    (card.effectTags ?? []).filter((tag): tag is CardTag => !(tag instanceof CardDestinationTag)),
+  )
   const categoryTags = toTagInfos(card.categoryTags, (tag) => tag.name ?? tag.id ?? '')
   const seenTagIds = new Set<string>()
   const subtitle = resolveSubtitle(card)
@@ -82,6 +87,7 @@ export function buildCardInfoFromCard(
           damageAmount: damages.baseAmount,
           damageCount: damages.baseCount ?? 1,
           effectTags,
+          destinationTags: destinationTags.length ? destinationTags : undefined,
           descriptionSegments: segments,
         }
       : {
@@ -90,6 +96,7 @@ export function buildCardInfoFromCard(
           attackStyle: 'single',
           damageAmount: damages.baseAmount,
           effectTags,
+          destinationTags: destinationTags.length ? destinationTags : undefined,
           descriptionSegments: segments,
         }
   }
@@ -100,6 +107,7 @@ export function buildCardInfoFromCard(
       type: 'skill',
       description: card.description,
       effectTags: effectTags.length ? effectTags : undefined,
+      destinationTags: destinationTags.length ? destinationTags : undefined,
     }
     return skill
   }
@@ -110,6 +118,7 @@ export function buildCardInfoFromCard(
       type: 'status',
       description: card.description,
       effectTags: effectTags.length ? effectTags : undefined,
+      destinationTags: destinationTags.length ? destinationTags : undefined,
     }
     return status
   }
