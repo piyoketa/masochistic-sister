@@ -85,6 +85,13 @@ export class Enemy {
     return this.actionQueue.peek()
   }
 
+  /**
+   * 指定ターンの行動を確定させて取得する（履歴に残す）。
+   */
+  confirmActionForTurn(turn: number): Action | null {
+    return this.actionQueue.confirmActionForTurn(turn)
+  }
+
   get actionLog(): Action[] {
     return [...this.actionHistory]
   }

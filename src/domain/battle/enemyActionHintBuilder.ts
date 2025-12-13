@@ -8,17 +8,11 @@ import { Card } from '../entities/Card'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { buildCardInfoFromBlueprint, mapActionToCardId } from '../library/Library'
 
-export function buildEnemyActionHints(battle: Battle, enemy: Enemy): EnemyActionHint[] {
-  const planned = enemy.plannedActionsForDisplay
-  if (!planned || planned.length === 0) {
-    return []
-  }
-
-  const [nextAction] = planned
+export function buildEnemyActionHints(battle: Battle, enemy: Enemy, turn: number): EnemyActionHint[] {
+  const nextAction = enemy.confirmActionForTurn(turn)
   if (!nextAction) {
     return []
   }
-
   const hint = summarizeEnemyAction(battle, enemy, nextAction)
   return [
     {

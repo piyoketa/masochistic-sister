@@ -427,7 +427,7 @@ export class Battle {
             name: action.name,
             detail: action.describe(),
           })),
-          nextActions: buildEnemyActionHints(this, enemy),
+          nextActions: buildEnemyActionHints(this, enemy, this.turnValue.current.turnCount),
         }
       }),
       deck: deckWithCost,
