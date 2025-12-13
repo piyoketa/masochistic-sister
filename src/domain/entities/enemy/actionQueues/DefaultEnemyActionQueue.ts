@@ -22,29 +22,7 @@ export class DefaultEnemyActionQueue extends EnemyActionQueue {
     super.onInitialize()
   }
 
-  protected populate(): void {
-    // 必要最小限、次のアクション1件のみを pending に積む
-    if (this.pending.length > 0) {
-      return
-    }
-    const next = this.pickNextAction()
-    if (next) {
-      this.pending.push(next)
-    }
-  }
-
-  protected override onActionDequeued(action: Action): void {
-    const baseIndex = this.actions.indexOf(action)
-    if (baseIndex !== -1) {
-      this.lastIndex = baseIndex
-    }
-  }
-
-  protected override onActionDiscarded(_action: Action): void {
-    // discard should not affect lastIndex so that postponed actions execute next
-  }
-
-  private pickNextAction(): Action | undefined {
+  protected pickActionForTurn(_turn: number): Action | undefined {
     const count = this.actions.length
     if (count === 0) {
       return undefined

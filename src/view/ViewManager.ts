@@ -268,6 +268,11 @@ export class ViewManager {
     return this.battleInstance
   }
 
+  private initializeBattle(): void {
+    this.battleInstance = this.createBattle()
+    this.battleInstance.setInputLocked(this.stateValue.input.locked)
+  }
+
   getActionLog(): ActionLog {
     return this.actionLog
   }
@@ -913,6 +918,7 @@ export class ViewManager {
     }
 
     this.stateValue.input.locked = locked
+    this.battleInstance?.setInputLocked(locked)
     if (!options.silent) {
       this.emit({ type: 'input-lock-changed', locked })
     }

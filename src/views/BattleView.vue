@@ -118,14 +118,14 @@ const enemyActionHintsById = computed<Map<number, EnemyActionHint[]>>(() => {
   if (!battle || !snap) {
     return new Map<number, EnemyActionHint[]>()
   }
-  const turnNumber = battle.turnPosition.turn
+  const turnPosition = snap.turnPosition ?? battle.turnPosition
   const map = new Map<number, EnemyActionHint[]>()
   snap.enemies.forEach((enemySnapshot) => {
     const enemy = battle.enemyTeam.findEnemy(enemySnapshot.id)
     if (!enemy) {
       return
     }
-    map.set(enemySnapshot.id, buildEnemyActionHints(battle, enemy, turnNumber))
+    map.set(enemySnapshot.id, buildEnemyActionHints(battle, enemy, turnPosition))
   })
   return map
 })

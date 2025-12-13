@@ -1,5 +1,5 @@
 import type { EnemyActionHint } from '@/types/battle'
-import type { Battle } from './Battle'
+import type { Battle, BattleTurn } from './Battle'
 import type { Enemy } from '../entities/Enemy'
 import { Attack, Action as BattleAction, AllyBuffSkill } from '../entities/Action'
 import { Damages } from '../entities/Damages'
@@ -8,8 +8,12 @@ import { Card } from '../entities/Card'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { buildCardInfoFromBlueprint, mapActionToCardId } from '../library/Library'
 
-export function buildEnemyActionHints(battle: Battle, enemy: Enemy, turn: number): EnemyActionHint[] {
-  const nextAction = enemy.confirmActionForTurn(turn)
+export function buildEnemyActionHints(
+  battle: Battle,
+  enemy: Enemy,
+  turnPosition: BattleTurn,
+): EnemyActionHint[] {
+  const nextAction = enemy.confirmActionForTurn(turnPosition.turn)
   if (!nextAction) {
     return []
   }

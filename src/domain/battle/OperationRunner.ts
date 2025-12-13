@@ -753,8 +753,8 @@ export class OperationRunner {
         enemyId: entry.enemyId,
         queue: {
           queueState: {
-            pending: [...entry.queue.queueState.pending],
             actions: [...entry.queue.queueState.actions],
+            turnActions: [...entry.queue.queueState.turnActions],
             metadata: entry.queue.queueState.metadata
               ? { ...entry.queue.queueState.metadata }
               : undefined,

@@ -58,6 +58,8 @@ export interface BattleSnapshot {
     name: string
     currentHp: number
     maxHp: number
+    /** プレイヤーターン中に、即「ターン終了」した場合の予測HP。入力待ち時のみ算出する。 */
+    predictedPlayerHpAfterEndTurn?: number
     currentMana: number
     maxMana: number
     relics: Array<{ className: string; active: boolean }>
@@ -186,6 +188,10 @@ export class Battle {
   private readonly handValue: Hand
   private readonly discardPileValue: DiscardPile
   private readonly exilePileValue: ExilePile
+  /** ViewManager などが入力ロックを反映するための簡易フラグ。Snapshot生成時の予測に利用。 */
+  private inputLocked = false
+  /** プレイヤーターンで算出した予測値を敵フェーズ中も保持するためのキャッシュ。 */
+  private cachedPredictedPlayerHpAfterEndTurn: number | undefined
   private readonly eventsValue: BattleEventQueue
   private readonly logValue: BattleLog
   private readonly turnValue: TurnManager
@@ -271,6 +277,11 @@ export class Battle {
 
   get exilePile(): ExilePile {
     return this.exilePileValue
+  }
+
+  /** ViewManager が入力ロック/解除を伝えるための API。Snapshot 時の予測計算に利用。 */
+  setInputLocked(locked: boolean): void {
+    this.inputLocked = locked
   }
 
   /**
@@ -387,7 +398,30 @@ export class Battle {
     return events
   }
 
-  getSnapshot(): BattleSnapshot {
+  /**
+   * 「今すぐターン終了したらプレイヤーHPはいくつ残るか」を予測する。
+   * clone→endPlayerTurn を実行するため、元の戦闘状態は汚さない。
+   */
+  private predictPlayerHpAfterEndTurn(): number | undefined {
+    if (this.turnValue.current.activeSide === 'enemy') {
+      return this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
+    }
+    const snapshot = this.captureFullSnapshot()
+    try {
+      this.endPlayerTurn()
+      this.cachedPredictedPlayerHpAfterEndTurn = this.playerValue.currentHp
+      return this.cachedPredictedPlayerHpAfterEndTurn
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('[Battle] predictPlayerHpAfterEndTurn failed', error)
+      return undefined
+    } finally {
+      this.restoreFullSnapshot(snapshot)
+    }
+  }
+
+  getSnapshot(options?: { includePrediction?: boolean }): BattleSnapshot {
+    const includePrediction = options?.includePrediction !== false
     const teamId = this.enemyTeamValue.id
     const relicSnapshots =
       this.relicInstances.map((relic) => {
@@ -400,6 +434,12 @@ export class Battle {
     const handWithRuntime = this.handValue.list().map((card) => this.applyCardRuntime(card))
     const discardWithCost = this.discardPileValue.list()
     const exileWithCost = this.exilePileValue.list()
+    const predictedHp =
+      includePrediction && this.turnValue.current.activeSide === 'player'
+        ? this.predictPlayerHpAfterEndTurn()
+        : includePrediction
+          ? this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
+          : undefined
 
     return {
       id: this.idValue,
@@ -412,6 +452,7 @@ export class Battle {
         name: this.playerValue.name,
         currentHp: this.playerValue.currentHp,
         maxHp: this.playerValue.maxHp,
+        predictedPlayerHpAfterEndTurn: predictedHp,
         currentMana: this.playerValue.currentMana,
         maxMana: this.playerValue.maxMana,
         relics: relicSnapshots,
@@ -479,7 +520,7 @@ export class Battle {
   }
 
   captureFullSnapshot(): FullBattleSnapshot {
-    const base = this.getSnapshot()
+    const base = this.getSnapshot({ includePrediction: false })
     const enemyQueues = this.enemyTeamValue.members.map((enemy) => ({
       enemyId: enemy.id ?? -1,
       queue: enemy.serializeQueueSnapshot(),
@@ -527,6 +568,7 @@ export class Battle {
   restoreFullSnapshot(state: FullBattleSnapshot): void {
     const base = state.snapshot
     this.statusValue = base.status
+    this.cachedPredictedPlayerHpAfterEndTurn = base.player.predictedPlayerHpAfterEndTurn
     this.playerValue.setCurrentHp(base.player.currentHp)
     this.playerValue.setCurrentMana(base.player.currentMana)
 

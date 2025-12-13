@@ -123,7 +123,7 @@ export class EnemyTeam {
       if (planned) {
         return
       }
-      enemy.discardNextScheduledAction()
+      enemy.discardNextScheduledAction(battle.turnPosition.turn)
     }
   }
 
