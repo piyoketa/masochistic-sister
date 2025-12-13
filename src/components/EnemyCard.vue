@@ -95,12 +95,7 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
       const formatted = formatEnemyActionLabel(action, { includeTitle: false })
       const tooltips: Partial<Record<number, string>> = {}
       const addTooltipIfPossible = (segmentIndex: number | undefined, text?: string) => {
-        if (
-          segmentIndex === undefined ||
-          segmentIndex < 0 ||
-          !text ||
-          formatted.segments[segmentIndex]?.showOverlay
-        ) {
+        if (segmentIndex === undefined || segmentIndex < 0 || !text) {
           return
         }
         tooltips[segmentIndex] = text
