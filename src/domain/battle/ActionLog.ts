@@ -194,6 +194,13 @@ export class ActionLog {
       const batches = enhanced.animationBatches ?? []
       const total = batches.reduce((sum, batch) => sum + this.calculateBatchWait(batch), 0)
       if (enhanced.type === 'enemy-act') {
+        const skipReason = enhanced.metadata?.skipReason
+        // 撃破/逃走済みの敵はアニメーションもハイライトも無いので、最低500ms待つ挙動を無効化して即スナップショット更新する。
+        const skipWait =
+          skipReason === 'defeated' || skipReason === 'escaped'
+        if (skipWait) {
+          return total
+        }
         return Math.max(total, 500)
       }
       return total

@@ -888,19 +888,8 @@ export class Battle {
         continue
       }
       if (!enemy.isActive()) {
-        const reason: EnemyTurnSkipReason =
-          enemy.status === 'escaped' ? 'escaped' : enemy.currentHp <= 0 ? 'defeated' : 'no-action'
-        actions.push({
-          enemyId,
-          enemyName: enemy.name,
-          actionName: '戦闘不能',
-          skipped: true,
-          skipReason: reason,
-          cardsAddedToPlayerHand: [],
-          stateCardEvents: undefined,
-          memoryCardEvents: undefined,
-          snapshotAfter: this.cloneBattleSnapshot(this.captureFullSnapshot().snapshot),
-        })
+        // 撃破/逃走済みの敵は「行動スキップ」の enemy-act を生成しない。
+        // 生成してしまうと View 側の最低待機時間により無意味な待ちが発生するため、ターン順処理のみスキップする。
         continue
       }
 
