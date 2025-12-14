@@ -7,6 +7,7 @@ import {
   usePlayerStore,
   type CardBlueprint,
   type CardId,
+  type DeckPreset,
 } from '@/stores/playerStore'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { Card } from '@/domain/entities/Card'
@@ -59,6 +60,7 @@ const addableOptions: Array<{ value: CardId; label: string }> = listCardIdOption
   }),
 )
 const newCardType = ref<CardId>(addableOptions[0]?.value ?? 'heaven-chain')
+const deckPreset = ref<DeckPreset>(playerStore.initialDeckPreset ?? 'holy')
 
 function handleCardClick(card: CardInfo): void {
   selectedCardId.value = selectedCardId.value === card.id ? null : card.id
@@ -89,6 +91,17 @@ function applyPlayerStatus(): void {
   editHp.value = playerStore.hp
   editMaxHp.value = playerStore.maxHp
   editGold.value = playerStore.gold
+}
+
+function applyDeckPreset(): void {
+  playerStore.setDeckPreset(deckPreset.value)
+  // リセット後のステータスでフォームを再同期
+  editHp.value = playerStore.hp
+  editMaxHp.value = playerStore.maxHp
+  editGold.value = playerStore.gold
+  selectedCardId.value = null
+  syncAttackEditor()
+  refreshShopState()
 }
 
 function refreshShopState(): void {
@@ -339,6 +352,14 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
         <button type="button" class="deck-button deck-button--link" @click="router.push('/field')">
           フィールドへ戻る
         </button>
+      </div>
+      <div class="preset-row">
+        <label for="preset-select">初期デッキ</label>
+        <select id="preset-select" v-model="deckPreset" class="preset-select">
+          <option value="holy">神聖デッキ</option>
+          <option value="magic">魔性デッキ</option>
+        </select>
+        <button type="button" class="deck-button" @click="applyDeckPreset">デッキを切替</button>
       </div>
     </header>
     <div class="deck-actions">

@@ -58,6 +58,8 @@ import { OpenWoundAction } from '@/domain/entities/actions/OpenWoundAction'
 import { JointLockAction } from '@/domain/entities/actions/JointLockAction'
 import { FattenAction } from '@/domain/entities/actions/FattenAction'
 import { ShapeUpAction } from '@/domain/entities/actions/ShapeUpAction'
+import { LifeChainAction } from '@/domain/entities/actions/LifeChainAction'
+import { MiasmaAction } from '@/domain/entities/actions/MiasmaAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 import { StackedStressAction } from '@/domain/entities/actions/StackedStressAction'
@@ -90,6 +92,8 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   OpenWoundAction,
   JointLockAction,
   FattenAction,
+  LifeChainAction,
+  MiasmaAction,
   StackedStressAction,
   ShapeUpAction,
 ]
@@ -116,6 +120,8 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   OpenWoundAction,
   JointLockAction,
   FattenAction,
+  LifeChainAction,
+  MiasmaAction,
   StackedStressAction,
   PeelingScabAction,
 ]
@@ -142,6 +148,8 @@ const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   SoloBodyAction,
   DeepBreathAction,
   OpenWoundAction,
+  LifeChainAction,
+  MiasmaAction,
   StackedStressAction,
   PeelingScabAction,
 ]

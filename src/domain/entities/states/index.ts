@@ -23,6 +23,8 @@ export { StunCountState } from './StunCountState'
 export { FiveLegsState } from './FiveLegsState'
 export { StackedStressState } from './StackedStressState'
 export { CaringAllyTrait } from './CaringAllyTrait'
+export { DamageLinkState } from './DamageLinkState'
+export { MiasmaState } from './MiasmaState'
 
 import type { State } from '../State'
 import type { StateSnapshot } from '@/types/battle'
@@ -51,6 +53,8 @@ import { StunCountState } from './StunCountState'
 import { FiveLegsState } from './FiveLegsState'
 import { StackedStressState } from './StackedStressState'
 import { CaringAllyTrait } from './CaringAllyTrait'
+import { DamageLinkState } from './DamageLinkState'
+import { MiasmaState } from './MiasmaState'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
@@ -79,6 +83,8 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-stun-count': (m) => new StunCountState(m ?? 0),
   'trait-five-legs': () => new FiveLegsState(),
   'trait-caring-ally': () => new CaringAllyTrait(),
+  'state-damage-link': () => new DamageLinkState(),
+  'state-miasma': (m) => new MiasmaState(m ?? 10),
 }
 
 export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | undefined {
