@@ -1,4 +1,4 @@
-import type { Action } from './Action'
+import type { Action } from './Action/ActionBase'
 import type { State } from './State'
 import type { Battle, DamageAnimationEvent } from '../battle/Battle'
 import type { EnemyActionQueue, EnemyActionQueueStateSnapshot } from './enemy/actionQueues'

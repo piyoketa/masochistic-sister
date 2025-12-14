@@ -1,4 +1,4 @@
-import type { Action } from '../../Action'
+import type { Action } from '../../Action/ActionBase'
 import { EnemyActionQueue, type EnemyActionQueueStateSnapshot } from './EnemyActionQueue'
 
 export interface DefaultEnemyActionQueueOptions {

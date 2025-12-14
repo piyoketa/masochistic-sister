@@ -14,9 +14,8 @@ Skill.ts の責務:
 import type { ActionCutInCue, BaseActionProps } from './ActionBase'
 import { Action } from './ActionBase'
 import type { State } from '../State'
-import type { Player } from '../Player'
+import { Player } from '../Player'
 import type { Enemy } from '../Enemy'
-import { isPlayerEntity } from '../typeGuards'
 
 // cutInCue は BaseActionProps に含まれるが、スキル文脈で明示しておく
 export interface SkillProps extends BaseActionProps {
@@ -58,7 +57,7 @@ export abstract class Skill extends Action {
   protected override perform(context: import('./ActionBase').ActionContext): void {
     const target =
       context.target ??
-      (isPlayerEntity(context.source) ? undefined : (context.battle.player as Player))
+      (context.source instanceof Player ? undefined : (context.battle.player as Player))
     if (!target) {
       context.metadata = { ...(context.metadata ?? {}), skipped: true, skipReason: 'no-target' }
       return

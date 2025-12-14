@@ -1,4 +1,4 @@
-import { Skill } from '../Action'
+import { Skill } from '../Action/Skill'
 import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import { AccelerationState } from '../states/AccelerationState'
 

@@ -3,7 +3,7 @@ import { EnemyRepository } from '../repository/EnemyRepository'
 import type { Battle } from '../battle/Battle'
 import type { PlanAllyTargetSkill } from './Action/AllyStateSkill'
 import type { Player } from './Player'
-import type { Action } from './Action'
+import type { Action } from './Action/ActionBase'
 
 export interface EnemyTeamProps {
   id: string
