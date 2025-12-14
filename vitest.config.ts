@@ -8,6 +8,7 @@ export default mergeConfig(
     test: {
       environment: 'jsdom',
       css: true,
+      setupFiles: ['./tests/setup.ts'],
       // VuetifyのCSSはNodeがそのまま解釈できないため、依存をインライン変換してVite経由で処理する
       server: {
         deps: {

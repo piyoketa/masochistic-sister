@@ -21,7 +21,11 @@ function dedupe(list: string[]): string[] {
 // 全音声（/sounds/**）
 let globSoundAssets: string[] = []
 try {
-  const modules = import.meta.glob('/public/sounds/**/*', { eager: true, as: 'url' })
+  const modules = import.meta.glob('/public/sounds/**/*', {
+    eager: true,
+    query: '?url',
+    import: 'default',
+  })
   globSoundAssets = Object.values(modules).map((value) => normalizePublicPath(String(value)))
   if (ENABLE_PRELOAD_LOG) {
     console.info('[preloadManifest] glob sounds', globSoundAssets.length)
@@ -36,7 +40,11 @@ try {
 // 全画像（/assets/**）
 let globImageAssets: string[] = []
 try {
-  const modules = import.meta.glob('/public/assets/**/*', { eager: true, as: 'url' })
+  const modules = import.meta.glob('/public/assets/**/*', {
+    eager: true,
+    query: '?url',
+    import: 'default',
+  })
   globImageAssets = Object.values(modules).map((value) => normalizePublicPath(String(value)))
   if (ENABLE_PRELOAD_LOG) {
     console.info('[preloadManifest] glob assets', globImageAssets.length)

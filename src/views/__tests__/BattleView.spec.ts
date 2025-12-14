@@ -5,6 +5,7 @@ import BattleView from '../BattleView.vue'
 import { ViewManager } from '@/view/ViewManager'
 import { createBattleSampleScenario } from '../../../tests/fixtures/battleSampleScenario'
 import { TargetEnemyOperation } from '@/domain/entities/operations'
+import { createTestingRouter } from '../../../tests/__helpers__/router'
 
 function createGlobalStubs() {
   return {
@@ -76,7 +77,7 @@ describe('BattleView', () => {
       props: { viewManager },
       global: {
         stubs: createGlobalStubs(),
-        plugins: [pinia],
+        plugins: [pinia, createTestingRouter()],
       },
     })
 

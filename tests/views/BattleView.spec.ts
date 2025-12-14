@@ -7,6 +7,7 @@ import type { ViewManager, AnimationCommand, AnimationScript } from '@/view/View
 import type { Battle } from '@/domain/battle/Battle'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { CardOperation } from '@/domain/entities/operations'
+import { createTestingRouter } from '../__helpers__/router'
 
 const BattleEnemyAreaStub = defineComponent({
   props: [
@@ -162,7 +163,7 @@ describe('BattleView コンポーネント', () => {
           HpGauge: HpGaugeStub,
           TransitionGroup: false,
         },
-        plugins: [pinia],
+        plugins: [pinia, createTestingRouter()],
       },
     })
 
