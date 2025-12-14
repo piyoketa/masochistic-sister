@@ -79,12 +79,15 @@ function stripRelics(snapshot: unknown): unknown {
   if (
     snapshot &&
     typeof snapshot === 'object' &&
-    'player' in (snapshot as Record<string, unknown>) &&
-    (snapshot as { player?: { relics?: unknown } }).player
+    'player' in (snapshot as Record<string, unknown>)
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (snapshot as any).player.relics
+    const snapWithPlayer = snapshot as { player?: { relics?: unknown } }
+    if (snapWithPlayer.player) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (snapWithPlayer as any).player.relics
+    }
   }
+  if (snapshot && typeof snapshot === 'object') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (snapshot as any).turnPosition
     const enemies = (snapshot as any).enemies

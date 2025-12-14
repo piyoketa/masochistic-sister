@@ -86,8 +86,8 @@ describe('formatEnemyActionLabel', () => {
 
   it('formats skip action', () => {
     const { label, segments } = formatEnemyActionLabel(baseHint({ title: '足止め', type: 'skip' }))
-    expect(label).toBe('⛓行動不可')
-    expect(segments).toEqual([{ text: '⛓行動不可' }])
+    expect(label).toBe('行動不可')
+    expect(segments).toEqual([{ text: '行動不可', iconPath: '/assets/icons/skip.png' }])
   })
 
   it('formats other skills with sparkle', () => {

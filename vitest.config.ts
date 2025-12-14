@@ -7,6 +7,7 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: 'jsdom',
+      css: true,
       pool: 'threads',
       poolOptions: {
         threads: {
