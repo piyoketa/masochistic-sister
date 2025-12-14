@@ -189,6 +189,8 @@ provideImageHub(imageHub)
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
+// HP周りの調査ログは騒がしいため、環境変数で明示的に有効化した場合のみ出力する
+const playerHpDebugLoggingEnabled = import.meta.env.VITE_DEBUG_PLAYER_HP_LOG === 'true'
 
 
 let battleAssetPreloadPromise: Promise<void> | null = null
@@ -288,45 +290,53 @@ const playerPreHpForCard = computed(() => {
     ? { current: previousSnapshot.value.player.currentHp, max: previousSnapshot.value.player.maxHp }
     : { current: playerHpGauge.value.current, max: playerHpGauge.value.max }
   // 調査用ログ: PlayerCard に渡す preHp
-  // eslint-disable-next-line no-console
-  console.debug('[BattleView] playerPreHpForCard', pre, {
-    prevTurn: previousSnapshot.value?.turnPosition?.turn,
-    prevSide: previousSnapshot.value?.turnPosition?.side,
-    curTurn: snapshot.value?.turnPosition?.turn,
-    curSide: snapshot.value?.turnPosition?.side,
-  })
+  if (playerHpDebugLoggingEnabled) {
+    // eslint-disable-next-line no-console
+    console.debug('[BattleView] playerPreHpForCard', pre, {
+      prevTurn: previousSnapshot.value?.turnPosition?.turn,
+      prevSide: previousSnapshot.value?.turnPosition?.side,
+      curTurn: snapshot.value?.turnPosition?.turn,
+      curSide: snapshot.value?.turnPosition?.side,
+    })
+  }
   return pre
 })
 const playerPostHpForCard = computed(() => {
   const post = { current: playerHpGauge.value.current, max: playerHpGauge.value.max }
-  // eslint-disable-next-line no-console
-  console.debug('[BattleView] playerPostHpForCard', post, {
-    turn: snapshot.value?.turnPosition?.turn,
-    side: snapshot.value?.turnPosition?.side,
-  })
+  if (playerHpDebugLoggingEnabled) {
+    // eslint-disable-next-line no-console
+    console.debug('[BattleView] playerPostHpForCard', post, {
+      turn: snapshot.value?.turnPosition?.turn,
+      side: snapshot.value?.turnPosition?.side,
+    })
+  }
   return post
 })
 watch(
   () => playerHpGauge.value,
   (next) => {
     // 調査用ログ: UI が参照する現在HP
-    // eslint-disable-next-line no-console
-    console.debug('[BattleView] playerHpGauge', next, {
-      turn: snapshot.value?.turnPosition?.turn,
-      side: snapshot.value?.turnPosition?.side,
-    })
+    if (playerHpDebugLoggingEnabled) {
+      // eslint-disable-next-line no-console
+      console.debug('[BattleView] playerHpGauge', next, {
+        turn: snapshot.value?.turnPosition?.turn,
+        side: snapshot.value?.turnPosition?.side,
+      })
+    }
   },
   { deep: true },
 )
 const projectedPlayerHp = computed(() => {
   const predicted = snapshot.value?.player.predictedPlayerHpAfterEndTurn
   // 調査用ログ: スナップショットから取得できている予測値を確認
-  // eslint-disable-next-line no-console
-  console.debug('predictedPlayerHpAfterEndTurn (snapshot)', {
-    predicted,
-    turn: snapshot.value?.turnPosition?.turn,
-    side: snapshot.value?.turnPosition?.side,
-  })
+  if (playerHpDebugLoggingEnabled) {
+    // eslint-disable-next-line no-console
+    console.debug('predictedPlayerHpAfterEndTurn (snapshot)', {
+      predicted,
+      turn: snapshot.value?.turnPosition?.turn,
+      side: snapshot.value?.turnPosition?.side,
+    })
+  }
   return typeof predicted === 'number' ? predicted : null
 })
 // 手札で State カードとして表示されるものと重複しないよう、表示用IDとチップ用スナップショットを分離する。
