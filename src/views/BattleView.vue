@@ -430,8 +430,10 @@ const canUndo = computed(() => {
 })
 // デバッグ用: 即勝利して報酬へ遷移する
 async function handleForceVictory(): Promise<void> {
+  if (!viewManager.battle) return
   const reward = new BattleReward(viewManager.battle).compute()
   rewardStore.setReward({
+    battleId: viewManager.battle.id,
     hpHeal: reward.hpHeal,
     goldGain: reward.goldGain,
     defeatedCount: reward.defeatedCount,

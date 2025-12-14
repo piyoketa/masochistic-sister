@@ -64,7 +64,18 @@ export class OpenWoundAction extends Skill {
     const selected = selectOperation.card
 
     // デメリット: 自傷ダメージ
-    context.battle.player.takeDamage(PLAYER_SELF_DAMAGE, { battle: context.battle })
+    const damage = Math.max(0, Math.floor(PLAYER_SELF_DAMAGE))
+    if (damage > 0) {
+      context.battle.player.takeDamage(
+        {
+          actionId: 'open-wound',
+          attacker: null,
+          defender: { type: 'player' },
+          outcomes: [{ damage, effectType: 'bleed' }],
+        },
+        { battle: context.battle },
+      )
+    }
 
     // アタックカードを複製して手札へ追加
     const duplicate = this.duplicateCard(context.battle.cardRepository, selected)

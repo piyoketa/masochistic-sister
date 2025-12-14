@@ -1,6 +1,6 @@
 import type { Action } from './Action/ActionBase'
 import type { State } from './State'
-import type { Battle, DamageAnimationEvent } from '../battle/Battle'
+import type { Battle, DamageEvent } from '../battle/Battle'
 import type { EnemyActionQueue, EnemyActionQueueStateSnapshot } from './enemy/actionQueues'
 import { DefaultEnemyActionQueue } from './enemy/actionQueues'
 import type { Player } from './Player'
@@ -184,22 +184,16 @@ export class Enemy {
     this.lastActionContextMetadata = preparedContext.metadata ? { ...preparedContext.metadata } : undefined
   }
 
-  takeDamage(
-    amount: number,
-    options?: { battle?: Battle; animation?: DamageAnimationEvent },
-  ): void {
-    const damage = Math.max(0, Math.floor(amount))
-    if (damage <= 0) {
+  takeDamage(event: DamageEvent, options?: { battle?: Battle; animation?: DamageEvent }): void {
+    const total = event.outcomes.reduce((sum, outcome) => sum + Math.max(0, Math.floor(outcome.damage)), 0)
+    if (total <= 0) {
       return
     }
     const previousHp = this.currentHpValue
-    this.currentHpValue = Math.max(0, this.currentHpValue - damage)
-    if (options?.battle && options.animation) {
-      const event: DamageAnimationEvent = {
-        ...options.animation,
-        targetId: options.animation.targetId ?? this.id ?? -1,
-      }
-      options.battle.recordDamageAnimation(event)
+    this.currentHpValue = Math.max(0, this.currentHpValue - total)
+    const animation = options?.animation ?? event
+    if (options?.battle && animation) {
+      options.battle.recordDamageAnimation(animation)
     }
     if (this.currentHpValue <= 0 && previousHp > 0) {
       this.statusValue = 'defeated'
@@ -229,6 +223,20 @@ export class Enemy {
       if (options?.battle && this.id !== undefined) {
         options.battle.recordDefeatAnimation(this.id)
       }
+    }
+  }
+
+  applySpecialDamage(amount: number, _context?: { battle?: Battle; reason?: string }): void {
+    const damage = Math.max(0, Math.floor(amount))
+    if (damage <= 0) {
+      return
+    }
+    const previousHp = this.currentHpValue
+    this.currentHpValue = Math.max(0, this.currentHpValue - damage)
+    // 特殊ダメージでは現状演出なし。必要ならbattle.recordDamageAnimationを追加する。
+    if (this.currentHpValue <= 0 && previousHp > 0) {
+      this.statusValue = 'defeated'
+      // ステート通知や敗北演出は takeDamage と同様に必要なら後日追加
     }
   }
 

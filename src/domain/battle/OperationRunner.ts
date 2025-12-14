@@ -4,7 +4,7 @@ import type {
   FullBattleSnapshot,
   PlayCardAnimationContext,
   EnemyTurnActionSummary,
-  DamageAnimationEvent,
+  DamageEvent,
   StateCardAnimationEvent,
   MemoryCardAnimationEvent,
 } from './Battle'
@@ -43,7 +43,7 @@ interface DrainedAnimationEvents {
   drawEvents: Array<{ cardIds: number[]; drawnCount?: number; handOverflow?: boolean }>
   discardDrawEvents: Array<{ cardIds: number[]; handOverflow?: boolean }>
   manaEvents: Array<{ amount: number }>
-  damageEvents: DamageAnimationEvent[]
+  damageEvents: DamageEvent[]
   defeatEvents: number[]
   cardTrashEvents: Array<{ cardIds: number[]; variant?: 'trash' | 'eliminate' }>
   stateCardEvents: StateCardAnimationEvent[]
@@ -574,7 +574,7 @@ export class OperationRunner {
   }
 
   private buildEnemyDamageInstruction(
-    events: DamageAnimationEvent[] = [],
+    events: DamageEvent[] = [],
     cardId: number | undefined,
     cardTitle: string | undefined,
   ): AnimationInstruction | undefined {
@@ -717,7 +717,7 @@ export class OperationRunner {
     return undefined
   }
 
-  private calculateDamageWaitFromEvents(events: DamageAnimationEvent[]): number {
+  private calculateDamageWaitFromEvents(events: DamageEvent[]): number {
     if (!events.length) {
       return 0
     }
@@ -725,10 +725,7 @@ export class OperationRunner {
     if (!firstEvent) {
       return 0
     }
-    const hits =
-      firstEvent.hitCount && firstEvent.hitCount > 0
-        ? firstEvent.hitCount
-        : firstEvent.outcomes.length
+    const hits = firstEvent.outcomes.length
     if (hits <= 1) {
       return 0
     }
@@ -1250,10 +1247,10 @@ export class OperationRunner {
   }
 
   private resolveDamageStage(
-    events: DamageAnimationEvent[],
+    events: DamageEvent[],
     defaultStage: 'enemy-damage' | 'player-damage',
   ): 'enemy-damage' | 'player-damage' {
-    // プレイヤー攻撃（enemy-damage）時は targetId が欠落していても敵ダメージとして扱う。
+    // プレイヤー攻撃（enemy-damage）時は defender が enemy なら敵ダメージとして扱う。
     if (defaultStage === 'enemy-damage') {
       return 'enemy-damage'
     }
@@ -1401,7 +1398,7 @@ export class OperationRunner {
   }
 
   private extractDamageOutcomesFromEvents(
-    events?: readonly DamageAnimationEvent[],
+    events?: readonly DamageEvent[],
   ): readonly DamageOutcome[] | undefined {
     const firstEvent = events?.[0]
     if (!firstEvent) {
@@ -1410,19 +1407,19 @@ export class OperationRunner {
     return firstEvent.outcomes.map((outcome) => ({ ...outcome }))
   }
 
-  private extractDamageTargetId(events?: readonly DamageAnimationEvent[]): number | undefined {
+  private extractDamageTargetId(events?: readonly DamageEvent[]): number | undefined {
     if (!events) {
       return undefined
     }
     for (const event of events) {
-      if (typeof event.targetId === 'number') {
-        return event.targetId
+      if (event.defender.type === 'enemy') {
+        return event.defender.enemyId
       }
     }
     return undefined
   }
 
-  private calculateEnemyDamageWait(events: DamageAnimationEvent[]): number {
+  private calculateEnemyDamageWait(events: DamageEvent[]): number {
     if (events.length === 0) {
       return 0
     }
@@ -1430,10 +1427,7 @@ export class OperationRunner {
     if (!firstEvent) {
       return 0
     }
-    const hits =
-      firstEvent.hitCount && firstEvent.hitCount > 0
-        ? firstEvent.hitCount
-        : firstEvent.outcomes.length
+    const hits = firstEvent.outcomes.length
     const additional = Math.max(0, hits - 1) * 200
     return 500 + additional
   }

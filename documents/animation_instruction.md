@@ -136,3 +136,33 @@ enemy-act時のAnimationInstructionの生成例を示します。
 
 4. **キュー化の基本方針**  
    - 「演出に関するメタ情報は、発火元のエンティティ/処理で積む」→「OperationRunnerは積まれたイベントを順番にAnimationInstructionへ変換する」構造を徹底し、将来的にView側で必要な粒度（example: プレイヤー被ダメージなのか敵被ダメージなのか）を判別しやすくする。
+
+## 新ギミック（ダメージ連動 / 瘴気）実装に向けた課題整理
+
+- プレイヤー被ダメージと同期して敵ダメージを積むための情報不足
+  - `player-damage` ステージ生成時に、攻撃者IDとヒット数/ダメージ量を持っている必要がある。`DamageAnimationEvent` や `EnemyTurnActionSummary` に攻撃者情報・ヒット数が無ければ拡張する。
+  - `OperationRunner.attachSimpleEntryAnimation` で player-damage を積む箇所に、同バッチで enemy-damage を追加できる拡張ポイントが必要（現状はプレイヤー被弾と敵被弾が別経路）。
+
+- defeat / victory の優先度
+  - 同一バッチで player HP0 と敵全滅が同時発生し得るため、`appendBattleOutcomeIfNeeded` などの判定順序を「defeat優先」に固定することを確認・必要なら調整する。
+
+- 状態異常「ダメージ連動」
+  - magnitude なし、ターン開始で自壊（StackedStressState類似）する State を追加。
+  - プレイヤー被弾時、付与済みの敵全員に同量のダメージを与え、`player-damage` バッチに enemy-damage を積む処理を実装する必要がある。
+  - enemy-damage 経由でも defeat / victory 演出が普通の攻撃時と同様に流れるよう、ダメージイベント→defeatイベント→victory判定の流れを崩さない。
+
+- スキルカード「命の鎖」
+  - 敵単体に「ダメージ連動」を付与する Skill を追加（カード定義・記憶カード化・ライブラリ登録）。トリガーはプレイヤー被弾時なので、Action側で完結せずバトルの player-damage ステージ生成時に処理するのが安全。
+
+- 状態異常「瘴気」
+  - プレイヤーが保持する BadState。`onTurnStart` で自傷（magダメージ）。
+  - プレイヤー被弾時、攻撃してきた敵に「攻撃回数 × mag」の瘴気ダメージを与える。攻撃者IDとヒット数を player-damage ステージから取得できるようにする必要がある。
+  - 瘴気ダメージ用の Damages を生成し、type/effectType を区別（必要ならサウンド分岐も）。
+  - 同バッチで enemy-damage を積む際の defeat/victory 判定も通常攻撃同様に動くことを確認。
+
+- スキルカード「瘴気」
+  - プレイヤーに瘴気を付与する Skill を追加（カード定義・記憶カード化・ライブラリ登録）。
+
+- 表示・演出
+  - enemy-damage を player-damage と同バッチに積んだ場合でも `DamageEffects` が混線しないよう、batchId/metadata の整理が必要。
+  - 「瘴気」「ダメージ連動」のアイコン・description を用意し、UI で表示できるようにする。

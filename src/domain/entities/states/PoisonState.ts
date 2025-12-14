@@ -59,11 +59,21 @@ export class PoisonState extends BadState {
     }
 
     if (context.owner instanceof Enemy) {
-      context.battle.damageEnemy(context.owner, damage)
+      context.battle.damageEnemy(context.owner, {
+        actionId: 'poison',
+        attacker: null,
+        defender: { type: 'enemy', enemyId: context.owner.id ?? -1 },
+        outcomes: [{ damage, effectType: 'poison' }],
+      })
       return
     }
 
-    context.battle.damagePlayer(damage)
+    context.battle.damagePlayer({
+      actionId: 'poison',
+      attacker: null,
+      defender: { type: 'player' },
+      outcomes: [{ damage, effectType: 'poison' }],
+    })
   }
 
   override action(tags?: CardTag[]): StateAction {

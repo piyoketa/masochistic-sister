@@ -18,6 +18,7 @@ import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
 import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
+import type { CardId } from '../library/Library'
 import type { EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
 import type { Relic } from '../entities/relics/Relic'
@@ -91,7 +92,7 @@ export interface EnemyTurnActionCardGain {
   title: string
 }
 
-export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated' | 'no-target'
+export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated' | 'no-target' | 'escaped'
 
 export interface EnemyStateDiff {
   enemyId: number
@@ -116,7 +117,7 @@ export interface MemoryCardAnimationEvent extends BaseCardAnimationEvent {
 }
 
 export interface EnemyActAnimationContext {
-  damageEvents: DamageAnimationEvent[]
+  damageEvents: DamageEvent[]
   cardAdditions: EnemyTurnActionCardGain[]
   playerDefeated: boolean
   stateDiffs: EnemyStateDiff[]
@@ -166,11 +167,14 @@ interface QueuedInterruptEnemyAction {
   metadata?: Record<string, unknown>
 }
 
-export interface DamageAnimationEvent {
-  targetId?: number
+export type Actor = { type: 'player' } | { type: 'enemy'; enemyId: number }
+
+export interface DamageEvent {
+  actionId: CardId
+  attacker: Actor | null
+  defender: Actor
   outcomes: DamageOutcome[]
   effectType?: DamageEffectType
-  hitCount?: number
 }
 
 export interface PlayCardAnimationContext {
@@ -207,7 +211,7 @@ export class Battle {
   private statusValue: BattleStatus = 'in-progress'
   private resolvedEventsBuffer: BattleEvent[] = []
   private stateEventBuffer: StateEventLogEntry[] = []
-  private pendingDamageAnimationEvents: DamageAnimationEvent[] = []
+  private pendingDamageAnimationEvents: DamageEvent[] = []
   private pendingCardTrashAnimationEvents: Array<{
     cardIds: number[]
     cardTitles?: string[]
@@ -910,7 +914,7 @@ export class Battle {
     return summary
   }
 
-  recordDamageAnimation(event: DamageAnimationEvent): void {
+  recordDamageAnimation(event: DamageEvent): void {
     this.pendingDamageAnimationEvents.push({
       ...event,
       outcomes: event.outcomes.map((outcome) => ({ ...outcome })),
@@ -1004,10 +1008,18 @@ export class Battle {
     }
   }
 
-  consumeDamageAnimationEvents(): DamageAnimationEvent[] {
+  consumeDamageAnimationEvents(): DamageEvent[] {
     const events = this.pendingDamageAnimationEvents
     this.pendingDamageAnimationEvents = []
     return events
+  }
+
+  /**
+   * プレイヤー被弾に反応する同期ダメージ用の拡張ポイント。
+   * - 具体的なロジックは今後実装する。
+   */
+  handlePlayerDamageReactions(_event: DamageEvent): void {
+    // TODO: ダメージ連動/瘴気など、プレイヤー被弾時に敵へダメージを積む処理を実装
   }
 
   consumeManaAnimationEvents(): Array<{ amount: number }> {
@@ -1066,6 +1078,14 @@ export class Battle {
     const events = this.pendingStateCardAnimationEvents
     this.pendingStateCardAnimationEvents = []
     return events
+  }
+
+  /**
+   * 攻撃者IDなどを含むダメージイベントから同期ダメージを積む際に利用するメソッドの骨組み。
+   * - 具体的な同期ダメージ積み込みは今後実装する。
+   */
+  scheduleSynchronizedEnemyDamage(_event: DamageEvent): void {
+    // TODO: player-damage に合わせて enemy-damage を積むロジックを実装
   }
 
   consumeMemoryCardAnimationEvents(): MemoryCardAnimationEvent[] {
@@ -1129,13 +1149,13 @@ export class Battle {
     this.logSequence += 1
   }
 
-  damagePlayer(amount: number, options?: { animation?: DamageAnimationEvent }): void {
-    this.player.takeDamage(amount, { battle: this, animation: options?.animation })
+  damagePlayer(event: DamageEvent): void {
+    this.player.takeDamage(event, { battle: this, animation: event })
     this.checkPlayerDefeat()
   }
 
-  damageEnemy(enemy: Enemy, amount: number, options?: { animation?: DamageAnimationEvent }): void {
-    enemy.takeDamage(amount, { battle: this, animation: options?.animation })
+  damageEnemy(enemy: Enemy, event: DamageEvent): void {
+    enemy.takeDamage(event, { battle: this, animation: event })
     this.checkEnemyTeamDefeat()
   }
 

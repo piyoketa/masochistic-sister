@@ -19,6 +19,7 @@ import type { Player } from '../Player'
 import type { State } from '../State'
 import type { Relic } from '../relics'
 import { Damages, type DamageEffectType, type DamageOutcome } from '../Damages'
+import type { DamageEvent } from '../../battle/Battle'
 import {
   TargetEnemyOperation,
   type CardOperation,
@@ -103,20 +104,26 @@ export abstract class Attack extends Action {
     damages.setOutcomes(resolvedOutcomes)
     const totalDamage = damages.totalPostHitDamage
     const shouldDrain = this.hasDrainEffect(context)
-    const animationEvent =
-      resolvedOutcomes.length > 0
-        ? {
-            targetId: this.isPlayer(defender) ? undefined : defender.id ?? -1,
-            outcomes: resolvedOutcomes.map((outcome) => ({ ...outcome })),
-            effectType: this.effectType,
-            hitCount: this.baseProfile.count,
-          }
-        : undefined
+    const damageEvent: DamageEvent | undefined = resolvedOutcomes.length
+      ? {
+          actionId: damages.cardId,
+          attacker: this.isPlayer(context.source)
+            ? { type: 'player' }
+            : { type: 'enemy', enemyId: context.source.id ?? -1 },
+          defender: this.isPlayer(defender)
+            ? { type: 'player' }
+            : { type: 'enemy', enemyId: defender.id ?? -1 },
+          outcomes: resolvedOutcomes.map((outcome) => ({ ...outcome })),
+          effectType: this.effectType,
+        }
+      : undefined
 
-    if (this.isPlayer(defender)) {
-      context.battle.damagePlayer(totalDamage, { animation: animationEvent })
-    } else {
-      context.battle.damageEnemy(defender, totalDamage, { animation: animationEvent })
+    if (damageEvent) {
+      if (this.isPlayer(defender)) {
+        context.battle.damagePlayer(damageEvent)
+      } else {
+        context.battle.damageEnemy(defender, damageEvent)
+      }
     }
     if (shouldDrain) {
       this.applyDrainHeal({

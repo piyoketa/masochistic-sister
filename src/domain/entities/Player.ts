@@ -1,5 +1,5 @@
 import type { State } from './State'
-import type { Battle, DamageAnimationEvent } from '../battle/Battle'
+import type { Battle, DamageEvent } from '../battle/Battle'
 import type { Hand } from '../battle/Hand'
 import { MemoryManager } from './players/MemoryManager'
 import type { Attack } from './Action'
@@ -63,15 +63,26 @@ export class Player {
     return this.currentManaValue
   }
 
-  takeDamage(amount: number, options?: { battle?: Battle; animation?: DamageAnimationEvent }): void {
+  takeDamage(event: DamageEvent, options?: { battle?: Battle; animation?: DamageEvent }): void {
+    const total = event.outcomes.reduce((sum, outcome) => sum + Math.max(0, Math.floor(outcome.damage)), 0)
+    if (total <= 0) {
+      return
+    }
+    this.currentHpValue = Math.max(0, this.currentHpValue - total)
+    const animation = options?.animation ?? event
+    if (options?.battle && animation) {
+      options.battle.recordDamageAnimation(animation)
+      options.battle.handlePlayerDamageReactions(animation)
+    }
+  }
+
+  applySpecialDamage(amount: number, _context?: { battle?: Battle; reason?: string }): void {
     const damage = Math.max(0, Math.floor(amount))
     if (damage <= 0) {
       return
     }
     this.currentHpValue = Math.max(0, this.currentHpValue - damage)
-    if (options?.battle && options.animation) {
-      options.battle.recordDamageAnimation(options.animation)
-    }
+    // 特殊ダメージでは現状演出なし。必要に応じてbattle.recordDamageAnimationを追加する。
   }
 
   heal(amount: number): void {
