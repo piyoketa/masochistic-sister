@@ -13,14 +13,12 @@ env.WATCHPACK_POLLING = 'true'
 
 // env.VITE_DEBUG_CARD_ELIMINATE = 'true'
 // env.VITE_DEBUG_HAND_ANIMATION = 'true'
-env.VITE_DEBUG_ANIMATION_LOG = 'true'
+env.VITE_DEBUG_ANIMATION_LOG = 'false'
 env.VITE_DEBUG_HAND_STAGE_EVENTS='false'
 env.VITE_DEBUG_PLAYER_IMAGE='false'
 env.VITE_DEBUG_PLAYER_CARDS='false'
-// HP系の調査ログはデフォルトでオフ。必要ならVITE_DEBUG_PLAYER_HP_LOG=trueを明示的に設定する。
-if (!('VITE_DEBUG_PLAYER_HP_LOG' in env)) {
-  env.VITE_DEBUG_PLAYER_HP_LOG = 'false'
-}
+env.VITE_DEBUG_ENEMY_ACTED = 'true'
+env.VITE_DEBUG_PLAYER_HP_LOG = 'false'
 env.VITE_ASSET_PRELOAD_LOG='false'
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'

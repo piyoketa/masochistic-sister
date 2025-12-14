@@ -10,6 +10,10 @@ import { buildCardInfoFromBlueprint, mapActionToCardId } from '../library/Librar
 import type { State } from '../entities/State'
 import { instantiateStateFromSnapshot } from '../entities/states'
 
+const DEBUG_ENEMY_ACTED =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_ENEMY_ACTED === 'true') ||
+  (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ENEMY_ACTED === 'true')
+
 type EnemyActionHintParams = {
   battle: Battle
   enemy: Enemy
@@ -31,10 +35,21 @@ export function buildEnemyActionHints(params: EnemyActionHintParams): EnemyActio
     enemyStates: reviveStates(enemyStateSnapshots, `enemy:${enemy.id ?? enemy.name}`),
     playerStates: reviveStates(playerStateSnapshots, 'player'),
   })
+  const acted = enemy.hasActedThisTurn
+  if (DEBUG_ENEMY_ACTED) {
+    // eslint-disable-next-line no-console
+    console.log('[Hint] acted flag', {
+      enemy: enemy.name,
+      id: enemy.id,
+      acted,
+      turn: turnPosition.turn,
+      side: turnPosition.activeSide,
+    })
+  }
   return [
     {
       ...hint,
-      acted: enemy.hasActedThisTurn,
+      acted,
     },
   ]
 }

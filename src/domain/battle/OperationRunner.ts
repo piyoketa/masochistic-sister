@@ -790,28 +790,11 @@ export class OperationRunner {
       // 初期スナップショットを適用してからログを再生する
       simBattle.restoreFullSnapshot(this.cloneFullSnapshot(this.initialSnapshot))
       const simLog = new ActionLog(this.actionLog.toArray())
-      // 調査用ログ: 再生前の状態を記録
-      // eslint-disable-next-line no-console
-      console.debug('[OperationRunner] simulateEndTurnPrediction start', {
-        logLength: simLog.length,
-        playerHp: simBattle.player.currentHp,
-        turn: simBattle.turnPosition.turn,
-        side: simBattle.turnPosition.side,
-      })
       simLog.push({ type: 'end-player-turn' })
       simBattle.executeActionLog(simLog, simLog.length - 1)
       const result = simBattle.player.currentHp
-      // eslint-disable-next-line no-console
-      console.debug('[OperationRunner] simulateEndTurnPrediction end', {
-        playerHpAfter: result,
-        logLength: simLog.length,
-        turnAfter: simBattle.turnPosition.turn,
-        sideAfter: simBattle.turnPosition.side,
-      })
       return result
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn('[OperationRunner] simulateEndTurnPrediction failed', error)
       return undefined
     }
   }

@@ -91,7 +91,10 @@ export class OperationLogReplayer {
         }
       } catch (error) {
         if (error instanceof OperationRunnableError) {
-          throw new OperationRunnableError(error.message, {
+          const failedOperation = this.operationLog.at(index)
+          const contextMessage = failedOperation ? ` (operation#${index + 1}:${failedOperation.type})` : ''
+          // どのOperationで落ちたか分かるようにメッセージへ手動で文脈を付与する
+          throw new OperationRunnableError(`${error.message}${contextMessage}`, {
             actionEntry: error.actionEntry,
             cause: error.cause,
             operationIndex: index,

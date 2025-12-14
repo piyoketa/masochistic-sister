@@ -409,25 +409,12 @@ export class Battle {
    * OperationRunner などから委譲されたデリゲートを用いて、ログ再生込みで計算する。
    */
   private predictPlayerHpAfterEndTurn(): number | undefined {
-    // 調査用ログ: 予測計算の入口で状況を記録する
-    // eslint-disable-next-line no-console
-    console.debug('[Battle] predictPlayerHpAfterEndTurn start', {
-      activeSide: this.turnValue.current.activeSide,
-      turn: this.turnValue.current.turnCount,
-      hasDelegate: Boolean(this.predictionDelegate),
-      cached: this.cachedPredictedPlayerHpAfterEndTurn,
-    })
     if (this.turnValue.current.activeSide === 'enemy') {
       return this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
     }
     if (this.predictionDelegate) {
       try {
         const predicted = this.predictionDelegate()
-        // eslint-disable-next-line no-console
-        console.debug('[Battle] predictPlayerHpAfterEndTurn delegate result', {
-          predicted,
-          currentHp: this.playerValue.currentHp,
-        })
         if (typeof predicted === 'number') {
           this.cachedPredictedPlayerHpAfterEndTurn = predicted
           return predicted
@@ -764,10 +751,21 @@ export class Battle {
   }
 
   endPlayerTurn(): void {
+    if (this.isDebugEnemyActedLogEnabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[Battle] endPlayerTurn')
+    }
     this.turn.moveToPhase('player-end')
   }
 
   startEnemyTurn(): void {
+    if (this.isDebugEnemyActedLogEnabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[Battle] startEnemyTurn', {
+        turn: this.turnPosition.turn,
+        side: this.turnPosition.activeSide,
+      })
+    }
     this.turn.startEnemyTurn()
     this.enemyTeam.startTurn(this)
   }
@@ -877,6 +875,13 @@ export class Battle {
   }
 
   private executeEnemyTurn(): EnemyTurnSummary {
+    if (this.isDebugEnemyActedLogEnabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[Battle] executeEnemyTurn start', {
+        turn: this.turnPosition.turn,
+        side: this.turnPosition.activeSide,
+      })
+    }
     // 敵の行動はActionLogに直接保存せず、ターン終了エントリ解決時に都度再計算する方針のため、
     // ここで行動順に処理してサマリを保持する。
     this.startEnemyTurn()
@@ -901,6 +906,13 @@ export class Battle {
     }
     this.lastEnemyTurnSummaryValue = summary
     return summary
+  }
+
+  private isDebugEnemyActedLogEnabled(): boolean {
+    return (
+      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_ENEMY_ACTED === 'true') ||
+      (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ENEMY_ACTED === 'true')
+    )
   }
 
   recordDamageAnimation(event: DamageEvent): void {

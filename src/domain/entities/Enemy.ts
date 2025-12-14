@@ -5,6 +5,17 @@ import type { EnemyActionQueue, EnemyActionQueueStateSnapshot } from './enemy/ac
 import { DefaultEnemyActionQueue } from './enemy/actionQueues'
 import type { Player } from './Player'
 
+// 敵の acted 状態調査用のデバッグログ出力を環境変数で制御する。
+const DEBUG_ENEMY_ACTED =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_ENEMY_ACTED === 'true') ||
+  (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ENEMY_ACTED === 'true')
+
+function debugEnemyActedLog(message: string, payload: Record<string, unknown>): void {
+  if (!DEBUG_ENEMY_ACTED) return
+  // eslint-disable-next-line no-console
+  console.log(message, payload)
+}
+
 export interface EnemyProps {
   name: string
   maxHp: number
@@ -155,6 +166,13 @@ export class Enemy {
         message: `${this.name}は既に行動したため、何もしなかった。`,
         metadata: { enemyId: this.id, reason: 'already-acted' },
       })
+      debugEnemyActedLog('[Enemy] act skipped (already acted)', {
+        name: this.name,
+        id: this.id,
+        actedThisTurn: this.actedThisTurn,
+        turn: battle.turnPosition.turn,
+        side: battle.turnPosition.activeSide,
+      })
       return
     }
 
@@ -181,6 +199,14 @@ export class Enemy {
     action.execute(preparedContext)
     this.actionHistory.push(action)
     this.actedThisTurn = true
+    debugEnemyActedLog('[Enemy] act executed', {
+      name: this.name,
+      id: this.id,
+      turn: battle.turnPosition.turn,
+      side: battle.turnPosition.activeSide,
+      action: action.name,
+      actedThisTurn: this.actedThisTurn,
+    })
     this.lastActionContextMetadata = preparedContext.metadata ? { ...preparedContext.metadata } : undefined
   }
 
@@ -284,6 +310,11 @@ export class Enemy {
   }
 
   resetTurn(): void {
+    debugEnemyActedLog('[Enemy] resetTurn', {
+      name: this.name,
+      id: this.id,
+      actedBeforeReset: this.actedThisTurn,
+    })
     this.actedThisTurn = false
     this.actionQueue.resetTurn()
   }

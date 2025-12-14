@@ -34,6 +34,11 @@ import {
 import type { Battle, BattleSnapshot, FullBattleSnapshot } from '@/domain/battle/Battle'
 import type { StageEventMetadata } from '@/types/animation'
 
+// 敵 acted 表示の調査用デバッグログ。VITE_DEBUG_ENEMY_ACTED=true で有効。
+const DEBUG_ENEMY_ACTED =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_ENEMY_ACTED === 'true') ||
+  (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ENEMY_ACTED === 'true')
+
 declare global {
   interface Window {
     __MASO_ANIMATION_DEBUG__?: boolean
@@ -641,6 +646,10 @@ export class ViewManager {
   }
 
   private rebuildFromOperations(targetOperationIndex: number): void {
+    if (DEBUG_ENEMY_ACTED) {
+      // eslint-disable-next-line no-console
+      console.log('[VM] rebuildFromOperations start', { targetOperationIndex, logLength: this.operationLog.length })
+    }
     const clampedIndex =
       this.operationLog.length === 0 ? -1 : Math.min(targetOperationIndex, this.operationLog.length - 1)
 
@@ -678,6 +687,10 @@ export class ViewManager {
         if (!operation) {
           continue
         }
+        if (DEBUG_ENEMY_ACTED) {
+          // eslint-disable-next-line no-console
+          console.log('[VM] replay operation', { index, type: operation.type })
+        }
         this.executeOperationWithRunner(operation, { operationIndex: index })
       }
 
@@ -704,15 +717,10 @@ export class ViewManager {
     // Undo/リプレイ完了直後は、前後スナップショットを一致させてHP表示の取り違いを防ぐ
     this.stateValue.previousSnapshot = this.stateValue.snapshot
     this.notifyState()
-    // 調査用ログ: リプレイ後のHPとスナップショットを確認
-    // eslint-disable-next-line no-console
-    console.debug('[ViewManager] rebuildFromOperations done', {
-      targetOperationIndex,
-      battleHp: this.battleInstance?.player.currentHp,
-      snapshotHp: this.stateValue.snapshot?.player.currentHp,
-      turn: this.stateValue.snapshot?.turnPosition?.turn,
-      side: this.stateValue.snapshot?.turnPosition?.side,
-    })
+    if (DEBUG_ENEMY_ACTED) {
+      // eslint-disable-next-line no-console
+      console.log('[VM] rebuildFromOperations end', { executedOperationIndex: this.executedOperationIndex })
+    }
   }
 
   private resolveActionLogEntry(
