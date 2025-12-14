@@ -79,8 +79,9 @@ export class HeavenChainAction extends Skill {
     }
 
     const message = `${target.name}は天の鎖で縛られていて何もできない！`
-    target.discardNextScheduledAction()
-    target.queueImmediateAction(new SkipTurnAction(message))
+    const currentTurn = context.battle.turnPosition.turn
+    // 既に確定済みの行動も現在ターン指定で差し替える
+    target.replaceActionForTurn(currentTurn, new SkipTurnAction(message))
 
     context.battle.addLogEntry({
       message: `${target.name}は天の鎖で動きを封じられた。`,

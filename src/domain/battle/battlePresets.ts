@@ -14,6 +14,7 @@ import {
   buildTestDeck,
   buildScenario2Deck,
   buildDefaultDeck2,
+  buildTutorialDeck,
 } from '../entities/decks'
 import {
   SnailTeam,
@@ -21,6 +22,7 @@ import {
   IronBloomTeam,
   HummingbirdAlliesTeam,
   OrcHeroEliteTeam,
+  TutorialEnemyTeam,
 } from '../entities/enemyTeams'
 import type { EnemyTeam } from '../entities/EnemyTeam'
 
@@ -101,5 +103,13 @@ export function createStage4Battle(): Battle {
     id: 'battle-stage4',
     deckBuilder: buildDefaultDeck,
     enemyTeamFactory: () => new OrcHeroEliteTeam(),
+  })
+}
+
+export function createTutorialBattle(): Battle {
+  return createBattleFromPreset({
+    id: 'battle-tutorial',
+    deckBuilder: buildTutorialDeck,
+    enemyTeamFactory: () => new TutorialEnemyTeam(),
   })
 }

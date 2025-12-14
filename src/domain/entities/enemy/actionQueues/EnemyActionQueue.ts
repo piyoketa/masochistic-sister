@@ -92,6 +92,15 @@ export abstract class EnemyActionQueue {
   }
 
   /**
+   * 指定ターンの行動を置き換える（存在しなければ新規にセット）。差し替え前の行動を返す。
+   */
+  replaceActionForTurn(turn: number, action: Action): Action | undefined {
+    const prev = this.turnActions.find((entry) => entry.turn === turn)?.action
+    this.assignActionForTurn(turn, action, { replace: true })
+    return prev
+  }
+
+  /**
    * 指定ターンの行動を「既存ならそのまま返し、無ければ生成して登録」する。
    */
   ensureActionForTurn(turn: number): Action | null {

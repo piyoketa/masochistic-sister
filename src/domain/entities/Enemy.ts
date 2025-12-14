@@ -293,6 +293,14 @@ export class Enemy {
     return [...this.stateList]
   }
 
+  /**
+   * 指定ターンの行動を別のアクションに置き換える。元の行動を返す。
+   * 天の鎖など、すでに確定済みの行動を書き換える用途で使用する。
+   */
+  replaceActionForTurn(turn: number, action: Action): Action | undefined {
+    return this.actionQueue.replaceActionForTurn(turn, action)
+  }
+
   discardNextScheduledAction(currentTurn?: number): Action | undefined {
     const discarded = this.actionQueue.discardTurn(currentTurn)
     return discarded

@@ -20,6 +20,7 @@ import {
   createStage2Battle,
   createStage3Battle,
   createStage4Battle,
+  createTutorialBattle,
 } from '@/domain/battle/battlePresets'
 import { Deck } from '@/domain/battle/Deck'
 import { Hand } from '@/domain/battle/Hand'
@@ -73,6 +74,7 @@ type BattlePresetKey =
   | 'stage2'
   | 'stage3'
   | 'stage4'
+  | 'tutorial'
 
 type BattleViewProps = { viewManager?: ViewManager; preset?: BattlePresetKey; teamId?: string }
 
@@ -886,6 +888,8 @@ function resolveBattleFactory(
       return createTestCaseBattle
     case 'testcase2':
       return createTestCaseBattle2
+    case 'tutorial':
+      return createTutorialBattle
     case 'stage2':
       return createStage2Battle
     case 'stage3':

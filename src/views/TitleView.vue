@@ -16,6 +16,11 @@ const testcaseLinks: LinkEntry[] = [
     description: 'シナリオ2 鉄花チームの固定ログ',
     to: { name: 'battle-testcase2' },
   },
+  {
+    label: 'チュートリアルバトル',
+    description: '固定デッキ＋固定行動の入門シナリオ',
+    to: { name: 'battle-tutorial' },
+  },
 ]
 
 const enemyTeamLinks: LinkEntry[] = [

@@ -103,6 +103,47 @@ export function buildDefaultDeck2(cardRepository: CardRepository): Scenario2Deck
   }
 }
 
+export interface TutorialDeckResult {
+  deck: Card[]
+  heavenChains: readonly [Card, Card, Card, Card]
+  masochisticAura: Card
+  battlePrep: Card
+  dailyRoutine: Card
+}
+
+/**
+ * チュートリアル用の固定デッキ。
+ * 初手5枚: 天の鎖×3 / 被虐のオーラ / 戦いの準備
+ * 山札残り: 天の鎖 / 日課
+ */
+export function buildTutorialDeck(cardRepository: CardRepository): TutorialDeckResult {
+  const heavenChains = Array.from({ length: 4 }, () =>
+    cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
+  ) as [Card, Card, Card, Card]
+
+  const masochisticAura = cardRepository.create(() => new Card({ action: new MasochisticAuraAction() }))
+  const battlePrep = cardRepository.create(() => new Card({ action: new BattlePrepAction() }))
+  const dailyRoutine = cardRepository.create(() => new Card({ action: new DailyRoutineAction() }))
+
+  const deck: Card[] = [
+    heavenChains[0],
+    heavenChains[1],
+    heavenChains[2],
+    masochisticAura,
+    battlePrep,
+    heavenChains[3],
+    dailyRoutine,
+  ]
+
+  return {
+    deck,
+    heavenChains,
+    masochisticAura,
+    battlePrep,
+    dailyRoutine,
+  }
+}
+
 function shuffleCards(cards: Card[]): Card[] {
   // Fisher-Yates shuffle: デッキ順序を均等にランダム化し、テストケース用に多様な初期配置を生成する。
   for (let index = cards.length - 1; index > 0; index -= 1) {
