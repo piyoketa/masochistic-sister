@@ -22,7 +22,7 @@ import type { CardId } from '../library/Library'
 import type { EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
 import type { Relic } from '../entities/relics/Relic'
-import { instantiateStateFromSnapshot } from '../entities/states'
+import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -1008,7 +1008,57 @@ export class Battle {
    * - 具体的なロジックは今後実装する。
    */
   handlePlayerDamageReactions(_event: DamageEvent): void {
-    // TODO: ダメージ連動/瘴気など、プレイヤー被弾時に敵へダメージを積む処理を実装
+    if (_event.defender.type !== 'player') {
+      return
+    }
+
+    const reactions: DamageEvent[] = []
+
+    // ダメージ連動: このStateを持つ敵全員へ同じダメージを同期
+    for (const enemy of this.enemyTeam.members) {
+      if (!enemy.isActive() || enemy.id === undefined) continue
+      const hasLink = enemy.getStates().some((state) => state.id === 'state-damage-link')
+      if (!hasLink) continue
+      reactions.push({
+        actionId: 'damage-link',
+        attacker: _event.attacker,
+        defender: { type: 'enemy', enemyId: enemy.id },
+        outcomes: _event.outcomes.map((outcome) => ({ ...outcome })),
+        effectType: _event.effectType ?? 'linked-damage',
+      })
+    }
+
+    // 瘴気: プレイヤーに付与されていて、攻撃者が敵の場合に発火
+    const miasma = this.playerValue.getStates(this).find((state) => state.id === 'state-miasma') as MiasmaState | undefined
+    if (miasma && _event.attacker?.type === 'enemy') {
+      const mag = Math.max(0, Math.floor(miasma.magnitude ?? 0))
+      if (mag > 0) {
+        const hits = Math.max(1, _event.outcomes.length || 1)
+        const outcomes = Array.from({ length: hits }, () => ({ damage: mag, effectType: 'miasma' as const }))
+        reactions.push({
+          actionId: 'miasma',
+          attacker: { type: 'player' },
+          defender: { type: 'enemy', enemyId: _event.attacker.enemyId },
+          outcomes,
+          effectType: 'miasma',
+        })
+      }
+    }
+
+    reactions.forEach((event) => {
+      if (event.defender.type !== 'enemy') {
+        return
+      }
+      const target = this.enemyTeam.findEnemy(event.defender.enemyId)
+      if (!target || !target.isActive()) {
+        return
+      }
+      // ダメージ適用時に outomes を複製し、アニメーションと実ダメージを同期させる
+      this.damageEnemy(target, {
+        ...event,
+        outcomes: event.outcomes.map((outcome) => ({ ...outcome })),
+      })
+    })
   }
 
   consumeManaAnimationEvents(): Array<{ amount: number }> {

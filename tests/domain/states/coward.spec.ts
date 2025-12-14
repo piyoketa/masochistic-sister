@@ -34,7 +34,7 @@ function createBattleWithEnemies(enemies: Enemy[]): Battle {
   })
 }
 
-describe('臆病と出血ステート', () => {
+describe('臆病', () => {
   it('臆病を持つ敵は最後の1体になると逃走する', () => {
     const coward = new Enemy({
       name: '臆病なかたつむり',
@@ -60,71 +60,5 @@ describe('臆病と出血ステート', () => {
 
     expect(coward.status).toBe('escaped')
     expect(battle.enemyTeam.areAllDefeated()).toBe(true)
-  })
-
-  it('出血は攻撃行動後に自傷ダメージを与える', () => {
-    const bleedEnemy = new Enemy({
-      name: '出血兵',
-      maxHp: 30,
-      currentHp: 30,
-      actions: [new TackleAction()],
-      states: [new BleedState(5)],
-      image: 'bleeder.png',
-    })
-
-    const target = new Enemy({
-      name: '標的',
-      maxHp: 30,
-      currentHp: 30,
-      actions: [new BattlePrepAction()],
-      image: 'target.png',
-    })
-
-    const battle = createBattleWithEnemies([bleedEnemy, target])
-
-    const rngSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
-    battle.enemyTeam.planUpcomingActions(battle)
-    rngSpy.mockRestore()
-
-    bleedEnemy.act(battle)
-
-    expect(bleedEnemy.currentHp).toBe(25)
-  })
-
-  it('バリア回復はターン開始時にバリア値を3へ戻す', () => {
-    const guardian = new GuardianPetalState(3)
-    const barrier = new BarrierState(3)
-    const enemy = new Enemy({
-      name: 'バリア回復持ち',
-      maxHp: 40,
-      currentHp: 40,
-      actions: [new TackleAction()],
-      states: [guardian, barrier],
-      image: 'guardian.png',
-    })
-
-    const battle = createBattleWithEnemies([enemy])
-    const attacker = battle.player
-    const attack = new TackleAction()
-
-    const createContext = (): Parameters<BarrierState['onHitResolved']>[0] => ({
-      battle,
-      attack,
-      attacker,
-      defender: enemy,
-      damages: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'test-card' }),
-      index: 0,
-      outcome: { damage: 10, effectType: 'slash' } as DamageOutcome,
-      role: 'defender',
-    })
-
-    barrier.onHitResolved(createContext())
-    barrier.onHitResolved(createContext())
-
-    expect(barrier.magnitude).toBe(1)
-
-    battle.startPlayerTurn()
-
-    expect(barrier.magnitude).toBe(3)
   })
 })

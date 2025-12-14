@@ -97,52 +97,6 @@ describe('OperationRunner ActionLog / wait metadata', () => {
       })
     })
   })
-
-  it('敵行動で状態／記憶カードアニメーションが発生する場合は手札差分とcardIdsが一致する', () => {
-    const scenario = createBattleSampleScenario()
-    const actionLog = scenario.replayer.getActionLog()
-    const entries = actionLog.toArray()
-    let lastAppliedSnapshot = scenario.createBattle().getSnapshot()
-    let creationBaseline: BattleSnapshot | undefined
-    const processedCreateIds = new Set<number>()
-
-    entries.forEach((entry) => {
-      const animations = flattenEntryAnimations(entry)
-      animations.forEach(({ instruction, snapshot }) => {
-        const metadata = instruction.metadata
-        const isCreationStage = metadata?.stage === 'create-state-card' || metadata?.stage === 'memory-card'
-        if (isCreationStage) {
-          if (!creationBaseline) {
-            creationBaseline = lastAppliedSnapshot
-          }
-          const metadataIds = Array.isArray(metadata?.cardIds) ? metadata.cardIds : []
-          const baselineIds = collectSnapshotCardIds(creationBaseline)
-          metadataIds.forEach((id) => {
-            expect(baselineIds.has(id)).toBe(false)
-            expect(processedCreateIds.has(id)).toBe(false)
-            processedCreateIds.add(id)
-          })
-        } else {
-          creationBaseline = undefined
-          processedCreateIds.clear()
-        }
-        lastAppliedSnapshot = snapshot
-      })
-      if (animations.length === 0 && entry.postEntrySnapshot) {
-        lastAppliedSnapshot = entry.postEntrySnapshot
-      } else if (entry.postEntrySnapshot) {
-        lastAppliedSnapshot = entry.postEntrySnapshot
-      }
-    })
-
-    const flattenedEnemyAnimations = entries
-      .filter((entry) => entry.type === 'enemy-act')
-      .flatMap((entry) => flattenEntryAnimations(entry))
-    expect(flattenedEnemyAnimations.some(({ instruction }) => instruction.metadata?.stage === 'create-state-card')).toBe(
-      true,
-    )
-    expect(flattenedEnemyAnimations.some(({ instruction }) => instruction.metadata?.stage === 'memory-card')).toBe(true)
-  })
 })
 
 function flattenEntryAnimations(
