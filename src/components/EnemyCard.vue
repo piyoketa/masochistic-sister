@@ -316,7 +316,12 @@ defineExpose({ playDamage, playEnemySound })
   background: linear-gradient(180deg, rgba(18, 22, 40, 0.9), rgba(10, 12, 24, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
-  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    border-color 140ms ease,
+    opacity 400ms ease,
+    filter 400ms ease;
   cursor: default;
   overflow: hidden;
   --enemy-selection-border: rgba(255, 116, 116, 0.45);
@@ -347,8 +352,8 @@ defineExpose({ playDamage, playEnemySound })
 }
 
 .enemy-card--defeated {
-  opacity: 0.7;
-  filter: grayscale(0.45);
+  opacity: 0.35;
+  filter: grayscale(0.65);
   cursor: default;
   pointer-events: none;
 }

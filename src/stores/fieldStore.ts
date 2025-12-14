@@ -63,9 +63,7 @@ export const useFieldStore = defineStore('field', {
         return
       }
       this.clearedNodes.add(node.id)
-      // 現在ノードをクリアしたら次のレベルへ進める
-      this.currentLevelIndex = Math.min(this.currentLevelIndex + 1, this.field.levels.length - 1)
-      this.currentNodeIndex = 0
+      // 進行は selectNextNode / プレイヤー操作で制御する。ここではクリア状態の記録だけ行う。
     },
   },
 })

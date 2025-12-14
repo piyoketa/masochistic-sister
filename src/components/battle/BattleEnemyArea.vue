@@ -410,7 +410,7 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
           :hovered="isSelectingEnemy && isEnemySelectable(slot.enemy.id) && hoveredEnemyId === slot.enemy.id"
           :selected="isSelectingEnemy && isEnemySelectable(slot.enemy.id) && hoveredEnemyId === slot.enemy.id"
           :selection-theme="props.selectionTheme"
-          :acting="slot.enemy ? actingEnemyId === slot.enemy.id : false"
+          :acting="slot.enemy ? slot.enemy.status === 'active' && actingEnemyId === slot.enemy.id : false"
           :blocked-reason="blockedReason(slot.enemy.id)"
           @mouseenter="() => handleHoverStart(slot.enemy!.id)"
           @mouseleave="() => handleHoverEnd(slot.enemy!.id)"

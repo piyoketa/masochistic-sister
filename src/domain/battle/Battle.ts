@@ -883,13 +883,15 @@ export class Battle {
       if (!enemy) {
         continue
       }
-      if (enemy.currentHp <= 0) {
+      if (!enemy.isActive()) {
+        const reason: EnemyTurnSkipReason =
+          enemy.status === 'escaped' ? 'escaped' : enemy.currentHp <= 0 ? 'defeated' : 'no-action'
         actions.push({
           enemyId,
           enemyName: enemy.name,
           actionName: '戦闘不能',
           skipped: true,
-          skipReason: 'defeated',
+          skipReason: reason,
           cardsAddedToPlayerHand: [],
           stateCardEvents: undefined,
           memoryCardEvents: undefined,

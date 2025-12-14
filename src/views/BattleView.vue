@@ -428,6 +428,18 @@ const canUndo = computed(() => {
   void managerState.actionLogLength
   return viewManager.hasUndoableAction()
 })
+// デバッグ用: 即勝利して報酬へ遷移する
+async function handleForceVictory(): Promise<void> {
+  const reward = new BattleReward(viewManager.battle).compute()
+  rewardStore.setReward({
+    hpHeal: reward.hpHeal,
+    goldGain: reward.goldGain,
+    defeatedCount: reward.defeatedCount,
+    cards: reward.cards,
+  })
+  rewardPrepared.value = true
+  await router.push('/reward')
+}
 
 function requestEnemyTarget(theme: EnemySelectionTheme): Promise<number> {
   if (enemySelectionRequest.value) {
@@ -998,12 +1010,25 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
       </button>
     </template>
     <template #instructions>
-      <h2>次フェーズの指針</h2>
-      <ol>
-        <li>敵の攻撃記録カードをデッキへ追加し、挙動を検証する</li>
-        <li>プレイヤー行動のターン進行と、ステータス更新順序を整理する</li>
-        <li>演出・SEのタイミングを試し、緊張感を高められるか確認する</li>
-      </ol>
+      コンセプト
+      Slay The Spire 風のカードバトルです。
+      プレイヤー「記憶の聖女」は、敵から受けた「被虐の記憶」をカードとして使用できます。
+      敵の攻撃と状態異常を上手く活用し、生きて最深部まで辿り着きましょう！
+
+      操作
+      ・左クリック：選択
+      ・右クリック：キャンセル
+
+      状態異常
+      ・手札の「状態異常」カードは、使用することで治癒できます
+      ・腐食／粘液などの状態異常は累積します
+
+      マナ
+      ・黄色の円で示されるのが現在のマナです。
+      ・カードの左上がマナコストです。マナを消費してカードを使用できます。
+
+      戦闘報酬
+      ・一回の戦闘が終了すると、HPが50回復し、今回の戦闘で獲得した記憶から１枚をデッキに入れられます
     </template>
 
     <main class="battle-main">
@@ -1090,6 +1115,14 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         </button>
       </div>
     </transition>
+    <div class="debug-menu">
+      <details>
+        <summary>デバッグメニュー</summary>
+        <button type="button" class="debug-button" @click="handleForceVictory">
+          即勝利して報酬へ
+        </button>
+      </details>
+    </div>
   </MainGameLayout>
 </template>
 
@@ -1550,6 +1583,48 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 .reward-link-button:focus-visible {
   transform: translateY(-1px);
   box-shadow: 0 12px 22px rgba(0, 0, 0, 0.4);
+}
+
+.debug-menu {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 6;
+  font-size: 13px;
+  color: #d7e1ff;
+}
+
+.debug-menu details {
+  background: rgba(20, 22, 35, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.debug-menu summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.debug-button {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, rgba(255, 180, 92, 0.2), rgba(255, 138, 76, 0.15));
+  border: 1px solid rgba(255, 180, 92, 0.5);
+  border-radius: 8px;
+  color: #ffd6a3;
+  font-weight: 600;
+  transition: filter 120ms ease, transform 120ms ease;
+}
+
+.debug-button:hover,
+.debug-button:focus-visible {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 
 .result-overlay-enter-active,

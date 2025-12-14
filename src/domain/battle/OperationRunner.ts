@@ -244,11 +244,14 @@ export class OperationRunner {
 
   private getWaitInfo(entry: BattleActionLogEntry): { waitMs: number; groupId?: string } {
     switch (entry.type) {
-      case 'enemy-act':
+      case 'enemy-act': {
+        const skipReason = (entry.metadata as any)?.skipReason as string | undefined
+        const isDefeatedOrEscaped = skipReason === 'defeated' || skipReason === 'escaped'
         return {
-          waitMs: 500,
+          waitMs: isDefeatedOrEscaped ? 0 : 500,
           groupId: `enemy-act:${entry.enemyId}:${this.enemyActGroupCounter++}`,
         }
+      }
       case 'player-event':
       case 'state-event':
         return { waitMs: 200 }
@@ -1057,18 +1060,22 @@ export class OperationRunner {
       cardAdditionIds.length > 0 ? this.cloneSnapshotWithoutHandCards(snapshot, cardAdditionIds) : undefined
 
     const baseSnapshot = snapshotBeforeCardAdditions ?? snapshot
-    const highlightInstructions: AnimationInstruction[] = [
-      {
-        waitMs: 0,
-        metadata: {
-          stage: 'enemy-highlight',
-          enemyId: entry.enemyId,
-          actionName: entry.actionName,
-          skipped: summary?.skipped ?? false,
+    const skipReason = summary?.skipReason
+    const shouldHighlight = skipReason !== 'defeated' && skipReason !== 'escaped'
+    if (shouldHighlight) {
+      const highlightInstructions: AnimationInstruction[] = [
+        {
+          waitMs: 0,
+          metadata: {
+            stage: 'enemy-highlight',
+            enemyId: entry.enemyId,
+            actionName: entry.actionName,
+            skipped: summary?.skipped ?? false,
+          },
         },
-      },
-    ]
-    batches.push(this.createBatch(baseSnapshot, highlightInstructions, this.nextBatchId('enemy-act-start')))
+      ]
+      batches.push(this.createBatch(baseSnapshot, highlightInstructions, this.nextBatchId('enemy-act-start')))
+    }
 
     const memoryEvents = summary?.memoryCardEvents ?? drainedEvents.memoryCardEvents
     const enemyActionInstructions = this.buildEnemyActionInstructions(entry, summary, drainedEvents, memoryEvents)
