@@ -3,7 +3,7 @@ import { Player } from '@/domain/entities/Player'
 import { Hand } from '@/domain/battle/Hand'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import type { Battle } from '@/domain/battle/Battle'
-import { State } from '@/domain/entities/State'
+import { BadState } from '@/domain/entities/State'
 import { StatusTypeCardTag } from '@/domain/entities/cardTags'
 import { Card } from '@/domain/entities/Card'
 
@@ -39,7 +39,7 @@ describe('Player.addState スタック処理', () => {
   }
 
   const createState = (id: string, magnitude: number) =>
-    new State({
+    new BadState({
       id,
       name: `state-${id}`,
       magnitude,

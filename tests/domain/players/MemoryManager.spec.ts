@@ -4,7 +4,7 @@ import { CardRepository } from '@/domain/repository/CardRepository'
 import { Attack, type AttackProps } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
 import type { Battle } from '@/domain/battle/Battle'
-import { State } from '@/domain/entities/State'
+import { BadState } from '@/domain/entities/State'
 import {
   EnemySingleTargetCardTag,
   SingleAttackCardTag,
@@ -68,7 +68,7 @@ describe('MemoryManager', () => {
       addCardToPlayerHand: vi.fn(),
     } as unknown as Battle
 
-    const state = new State({
+    const state = new BadState({
       id: 'state-memory',
       name: '記憶状態',
       cardDefinition: {

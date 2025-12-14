@@ -16,7 +16,7 @@ import { Card } from '@/domain/entities/Card'
 import type { CardInfo, CardType } from '@/types/battle'
 import type { Action } from '@/domain/entities/Action'
 import { Attack } from '@/domain/entities/Action'
-import { State } from '@/domain/entities/State'
+import { BadState, State } from '@/domain/entities/State'
 import type { State as StateType } from '@/domain/entities/State'
 import * as actionModules from '@/domain/entities/actions'
 import * as stateModules from '@/domain/entities/states'
@@ -331,7 +331,8 @@ export class Library {
     const states: StateType[] = []
     for (const candidate of Object.values(stateModules)) {
       const state = this.instantiateState(candidate)
-      if (state) {
+      if (state && state instanceof BadState) {
+        // Battle/Libraryでカード化できる悪性ステートのみを一覧に含める
         states.push(state)
       }
     }
