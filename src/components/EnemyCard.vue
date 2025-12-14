@@ -72,7 +72,8 @@ const classes = computed(() => ({
   'enemy-card--selected': props.selected ?? false,
   'enemy-card--hovered': props.hovered ?? false,
   'enemy-card--acting': props.acting ?? false,
-  'enemy-card--defeated': props.enemy.status === 'defeated',
+  // escape でも defeat と同等の消失演出を適用する
+  'enemy-card--defeated': props.enemy.status === 'defeated' || props.enemy.status === 'escaped',
 }))
 
 const selectionStyleVars = computed(() => {

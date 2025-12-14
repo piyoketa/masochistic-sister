@@ -415,7 +415,9 @@ watch(
 // TODO: ドメイン層へ移し、ビュー側に条件判定を残さない
 const battleStatus = computed(() => snapshot.value?.status ?? 'in-progress')
 const isGameOver = computed(() => battleStatus.value === 'gameover')
-const isVictory = computed(() => battleStatus.value === 'victory')
+// victory Overlay はステージイベントに合わせて表示する。スナップショットの勝利判定とは分離。
+const hasVictoryStage = computed(() => latestStageEvent.value?.metadata?.stage === 'victory')
+const isVictory = computed(() => battleStatus.value === 'victory' && hasVictoryStage.value)
 const canRetry = computed(() => {
   void managerState.snapshot
   return viewManager.canRetry()

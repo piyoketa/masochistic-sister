@@ -25,6 +25,7 @@ import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import { useAudioStore } from '@/stores/audioStore'
 
 interface EnemySelectionHint {
   enemyId: number
@@ -50,6 +51,7 @@ const emit = defineEmits<{
   (event: 'enemy-click', enemy: EnemyInfo): void
   (event: 'cancel-selection'): void
 }>()
+const audioStore = useAudioStore()
 
 interface EnemySlot {
   id: number
@@ -79,6 +81,8 @@ const selectionHintMap = computed<Map<number, EnemySelectionHint>>(() => {
   return map
 })
 
+const escapeAnimatingIds = ref(new Set<number>())
+
 const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
   const hintsMap = props.actionHintsByEnemyId ?? new Map<number, EnemyActionHint[]>()
@@ -88,9 +92,10 @@ const enemySlots = computed<EnemySlot[]>(() => {
 
   return current.enemies.map((enemySnapshot) => {
     // 撃破直後に HP ゲージが 0 になる描画を出すため、escaped 以外は表示対象とする
-    const isDefeated = enemySnapshot.status === 'defeated'
     const isEscaped = enemySnapshot.status === 'escaped'
-    const shouldDisplay = !isEscaped
+    const isDefeated = enemySnapshot.status === 'defeated'
+    const isEscapeAnimating = escapeAnimatingIds.value.has(enemySnapshot.id)
+    const shouldDisplay = !isEscaped || isEscapeAnimating
     const actionHints = hintsMap.get(enemySnapshot.id) ?? []
     const enemyInfo = shouldDisplay
       ? {
@@ -289,8 +294,18 @@ function handleEscapeStage(metadata: EscapeStageMetadata): void {
   if (enemyId === undefined) {
     return
   }
+  // 逃走中は defeat と同様にカードを表示したまま簡易の消失演出を出すため、逃走アニメーション対象として保持する。
+  escapeAnimatingIds.value.add(enemyId)
+  window.setTimeout(() => {
+    escapeAnimatingIds.value.delete(enemyId)
+  }, 1200)
   const target = enemyCardRefs.get(enemyId)
-  target?.playEnemySound?.('escape')
+  if (target) {
+    target.playEnemySound?.('escape')
+  } else {
+    // カードが既にアンマウントされていてもサウンドだけは確実に鳴らす
+    audioStore.playSe('/sounds/escape/kurage-kosho_esc01.mp3')
+  }
 }
 
 function extractEnemyIdFromResolvedEntry(

@@ -17,6 +17,8 @@ import { FlurryAction } from '../actions/FlurryAction'
 import { ShapeUpAction } from '../actions/ShapeUpAction'
 import { Damages } from '../Damages'
 import { LightweightState } from '../states/LightweightState'
+import { BuildUpAction } from '../actions/BuildUpAction'
+import { ConditionalOrcTrainerQueue } from '../enemy/actionQueues/ConditionalOrcTrainerQueue'
 
 export class OrcTrainerEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
@@ -34,10 +36,12 @@ export class OrcTrainerEnemy extends Enemy {
       name: 'オークトレーナー',
       maxHp: 40,
       currentHp: 40,
-      actions: [flurry, new ShapeUpAction()],
+      // BuildUp は差し替え用にキューへ渡す（初期候補には含めないが、actions 配列には含めておく）
+      actions: [flurry, new ShapeUpAction(), new BuildUpAction()],
       states: [new LightweightState()],
       allyBuffWeights: { tailwind: 100 },
       image: '/assets/enemies/orc.jpg',
+      actionQueueFactory: () => new ConditionalOrcTrainerQueue(),
       ...overrides,
     })
   }

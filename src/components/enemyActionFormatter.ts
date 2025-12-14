@@ -38,8 +38,8 @@ export function formatEnemyActionLabel(
   }
 
   if (action.type === 'skip') {
-    const text = '⛓行動不可'
-    return { label: text, segments: [{ text }] }
+    const text = '行動不可'
+    return { label: text, segments: [{ text, iconPath: '/assets/icons/skip.png' }] }
   }
 
   if (action.type === 'attack') {

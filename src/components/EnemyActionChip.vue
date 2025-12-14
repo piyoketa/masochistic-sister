@@ -6,6 +6,7 @@ EnemyActionChip
 -->
 <script setup lang="ts">
 import { useActionCardOverlay } from '@/composables/actionCardOverlay'
+import { useImageHub } from '@/composables/imageHub'
 
 interface SegmentEntry {
   text: string
@@ -50,6 +51,14 @@ const emit = defineEmits<{
 }>()
 
 const actionOverlay = useActionCardOverlay()
+const imageHub = useImageHub()
+
+function resolveIconSrc(path?: string): string | undefined {
+  if (!path) return undefined
+  // ImageHub経由で正規化＋キャッシュ済みのImageを確保しておき、毎回生パスを直参照しない。
+  imageHub.getElement(path)
+  return imageHub.getSrc(path)
+}
 
 function handleEnter(segmentIndex: number, event: MouseEvent): void {
   const segment = props.action.segments[segmentIndex]
@@ -95,9 +104,9 @@ function handleLeave(): void {
         @mousemove="(event) => handleMove(segmentIndex, event)"
         @mouseleave="handleLeave"
       >
-        <template v-if="segment.iconPath">
+        <template v-if="resolveIconSrc(segment.iconPath)">
           <v-icon class="effect-icon" size="14">
-            <img :src="segment.iconPath" alt="効果" />
+            <img :src="resolveIconSrc(segment.iconPath)" alt="効果" />
           </v-icon>
           <span class="effect-text">{{ segment.text }}</span>
         </template>

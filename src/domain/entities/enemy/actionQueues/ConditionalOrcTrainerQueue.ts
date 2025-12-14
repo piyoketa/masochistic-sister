@@ -1,22 +1,21 @@
 import type { Action } from '../../Action/ActionBase'
 import { EnemyActionQueue, type EnemyActionQueueStateSnapshot } from './EnemyActionQueue'
-import { FattenAction } from '../../actions/FattenAction'
-import { BattleDanceAction } from '../../actions/BattleDanceAction'
-
-type QueueContext = {
-  battle?: import('../../../battle/Battle').Battle
-}
+import { BuildUpAction } from '../../actions/BuildUpAction'
+import { ShapeUpAction } from '../../actions/ShapeUpAction'
 
 /**
- * オーク力士専用: プレイヤーが「重量化」を持っている場合、太らせるの代わりに戦いの舞いを選択する。
+ * オークトレーナー専用の行動キュー:
+ * - Flurry と ShapeUp を交互に実行。
+ * - ShapeUp が選ばれ、プレイヤーが「軽量化」を既に持っている場合は BuildUp に差し替える。
+ *   （BuildUp は初期候補に含めず、差し替え専用）
  */
-export class ConditionalOrcSumoQueue extends EnemyActionQueue {
-  private readonly battleDance: BattleDanceAction
+export class ConditionalOrcTrainerQueue extends EnemyActionQueue {
+  private readonly buildUp: BuildUpAction
   private lastIndex: number | undefined
 
   constructor() {
     super()
-    this.battleDance = new BattleDanceAction()
+    this.buildUp = new BuildUpAction()
   }
 
   protected override onInitialize(): void {
@@ -24,12 +23,8 @@ export class ConditionalOrcSumoQueue extends EnemyActionQueue {
     super.onInitialize()
   }
 
-  override setContext(context: Record<string, unknown>): void {
-    super.setContext(context)
-  }
-
-  protected override pickActionForTurn(turn: number): Action | undefined {
-    const candidates = this.actions.filter((action) => !(action instanceof BattleDanceAction))
+  protected override pickActionForTurn(_turn: number): Action | undefined {
+    const candidates = this.actions.filter((action) => !(action instanceof BuildUpAction))
     const count = candidates.length
     if (count === 0) {
       return undefined
@@ -65,23 +60,27 @@ export class ConditionalOrcSumoQueue extends EnemyActionQueue {
   }
 
   private applyReplacement(picked: Action): Action {
-    if (picked instanceof FattenAction && this.shouldSwapToBattleDance()) {
-      return this.actions.find((action) => action instanceof BattleDanceAction) ?? this.battleDance
+    if (picked instanceof ShapeUpAction && this.shouldSwapToBuildUp()) {
+      return this.actions.find((action) => action instanceof BuildUpAction) ?? this.buildUp
     }
     return picked
   }
 
-  private getContext(): QueueContext | undefined {
-    // EnemyActionQueue で保持している context を安全に取り出すためのユーティリティ
-    return (this as unknown as { context?: QueueContext }).context
+  private getContext():
+    | {
+        battle?: import('../../../battle/Battle').Battle
+      }
+    | undefined {
+    return (this as unknown as { context?: { battle?: import('../../../battle/Battle').Battle } })
+      .context
   }
 
-  private shouldSwapToBattleDance(): boolean {
+  private shouldSwapToBuildUp(): boolean {
     const battle = this.getContext()?.battle
     if (!battle) {
       return false
     }
     const playerStates = battle.player.getStates(battle)
-    return playerStates.some((state) => state.id === 'state-heavyweight')
+    return playerStates.some((state) => state.id === 'state-lightweight')
   }
 }
