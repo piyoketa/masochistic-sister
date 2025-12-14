@@ -29,7 +29,7 @@ export class GuardianPetalState extends TraitState {
 
   override description(): string {
     const charge = this.magnitude ?? 0
-    return `プレイヤーのターン開始時、自身にバリア(${charge})を付与する`
+    return `毎ターン開始時、バリア(${charge})`
   }
 
   override onPlayerTurnStart(context: { battle: Battle; owner: Player | Enemy }): void {
