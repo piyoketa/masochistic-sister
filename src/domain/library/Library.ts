@@ -63,7 +63,7 @@ import { MiasmaAction } from '@/domain/entities/actions/MiasmaAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 import { StackedStressAction } from '@/domain/entities/actions/StackedStressAction'
-import { DeathMatchRelic, RepulsionRelic, LightweightCombatRelic, AdversityExcitementRelic } from '@/domain/entities/relics'
+import { DeathMatchRelic, RepulsionRelic, LightweightCombatRelic, AdversityExcitementRelic, DevilsKissRelic } from '@/domain/entities/relics'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
@@ -171,6 +171,7 @@ const ATTACK_SUPPORT_RELICS = [
   RepulsionRelic,
   LightweightCombatRelic,
   AdversityExcitementRelic,
+  DevilsKissRelic,
 ]
 const STANDARD_SAMPLE_STATE_CLASSES: StateConstructor[] = [CorrosionState, EvilThoughtState]
 

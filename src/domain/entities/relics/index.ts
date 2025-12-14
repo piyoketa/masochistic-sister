@@ -2,6 +2,7 @@ import { Relic } from './Relic'
 import { SacrificialAwarenessRelic } from './SacrificialAwarenessRelic'
 import { AdversityExcitementRelic } from './AdversityExcitementRelic'
 import { LightweightCombatRelic } from './LightweightCombatRelic'
+import { DevilsKissRelic } from './DevilsKissRelic'
 import { ActionForceRelic } from './ActionForceRelic'
 import { PureBodyRelic } from './PureBodyRelic'
 import { NoViolenceRelic } from './NoViolenceRelic'
@@ -18,6 +19,7 @@ export {
   SacrificialAwarenessRelic,
   AdversityExcitementRelic,
   LightweightCombatRelic,
+  DevilsKissRelic,
   ActionForceRelic,
   PureBodyRelic,
   NoViolenceRelic,
@@ -35,6 +37,7 @@ export const DEFAULT_PLAYER_RELICS: Relic[] = [
   new SacrificialAwarenessRelic(),
   new AdversityExcitementRelic(),
   new LightweightCombatRelic(),
+  new DevilsKissRelic(),
   new ActionForceRelic(),
   new PureBodyRelic(),
   new NoViolenceRelic(),

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
 import { TackleAction } from '@/domain/entities/actions/TackleAction'
+import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import {
   StrengthState,
@@ -13,6 +14,7 @@ import {
   FlightState,
   HeavyweightState,
   LightweightState,
+  GlossyLipsState,
 } from '@/domain/entities/states'
 import { Enemy } from '@/domain/entities/Enemy'
 import { SkipTurnAction } from '@/domain/entities/actions/SkipTurnAction'
@@ -294,6 +296,38 @@ describe('Attack#calcDamagesの挙動', () => {
 
     expect(damages.amount).toBe(6)
     expect(damages.count).toBe(4)
+  })
+
+  it('艶唇が付与されていると口技カテゴリの口づけが加算される', () => {
+    const enemy = createEnemyWithStates()
+    const { battle, player } = createBattleWithEnemy(enemy)
+    player.addState(new GlossyLipsState(20), { battle })
+    const action = new BloodSuckAction()
+
+    const damages = action.calcDamages(player, enemy, battle)
+
+    expect(damages.amount).toBe(30)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof GlossyLipsState && (state.magnitude ?? 0) === 20,
+      ),
+    ).toBe(true)
+  })
+
+  it('艶唇は口技タグを持たない攻撃には影響しない', () => {
+    const enemy = createEnemyWithStates()
+    const { battle, player } = createBattleWithEnemy(enemy)
+    player.addState(new GlossyLipsState(999), { battle })
+    const action = new TackleAction()
+
+    const damages = action.calcDamages(player, enemy, battle)
+
+    expect(damages.amount).toBe(20)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof GlossyLipsState && (state.magnitude ?? 0) === 999,
+      ),
+    ).toBe(true)
   })
 
   it('ダメージ固定状態の敵にはダメージが1に制限される', () => {

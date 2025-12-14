@@ -17,6 +17,7 @@ import { Damages } from '../Damages'
 import {
   DrainCardTag,
   EnemySingleTargetCardTag,
+  OralTechniqueCardTag,
   SingleAttackCardTag,
 } from '../cardTags'
 
@@ -32,6 +33,7 @@ export class BloodSuckAction extends Attack {
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),
         cost: 1,
+        categoryTags: [new OralTechniqueCardTag()],
         effectTags: [new DrainCardTag()],
       },
     })

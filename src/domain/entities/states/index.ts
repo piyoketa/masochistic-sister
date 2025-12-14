@@ -18,6 +18,7 @@ export { WeakState } from './WeakState'
 export { JointDamageState } from './JointDamageState'
 export { ChargeState } from './ChargeState'
 export { EvilThoughtState } from './EvilThoughtState'
+export { GlossyLipsState } from './GlossyLipsState'
 export { TeamBondState } from './TeamBondState'
 export { StunCountState } from './StunCountState'
 export { FiveLegsState } from './FiveLegsState'
@@ -48,6 +49,7 @@ import { WeakState } from './WeakState'
 import { JointDamageState } from './JointDamageState'
 import { ChargeState } from './ChargeState'
 import { EvilThoughtState } from './EvilThoughtState'
+import { GlossyLipsState } from './GlossyLipsState'
 import { TeamBondState } from './TeamBondState'
 import { StunCountState } from './StunCountState'
 import { FiveLegsState } from './FiveLegsState'
@@ -78,6 +80,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-joint-damage': (m) => new JointDamageState(m),
   'state-charge': (m) => new ChargeState(m),
   'state-evil-thought': (m) => new EvilThoughtState(m),
+  'state-glossy-lips': (m) => new GlossyLipsState(m),
   'state-stacked-stress': () => new StackedStressState(),
   'trait-team-bond': () => new TeamBondState(),
   'state-stun-count': (m) => new StunCountState(m ?? 0),
