@@ -13,10 +13,8 @@ import { TurnManager } from '@/domain/battle/TurnManager'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { Enemy } from '@/domain/entities/Enemy'
 import { EnemyTeam } from '@/domain/entities/EnemyTeam'
-import { CowardTrait, BleedState, GuardianPetalState, BarrierState } from '@/domain/entities/states'
-import { Damages, type DamageOutcome } from '@/domain/entities/Damages'
+import { CowardTrait } from '@/domain/entities/states'
 import { BattlePrepAction } from '@/domain/entities/actions/BattlePrepAction'
-import { TackleAction } from '@/domain/entities/actions/TackleAction'
 
 function createBattleWithEnemies(enemies: Enemy[]): Battle {
   const team = new EnemyTeam({ id: 'coward-test', members: enemies })
@@ -54,7 +52,14 @@ describe('臆病', () => {
     })
 
     const battle = createBattleWithEnemies([coward, ally])
-    battle.damageEnemy(ally, 20)
+    const lethalEvent = {
+      actionId: 'test-direct-damage',
+      attacker: { type: 'player' as const },
+      defender: { type: 'enemy' as const, enemyId: ally.id ?? -1 },
+      outcomes: [{ damage: 20, effectType: 'test-direct' }],
+    }
+    // Battle.damageEnemyはDamageEvent型を要求するため、簡易イベントを組み立てて即死ダメージを与える
+    battle.damageEnemy(ally, lethalEvent)
 
     battle.notifyActionResolved({ source: battle.player, action: new BattlePrepAction() })
 

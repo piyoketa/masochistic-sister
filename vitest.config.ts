@@ -8,6 +8,19 @@ export default mergeConfig(
     test: {
       environment: 'jsdom',
       css: true,
+      // VuetifyのCSSはNodeがそのまま解釈できないため、依存をインライン変換してVite経由で処理する
+      server: {
+        deps: {
+          inline: ['vuetify'],
+        },
+      },
+      deps: {
+        optimizer: {
+          web: {
+            include: ['vuetify'],
+          },
+        },
+      },
       pool: 'threads',
       poolOptions: {
         threads: {
