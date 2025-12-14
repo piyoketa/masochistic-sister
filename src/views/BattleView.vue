@@ -144,7 +144,10 @@ const enemyActionHintsById = computed<Map<number, EnemyActionHint[]>>(() => {
       enemyStateSnapshots: enemySnapshot.states,
       playerStateSnapshots: snap.player?.states,
     })
-    map.set(enemySnapshot.id, hints)
+    // View の snapshot と Battle インスタンスの時間軸がズレるケース（end-player-turn 直後に Battle 側は次ターンへ進んでいる等）では、
+    // hasActedThisTurn を Battle 側から読むと行動済みフラグが落ちてしまうため、表示中 snapshot の値で上書きする。
+    const normalized = hints.map((hint) => ({ ...hint, acted: actedThisTurn }))
+    map.set(enemySnapshot.id, normalized)
   })
   lastEnemyActionHints.value = map
   return map
