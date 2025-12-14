@@ -11,6 +11,7 @@ import {
   createBattleStub,
   createViewManagerStub,
 } from './__helpers__/battleHandTestUtils'
+import { createActivatedTestingPinia } from './__helpers__/pinia'
 
 type StageName = StageEventMetadata['stage']
 
@@ -50,6 +51,7 @@ function mountHandArea(handCards: Card[]) {
         ActionCard: actionCardStub,
         TransitionGroup: false,
       },
+      plugins: [createActivatedTestingPinia()],
     },
   })
 }

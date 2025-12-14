@@ -17,6 +17,10 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  // VuetifyのCSSをSSR/テスト環境でもVite経由で解釈させるため、外部化を抑制する
+  ssr: {
+    noExternal: ['vuetify'],
+  },
   server: {
     host: '0.0.0.0',
     // /mnt/c 上でもファイル変更を検知しやすくするための設定

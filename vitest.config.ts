@@ -21,6 +21,9 @@ export default mergeConfig(
           },
         },
       },
+      ssr: {
+        noExternal: ['vuetify'],
+      },
       pool: 'threads',
       poolOptions: {
         threads: {

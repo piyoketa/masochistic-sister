@@ -96,6 +96,12 @@ function createBattleStub(): Battle {
     player: {
       getStates: vi.fn(() => []),
     },
+    // コスト計算フローで参照されるため、最低限のレリックインターフェースをスタブする
+    getRelicInstances: vi.fn(() => []),
+    hasActiveRelic: vi.fn(() => false),
+    hasRelic: vi.fn(() => false),
+    getRelicById: vi.fn(() => undefined),
+    getRelicClassNames: vi.fn(() => []),
   } as unknown as Battle
 }
 
