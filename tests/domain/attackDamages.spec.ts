@@ -289,7 +289,7 @@ describe('Attack#calcDamagesの挙動', () => {
   it('軽量化(1)でダメージが6、回数が4になる', () => {
     const action = createTentacleFlurryAction()
     const attackerHelper = createPlayerWithHand()
-    attackerHelper.addState(new LightweightState(1))
+    attackerHelper.addState(new LightweightState())
     const defender = createEnemyWithStates()
 
     const damages = action.calcDamages(attackerHelper.player, defender)
@@ -333,7 +333,7 @@ describe('Attack#calcDamagesの挙動', () => {
   it('ダメージ固定状態の敵にはダメージが1に制限される', () => {
     const action = createTentacleFlurryAction()
     const attacker = createPlayerWithHand().player
-    const defenderEnemy = createEnemyWithStates([new FlightState(1)])
+    const defenderEnemy = createEnemyWithStates([new FlightState()])
 
     const damages = action.calcDamages(attacker, defenderEnemy)
 
@@ -399,7 +399,7 @@ describe('Attack.performのダメージアウトカム', () => {
       maxHp: 10,
       currentHp: 10,
       actions: [new SkipTurnAction('何もしない')],
-      states: [new FlightState(1)],
+      states: [new FlightState()],
       image: '',
     })
     const { battle, player, enemy: registeredEnemy } = createBattleWithEnemy(enemy)

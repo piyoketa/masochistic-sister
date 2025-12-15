@@ -13,6 +13,7 @@ export class FiveLegsState extends TraitState {
     super({
       id: 'trait-five-legs',
       name: 'スタンカウント回復',
+      stackable: false,
     })
   }
 

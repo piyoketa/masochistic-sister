@@ -17,6 +17,7 @@ export class DamageLinkState extends BadState {
     super({
       id: 'state-damage-link',
       name: 'ダメージ連動',
+      stackable: false,
       cardDefinition: undefined,
     })
   }

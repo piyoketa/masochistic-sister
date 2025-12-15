@@ -21,6 +21,7 @@ export class CorrosionState extends BadState {
     super({
       id: 'state-corrosion',
       name: '腐食',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '腐食',

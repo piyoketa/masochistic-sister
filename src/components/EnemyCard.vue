@@ -205,8 +205,7 @@ function formatStateChip(
   description: string
   isImportant?: boolean
 } {
-  const magnitude = state.magnitude
-  const label = magnitude !== undefined ? `${state.name}(${magnitude})` : state.name
+  const label = state.stackable ? `${state.name}(${(state.magnitude ?? 0)}点)` : state.name
   const description = state.description ?? state.name
   return {
     key,

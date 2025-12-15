@@ -22,6 +22,7 @@ export class JointDamageState extends BadState {
     super({
       id: 'state-joint-damage',
       name: '関節損傷',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '関節損傷',

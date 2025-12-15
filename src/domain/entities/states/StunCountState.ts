@@ -16,6 +16,7 @@ export class StunCountState extends BuffState {
     super({
       id: 'state-stun-count',
       name: 'スタンカウント',
+      stackable: true,
       magnitude,
     })
   }

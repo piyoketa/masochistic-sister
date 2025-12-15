@@ -6,6 +6,7 @@ export class HardShellState extends TraitState {
     super({
       id: 'state-hard-shell',
       name: '堅固',
+      stackable: true,
       magnitude,
     })
   }

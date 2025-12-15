@@ -5,6 +5,7 @@ export class LargeState extends TraitState {
     super({
       id: 'state-large',
       name: '大型',
+      stackable: false,
     })
   }
 

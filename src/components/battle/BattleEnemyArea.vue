@@ -374,16 +374,22 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
   return states.map((state) => {
     if (typeof (state as State).getCategory === 'function') {
       const typed = state as State
+      const stackable = typeof typed.isStackable === 'function' ? typed.isStackable() : Boolean(typed.magnitude !== undefined)
       return {
         id: typed.id,
         name: typed.name,
         description: typeof typed.description === 'function' ? typed.description() : '',
-        magnitude: typed.magnitude,
+        magnitude: stackable ? typed.magnitude : undefined,
         category: typed.getCategory(),
         isImportant: typeof typed.isImportant === 'function' ? typed.isImportant() : false,
+        stackable,
       }
     }
-    return state as StateSnapshot
+    const snapshot = state as StateSnapshot
+    return {
+      ...snapshot,
+      stackable: snapshot.stackable,
+    }
   })
 }
 </script>

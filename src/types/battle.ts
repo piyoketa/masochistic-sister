@@ -11,14 +11,22 @@ export type BaseStateSnapshot = {
   id: string
   name: string
   description?: string
-  magnitude?: number
   category: StateCategory
   isImportant?: boolean
+  stackable: boolean
 }
 
-export type BadStateSnapshot = BaseStateSnapshot & { category: 'bad' }
-export type BuffStateSnapshot = BaseStateSnapshot & { category: 'buff' }
-export type TraitStateSnapshot = BaseStateSnapshot & { category: 'trait' }
+export type StackableStateSnapshot = BaseStateSnapshot & { stackable: true; magnitude: number }
+export type NonStackableStateSnapshot = BaseStateSnapshot & { stackable: false; magnitude?: undefined }
+export type BadStateSnapshot =
+  | (StackableStateSnapshot & { category: 'bad' })
+  | (NonStackableStateSnapshot & { category: 'bad' })
+export type BuffStateSnapshot =
+  | (StackableStateSnapshot & { category: 'buff' })
+  | (NonStackableStateSnapshot & { category: 'buff' })
+export type TraitStateSnapshot =
+  | (StackableStateSnapshot & { category: 'trait' })
+  | (NonStackableStateSnapshot & { category: 'trait' })
 export type StateSnapshot = BadStateSnapshot | BuffStateSnapshot | TraitStateSnapshot
 
 
@@ -41,16 +49,32 @@ export type EnemyActionHint = {
   }
   status?: {
     name: string
-    magnitude?: number
     description?: string
     iconPath?: string
-  }
-  selfState?: {
+    stackable: true
+    magnitude: number
+  } | {
     name: string
-    magnitude?: number
     description?: string
     iconPath?: string
+    stackable: false
+    magnitude?: undefined
   }
+  selfState?:
+    | {
+        name: string
+        description?: string
+        iconPath?: string
+        stackable: true
+        magnitude: number
+      }
+    | {
+        name: string
+        description?: string
+        iconPath?: string
+        stackable: false
+        magnitude?: undefined
+      }
   acted?: boolean
   icon?: string
   cardInfo?: CardInfo

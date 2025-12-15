@@ -32,6 +32,7 @@ export class BleedState extends BadState {
     super({
       id: 'state-bleed',
       name: '出血',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '出血',

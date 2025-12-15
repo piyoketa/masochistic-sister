@@ -23,6 +23,7 @@ export class GuardianPetalState extends TraitState {
     super({
       id: 'state-guardian-petal',
       name: 'バリア回復',
+      stackable: true,
       magnitude,
     })
   }

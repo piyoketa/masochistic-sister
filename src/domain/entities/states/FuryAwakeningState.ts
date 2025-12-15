@@ -10,6 +10,7 @@ export class FuryAwakeningState extends TraitState {
     super({
       id: 'state-fury-awakening',
       name: '怒りの覚醒',
+      stackable: false,
     })
   }
 

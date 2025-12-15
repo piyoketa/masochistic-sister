@@ -9,6 +9,7 @@ export class ChargeState extends BuffState {
     super({
       id: 'state-charge',
       name: '溜め',
+      stackable: true,
       magnitude,
     })
   }

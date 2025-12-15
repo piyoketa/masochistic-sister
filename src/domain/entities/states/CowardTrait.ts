@@ -16,6 +16,7 @@ export class CowardTrait extends TraitState {
     super({
       id: 'trait-coward',
       name: '臆病',
+      stackable: false,
     })
   }
 

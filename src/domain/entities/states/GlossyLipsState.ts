@@ -9,18 +9,19 @@ GlossyLipsState.ts の責務:
 
 主要な通信相手とインターフェース:
 - `Damages.modifyPreHit` フック: 攻撃者ロールのときに口技タグを持つか判定し、`amount` に加算する。
-- `CardDefinition` / `OralTechniqueCardTag`: 攻撃の `categoryTags` にタグが含まれているか `id` を見て判定する。
+- `Damages.modifyPreHit` フック: `cardId` が口づけ（BloodSuckAction）のものかを判定し、`amount` に加算する。
 */
 import { BuffState } from '../State'
 import type { DamageCalculationParams } from '../Damages'
 
-const ORAL_TECHNIQUE_TAG_ID = 'tag-oral-technique'
+const BLOOD_SUCK_CARD_ID = 'blood-suck'
 
 export class GlossyLipsState extends BuffState {
   constructor(magnitude = 0) {
     super({
       id: 'state-glossy-lips',
       name: '艶唇',
+      stackable: true,
       magnitude,
     })
   }
@@ -53,10 +54,8 @@ export class GlossyLipsState extends BuffState {
       return params
     }
 
-    const attack = params.context?.attack
-    const definition = attack && typeof attack.createCardDefinition === 'function' ? attack.createCardDefinition() : undefined
-    const hasOralTag = (definition?.categoryTags ?? []).some((tag) => tag.id === ORAL_TECHNIQUE_TAG_ID)
-    if (!hasOralTag) {
+    // 口技判定は cardId で厳密に行う。将来タグ構成が変わっても「口づけ」専用の加算であることを保証する。
+    if (params.cardId !== BLOOD_SUCK_CARD_ID) {
       return params
     }
 

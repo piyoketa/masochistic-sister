@@ -38,7 +38,7 @@ describe('軽量化Stateの挙動', () => {
       baseCount: 2,
       type: 'multi',
       cardId: 'test-card',
-      attackerStates: [new LightweightState(1)],
+      attackerStates: [new LightweightState()],
     })
 
     expect(damages.amount).toBe(8)
@@ -65,7 +65,7 @@ describe('軽量化Stateの挙動', () => {
       baseCount: 1,
       type: 'single',
       cardId: 'shape-up',
-      defenderStates: [new LightweightState(1)],
+      defenderStates: [new LightweightState()],
     })
 
     expect(damages.count).toBe(1)
@@ -79,7 +79,7 @@ describe('ダメージ固定Stateの挙動', () => {
       baseCount: 2,
       type: 'multi',
       cardId: 'test-card',
-      defenderStates: [new FlightState(1)],
+      defenderStates: [new FlightState()],
     })
 
     expect(damages.amount).toBe(1)
@@ -94,7 +94,7 @@ describe('ダメージ固定と腐食の優先度', () => {
       baseCount: 2,
       type: 'multi',
       cardId: 'test-card',
-      defenderStates: [new CorrosionState(1), new FlightState(1)],
+      defenderStates: [new CorrosionState(1), new FlightState()],
     })
 
     expect(damages.amount).toBe(1)
@@ -107,7 +107,7 @@ describe('ダメージ固定と腐食の優先度', () => {
       baseCount: 1,
       type: 'single',
       cardId: 'test-card',
-      defenderStates: [new FlightState(1), new CorrosionState(2)],
+      defenderStates: [new FlightState(), new CorrosionState(2)],
     })
 
     expect(damages.amount).toBe(1)

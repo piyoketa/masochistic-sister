@@ -6,6 +6,7 @@ export class StrengthState extends BuffState {
     super({
       id: 'state-strength',
       name: '打点上昇',
+      stackable: true,
       magnitude,
     })
   }

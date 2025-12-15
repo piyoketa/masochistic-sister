@@ -70,7 +70,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-barrier': (m) => new BarrierState(m),
   'state-guardian-petal': (m) => new GuardianPetalState(m),
   'state-heavyweight': () => new HeavyweightState(),
-  'state-lightweight': (m) => new LightweightState(m),
+  'state-lightweight': () => new LightweightState(),
   'state-flight': () => new FlightState(),
   'state-poison': (m) => new PoisonState(m),
   'state-large': () => new LargeState(),
@@ -95,5 +95,8 @@ export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | u
   if (!factory) {
     return undefined
   }
-  return factory(snapshot.magnitude ?? 0)
+  if (snapshot.stackable) {
+    return factory(snapshot.magnitude)
+  }
+  return factory()
 }

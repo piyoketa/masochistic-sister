@@ -500,8 +500,9 @@ export abstract class Attack extends Action {
       if (index > 0) {
         segments.push({ text: '\n' })
       }
-      const magnitude =
-        state.magnitude !== undefined && state.magnitude >= 2 ? `(${state.magnitude})` : ''
+      const stackable =
+        typeof state.isStackable === 'function' ? state.isStackable() : state.magnitude !== undefined
+      const magnitude = stackable ? `(${state.magnitude ?? 0}点)` : ''
       const description = state.description?.() ?? ''
       segments.push({
         text: `🌀${state.name}${magnitude}`,

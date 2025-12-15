@@ -6,6 +6,7 @@ export class AccelerationState extends BuffState {
     super({
       id: 'state-acceleration',
       name: '加速',
+      stackable: true,
       magnitude,
     })
   }

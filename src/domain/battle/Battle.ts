@@ -96,7 +96,10 @@ export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated' | '
 
 export interface EnemyStateDiff {
   enemyId: number
-  states: Array<{ id: string; magnitude?: number }>
+  states: Array<
+    | { id: string; stackable: true; magnitude: number }
+    | { id: string; stackable: false; magnitude?: undefined }
+  >
 }
 
 interface BaseCardAnimationEvent {
@@ -503,14 +506,16 @@ export class Battle {
     const importantFromTeam = teamId ? this.isImportantStateForTeam(teamId, state.id) : false
     const description = typeof state.description === 'function' ? state.description() : String((state as any).description ?? '')
     const isImportant = importantFromTeam || (typeof state.isImportant === 'function' ? state.isImportant() : false)
+    const stackable = typeof state.isStackable === 'function' ? state.isStackable() : false
 
     return {
       id: state.id,
       name: state.name,
       description,
-      magnitude: state.magnitude,
       category,
       isImportant,
+      stackable,
+      magnitude: stackable ? state.magnitude ?? 0 : undefined,
     }
   }
 
@@ -1232,17 +1237,9 @@ export class Battle {
   private extractEnemyStateSummary(enemy: Enemy): EnemyStateDiff['states'] {
     return enemy.getStates().map((state) => ({
       id: state.id,
-      magnitude: this.getStateMagnitude(state),
+      stackable: typeof state.isStackable === 'function' ? state.isStackable() : false,
+      magnitude: typeof state.isStackable === 'function' && state.isStackable() ? state.magnitude ?? 0 : undefined,
     }))
-  }
-
-  private getStateMagnitude(state: State): number | undefined {
-    const direct = (state as unknown as { magnitude?: number }).magnitude
-    if (typeof direct === 'number') {
-      return direct
-    }
-    const props = (state as unknown as { props?: { magnitude?: number } }).props
-    return props?.magnitude
   }
 
   private diffEnemyStates(before: Map<number, EnemyStateDiff['states']>): EnemyStateDiff[] {
@@ -1270,7 +1267,9 @@ export class Battle {
     }
     const normalize = (states: EnemyStateDiff['states']) =>
       [...states]
-        .map(({ id, magnitude }) => `${id}:${magnitude ?? 0}`)
+        .map(({ id, magnitude, stackable }) =>
+          `${id}:${stackable ? String(magnitude ?? 0) : 'nostack'}`,
+        )
         .sort()
     const prevKey = normalize(previous)
     const currKey = normalize(current)

@@ -20,6 +20,7 @@ export class IntoxicationState extends BadState {
     super({
       id: 'state-intoxication',
       name: '酩酊',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '酩酊',

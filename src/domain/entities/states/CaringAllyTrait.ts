@@ -22,6 +22,7 @@ export class CaringAllyTrait extends TraitState {
     super({
       id: 'trait-caring-ally',
       name: '仲間想い',
+      stackable: false,
     })
   }
 

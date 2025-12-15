@@ -21,7 +21,7 @@ export class StackedStressState extends BuffState {
     super({
       id: 'state-stacked-stress',
       name: '重なるストレス',
-      magnitude: 1,
+      stackable: false,
       cardDefinition: {
         title: '重なるストレス',
         cardType: 'status',

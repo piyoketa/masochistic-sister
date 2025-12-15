@@ -115,6 +115,8 @@ function buildAttackActionHint({
     count: calculatedDamages.count,
     type: calculatedDamages.type,
   }
+  const primaryStateStackable =
+    primaryState && typeof primaryState.isStackable === 'function' ? primaryState.isStackable() : false
 
   const blueprint =
     cardId !== null
@@ -139,7 +141,8 @@ function buildAttackActionHint({
     status: primaryState
       ? {
           name: primaryState.name,
-          magnitude: primaryState.magnitude ?? 1,
+          stackable: primaryStateStackable,
+          magnitude: primaryStateStackable ? primaryState.magnitude ?? 0 : undefined,
           description: primaryState.description(),
           iconPath: primaryState.iconPath,
         }
@@ -176,7 +179,11 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
     selfState: gainState
       ? {
           name: gainState.name,
-          magnitude: gainState.magnitude ?? 1,
+          stackable: typeof gainState.isStackable === 'function' ? gainState.isStackable() : false,
+          magnitude:
+            typeof gainState.isStackable === 'function' && gainState.isStackable()
+              ? gainState.magnitude ?? 0
+              : undefined,
           description: gainState.description(),
           iconPath: gainState.iconPath,
         }
@@ -184,7 +191,11 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
     status: inflictState
       ? {
           name: inflictState.name,
-          magnitude: inflictState.magnitude ?? 1,
+          stackable: typeof inflictState.isStackable === 'function' ? inflictState.isStackable() : false,
+          magnitude:
+            typeof inflictState.isStackable === 'function' && inflictState.isStackable()
+              ? inflictState.magnitude ?? 0
+              : undefined,
           description: inflictState.description(),
           iconPath: inflictState.iconPath,
         }

@@ -21,6 +21,7 @@ export class EvilThoughtState extends BadState {
     super({
       id: 'state-evil-thought',
       name: '邪念',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '邪念',

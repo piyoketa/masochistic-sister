@@ -21,6 +21,7 @@ export class BarrierState extends BuffState {
     super({
       id: 'state-barrier',
       name: 'バリア',
+      stackable: true,
       magnitude,
     })
   }

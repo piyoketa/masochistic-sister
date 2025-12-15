@@ -1,8 +1,11 @@
 import type { EnemyActionHint } from '@/types/battle'
 
-function formatStateText(prefixIcon: string, name: string, magnitude?: number): string {
-  const magnitudeText = magnitude !== undefined ? `(${magnitude})` : ''
-  return `${prefixIcon}${name}${magnitudeText}`
+function formatStateText(
+  prefixIcon: string,
+  params: { name: string; stackable: boolean; magnitude?: number },
+): string {
+  const magnitudeText = params.stackable ? `(${params.magnitude ?? 0}点)` : ''
+  return `${prefixIcon}${params.name}${magnitudeText}`
 }
 
 export interface FormattedEnemyActionLabel {
@@ -92,10 +95,16 @@ export function formatEnemyActionLabel(
     const status = action.status
     if (status) {
       segments.push({ text: '+' })
-      segments.push({
-        text: formatStateText('', status.name, status.magnitude),
+      const statusSegment: (typeof segments)[number] = {
+        text: formatStateText('', {
+          name: status.name,
+          stackable: status.stackable,
+          magnitude: status.magnitude,
+        }),
         iconPath: status.iconPath,
-      })
+        tooltip: status.description,
+      }
+      segments.push(statusSegment)
     }
     const effectTags =
       action.cardInfo && 'effectTags' in action.cardInfo && Array.isArray(action.cardInfo.effectTags)
@@ -105,7 +114,7 @@ export function formatEnemyActionLabel(
       effectTags.forEach((tag, index) => {
         segments.push({ text: index === 0 && !status ? '+' : ' ' })
         segments.push({
-          text: formatStateText('', tag.label),
+          text: formatStateText('', { name: tag.label, stackable: false }),
           iconPath: tag.iconPath,
           tooltip: tag.description,
         })
@@ -123,10 +132,16 @@ export function formatEnemyActionLabel(
       if (includeTitle) {
         segments.push({ text: `${action.title}：` })
       }
-      segments.push({
-        text: formatStateText('', state.name, state.magnitude),
+      const stateSegment: (typeof segments)[number] = {
+        text: formatStateText('', {
+          name: state.name,
+          stackable: state.stackable,
+          magnitude: state.magnitude,
+        }),
         iconPath: state.iconPath,
-      })
+        tooltip: state.description,
+      }
+      segments.push(stateSegment)
       const effectTags =
         action.cardInfo && 'effectTags' in action.cardInfo && Array.isArray(action.cardInfo.effectTags)
           ? action.cardInfo.effectTags
@@ -135,7 +150,7 @@ export function formatEnemyActionLabel(
         effectTags.forEach((tag) => {
           segments.push({ text: '+' })
           segments.push({
-            text: formatStateText('', tag.label),
+            text: formatStateText('', { name: tag.label, stackable: false }),
             iconPath: tag.iconPath,
             tooltip: tag.description,
           })

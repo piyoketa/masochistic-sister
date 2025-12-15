@@ -15,6 +15,7 @@ export class MiasmaState extends BadState {
     super({
       id: 'state-miasma',
       name: '瘴気',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '瘴気',

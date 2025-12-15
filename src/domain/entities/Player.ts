@@ -299,19 +299,27 @@ export class Player {
    * State配列をid単位でマージし、magnitudeを合算する。
    */
   private aggregateStates(states: State[]): State[] {
-    const aggregates = new Map<string, { state: State; total: number }>()
+    const aggregates = new Map<string, { state: State; total: number | null; stackable: boolean }>()
 
     for (const state of states) {
       const entry = aggregates.get(state.id)
+      const stackable = typeof state.isStackable === 'function' ? state.isStackable() : true
+      if (!stackable) {
+        if (!entry) {
+          aggregates.set(state.id, { state: cloneState(state), total: null, stackable })
+        }
+        continue
+      }
       const magnitude = state.magnitude ?? 0
 
       if (entry) {
-        entry.total += magnitude
-        setStateMagnitude(entry.state, entry.total)
+        const nextTotal = (entry.total ?? 0) + magnitude
+        entry.total = nextTotal
+        setStateMagnitude(entry.state, nextTotal)
       } else {
         const clone = cloneState(state)
         setStateMagnitude(clone, magnitude)
-        aggregates.set(state.id, { state: clone, total: magnitude })
+        aggregates.set(state.id, { state: clone, total: magnitude, stackable })
       }
     }
 
@@ -352,6 +360,9 @@ function cloneState(state: State): State {
 }
 
 function setStateMagnitude(state: State, magnitude: number): void {
+  if (typeof state.isStackable === 'function' && !state.isStackable()) {
+    return
+  }
   ;((state as unknown as { props: { magnitude?: number } }).props).magnitude = magnitude
 }
 
