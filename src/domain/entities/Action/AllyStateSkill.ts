@@ -97,7 +97,8 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
 
     const weighted = candidates
       .map((ally) => {
-        const weight = ally.getAllyBuffWeight(this.affinityKey) || 1
+        // 明示的に0を指定した場合は候補外扱いにするため、未指定(null/undefined)のみ1をデフォルトとする。
+        const weight = ally.getAllyBuffWeight(this.affinityKey) ?? 1
         return { ally, weight }
       })
       .filter(({ weight }) => weight > 0)

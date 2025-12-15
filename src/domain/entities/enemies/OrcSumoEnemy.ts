@@ -25,6 +25,8 @@ export class OrcSumoEnemy extends Enemy {
       currentHp: 40,
       actions: [flurry, new FattenAction(), new BattleDanceAction()],
       states: [new HeavyweightState()],
+      // 追い風の対象になれるよう、加速向き・多段攻撃タグを付与する。
+      allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 100 },
       image: '/assets/enemies/orc.jpg',
       actionQueueFactory: () => new ConditionalOrcSumoQueue(),
