@@ -34,6 +34,12 @@ export interface PlanAllyTargetSkill {
 }
 
 export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkill {
+  // 味方バフのターゲット抽選をデバッグするためのフラグ。env.VITE_DEBUG_ALLY_BUFF_PLAN=true で有効化。
+  private static readonly DEBUG_ALLY_BUFF_PLAN =
+    (typeof import.meta !== 'undefined' &&
+      (import.meta as any).env?.VITE_DEBUG_ALLY_BUFF_PLAN === 'true') ||
+    (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ALLY_BUFF_PLAN === 'true')
+
   private readonly requiredTags: string[]
   private readonly affinityKeyValue: string
   private plannedTargetId?: number
@@ -90,8 +96,34 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
           this.requiredTags.every((tag) => ally.hasAllyTag(tag)),
       )
 
+    if (AllyStateSkill.DEBUG_ALLY_BUFF_PLAN) {
+      // 調査用に候補と重みをロギングする。環境変数で明示的にオンにしない限り出力しない。
+      // eslint-disable-next-line no-console
+      console.info('[AllyStateSkill.planTarget] candidates', {
+        source: { id: source.id, name: source.name },
+        turn: battle.turnPosition?.turn,
+        side: battle.turnPosition?.activeSide,
+        affinityKey: this.affinityKeyValue,
+        requiredTags: [...this.requiredTags],
+        candidates: candidates.map((ally) => ({
+          id: ally.id,
+          name: ally.name,
+          weight: ally.getAllyBuffWeight(this.affinityKeyValue),
+          isActive: ally.isActive(),
+          // タグの有無を配列で確認できるようにする
+          tags: this.requiredTags.map((tag) => ({ tag, has: ally.hasAllyTag(tag) })),
+        })),
+      })
+    }
+
     if (candidates.length === 0) {
       this.setPlannedTarget(undefined)
+      if (AllyStateSkill.DEBUG_ALLY_BUFF_PLAN) {
+        // eslint-disable-next-line no-console
+        console.info('[AllyStateSkill.planTarget] no candidates', {
+          source: { id: source.id, name: source.name },
+        })
+      }
       return false
     }
 
@@ -103,8 +135,28 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
       })
       .filter(({ weight }) => weight > 0)
 
+    if (AllyStateSkill.DEBUG_ALLY_BUFF_PLAN) {
+      // eslint-disable-next-line no-console
+      console.info('[AllyStateSkill.planTarget] weighted', {
+        source: { id: source.id, name: source.name },
+        turn: battle.turnPosition?.turn,
+        side: battle.turnPosition?.activeSide,
+        weighted: weighted.map(({ ally, weight }) => ({
+          id: ally.id,
+          name: ally.name,
+          weight,
+        })),
+      })
+    }
+
     if (weighted.length === 0) {
       this.setPlannedTarget(undefined)
+      if (AllyStateSkill.DEBUG_ALLY_BUFF_PLAN) {
+        // eslint-disable-next-line no-console
+        console.info('[AllyStateSkill.planTarget] weights filtered out', {
+          source: { id: source.id, name: source.name },
+        })
+      }
       return false
     }
 
@@ -114,12 +166,33 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
       threshold -= entry.weight
       if (threshold <= 0) {
         this.setPlannedTarget(entry.ally.id)
-        return true
+      if (AllyStateSkill.DEBUG_ALLY_BUFF_PLAN) {
+        // eslint-disable-next-line no-console
+        console.info('[AllyStateSkill.planTarget] selected', {
+          source: { id: source.id, name: source.name },
+          target: { id: entry.ally.id, name: entry.ally.name },
+          turn: battle.turnPosition?.turn,
+          side: battle.turnPosition?.activeSide,
+          totalWeight: total,
+          pickedWeight: entry.weight,
+        })
+      }
+      return true
       }
     }
 
     const last = weighted[weighted.length - 1]
     this.setPlannedTarget(last?.ally.id)
+    if (AllyStateSkill.DEBUG_ALLY_BUFF_PLAN) {
+      // eslint-disable-next-line no-console
+      console.info('[AllyStateSkill.planTarget] fallback-selected', {
+        source: { id: source.id, name: source.name },
+        target: last ? { id: last.ally.id, name: last.ally.name } : undefined,
+        turn: battle.turnPosition?.turn,
+        side: battle.turnPosition?.activeSide,
+        totalWeight: total,
+      })
+    }
     return Boolean(last)
   }
 

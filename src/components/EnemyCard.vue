@@ -11,11 +11,9 @@
 import { computed, nextTick, ref } from 'vue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { EnemyInfo, EnemySkill, StateSnapshot } from '@/types/battle'
-import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import DamageEffects from '@/components/DamageEffects.vue'
 import EnemyStateChip from '@/components/EnemyStateChip.vue'
-import EnemyActionChip from '@/components/EnemyActionChip.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
@@ -88,54 +86,6 @@ const selectionStyleVars = computed(() => {
 })
 
 const displayName = computed(() => props.enemy.name.replace('（短剣）', '')) // TODO: 削除
-
-const formattedActions = computed<ActionChipEntry[]>(() => {
-  const next = props.enemy.nextActions ?? []
-  if (next.length > 0) {
-    return next.map((action, index) => {
-      const formatted = formatEnemyActionLabel(action, { includeTitle: false })
-      const tooltips: Partial<Record<number, string>> = {}
-      const addTooltipIfPossible = (segmentIndex: number | undefined, text?: string) => {
-        if (segmentIndex === undefined || segmentIndex < 0 || !text) {
-          return
-        }
-        tooltips[segmentIndex] = text
-      }
-
-      // セグメント自身が tooltip を持つ場合はそのまま登録する
-      formatted.segments.forEach((segment, idx) => {
-        if (segment.tooltip) {
-          tooltips[idx] = segment.tooltip
-        }
-      })
-
-      return {
-        key: `${action.title}-${index}`,
-        icon: action.icon ?? '',
-        label: formatted.label,
-        segments: formatted.segments,
-        description: '',
-        tooltips,
-        tooltipKey: `enemy-action-${props.enemy.id}-${index}`,
-        disabled: Boolean(action.acted),
-        cardInfo: action.cardInfo,
-      }
-    })
-  }
-
-  return [
-    {
-      key: `enemy-action-placeholder-${props.enemy.id}`,
-      icon: '',
-      label: '-',
-      segments: [{ text: '-' }],
-      description: '',
-      tooltips: {},
-      tooltipKey: `enemy-action-placeholder-${props.enemy.id}`,
-      disabled: false,
-    },
-  ]
-})
 
 const traitChips = computed(() =>
   (props.enemy.states ?? [])
@@ -252,20 +202,6 @@ defineExpose({ playDamage, playEnemySound })
         />
       </div>
     </header>
-
-    <section v-if="formattedActions.length" class="enemy-card__section">
-      <h5 class="enemy-card__label">Next Action</h5>
-      <ul class="enemy-card__list enemy-card__list--chips">
-        <EnemyActionChip
-          v-for="action in formattedActions"
-          :key="action.key"
-          :action="action"
-          @enter="({ event, text, key }) => showTooltip(event, text, key)"
-          @move="({ event, text, key }) => updateTooltipPosition(event, key, text)"
-          @leave="({ key }) => hideTooltip(key)"
-        />
-      </ul>
-    </section>
 
     <section v-if="traitChips.length" class="enemy-card__section enemy-card__section--traits">
       <h5 class="enemy-card__label">Traits</h5>

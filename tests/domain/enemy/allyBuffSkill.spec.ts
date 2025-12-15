@@ -257,4 +257,19 @@ describe('AllyBuffSkill / TailwindAction', () => {
     expect(counts.tentacle).toBe(0)
     expect(counts.undefined).toBe(0)
   })
+
+  it('OrcSumoSquad構成で追い風を実行すると力士に加速が付与される', () => {
+    const { battle, kamaitachi, orcSumo } = createOrcSumoSquadBattleForTailwindTest()
+
+    planNextActions(battle)
+    const plannedTailwind = kamaitachi.queuedActions[0] as TailwindAction
+    expect(plannedTailwind.getPlannedTarget()).toBe(orcSumo.id)
+
+    // ターン管理は省略し、計画済みターゲットがそのまま使われることだけを検証するため直接 act を呼ぶ。
+    kamaitachi.act(battle)
+
+    const acceleration = orcSumo.states.filter((state) => state instanceof AccelerationState)
+    expect(acceleration.length).toBeGreaterThan(0)
+    expect((acceleration[0] as AccelerationState).magnitude).toBeGreaterThanOrEqual(1)
+  })
 })
