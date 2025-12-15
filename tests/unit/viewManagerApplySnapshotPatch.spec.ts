@@ -97,7 +97,7 @@ describe('ViewManager.applySnapshotPatch', () => {
   it('Stateインスタンスを保持しつつ、未変更の参照を共有する', () => {
     class DummyState extends State {
       constructor(id: string) {
-        super({ id, name: `状態-${id}` })
+        super({ id, name: `状態-${id}`, stackable: false })
         ;(this as unknown as { category: string }).category = 'buff'
       }
       override getCategory(): import('@/types/battle').StateCategory {
