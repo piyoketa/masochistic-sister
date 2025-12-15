@@ -1,4 +1,5 @@
 // 自動生成: do not edit manually. Update via LOG_BATTLE_SAMPLE*_SUMMARY pipeline.
+// @ts-nocheck
 import type { ActionLogEntrySummary } from '../integration/utils/battleLogTestUtils'
 
 // バトル開始：初期手札と敵HPを描画
