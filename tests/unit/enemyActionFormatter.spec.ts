@@ -3,17 +3,46 @@ import { describe, it, expect } from 'vitest'
 import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import type { EnemyActionHint } from '@/types/battle'
 
-const baseHint = (overrides: Partial<EnemyActionHint>): EnemyActionHint => ({
+const normalizeStatePreview = (
+  state?: EnemyActionHint['status'] | EnemyActionHint['selfState'],
+): EnemyActionHint['status'] | EnemyActionHint['selfState'] | undefined => {
+  if (!state) return undefined
+  const stackable = (state as { stackable?: boolean }).stackable ?? true
+  if (stackable) {
+    return {
+      name: state.name,
+      description: state.description,
+      iconPath: state.iconPath,
+      stackable: true,
+      magnitude: state.magnitude ?? 0,
+    }
+  }
+  return {
+    name: state.name,
+    description: state.description,
+    iconPath: state.iconPath,
+    stackable: false,
+    magnitude: undefined,
+  }
+}
+
+const baseHint = (
+  overrides: Partial<Omit<EnemyActionHint, 'status' | 'selfState'>> & {
+    status?: EnemyActionHint['status'] | EnemyActionHint['selfState']
+    selfState?: EnemyActionHint['status'] | EnemyActionHint['selfState']
+  },
+): EnemyActionHint => ({
   title: overrides.title ?? 'unknown',
   type: overrides.type ?? 'skill',
   description: overrides.description,
   targetName: overrides.targetName,
   pattern: overrides.pattern,
   calculatedPattern: overrides.calculatedPattern,
-  status: overrides.status,
-  selfState: overrides.selfState,
+  status: normalizeStatePreview(overrides.status) as EnemyActionHint['status'] | undefined,
+  selfState: normalizeStatePreview(overrides.selfState) as EnemyActionHint['selfState'] | undefined,
   acted: overrides.acted,
   icon: overrides.icon,
+  cardInfo: overrides.cardInfo,
 })
 
 describe('formatEnemyActionLabel', () => {
@@ -42,13 +71,40 @@ describe('formatEnemyActionLabel', () => {
         status: { name: '腐食', magnitude: 1, iconPath: '/assets/icons/debuff.png' },
       }),
     )
-    expect(label).toBe('溶かす: 💥5+腐食(1)')
+    expect(label).toBe('溶かす: 💥5+腐食(1点)')
     expect(segments).toEqual([
       { text: '溶かす: ', showOverlay: true },
       { text: '💥', showOverlay: true },
       { text: '5', highlighted: false, change: undefined, showOverlay: true },
       { text: '+' },
-      { text: '腐食(1)', iconPath: '/assets/icons/debuff.png' },
+      { text: '腐食(1点)', iconPath: '/assets/icons/debuff.png' },
+    ])
+  })
+
+  it('状態異常の説明を tooltip に含める', () => {
+    const { segments } = formatEnemyActionLabel(
+      baseHint({
+        title: '溶かす',
+        type: 'attack',
+        pattern: { amount: 5, count: 1, type: 'single' },
+        status: {
+          name: '腐食',
+          magnitude: 1,
+          iconPath: '/assets/icons/debuff.png',
+          description: '受ける物理ダメージが増加する',
+        },
+      }),
+    )
+    expect(segments).toEqual([
+      { text: '溶かす: ', showOverlay: true },
+      { text: '💥', showOverlay: true },
+      { text: '5', highlighted: false, change: undefined, showOverlay: true },
+      { text: '+' },
+      {
+        text: '腐食(1点)',
+        iconPath: '/assets/icons/debuff.png',
+        tooltip: '受ける物理ダメージが増加する',
+      },
     ])
   })
 
@@ -77,17 +133,17 @@ describe('formatEnemyActionLabel', () => {
         selfState: { name: '筋肉強化', magnitude: 10, iconPath: '/assets/icons/buff.png' },
       }),
     )
-    expect(label).toBe('ビルドアップ：筋肉強化(10)')
+    expect(label).toBe('ビルドアップ：筋肉強化(10点)')
     expect(segments).toEqual([
       { text: 'ビルドアップ：' },
-      { text: '筋肉強化(10)', iconPath: '/assets/icons/buff.png' },
+      { text: '筋肉強化(10点)', iconPath: '/assets/icons/buff.png' },
     ])
   })
 
   it('formats skip action', () => {
     const { label, segments } = formatEnemyActionLabel(baseHint({ title: '足止め', type: 'skip' }))
-    expect(label).toBe('⛓行動不可')
-    expect(segments).toEqual([{ text: '⛓行動不可' }])
+    expect(label).toBe('行動不可')
+    expect(segments).toEqual([{ text: '行動不可', iconPath: '/assets/icons/skip.png' }])
   })
 
   it('formats other skills with sparkle', () => {

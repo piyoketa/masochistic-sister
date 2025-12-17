@@ -11,6 +11,7 @@ import { MemorySaintRelic } from './MemorySaintRelic'
 import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
 import { RepulsionRelic } from './RepulsionRelic'
 import { DeathMatchRelic } from './DeathMatchRelic'
+import { DevilsKissRelic } from './DevilsKissRelic'
 import type { Relic, RelicUsageType } from './Relic'
 
 export type RelicInfo = {
@@ -36,6 +37,7 @@ const RELIC_FACTORIES: Record<string, () => Relic> = {
   ThoroughPreparationRelic: () => new ThoroughPreparationRelic(),
   RepulsionRelic: () => new RepulsionRelic(),
   DeathMatchRelic: () => new DeathMatchRelic(),
+  DevilsKissRelic: () => new DevilsKissRelic(),
 }
 
 export function listRelicClassNames(): string[] {

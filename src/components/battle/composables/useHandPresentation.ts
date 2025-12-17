@@ -5,7 +5,7 @@ import { Attack } from '@/domain/entities/Action'
 import { Damages } from '@/domain/entities/Damages'
 import type { Enemy } from '@/domain/entities/Enemy'
 import type { ViewManager } from '@/view/ViewManager'
-import type { CardTag } from '@/domain/entities/CardTag'
+import { CardDestinationTag, type CardTag } from '@/domain/entities/CardTag'
 import type { CardInfo, CardTagInfo, AttackStyle, DescriptionSegment } from '@/types/battle'
 import type { OperationContext } from '@/domain/entities/operations'
 import { resolveIsActive } from '@/utils/cardInfoBuilder'
@@ -107,6 +107,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
   const definition = card.definition
   const primaryTags: CardTagInfo[] = []
   const effectTags: CardTagInfo[] = []
+  const destinationTags: CardTagInfo[] = []
   const categoryTags: CardTagInfo[] = []
   const seenTagIds = new Set<string>()
   const subtitle = resolveSubtitle(card)
@@ -132,7 +133,11 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
       addTagEntry(definition.target, primaryTags, seenTagIds, (tag) => tag.name)
     }
   }
-  addTagEntries(effectTags, card.effectTags)
+  const rawEffectTags = card.effectTags ?? []
+  const destTags = rawEffectTags.filter((tag) => tag instanceof CardDestinationTag)
+  const nonDestTags = rawEffectTags.filter((tag) => !(tag instanceof CardDestinationTag))
+  addTagEntries(destinationTags, destTags)
+  addTagEntries(effectTags, nonDestTags)
   addTagEntries(categoryTags, card.categoryTags, (tag) => tag.name)
 
   const action = card.action
@@ -262,6 +267,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
         damageAmountReduced,
         damageCountReduced,
         effectTags,
+        destinationTags: destinationTags.length ? destinationTags : undefined,
         descriptionSegments,
         damageAmountBoosted,
         damageCountBoosted,
@@ -274,6 +280,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
       damageAmount: safeDamageAmount,
       damageAmountReduced,
       effectTags,
+      destinationTags: destinationTags.length ? destinationTags : undefined,
       descriptionSegments,
       damageAmountBoosted,
     }
@@ -285,6 +292,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
       type: 'skill',
       description,
       effectTags: effectTags.length ? effectTags : undefined,
+      destinationTags: destinationTags.length ? destinationTags : undefined,
     }
   }
 
@@ -294,6 +302,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
       type: 'status',
       description,
       effectTags: effectTags.length ? effectTags : undefined,
+      destinationTags: destinationTags.length ? destinationTags : undefined,
     }
   }
 

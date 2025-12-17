@@ -6,29 +6,13 @@ EnemyActionChip
 -->
 <script setup lang="ts">
 import { useActionCardOverlay } from '@/composables/actionCardOverlay'
+import { useImageHub } from '@/composables/imageHub'
 
-interface SegmentEntry {
-  text: string
-  highlighted?: boolean
-  change?: 'up' | 'down'
-  showOverlay?: boolean
-  iconPath?: string
-}
-
-interface ActionChipEntry {
-  key: string
-  icon: string
-  segments: SegmentEntry[]
-  label: string
-  description: string
-  tooltips: Partial<Record<number, string>>
-  tooltipKey: string
-  disabled: boolean
-  cardInfo?: import('@/types/battle').CardInfo
-}
+import type { EnemyActionChipViewModel, EnemyActionChipSegment } from '@/types/enemyActionChip'
+import { formatEnemyActionChipsForView, type EssentialEnemyActionHint } from '@/view/enemyActionHintsForView'
 
 const props = defineProps<{
-  action: ActionChipEntry
+  action: EssentialEnemyActionHint
 }>()
 
 const SINGLE_ATTACK_ICON_SRC = '/assets/icons/single_attack.png'
@@ -48,42 +32,58 @@ const emit = defineEmits<{
   (event: 'leave', payload: { key: string }): void
 }>()
 
+const chip = computed<EnemyActionChipViewModel>(() => {
+  if ('segments' in props.action) {
+    return props.action as EnemyActionChipViewModel
+  }
+  const vm = formatEnemyActionChipsForView(0, [props.action as EssentialEnemyActionHint], { includeTitle: false })[0]
+  return vm
+})
+
 const actionOverlay = useActionCardOverlay()
+const imageHub = useImageHub()
+
+function resolveIconSrc(path?: string): string | undefined {
+  if (!path) return undefined
+  // ImageHub経由で正規化＋キャッシュ済みのImageを確保しておき、毎回生パスを直参照しない。
+  imageHub.getElement(path)
+  return imageHub.getSrc(path)
+}
 
 function handleEnter(segmentIndex: number, event: MouseEvent): void {
-  const segment = props.action.segments[segmentIndex]
-  if (segment?.showOverlay && props.action.cardInfo) {
-    actionOverlay.show(props.action.cardInfo, { x: event.clientX, y: event.clientY })
+  const segment = chip.value.segments[segmentIndex]
+  if (segment?.showOverlay && chip.value.cardInfo) {
+    actionOverlay.show(chip.value.cardInfo, { x: event.clientX, y: event.clientY })
     return
   }
-  emit('enter', { event, text: props.action.tooltips[segmentIndex], key: props.action.tooltipKey })
+  emit('enter', { event, text: segment.tooltip, key: chip.value.key })
 }
 
 function handleMove(segmentIndex: number, event: MouseEvent): void {
-  const segment = props.action.segments[segmentIndex]
-  if (segment?.showOverlay && props.action.cardInfo) {
+  const segment = chip.value.segments[segmentIndex]
+  if (segment?.showOverlay && chip.value.cardInfo) {
     actionOverlay.updatePosition({ x: event.clientX, y: event.clientY })
     return
   }
-  emit('move', { event, text: props.action.tooltips[segmentIndex], key: props.action.tooltipKey })
+  emit('move', { event, text: segment.tooltip, key: chip.value.key })
 }
 
 function handleLeave(): void {
   actionOverlay.hide()
-  emit('leave', { key: props.action.tooltipKey })
+  emit('leave', { key: chip.value.key })
 }
 </script>
 
 <template>
   <li
     class="enemy-card__chip"
-    :class="{ 'enemy-card__chip--disabled': props.action.disabled }"
+    :class="{ 'enemy-card__chip--disabled': chip.disabled }"
     @mouseleave="handleLeave"
   >
-    <span v-if="props.action.icon" class="enemy-card__chip-icon">{{ props.action.icon }}</span>
+    <span v-if="chip.icon" class="enemy-card__chip-icon">{{ chip.icon }}</span>
     <span class="enemy-card__chip-text">
       <span
-        v-for="(segment, segmentIndex) in props.action.segments"
+        v-for="(segment, segmentIndex) in chip.segments"
         :key="segmentIndex"
         :class="{
           'value--boosted': segment.change === 'up',
@@ -94,9 +94,9 @@ function handleLeave(): void {
         @mousemove="(event) => handleMove(segmentIndex, event)"
         @mouseleave="handleLeave"
       >
-        <template v-if="segment.iconPath">
+        <template v-if="resolveIconSrc(segment.iconPath)">
           <v-icon class="effect-icon" size="14">
-            <img :src="segment.iconPath" alt="効果" />
+            <img :src="resolveIconSrc(segment.iconPath)" alt="効果" />
           </v-icon>
           <span class="effect-text">{{ segment.text }}</span>
         </template>

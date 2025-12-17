@@ -20,6 +20,7 @@ import {
   createStage2Battle,
   createStage3Battle,
   createStage4Battle,
+  createTutorialBattle,
 } from '@/domain/battle/battlePresets'
 import { Deck } from '@/domain/battle/Deck'
 import { Hand } from '@/domain/battle/Hand'
@@ -34,6 +35,7 @@ import {
   buildEnemyTeamFactoryMap,
   SnailTeam,
 } from '@/domain/entities/enemyTeams'
+import { useEnemyActionHints } from '@/components/battle/useEnemyActionHints'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
@@ -51,6 +53,7 @@ import { createImageHub, provideImageHub } from '@/composables/imageHub'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
 import PileChoiceOverlay from '@/components/battle/PileChoiceOverlay.vue'
 import type { CardInfo } from '@/types/battle'
+import type { EnemyActionHint } from '@/types/battle'
 import type { Card } from '@/domain/entities/Card'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
@@ -71,6 +74,7 @@ type BattlePresetKey =
   | 'stage2'
   | 'stage3'
   | 'stage4'
+  | 'tutorial'
 
 type BattleViewProps = { viewManager?: ViewManager; preset?: BattlePresetKey; teamId?: string }
 
@@ -110,6 +114,11 @@ const canPlayerAct = computed(() => isPlayerTurn.value && !isInputLocked.value)
 const enemySelectionRequest = ref<EnemySelectionRequest | null>(null)
 const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
+const { enemyActionHintsById } = useEnemyActionHints({
+  battleGetter: () => viewManager.battle,
+  snapshot,
+  planUpdateToken: computed(() => managerState.planUpdateToken),
+})
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
 const pileChoiceState = reactive<{
@@ -150,6 +159,8 @@ provideImageHub(imageHub)
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
+// HP周りの調査ログは騒がしいため、環境変数で明示的に有効化した場合のみ出力する
+const playerHpDebugLoggingEnabled = import.meta.env.VITE_DEBUG_PLAYER_HP_LOG === 'true'
 
 
 let battleAssetPreloadPromise: Promise<void> | null = null
@@ -243,33 +254,60 @@ const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
 }))
+
+const playerPreHpForCard = computed(() => {
+  const pre = previousSnapshot.value?.player
+    ? { current: previousSnapshot.value.player.currentHp, max: previousSnapshot.value.player.maxHp }
+    : { current: playerHpGauge.value.current, max: playerHpGauge.value.max }
+  // 調査用ログ: PlayerCard に渡す preHp
+  if (playerHpDebugLoggingEnabled) {
+    // eslint-disable-next-line no-console
+    console.debug('[BattleView] playerPreHpForCard', pre, {
+      prevTurn: previousSnapshot.value?.turnPosition?.turn,
+      prevSide: previousSnapshot.value?.turnPosition?.side,
+      curTurn: snapshot.value?.turnPosition?.turn,
+      curSide: snapshot.value?.turnPosition?.side,
+    })
+  }
+  return pre
+})
+const playerPostHpForCard = computed(() => {
+  const post = { current: playerHpGauge.value.current, max: playerHpGauge.value.max }
+  if (playerHpDebugLoggingEnabled) {
+    // eslint-disable-next-line no-console
+    console.debug('[BattleView] playerPostHpForCard', post, {
+      turn: snapshot.value?.turnPosition?.turn,
+      side: snapshot.value?.turnPosition?.side,
+    })
+  }
+  return post
+})
+watch(
+  () => playerHpGauge.value,
+  (next) => {
+    // 調査用ログ: UI が参照する現在HP
+    if (playerHpDebugLoggingEnabled) {
+      // eslint-disable-next-line no-console
+      console.debug('[BattleView] playerHpGauge', next, {
+        turn: snapshot.value?.turnPosition?.turn,
+        side: snapshot.value?.turnPosition?.side,
+      })
+    }
+  },
+  { deep: true },
+)
 const projectedPlayerHp = computed(() => {
-  if (!snapshot.value || !isPlayerTurn.value) {
-    return null
+  const predicted = snapshot.value?.player.predictedPlayerHpAfterEndTurn
+  // 調査用ログ: スナップショットから取得できている予測値を確認
+  if (playerHpDebugLoggingEnabled) {
+    // eslint-disable-next-line no-console
+    console.debug('predictedPlayerHpAfterEndTurn (snapshot)', {
+      predicted,
+      turn: snapshot.value?.turnPosition?.turn,
+      side: snapshot.value?.turnPosition?.side,
+    })
   }
-  const currentHp = snapshot.value.player.currentHp ?? 0
-  const enemies = snapshot.value.enemies ?? []
-  let total = 0
-  for (const enemy of enemies) {
-    // 撃破済み・行動済みの敵は予測に含めない
-    if (enemy.status !== 'active' || enemy.currentHp <= 0 || enemy.hasActedThisTurn) {
-      continue
-    }
-    const actions = enemy.nextActions ?? []
-    for (const action of actions) {
-      if (action.type !== 'attack') {
-        continue
-      }
-      const pattern = action.calculatedPattern ?? action.pattern
-      if (!pattern) {
-        continue
-      }
-      const amount = typeof pattern.amount === 'number' ? pattern.amount : 0
-      const count = typeof pattern.count === 'number' ? pattern.count : 1
-      total += amount * count
-    }
-  }
-  return Math.max(0, currentHp - total)
+  return typeof predicted === 'number' ? predicted : null
 })
 // 手札で State カードとして表示されるものと重複しないよう、表示用IDとチップ用スナップショットを分離する。
 const playerStates = computed(() =>
@@ -359,7 +397,9 @@ watch(
 // TODO: ドメイン層へ移し、ビュー側に条件判定を残さない
 const battleStatus = computed(() => snapshot.value?.status ?? 'in-progress')
 const isGameOver = computed(() => battleStatus.value === 'gameover')
-const isVictory = computed(() => battleStatus.value === 'victory')
+// victory Overlay はステージイベントに合わせて表示する。スナップショットの勝利判定とは分離。
+const hasVictoryStage = computed(() => latestStageEvent.value?.metadata?.stage === 'victory')
+const isVictory = computed(() => battleStatus.value === 'victory' && hasVictoryStage.value)
 const canRetry = computed(() => {
   void managerState.snapshot
   return viewManager.canRetry()
@@ -368,6 +408,20 @@ const canUndo = computed(() => {
   void managerState.actionLogLength
   return viewManager.hasUndoableAction()
 })
+// デバッグ用: 即勝利して報酬へ遷移する
+async function handleForceVictory(): Promise<void> {
+  if (!viewManager.battle) return
+  const reward = new BattleReward(viewManager.battle).compute()
+  rewardStore.setReward({
+    battleId: viewManager.battle.id,
+    hpHeal: reward.hpHeal,
+    goldGain: reward.goldGain,
+    defeatedCount: reward.defeatedCount,
+    cards: reward.cards,
+  })
+  rewardPrepared.value = true
+  await router.push('/reward')
+}
 
 function requestEnemyTarget(theme: EnemySelectionTheme): Promise<number> {
   if (enemySelectionRequest.value) {
@@ -782,6 +836,7 @@ function resetUiStateAfterTimelineChange(): void {
   playerDamageOutcomes.value = []
   currentAnimationId.value = null
   resetErrorMessage()
+  previousSnapshot.value = null
   viewResetToken.value += 1
 }
 
@@ -827,6 +882,8 @@ function resolveBattleFactory(
       return createTestCaseBattle
     case 'testcase2':
       return createTestCaseBattle2
+    case 'tutorial':
+      return createTutorialBattle
     case 'stage2':
       return createStage2Battle
     case 'stage3':
@@ -890,12 +947,8 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   <MainGameLayout
     ref="mainLayoutRef"
     :player-card-key="`player-card-${viewResetToken}`"
-    :player-pre-hp="
-      previousSnapshot?.player
-        ? { current: previousSnapshot.player.currentHp, max: previousSnapshot.player.maxHp }
-        : { current: playerHpGauge.current, max: playerHpGauge.max }
-    "
-    :player-post-hp="{ current: playerHpGauge.current, max: playerHpGauge.max }"
+    :player-pre-hp="playerPreHpForCard"
+    :player-post-hp="playerPostHpForCard"
     :player-outcomes="playerDamageOutcomes"
     :player-selection-theme="enemySelectionTheme"
     :player-states="playerStates"
@@ -939,17 +992,31 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
       </button>
     </template>
     <template #instructions>
-      <h2>次フェーズの指針</h2>
-      <ol>
-        <li>敵の攻撃記録カードをデッキへ追加し、挙動を検証する</li>
-        <li>プレイヤー行動のターン進行と、ステータス更新順序を整理する</li>
-        <li>演出・SEのタイミングを試し、緊張感を高められるか確認する</li>
-      </ol>
+      コンセプト
+      Slay The Spire 風のカードバトルです。
+      プレイヤー「記憶の聖女」は、敵から受けた「被虐の記憶」をカードとして使用できます。
+      敵の攻撃と状態異常を上手く活用し、生きて最深部まで辿り着きましょう！
+
+      操作
+      ・左クリック：選択
+      ・右クリック：キャンセル
+
+      状態異常
+      ・手札の「状態異常」カードは、使用することで治癒できます
+      ・腐食／粘液などの状態異常は累積します
+
+      マナ
+      ・黄色の円で示されるのが現在のマナです。
+      ・カードの左上がマナコストです。マナを消費してカードを使用できます。
+
+      戦闘報酬
+      ・一回の戦闘が終了すると、HPが50回復し、今回の戦闘で獲得した記憶から１枚をデッキに入れられます
     </template>
 
     <main class="battle-main">
       <BattleEnemyArea
         :key="`enemy-area-${viewResetToken}`"
+        :battle="viewManager.battle"
         :snapshot="snapshot"
         :is-initializing="isInitializing"
         :stage-event="latestStageEvent"
@@ -957,6 +1024,7 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         :hovered-enemy-id="hoveredEnemyId"
         :selection-hints="enemySelectionHints"
         :selection-theme="enemySelectionTheme"
+        :action-hints-by-enemy-id="enemyActionHintsById"
         @hover-start="handleEnemyHoverStart"
         @hover-end="handleEnemyHoverEnd"
         @enemy-click="(enemy) => handleEnemySelected(enemy.id)"
@@ -1029,6 +1097,14 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         </button>
       </div>
     </transition>
+    <div class="debug-menu">
+      <details>
+        <summary>デバッグメニュー</summary>
+        <button type="button" class="debug-button" @click="handleForceVictory">
+          即勝利して報酬へ
+        </button>
+      </details>
+    </div>
   </MainGameLayout>
 </template>
 
@@ -1489,6 +1565,48 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 .reward-link-button:focus-visible {
   transform: translateY(-1px);
   box-shadow: 0 12px 22px rgba(0, 0, 0, 0.4);
+}
+
+.debug-menu {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 6;
+  font-size: 13px;
+  color: #d7e1ff;
+}
+
+.debug-menu details {
+  background: rgba(20, 22, 35, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.debug-menu summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.debug-button {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, rgba(255, 180, 92, 0.2), rgba(255, 138, 76, 0.15));
+  border: 1px solid rgba(255, 180, 92, 0.5);
+  border-radius: 8px;
+  color: #ffd6a3;
+  font-weight: 600;
+  transition: filter 120ms ease, transform 120ms ease;
+}
+
+.debug-button:hover,
+.debug-button:focus-visible {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 
 .result-overlay-enter-active,

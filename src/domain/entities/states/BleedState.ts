@@ -32,6 +32,7 @@ export class BleedState extends BadState {
     super({
       id: 'state-bleed',
       name: '出血',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '出血',
@@ -62,9 +63,19 @@ export class BleedState extends BadState {
     }
 
     if (context.owner instanceof Enemy) {
-      context.battle.damageEnemy(context.owner, damage)
+      context.battle.damageEnemy(context.owner, {
+        actionId: 'bleed',
+        attacker: null,
+        defender: { type: 'enemy', enemyId: context.owner.id ?? -1 },
+        outcomes: [{ damage, effectType: 'bleed' }],
+      })
     } else {
-      context.battle.damagePlayer(damage)
+      context.battle.damagePlayer({
+        actionId: 'bleed',
+        attacker: null,
+        defender: { type: 'player' },
+        outcomes: [{ damage, effectType: 'bleed' }],
+      })
     }
   }
 

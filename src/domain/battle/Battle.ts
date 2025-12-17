@@ -18,13 +18,22 @@ import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
 import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
-import type { EnemyActionHint, EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
-import { buildEnemyActionHints } from './enemyActionHintBuilder'
+import type { CardId } from '../library/Library'
+import type { EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
 import type { Relic } from '../entities/relics/Relic'
-import { instantiateStateFromSnapshot } from '../entities/states'
+import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
+
+export type BattleTurnSide = 'player' | 'enemy'
+
+export interface BattleTurn {
+  /** 1-based のターン番号（先制行動に 0 を使う余地を残す） */
+  turn: number
+  /** 現在行動中のサイド */
+  side: BattleTurnSide
+}
 
 export interface BattleConfig {
   id: string
@@ -43,11 +52,15 @@ export interface BattleConfig {
 
 export interface BattleSnapshot {
   id: string
+  /** 現在のターン位置。先制行動などに備え turn=0 も許容する。 */
+  turnPosition: BattleTurn
   player: {
     id: string
     name: string
     currentHp: number
     maxHp: number
+    /** プレイヤーターン中に、即「ターン終了」した場合の予測HP。入力待ち時のみ算出する。 */
+    predictedPlayerHpAfterEndTurn?: number
     currentMana: number
     maxMana: number
     relics: Array<{ className: string; active: boolean }>
@@ -63,7 +76,6 @@ export interface BattleSnapshot {
     hasActedThisTurn: boolean
     status: EnemyStatus
     skills: EnemySkill[]
-    nextActions?: EnemyActionHint[]
   }>
   deck: Card[]
   hand: Card[]
@@ -80,11 +92,14 @@ export interface EnemyTurnActionCardGain {
   title: string
 }
 
-export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated' | 'no-target'
+export type EnemyTurnSkipReason = 'already-acted' | 'no-action' | 'defeated' | 'no-target' | 'escaped'
 
 export interface EnemyStateDiff {
   enemyId: number
-  states: Array<{ id: string; magnitude?: number }>
+  states: Array<
+    | { id: string; stackable: true; magnitude: number }
+    | { id: string; stackable: false; magnitude?: undefined }
+  >
 }
 
 interface BaseCardAnimationEvent {
@@ -105,7 +120,7 @@ export interface MemoryCardAnimationEvent extends BaseCardAnimationEvent {
 }
 
 export interface EnemyActAnimationContext {
-  damageEvents: DamageAnimationEvent[]
+  damageEvents: DamageEvent[]
   cardAdditions: EnemyTurnActionCardGain[]
   playerDefeated: boolean
   stateDiffs: EnemyStateDiff[]
@@ -155,11 +170,14 @@ interface QueuedInterruptEnemyAction {
   metadata?: Record<string, unknown>
 }
 
-export interface DamageAnimationEvent {
-  targetId?: number
+export type Actor = { type: 'player' } | { type: 'enemy'; enemyId: number }
+
+export interface DamageEvent {
+  actionId: CardId
+  attacker: Actor | null
+  defender: Actor
   outcomes: DamageOutcome[]
   effectType?: DamageEffectType
-  hitCount?: number
 }
 
 export interface PlayCardAnimationContext {
@@ -177,6 +195,12 @@ export class Battle {
   private readonly handValue: Hand
   private readonly discardPileValue: DiscardPile
   private readonly exilePileValue: ExilePile
+  /** ViewManager などが入力ロックを反映するための簡易フラグ。Snapshot生成時の予測に利用。 */
+  private inputLocked = false
+  /** プレイヤーターンで算出した予測値を敵フェーズ中も保持するためのキャッシュ。 */
+  private cachedPredictedPlayerHpAfterEndTurn: number | undefined
+  /** OperationRunner などが提供する予測計算デリゲート */
+  private predictionDelegate?: () => number | undefined
   private readonly eventsValue: BattleEventQueue
   private readonly logValue: BattleLog
   private readonly turnValue: TurnManager
@@ -190,7 +214,7 @@ export class Battle {
   private statusValue: BattleStatus = 'in-progress'
   private resolvedEventsBuffer: BattleEvent[] = []
   private stateEventBuffer: StateEventLogEntry[] = []
-  private pendingDamageAnimationEvents: DamageAnimationEvent[] = []
+  private pendingDamageAnimationEvents: DamageEvent[] = []
   private pendingCardTrashAnimationEvents: Array<{
     cardIds: number[]
     cardTitles?: string[]
@@ -262,6 +286,22 @@ export class Battle {
 
   get exilePile(): ExilePile {
     return this.exilePileValue
+  }
+
+  /** ViewManager が入力ロック/解除を伝えるための API。Snapshot 時の予測計算に利用。 */
+  setInputLocked(locked: boolean): void {
+    this.inputLocked = locked
+  }
+
+  /**
+   * 現在のターン位置を Battle インスタンスから直接参照したいケース向けの簡易ゲッター。
+   * スナップショットを介さず、最新状態の turn/side を取得する。
+   */
+  get turnPosition(): BattleTurn {
+    return {
+      turn: this.turnValue.current.turnCount,
+      side: this.turnValue.current.activeSide,
+    }
   }
 
   get events(): BattleEventQueue {
@@ -367,7 +407,31 @@ export class Battle {
     return events
   }
 
-  getSnapshot(): BattleSnapshot {
+  /**
+   * 「今すぐターン終了したらプレイヤーHPはいくつ残るか」を予測する。
+   * OperationRunner などから委譲されたデリゲートを用いて、ログ再生込みで計算する。
+   */
+  private predictPlayerHpAfterEndTurn(): number | undefined {
+    if (this.turnValue.current.activeSide === 'enemy') {
+      return this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
+    }
+    if (this.predictionDelegate) {
+      try {
+        const predicted = this.predictionDelegate()
+        if (typeof predicted === 'number') {
+          this.cachedPredictedPlayerHpAfterEndTurn = predicted
+          return predicted
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('[Battle] predictPlayerHpAfterEndTurn via delegate failed', error)
+      }
+    }
+    return undefined
+  }
+
+  getSnapshot(options?: { includePrediction?: boolean }): BattleSnapshot {
+    const includePrediction = options?.includePrediction !== false
     const teamId = this.enemyTeamValue.id
     const relicSnapshots =
       this.relicInstances.map((relic) => {
@@ -380,14 +444,25 @@ export class Battle {
     const handWithRuntime = this.handValue.list().map((card) => this.applyCardRuntime(card))
     const discardWithCost = this.discardPileValue.list()
     const exileWithCost = this.exilePileValue.list()
+    const predictedHp =
+      includePrediction && this.turnValue.current.activeSide === 'player'
+        ? this.predictPlayerHpAfterEndTurn()
+        : includePrediction
+          ? this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
+          : undefined
 
     return {
       id: this.idValue,
+      turnPosition: {
+        turn: this.turnValue.current.turnCount,
+        side: this.turnValue.current.activeSide,
+      },
       player: {
         id: this.playerValue.id,
         name: this.playerValue.name,
         currentHp: this.playerValue.currentHp,
         maxHp: this.playerValue.maxHp,
+        predictedPlayerHpAfterEndTurn: predictedHp,
         currentMana: this.playerValue.currentMana,
         maxMana: this.playerValue.maxMana,
         relics: relicSnapshots,
@@ -412,7 +487,6 @@ export class Battle {
             name: action.name,
             detail: action.describe(),
           })),
-          nextActions: buildEnemyActionHints(this, enemy),
         }
       }),
       deck: deckWithCost,
@@ -432,14 +506,16 @@ export class Battle {
     const importantFromTeam = teamId ? this.isImportantStateForTeam(teamId, state.id) : false
     const description = typeof state.description === 'function' ? state.description() : String((state as any).description ?? '')
     const isImportant = importantFromTeam || (typeof state.isImportant === 'function' ? state.isImportant() : false)
+    const stackable = typeof state.isStackable === 'function' ? state.isStackable() : false
 
     return {
       id: state.id,
       name: state.name,
       description,
-      magnitude: state.magnitude,
       category,
       isImportant,
+      stackable,
+      magnitude: stackable ? state.magnitude ?? 0 : undefined,
     }
   }
 
@@ -456,7 +532,8 @@ export class Battle {
   }
 
   captureFullSnapshot(): FullBattleSnapshot {
-    const base = this.getSnapshot()
+    // 予測値も含めたスナップショットを保持する
+    const base = this.getSnapshot({ includePrediction: true })
     const enemyQueues = this.enemyTeamValue.members.map((enemy) => ({
       enemyId: enemy.id ?? -1,
       queue: enemy.serializeQueueSnapshot(),
@@ -501,11 +578,19 @@ export class Battle {
     return this.relicInstances.some((relic) => relic.id === relicId && relic.isActive({ battle: this, player: this.playerValue }))
   }
 
+  setPredictionDelegate(delegate?: () => number | undefined): void {
+    this.predictionDelegate = delegate
+  }
+
   restoreFullSnapshot(state: FullBattleSnapshot): void {
     const base = state.snapshot
     this.statusValue = base.status
+    this.cachedPredictedPlayerHpAfterEndTurn = base.player.predictedPlayerHpAfterEndTurn
     this.playerValue.setCurrentHp(base.player.currentHp)
     this.playerValue.setCurrentMana(base.player.currentMana)
+    // プレイヤーのステートをスナップショットに合わせて再構築する
+    const revivedPlayerStates = this.reviveStatesStrict(base.player.states, 'player')
+    this.playerValue.replaceBaseStates(revivedPlayerStates)
 
     this.deckValue.replace(base.deck)
     this.handValue.replace(base.hand)
@@ -531,11 +616,7 @@ export class Battle {
       enemy.setCurrentHp(enemySnapshot.currentHp)
       enemy.setStatus(enemySnapshot.status)
       enemy.setHasActedThisTurn(enemySnapshot.hasActedThisTurn)
-      enemy.replaceStates(
-        enemySnapshot.states
-          .map((entry) => instantiateStateFromSnapshot(entry))
-          .filter((entry): entry is State => Boolean(entry)),
-      )
+      enemy.replaceStates(this.reviveStatesStrict(enemySnapshot.states, `enemy:${enemySnapshot.id}`))
       const queueState = state.enemyQueues.find((entry) => entry.enemyId === enemySnapshot.id)
       if (queueState) {
         enemy.restoreQueueSnapshot(queueState.queue)
@@ -544,6 +625,20 @@ export class Battle {
 
     this.resolvedEventsBuffer = []
     this.stateEventBuffer = []
+  }
+
+  private reviveStatesStrict(states: StateSnapshot[] | undefined, context: string): State[] {
+    if (!states) {
+      throw new Error(`[Battle] State snapshots missing for ${context}`)
+    }
+    const revived = states
+      .map((entry) => instantiateStateFromSnapshot(entry))
+      .filter((entry): entry is State => Boolean(entry))
+    if (states.length > 0 && revived.length === 0) {
+      const ids = states.map((entry) => entry.id ?? 'undefined').join(', ')
+      throw new Error(`[Battle] Failed to revive states for ${context}. ids=[${ids}]`)
+    }
+    return revived
   }
 
   initialize(): void {
@@ -661,10 +756,21 @@ export class Battle {
   }
 
   endPlayerTurn(): void {
+    if (this.isDebugEnemyActedLogEnabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[Battle] endPlayerTurn')
+    }
     this.turn.moveToPhase('player-end')
   }
 
   startEnemyTurn(): void {
+    if (this.isDebugEnemyActedLogEnabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[Battle] startEnemyTurn', {
+        turn: this.turnPosition.turn,
+        side: this.turnPosition.activeSide,
+      })
+    }
     this.turn.startEnemyTurn()
     this.enemyTeam.startTurn(this)
   }
@@ -774,6 +880,13 @@ export class Battle {
   }
 
   private executeEnemyTurn(): EnemyTurnSummary {
+    if (this.isDebugEnemyActedLogEnabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[Battle] executeEnemyTurn start', {
+        turn: this.turnPosition.turn,
+        side: this.turnPosition.activeSide,
+      })
+    }
     // 敵の行動はActionLogに直接保存せず、ターン終了エントリ解決時に都度再計算する方針のため、
     // ここで行動順に処理してサマリを保持する。
     this.startEnemyTurn()
@@ -784,18 +897,9 @@ export class Battle {
       if (!enemy) {
         continue
       }
-      if (enemy.currentHp <= 0) {
-        actions.push({
-          enemyId,
-          enemyName: enemy.name,
-          actionName: '戦闘不能',
-          skipped: true,
-          skipReason: 'defeated',
-          cardsAddedToPlayerHand: [],
-          stateCardEvents: undefined,
-          memoryCardEvents: undefined,
-          snapshotAfter: this.cloneBattleSnapshot(this.captureFullSnapshot().snapshot),
-        })
+      if (!enemy.isActive()) {
+        // 撃破/逃走済みの敵は「行動スキップ」の enemy-act を生成しない。
+        // 生成してしまうと View 側の最低待機時間により無意味な待ちが発生するため、ターン順処理のみスキップする。
         continue
       }
 
@@ -809,7 +913,14 @@ export class Battle {
     return summary
   }
 
-  recordDamageAnimation(event: DamageAnimationEvent): void {
+  private isDebugEnemyActedLogEnabled(): boolean {
+    return (
+      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_ENEMY_ACTED === 'true') ||
+      (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ENEMY_ACTED === 'true')
+    )
+  }
+
+  recordDamageAnimation(event: DamageEvent): void {
     this.pendingDamageAnimationEvents.push({
       ...event,
       outcomes: event.outcomes.map((outcome) => ({ ...outcome })),
@@ -903,10 +1014,68 @@ export class Battle {
     }
   }
 
-  consumeDamageAnimationEvents(): DamageAnimationEvent[] {
+  consumeDamageAnimationEvents(): DamageEvent[] {
     const events = this.pendingDamageAnimationEvents
     this.pendingDamageAnimationEvents = []
     return events
+  }
+
+  /**
+   * プレイヤー被弾に反応する同期ダメージ用の拡張ポイント。
+   * - 具体的なロジックは今後実装する。
+   */
+  handlePlayerDamageReactions(_event: DamageEvent): void {
+    if (_event.defender.type !== 'player') {
+      return
+    }
+
+    const reactions: DamageEvent[] = []
+
+    // ダメージ連動: このStateを持つ敵全員へ同じダメージを同期
+    for (const enemy of this.enemyTeam.members) {
+      if (!enemy.isActive() || enemy.id === undefined) continue
+      const hasLink = enemy.getStates().some((state) => state.id === 'state-damage-link')
+      if (!hasLink) continue
+      reactions.push({
+        actionId: 'damage-link',
+        attacker: _event.attacker,
+        defender: { type: 'enemy', enemyId: enemy.id },
+        outcomes: _event.outcomes.map((outcome) => ({ ...outcome })),
+        effectType: _event.effectType ?? 'linked-damage',
+      })
+    }
+
+    // 瘴気: プレイヤーに付与されていて、攻撃者が敵の場合に発火
+    const miasma = this.playerValue.getStates(this).find((state) => state.id === 'state-miasma') as MiasmaState | undefined
+    if (miasma && _event.attacker?.type === 'enemy') {
+      const mag = Math.max(0, Math.floor(miasma.magnitude ?? 0))
+      if (mag > 0) {
+        const hits = Math.max(1, _event.outcomes.length || 1)
+        const outcomes = Array.from({ length: hits }, () => ({ damage: mag, effectType: 'miasma' as const }))
+        reactions.push({
+          actionId: 'miasma',
+          attacker: { type: 'player' },
+          defender: { type: 'enemy', enemyId: _event.attacker.enemyId },
+          outcomes,
+          effectType: 'miasma',
+        })
+      }
+    }
+
+    reactions.forEach((event) => {
+      if (event.defender.type !== 'enemy') {
+        return
+      }
+      const target = this.enemyTeam.findEnemy(event.defender.enemyId)
+      if (!target || !target.isActive()) {
+        return
+      }
+      // ダメージ適用時に outomes を複製し、アニメーションと実ダメージを同期させる
+      this.damageEnemy(target, {
+        ...event,
+        outcomes: event.outcomes.map((outcome) => ({ ...outcome })),
+      })
+    })
   }
 
   consumeManaAnimationEvents(): Array<{ amount: number }> {
@@ -965,6 +1134,14 @@ export class Battle {
     const events = this.pendingStateCardAnimationEvents
     this.pendingStateCardAnimationEvents = []
     return events
+  }
+
+  /**
+   * 攻撃者IDなどを含むダメージイベントから同期ダメージを積む際に利用するメソッドの骨組み。
+   * - 具体的な同期ダメージ積み込みは今後実装する。
+   */
+  scheduleSynchronizedEnemyDamage(_event: DamageEvent): void {
+    // TODO: player-damage に合わせて enemy-damage を積むロジックを実装
   }
 
   consumeMemoryCardAnimationEvents(): MemoryCardAnimationEvent[] {
@@ -1028,13 +1205,13 @@ export class Battle {
     this.logSequence += 1
   }
 
-  damagePlayer(amount: number, options?: { animation?: DamageAnimationEvent }): void {
-    this.player.takeDamage(amount, { battle: this, animation: options?.animation })
+  damagePlayer(event: DamageEvent): void {
+    this.player.takeDamage(event, { battle: this, animation: event })
     this.checkPlayerDefeat()
   }
 
-  damageEnemy(enemy: Enemy, amount: number, options?: { animation?: DamageAnimationEvent }): void {
-    enemy.takeDamage(amount, { battle: this, animation: options?.animation })
+  damageEnemy(enemy: Enemy, event: DamageEvent): void {
+    enemy.takeDamage(event, { battle: this, animation: event })
     this.checkEnemyTeamDefeat()
   }
 
@@ -1060,17 +1237,9 @@ export class Battle {
   private extractEnemyStateSummary(enemy: Enemy): EnemyStateDiff['states'] {
     return enemy.getStates().map((state) => ({
       id: state.id,
-      magnitude: this.getStateMagnitude(state),
+      stackable: typeof state.isStackable === 'function' ? state.isStackable() : false,
+      magnitude: typeof state.isStackable === 'function' && state.isStackable() ? state.magnitude ?? 0 : undefined,
     }))
-  }
-
-  private getStateMagnitude(state: State): number | undefined {
-    const direct = (state as unknown as { magnitude?: number }).magnitude
-    if (typeof direct === 'number') {
-      return direct
-    }
-    const props = (state as unknown as { props?: { magnitude?: number } }).props
-    return props?.magnitude
   }
 
   private diffEnemyStates(before: Map<number, EnemyStateDiff['states']>): EnemyStateDiff[] {
@@ -1098,7 +1267,9 @@ export class Battle {
     }
     const normalize = (states: EnemyStateDiff['states']) =>
       [...states]
-        .map(({ id, magnitude }) => `${id}:${magnitude ?? 0}`)
+        .map(({ id, magnitude, stackable }) =>
+          `${id}:${stackable ? String(magnitude ?? 0) : 'nostack'}`,
+        )
         .sort()
     const prevKey = normalize(previous)
     const currKey = normalize(current)
@@ -1170,6 +1341,8 @@ export class Battle {
           this.drawForPlayer(entry.draw)
         }
         this.resolveEvents()
+        // プレイヤーターン開始時に敵の次アクションを確定させ、ヒント生成に依存しないようにする
+        this.enemyTeam.ensureActionsForTurn(this, this.turnPosition.turn)
         this.enemyTeam.planUpcomingActions(this)
         break
       case 'play-card': {
@@ -1335,6 +1508,7 @@ export class Battle {
             : event.payload,
       })),
       turn: { ...source.turn },
+      turnPosition: { ...source.turnPosition },
       log: source.log.map((entry) => ({ ...entry })),
       status: source.status,
     }

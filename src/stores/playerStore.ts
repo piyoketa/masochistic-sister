@@ -1,17 +1,22 @@
 import { defineStore } from 'pinia'
 import { CardRepository } from '@/domain/repository/CardRepository'
-import { buildDefaultDeck } from '@/domain/entities/decks'
+import { buildDefaultDeck, buildMagicDeck } from '@/domain/entities/decks'
 import { listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
 import { MemorySaintRelic } from '@/domain/entities/relics/MemorySaintRelic'
+import { DevilsKissRelic } from '@/domain/entities/relics/DevilsKissRelic'
 import { createCardFromBlueprint, buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
 import { Card } from '@/domain/entities/Card'
 import { deleteSlot, listSlots, loadSlot, saveSlot, type PlayerSaveData, type SaveSlotSummary } from '@/utils/saveStorage'
 
 // store外からデッキ型を参照できるように明示的に再エクスポートする
 export type { CardId, CardBlueprint } from '@/domain/library/Library'
+export type DeckPreset = 'holy' | 'magic'
 
-// 初期所持レリックに記憶の聖印を付与しておく
-const DEFAULT_RELICS: string[] = [MemorySaintRelic.name]
+// デッキプリセットごとの初期所持レリックを明示しておく。プリセット切替時に不要なレリックが残らないようにする。
+const INITIAL_RELICS_BY_PRESET: Record<DeckPreset, string[]> = {
+  holy: [MemorySaintRelic.name],
+  magic: [DevilsKissRelic.name],
+}
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -21,20 +26,30 @@ export const usePlayerStore = defineStore('player', {
     deck: [] as CardBlueprint[],
     relics: [] as string[],
     initialized: false,
+    initialDeckPreset: 'holy' as DeckPreset,
   }),
   actions: {
     ensureInitialized(): void {
       if (!this.initialized) {
-        this.resetDeckToDefault()
+        this.resetDeckToPreset(this.initialDeckPreset)
       }
     },
     resetDeckToDefault(): void {
+      this.resetDeckToPreset('holy')
+    },
+    resetDeckToPreset(preset: DeckPreset): void {
       const repository = new CardRepository()
-      const { deck } = buildDefaultDeck(repository)
+      const { deck } =
+        preset === 'magic' ? buildMagicDeck(repository) : buildDefaultDeck(repository)
       this.deck = deck.map((card) => cardToBlueprint(card))
       this.gold = 0
-      this.relics = [...DEFAULT_RELICS]
+      // プリセットに応じて初期レリックを切り替える。プリセットごとの特徴を維持するためここで毎回初期化する。
+      this.relics = [...INITIAL_RELICS_BY_PRESET[preset]]
+      this.initialDeckPreset = preset
       this.initialized = true
+    },
+    setDeckPreset(preset: DeckPreset): void {
+      this.resetDeckToPreset(preset)
     },
     setDeck(blueprints: CardBlueprint[]): void {
       this.deck = [...blueprints]

@@ -12,7 +12,7 @@ LightweightState.ts の責務:
 - `Attack.calcDamages`: pre-hit計算時に `modifyPreHit` を通じて倍率・回数補正が適用される。
 - `Damages`: 適用済みの State として記録され、後続の記憶カード生成に利用される。
 */
-import { BadState, State } from '../State'
+import { BadState } from '../State'
 import { StatusTypeCardTag } from '../cardTags'
 import type { DamageCalculationParams } from '../Damages'
 import { StateAction } from '../Action/StateAction'
@@ -31,11 +31,11 @@ class LightweightStateAction extends StateAction {
 }
 
 export class LightweightState extends BadState {
-  constructor(magnitude = 1) {
+  constructor() {
     super({
       id: 'state-lightweight',
       name: '軽量化',
-      magnitude,
+      stackable: false,
       cardDefinition: {
         title: '軽量化',
         cardType: 'status',
@@ -67,13 +67,9 @@ export class LightweightState extends BadState {
       return params
     }
 
-    // 軽量化は非スタックなので1までに抑える。誤って多重付与されても効果は固定。
-    const stacks = Math.min(1, Math.max(0, this.magnitude ?? 0))
-    if (stacks === 0) {
-      return params
-    }
-
-    const multiplier = (2 / 3) ** stacks
+    // 軽量化は非スタックなので常に1段の効果を固定適用する。
+    const stacks = 1
+    const multiplier = 2 / 3
 
     return {
       ...params,
@@ -84,17 +80,5 @@ export class LightweightState extends BadState {
 
   override action(tags?: CardTag[]): StateAction {
     return new LightweightStateAction(this, tags)
-  }
-
-  override stackWith(state: State): void {
-    if (state.id !== this.id) {
-      super.stackWith(state)
-      return
-    }
-    // 非スタック: 既存1段のまま据え置き。念のため強い方を採用し、最大でも1。
-    const incoming = Math.max(0, state.magnitude ?? 0)
-    const current = Math.max(0, this.magnitude ?? 0)
-    const next = Math.min(1, Math.max(current, incoming))
-    this.setMagnitude(next)
   }
 }

@@ -15,11 +15,11 @@ import { TraitState } from '../State'
 import type { DamageCalculationParams } from '../Damages'
 
 export class FlightState extends TraitState {
-  constructor(magnitude = 1) {
+  constructor() {
     super({
       id: 'state-flight',
       name: 'ダメージ固定',
-      magnitude,
+      stackable: false,
     })
   }
 
@@ -41,11 +41,6 @@ export class FlightState extends TraitState {
 
   override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
     if (params.role !== 'defender') {
-      return params
-    }
-
-    const stacks = Math.max(0, this.magnitude ?? 0)
-    if (stacks <= 0) {
       return params
     }
 

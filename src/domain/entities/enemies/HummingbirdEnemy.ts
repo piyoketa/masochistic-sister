@@ -15,7 +15,7 @@ export class HummingbirdEnemy extends Enemy {
       maxHp: 6,
       currentHp: 6,
       actions: [flurry, new TailwindAction()],
-      states: [new FlightState(1)],
+      states: [new FlightState()],
       image: '/assets/enemies/hummingbird.jpg',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 20 },

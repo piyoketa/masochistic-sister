@@ -14,6 +14,7 @@ export class TeamBondState extends TraitState {
     super({
       id: 'trait-team-bond',
       name: 'チームの絆',
+      stackable: false,
     })
   }
 

@@ -22,6 +22,7 @@ export class WeakState extends BadState {
     super({
       id: 'state-weak',
       name: '弱気',
+      stackable: false,
       cardDefinition: {
         title: '弱気',
         cardType: 'status',

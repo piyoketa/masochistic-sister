@@ -20,6 +20,7 @@ export class IntoxicationState extends BadState {
     super({
       id: 'state-intoxication',
       name: '酩酊',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '酩酊',
@@ -33,6 +34,7 @@ export class IntoxicationState extends BadState {
 
   override description(): string {
     const delta = this.magnitude ?? 0
+    // 酩酊は「被虐の記憶」タグを持つカードにのみ影響する
     return `被虐の記憶のコスト+${delta}`
   }
 

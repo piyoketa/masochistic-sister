@@ -10,76 +10,43 @@ AllyBuffSkill.ts の責務:
 - `EnemyTeam.planUpcomingActions`: `setPlannedTarget` を用いて、ターン開始時に対象IDを注入する。
 - `Enemy`/`Player`: `applyInflictedStates` を通じてStateを付与する。
 */
-import type { ActionContext } from './ActionBase'
-import { Skill, type SkillProps } from './Skill'
+import { AllyStateSkill, type AllyStateSkillProps } from './AllyStateSkill'
 import type { Enemy } from '../Enemy'
-import type { Player } from '../Player'
 import type { State } from '../State'
+import type { ActionContext } from './ActionBase'
 
-export interface AllyBuffSkillProps extends SkillProps {
-  targetTags: string[]
-  affinityKey: string
+export type AllyBuffSkillProps = AllyStateSkillProps & {
   inflictStates?: Array<() => State>
 }
 
-export abstract class AllyBuffSkill extends Skill {
-  private readonly requiredTags: string[]
-  private readonly affinityKeyValue: string
-  private plannedTargetId?: number
+export abstract class AllyBuffSkill extends AllyStateSkill {
+  // 追い風などの実行結果を調査するためのデバッグフラグ。env.VITE_DEBUG_ALLY_BUFF_APPLY=true で有効化。
+  private static readonly DEBUG_ALLY_BUFF_APPLY =
+    (typeof import.meta !== 'undefined' &&
+      (import.meta as any).env?.VITE_DEBUG_ALLY_BUFF_APPLY === 'true') ||
+    (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ALLY_BUFF_APPLY === 'true')
 
   protected constructor(props: AllyBuffSkillProps) {
     super(props)
-    this.requiredTags = [...props.targetTags]
-    this.affinityKeyValue = props.affinityKey
   }
 
-  get requiredAllyTags(): string[] {
-    return [...this.requiredTags]
-  }
-
-  get affinityKey(): string {
-    return this.affinityKeyValue
-  }
-
-  setPlannedTarget(enemyId: number | undefined): void {
-    this.plannedTargetId = enemyId
-  }
-
-  getPlannedTarget(): number | undefined {
-    return this.plannedTargetId
-  }
-
-  protected clearPlannedTarget(): void {
-    this.plannedTargetId = undefined
-  }
-
-  override execute(context: ActionContext): void {
-    super.execute(context)
-    this.clearPlannedTarget()
-  }
-
-  override canUse(context: { battle: ActionContext['battle']; source: Player | Enemy }): boolean {
-    const team = context.battle.enemyTeam
-    return team
-      .members.filter((enemy) => enemy.isActive())
-      .some((enemy) =>
-        this.requiredTags.every((tag) => enemy.hasAllyTag(tag)),
-      )
-  }
-
-  protected resolveAllyTarget(context: ActionContext): Enemy | undefined {
-    const targetId = this.plannedTargetId
-    if (targetId === undefined) {
-      return undefined
-    }
-    return context.battle.enemyTeam.findEnemy(targetId)
-  }
-
-  protected afterBuffApplied(_context: ActionContext, _target: Enemy | Player): void {}
+  protected afterBuffApplied(_context: ActionContext, _target: Enemy): void {}
 
   protected override perform(context: ActionContext): void {
     const target = this.resolveAllyTarget(context)
     if (!target || !target.isActive()) {
+      if (AllyBuffSkill.DEBUG_ALLY_BUFF_APPLY) {
+        // eslint-disable-next-line no-console
+        console.info('[AllyBuffSkill.perform] skipped (ally-target-missing)', {
+          action: this.name,
+          source: { id: (context.source as Enemy).id, name: (context.source as Enemy).name },
+          turn: context.battle.turnPosition?.turn,
+          side: context.battle.turnPosition?.activeSide,
+          plannedTargetId: this.getPlannedTarget(),
+          targetFound: Boolean(target),
+          targetActive: target?.isActive?.(),
+        })
+      }
       context.metadata = {
         ...(context.metadata ?? {}),
         skipped: true,
@@ -88,7 +55,45 @@ export abstract class AllyBuffSkill extends Skill {
       return
     }
 
+    if (AllyBuffSkill.DEBUG_ALLY_BUFF_APPLY) {
+      // 実際に付与する直前のログ。重複付与やスタック挙動を確認しやすくする。
+      // eslint-disable-next-line no-console
+      console.info('[AllyBuffSkill.perform] apply buff', {
+        action: this.name,
+        source: { id: (context.source as Enemy).id, name: (context.source as Enemy).name },
+        target: { id: target.id, name: target.name },
+        turn: context.battle.turnPosition?.turn,
+        side: context.battle.turnPosition?.activeSide,
+        inflictStates: this.inflictStateFactories.map((factory) => factory()?.id),
+        beforeStates: target.getStates?.().map((state) => ({
+          id: state.id,
+          name: state.name,
+          magnitude: state.magnitude,
+        })),
+      })
+    }
+    const statesBefore = target.getStates ? target.getStates() : []
     this.applyInflictedStates(context, target)
     this.afterBuffApplied(context, target)
+    if (AllyBuffSkill.DEBUG_ALLY_BUFF_APPLY) {
+      // 付与後の状態一覧を出力し、加速が増えているかの一次確認に使う。
+      // eslint-disable-next-line no-console
+      console.info('[AllyBuffSkill.perform] applied states', {
+        target: { id: target.id, name: target.name },
+        turn: context.battle.turnPosition?.turn,
+        side: context.battle.turnPosition?.activeSide,
+        states: target.getStates?.().map((state) => ({
+          id: state.id,
+          name: state.name,
+          magnitude: state.magnitude,
+        })),
+        diff: target.getStates
+          ? target
+              .getStates()
+              .filter((after) => !statesBefore.some((before) => before.id === after.id && before.magnitude === after.magnitude))
+              .map((state) => ({ id: state.id, name: state.name, magnitude: state.magnitude }))
+          : [],
+      })
+    }
   }
 }

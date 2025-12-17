@@ -2,6 +2,9 @@ import { Card } from '../Card'
 import { HeavenChainAction } from '../actions/HeavenChainAction'
 import { BattlePrepAction } from '../actions/BattlePrepAction'
 import { MasochisticAuraAction } from '../actions/MasochisticAuraAction'
+import { LifeChainAction } from '../actions/LifeChainAction'
+import { MiasmaAction } from '../actions/MiasmaAction'
+import { BloodSuckAction } from '../actions/BloodSuckAction'
 import type { CardRepository } from '../../repository/CardRepository'
 
 export interface DefaultDeckResult {
@@ -9,6 +12,15 @@ export interface DefaultDeckResult {
   heavenChains: readonly [Card, Card, Card, Card, Card]
   battlePreps: readonly [Card]
   masochisticAuras: readonly [Card]
+}
+
+export type MagicDeckResult = {
+  deck: Card[]
+  lifeChain: readonly [Card]
+  miasma: readonly [Card]
+  masochisticAuras: readonly [Card, Card]
+  kiss: readonly [Card]
+  heavenChains: readonly [Card, Card]
 }
 
 export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckResult {
@@ -32,6 +44,30 @@ export function buildDefaultDeck(cardRepository: CardRepository): DefaultDeckRes
     heavenChains,
     battlePreps,
     masochisticAuras,
+  }
+}
+
+export function buildMagicDeck(cardRepository: CardRepository): MagicDeckResult {
+  const lifeChain = [cardRepository.create(() => new Card({ action: new LifeChainAction() }))] as const
+  const miasma = [cardRepository.create(() => new Card({ action: new MiasmaAction() }))] as const
+  const masochisticAuras = Array.from({ length: 2 }, () =>
+    cardRepository.create(() => new Card({ action: new MasochisticAuraAction() })),
+  ) as [Card, Card]
+  const kiss = [cardRepository.create(() => new Card({ action: new BloodSuckAction() }))] as const
+  const heavenChains = Array.from({ length: 2 }, () =>
+    cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
+  ) as [Card, Card]
+
+  const pool: Card[] = [...lifeChain, ...miasma, ...masochisticAuras, ...kiss, ...heavenChains]
+  const deck = shuffle([...pool])
+
+  return {
+    deck,
+    lifeChain,
+    miasma,
+    masochisticAuras,
+    kiss,
+    heavenChains,
   }
 }
 

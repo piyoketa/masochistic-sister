@@ -1,5 +1,5 @@
 import type { State } from './State'
-import type { Battle, DamageAnimationEvent } from '../battle/Battle'
+import type { Battle, DamageEvent } from '../battle/Battle'
 import type { Hand } from '../battle/Hand'
 import { MemoryManager } from './players/MemoryManager'
 import type { Attack } from './Action'
@@ -63,15 +63,26 @@ export class Player {
     return this.currentManaValue
   }
 
-  takeDamage(amount: number, options?: { battle?: Battle; animation?: DamageAnimationEvent }): void {
+  takeDamage(event: DamageEvent, options?: { battle?: Battle; animation?: DamageEvent }): void {
+    const total = event.outcomes.reduce((sum, outcome) => sum + Math.max(0, Math.floor(outcome.damage)), 0)
+    if (total <= 0) {
+      return
+    }
+    this.currentHpValue = Math.max(0, this.currentHpValue - total)
+    const animation = options?.animation ?? event
+    if (options?.battle && animation) {
+      options.battle.recordDamageAnimation(animation)
+      options.battle.handlePlayerDamageReactions(animation)
+    }
+  }
+
+  applySpecialDamage(amount: number, _context?: { battle?: Battle; reason?: string }): void {
     const damage = Math.max(0, Math.floor(amount))
     if (damage <= 0) {
       return
     }
     this.currentHpValue = Math.max(0, this.currentHpValue - damage)
-    if (options?.battle && options.animation) {
-      options.battle.recordDamageAnimation(options.animation)
-    }
+    // 特殊ダメージでは現状演出なし。必要に応じてbattle.recordDamageAnimationを追加する。
   }
 
   heal(amount: number): void {
@@ -188,6 +199,14 @@ export class Player {
   }
 
   /**
+   * スナップショット復元用に、ベースStateプールを丸ごと差し替える。
+   * 手札由来のStateはカード側に保持されるためここでは扱わない。
+   */
+  replaceBaseStates(states: State[]): void {
+    this.baseStatePool = states.map((state) => cloneState(state))
+  }
+
+  /**
    * 手札由来のState（元のState）だけを返す。
    */
   getBaseStates(): State[] {
@@ -280,19 +299,27 @@ export class Player {
    * State配列をid単位でマージし、magnitudeを合算する。
    */
   private aggregateStates(states: State[]): State[] {
-    const aggregates = new Map<string, { state: State; total: number }>()
+    const aggregates = new Map<string, { state: State; total: number | null; stackable: boolean }>()
 
     for (const state of states) {
       const entry = aggregates.get(state.id)
+      const stackable = typeof state.isStackable === 'function' ? state.isStackable() : true
+      if (!stackable) {
+        if (!entry) {
+          aggregates.set(state.id, { state: cloneState(state), total: null, stackable })
+        }
+        continue
+      }
       const magnitude = state.magnitude ?? 0
 
       if (entry) {
-        entry.total += magnitude
-        setStateMagnitude(entry.state, entry.total)
+        const nextTotal = (entry.total ?? 0) + magnitude
+        entry.total = nextTotal
+        setStateMagnitude(entry.state, nextTotal)
       } else {
         const clone = cloneState(state)
         setStateMagnitude(clone, magnitude)
-        aggregates.set(state.id, { state: clone, total: magnitude })
+        aggregates.set(state.id, { state: clone, total: magnitude, stackable })
       }
     }
 
@@ -333,6 +360,9 @@ function cloneState(state: State): State {
 }
 
 function setStateMagnitude(state: State, magnitude: number): void {
+  if (typeof state.isStackable === 'function' && !state.isStackable()) {
+    return
+  }
   ;((state as unknown as { props: { magnitude?: number } }).props).magnitude = magnitude
 }
 

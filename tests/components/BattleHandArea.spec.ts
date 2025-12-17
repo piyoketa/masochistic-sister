@@ -13,6 +13,8 @@ import {
   createBattleStub,
   createViewManagerStub,
 } from './__helpers__/battleHandTestUtils'
+import { createActivatedTestingPinia } from './__helpers__/pinia'
+import { createTestingVuetify } from './__helpers__/vuetify'
 
 describe('BattleHandArea コンポーネント', () => {
   it('手札がない場合に空メッセージを表示する', () => {
@@ -34,6 +36,7 @@ describe('BattleHandArea コンポーネント', () => {
           ActionCard: actionCardStub,
           TransitionGroup: false,
         },
+        plugins: [createActivatedTestingPinia(), createTestingVuetify()],
       },
     })
 
@@ -64,6 +67,7 @@ describe('BattleHandArea コンポーネント', () => {
           ActionCard: actionCardStub,
           TransitionGroup: false,
         },
+        plugins: [createActivatedTestingPinia(), createTestingVuetify()],
       },
     })
 
@@ -101,6 +105,7 @@ describe('BattleHandArea コンポーネント', () => {
           ActionCard: actionCardStub,
           TransitionGroup: false,
         },
+        plugins: [createActivatedTestingPinia(), createTestingVuetify()],
       },
     })
 
@@ -142,6 +147,7 @@ describe('BattleHandArea コンポーネント', () => {
           ActionCard: actionCardStub,
           TransitionGroup: false,
         },
+        plugins: [createActivatedTestingPinia(), createTestingVuetify()],
       },
     })
 

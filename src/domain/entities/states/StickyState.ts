@@ -21,6 +21,7 @@ export class StickyState extends BadState {
     super({
       id: 'state-sticky',
       name: '粘液',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '粘液',

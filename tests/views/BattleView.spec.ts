@@ -7,6 +7,7 @@ import type { ViewManager, AnimationCommand, AnimationScript } from '@/view/View
 import type { Battle } from '@/domain/battle/Battle'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { CardOperation } from '@/domain/entities/operations'
+import { createTestingRouter } from '../__helpers__/router'
 
 const BattleEnemyAreaStub = defineComponent({
   props: [
@@ -55,6 +56,10 @@ const HpGaugeStub = defineComponent({
 function createSnapshot(): BattleSnapshot {
   return {
     id: 'battle',
+    turnPosition: {
+      turn: 1,
+      side: 'player',
+    },
     player: {
       id: 'player',
       name: 'プレイヤー',
@@ -85,9 +90,19 @@ function createBattleStub(): Battle {
     enemyTeam: {
       findEnemy: vi.fn(),
     },
+    turnPosition: {
+      turn: 1,
+      side: 'player',
+    },
     player: {
       getStates: vi.fn(() => []),
     },
+    // コスト計算フローで参照されるため、最低限のレリックインターフェースをスタブする
+    getRelicInstances: vi.fn(() => []),
+    hasActiveRelic: vi.fn(() => false),
+    hasRelic: vi.fn(() => false),
+    getRelicById: vi.fn(() => undefined),
+    getRelicClassNames: vi.fn(() => []),
   } as unknown as Battle
 }
 
@@ -148,7 +163,7 @@ describe('BattleView コンポーネント', () => {
           HpGauge: HpGaugeStub,
           TransitionGroup: false,
         },
-        plugins: [pinia],
+        plugins: [pinia, createTestingRouter()],
       },
     })
 

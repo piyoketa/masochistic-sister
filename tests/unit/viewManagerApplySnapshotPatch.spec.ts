@@ -11,6 +11,10 @@ function createBaseSnapshot(): BattleSnapshot {
   const sampleCard = { id: 99, title: 'サンプル' } as unknown as Card
   return {
     id: 'battle-1',
+    turnPosition: {
+      turn: 1,
+      side: 'player',
+    },
     player: {
       id: 'player',
       name: 'プレイヤー',
@@ -31,7 +35,6 @@ function createBaseSnapshot(): BattleSnapshot {
         hasActedThisTurn: false,
         status: 'active',
         skills: [{ name: '跳ねる', detail: '軽い攻撃' }],
-        nextActions: [],
       },
     ],
     deck: [sampleCard],
@@ -94,7 +97,7 @@ describe('ViewManager.applySnapshotPatch', () => {
   it('Stateインスタンスを保持しつつ、未変更の参照を共有する', () => {
     class DummyState extends State {
       constructor(id: string) {
-        super({ id, name: `状態-${id}` })
+        super({ id, name: `状態-${id}`, stackable: false })
         ;(this as unknown as { category: string }).category = 'buff'
       }
       override getCategory(): import('@/types/battle').StateCategory {
@@ -118,13 +121,12 @@ describe('ViewManager.applySnapshotPatch', () => {
           currentHp: 10,
           maxHp: 10,
           states: [stateInstance as unknown as import('@/types/battle').StateSnapshot],
-          hasActedThisTurn: false,
-          status: 'active' as const,
-          skills: [{ name: '跳ねる', detail: '軽い攻撃' }],
-          nextActions: [],
-        },
-      ],
-    }
+      hasActedThisTurn: false,
+      status: 'active' as const,
+      skills: [{ name: '跳ねる', detail: '軽い攻撃' }],
+    },
+  ],
+}
 
     viewManager.applyAnimationCommand({ type: 'update-snapshot', snapshot: baseSnapshot })
 

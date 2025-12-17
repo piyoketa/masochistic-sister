@@ -15,7 +15,7 @@ export class MasochisticAuraAction extends Skill {
         type: new SkillTypeCardTag(),
         target: new EnemySingleTargetCardTag(),
         cost: 1,
-        subtitle: '体質',
+        subtitle: '',
         categoryTags: [new ArcaneCardTag()],
       },
       audioCue: {
@@ -32,19 +32,21 @@ export class MasochisticAuraAction extends Skill {
   }
 
   protected override description(): string {
-    return '攻撃予定の敵が\n即座に行動する'
+    return '敵を即座に行動させる'
   }
 
   protected override buildOperations(): Operation[] {
     return [
-      new TargetEnemyOperation({
-        restrictions: [
-          {
-            reason: '次の行動でプレイヤーを攻撃する敵のみ選択できます',
-            test: ({ enemy }) => this.isPlanningAttackAgainstPlayer(enemy),
-          },
-        ],
-      }),
+      new TargetEnemyOperation(
+        // {
+        //   restrictions: [
+        //     {
+        //       reason: '次の行動でプレイヤーを攻撃する敵のみ選択できます',
+        //       test: ({ enemy }) => this.isPlanningAttackAgainstPlayer(enemy),
+        //     },
+        //   ],
+        // }
+      ),
     ]
   }
 

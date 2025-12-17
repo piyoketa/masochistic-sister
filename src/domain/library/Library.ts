@@ -16,7 +16,7 @@ import { Card } from '@/domain/entities/Card'
 import type { CardInfo, CardType } from '@/types/battle'
 import type { Action } from '@/domain/entities/Action'
 import { Attack } from '@/domain/entities/Action'
-import { State } from '@/domain/entities/State'
+import { BadState, State } from '@/domain/entities/State'
 import type { State as StateType } from '@/domain/entities/State'
 import * as actionModules from '@/domain/entities/actions'
 import * as stateModules from '@/domain/entities/states'
@@ -58,10 +58,12 @@ import { OpenWoundAction } from '@/domain/entities/actions/OpenWoundAction'
 import { JointLockAction } from '@/domain/entities/actions/JointLockAction'
 import { FattenAction } from '@/domain/entities/actions/FattenAction'
 import { ShapeUpAction } from '@/domain/entities/actions/ShapeUpAction'
+import { LifeChainAction } from '@/domain/entities/actions/LifeChainAction'
+import { MiasmaAction } from '@/domain/entities/actions/MiasmaAction'
 import { CorrosionState } from '@/domain/entities/states/CorrosionState'
 import { EvilThoughtState } from '@/domain/entities/states/EvilThoughtState'
 import { StackedStressAction } from '@/domain/entities/actions/StackedStressAction'
-import { DeathMatchRelic, RepulsionRelic, LightweightCombatRelic, AdversityExcitementRelic } from '@/domain/entities/relics'
+import { DeathMatchRelic, RepulsionRelic, LightweightCombatRelic, AdversityExcitementRelic, DevilsKissRelic } from '@/domain/entities/relics'
 
 type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
@@ -90,6 +92,8 @@ const DECK_ACTION_CLASSES: ActionConstructor[] = [
   OpenWoundAction,
   JointLockAction,
   FattenAction,
+  LifeChainAction,
+  MiasmaAction,
   StackedStressAction,
   ShapeUpAction,
 ]
@@ -116,6 +120,8 @@ const STANDARD_SHOP_ACTION_CLASSES: ActionConstructor[] = [
   OpenWoundAction,
   JointLockAction,
   FattenAction,
+  LifeChainAction,
+  MiasmaAction,
   StackedStressAction,
   PeelingScabAction,
 ]
@@ -142,6 +148,8 @@ const STANDARD_SKILL_REWARD_CLASSES: ActionConstructor[] = [
   SoloBodyAction,
   DeepBreathAction,
   OpenWoundAction,
+  LifeChainAction,
+  MiasmaAction,
   StackedStressAction,
   PeelingScabAction,
 ]
@@ -163,6 +171,7 @@ const ATTACK_SUPPORT_RELICS = [
   RepulsionRelic,
   LightweightCombatRelic,
   AdversityExcitementRelic,
+  DevilsKissRelic,
 ]
 const STANDARD_SAMPLE_STATE_CLASSES: StateConstructor[] = [CorrosionState, EvilThoughtState]
 
@@ -322,7 +331,8 @@ export class Library {
     const states: StateType[] = []
     for (const candidate of Object.values(stateModules)) {
       const state = this.instantiateState(candidate)
-      if (state) {
+      if (state && state instanceof BadState) {
+        // Battle/Libraryでカード化できる悪性ステートのみを一覧に含める
         states.push(state)
       }
     }

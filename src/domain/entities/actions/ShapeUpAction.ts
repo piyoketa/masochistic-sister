@@ -40,6 +40,6 @@ export class ShapeUpAction extends Attack {
   }
 
   protected override description(): string {
-    return '単体に5ダメージし、[軽量化]1を付与する（累積なし）'
+    return ''
   }
 }

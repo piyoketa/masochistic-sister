@@ -7,6 +7,7 @@ class BaseState extends State {
     super({
       id: 'state-base',
       name: '基底テスト',
+      stackable: false,
     })
   }
 }
@@ -16,6 +17,7 @@ class DescribedState extends State {
     super({
       id: 'state-described',
       name: '説明付き',
+      stackable: false,
     })
   }
 
@@ -29,6 +31,7 @@ class CardState extends State {
     super({
       id: 'state-card',
       name: 'カード生成',
+      stackable: false,
       cardDefinition: {
         title: '状態カード',
         cardType: 'status',

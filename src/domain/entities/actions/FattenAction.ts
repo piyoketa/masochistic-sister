@@ -1,4 +1,4 @@
-import { Attack } from '../Action'
+import { Attack } from '../Action/Attack'
 import { Damages } from '../Damages'
 import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 import { HeavyweightState } from '../states/HeavyweightState'

@@ -4,7 +4,7 @@ import type {
   FullBattleSnapshot,
   PlayCardAnimationContext,
   EnemyTurnActionSummary,
-  DamageAnimationEvent,
+  DamageEvent,
   StateCardAnimationEvent,
   MemoryCardAnimationEvent,
 } from './Battle'
@@ -32,6 +32,7 @@ export interface OperationRunnerConfig {
   actionLog?: ActionLog
   initialSnapshot?: FullBattleSnapshot
   onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
+  createBattle?: () => Battle
 }
 
 interface AppendOptions {
@@ -42,7 +43,7 @@ interface DrainedAnimationEvents {
   drawEvents: Array<{ cardIds: number[]; drawnCount?: number; handOverflow?: boolean }>
   discardDrawEvents: Array<{ cardIds: number[]; handOverflow?: boolean }>
   manaEvents: Array<{ amount: number }>
-  damageEvents: DamageAnimationEvent[]
+  damageEvents: DamageEvent[]
   defeatEvents: number[]
   cardTrashEvents: Array<{ cardIds: number[]; variant?: 'trash' | 'eliminate' }>
   stateCardEvents: StateCardAnimationEvent[]
@@ -96,6 +97,7 @@ export class OperationRunner {
   private readonly actionLog: ActionLog
   private readonly onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
   private readonly initialSnapshot: FullBattleSnapshot
+  private readonly createBattle?: () => Battle
 
   private initialized = false
   private recordedOutcome?: Battle['status']
@@ -107,12 +109,15 @@ export class OperationRunner {
     this.battle = config.battle
     this.actionLog = config.actionLog ?? new ActionLog()
     this.onEntryAppended = config.onEntryAppended
+    this.createBattle = config.createBattle
     if (config.initialSnapshot) {
       this.initialSnapshot = this.cloneFullSnapshot(config.initialSnapshot)
       this.battle.restoreFullSnapshot(this.initialSnapshot)
     } else {
       this.initialSnapshot = this.battle.captureFullSnapshot()
     }
+    // Battle からの予測計算依頼に応じるためのデリゲートをセットする
+    this.battle.setPredictionDelegate(() => this.simulateEndTurnPrediction())
   }
 
   getActionLog(): ActionLog {
@@ -239,11 +244,14 @@ export class OperationRunner {
 
   private getWaitInfo(entry: BattleActionLogEntry): { waitMs: number; groupId?: string } {
     switch (entry.type) {
-      case 'enemy-act':
+      case 'enemy-act': {
+        const skipReason = (entry.metadata as any)?.skipReason as string | undefined
+        const isDefeatedOrEscaped = skipReason === 'defeated' || skipReason === 'escaped'
         return {
-          waitMs: 500,
+          waitMs: isDefeatedOrEscaped ? 0 : 500,
           groupId: `enemy-act:${entry.enemyId}:${this.enemyActGroupCounter++}`,
         }
+      }
       case 'player-event':
       case 'state-event':
         return { waitMs: 200 }
@@ -566,7 +574,7 @@ export class OperationRunner {
   }
 
   private buildEnemyDamageInstruction(
-    events: DamageAnimationEvent[] = [],
+    events: DamageEvent[] = [],
     cardId: number | undefined,
     cardTitle: string | undefined,
   ): AnimationInstruction | undefined {
@@ -709,7 +717,7 @@ export class OperationRunner {
     return undefined
   }
 
-  private calculateDamageWaitFromEvents(events: DamageAnimationEvent[]): number {
+  private calculateDamageWaitFromEvents(events: DamageEvent[]): number {
     if (!events.length) {
       return 0
     }
@@ -717,10 +725,7 @@ export class OperationRunner {
     if (!firstEvent) {
       return 0
     }
-    const hits =
-      firstEvent.hitCount && firstEvent.hitCount > 0
-        ? firstEvent.hitCount
-        : firstEvent.outcomes.length
+    const hits = firstEvent.outcomes.length
     if (hits <= 1) {
       return 0
     }
@@ -753,11 +758,12 @@ export class OperationRunner {
         enemyId: entry.enemyId,
         queue: {
           queueState: {
-            pending: [...entry.queue.queueState.pending],
             actions: [...entry.queue.queueState.actions],
+            turnActions: [...entry.queue.queueState.turnActions],
             metadata: entry.queue.queueState.metadata
               ? { ...entry.queue.queueState.metadata }
               : undefined,
+            seed: entry.queue.queueState.seed,
           },
           actionHistory: [...entry.queue.actionHistory],
         },
@@ -768,6 +774,28 @@ export class OperationRunner {
             state: entry.state && typeof entry.state === 'object' ? { ...(entry.state as object) } : entry.state,
           }))
         : undefined,
+    }
+  }
+
+  /**
+   * 現在の操作ログを再生し、疑似的に end-player-turn を追加実行した場合のプレイヤーHPを予測する。
+   * Battle の状態は汚さない。
+   */
+  private simulateEndTurnPrediction(): number | undefined {
+    if (!this.createBattle) {
+      return undefined
+    }
+    try {
+      const simBattle = this.createBattle()
+      // 初期スナップショットを適用してからログを再生する
+      simBattle.restoreFullSnapshot(this.cloneFullSnapshot(this.initialSnapshot))
+      const simLog = new ActionLog(this.actionLog.toArray())
+      simLog.push({ type: 'end-player-turn' })
+      simBattle.executeActionLog(simLog, simLog.length - 1)
+      const result = simBattle.player.currentHp
+      return result
+    } catch (error) {
+      return undefined
     }
   }
 
@@ -1012,18 +1040,22 @@ export class OperationRunner {
       cardAdditionIds.length > 0 ? this.cloneSnapshotWithoutHandCards(snapshot, cardAdditionIds) : undefined
 
     const baseSnapshot = snapshotBeforeCardAdditions ?? snapshot
-    const highlightInstructions: AnimationInstruction[] = [
-      {
-        waitMs: 0,
-        metadata: {
-          stage: 'enemy-highlight',
-          enemyId: entry.enemyId,
-          actionName: entry.actionName,
-          skipped: summary?.skipped ?? false,
+    const skipReason = summary?.skipReason
+    const shouldHighlight = skipReason !== 'defeated' && skipReason !== 'escaped'
+    if (shouldHighlight) {
+      const highlightInstructions: AnimationInstruction[] = [
+        {
+          waitMs: 0,
+          metadata: {
+            stage: 'enemy-highlight',
+            enemyId: entry.enemyId,
+            actionName: entry.actionName,
+            skipped: summary?.skipped ?? false,
+          },
         },
-      },
-    ]
-    batches.push(this.createBatch(baseSnapshot, highlightInstructions, this.nextBatchId('enemy-act-start')))
+      ]
+      batches.push(this.createBatch(baseSnapshot, highlightInstructions, this.nextBatchId('enemy-act-start')))
+    }
 
     const memoryEvents = summary?.memoryCardEvents ?? drainedEvents.memoryCardEvents
     const enemyActionInstructions = this.buildEnemyActionInstructions(entry, summary, drainedEvents, memoryEvents)
@@ -1198,10 +1230,10 @@ export class OperationRunner {
   }
 
   private resolveDamageStage(
-    events: DamageAnimationEvent[],
+    events: DamageEvent[],
     defaultStage: 'enemy-damage' | 'player-damage',
   ): 'enemy-damage' | 'player-damage' {
-    // プレイヤー攻撃（enemy-damage）時は targetId が欠落していても敵ダメージとして扱う。
+    // プレイヤー攻撃（enemy-damage）時は defender が enemy なら敵ダメージとして扱う。
     if (defaultStage === 'enemy-damage') {
       return 'enemy-damage'
     }
@@ -1349,7 +1381,7 @@ export class OperationRunner {
   }
 
   private extractDamageOutcomesFromEvents(
-    events?: readonly DamageAnimationEvent[],
+    events?: readonly DamageEvent[],
   ): readonly DamageOutcome[] | undefined {
     const firstEvent = events?.[0]
     if (!firstEvent) {
@@ -1358,19 +1390,19 @@ export class OperationRunner {
     return firstEvent.outcomes.map((outcome) => ({ ...outcome }))
   }
 
-  private extractDamageTargetId(events?: readonly DamageAnimationEvent[]): number | undefined {
+  private extractDamageTargetId(events?: readonly DamageEvent[]): number | undefined {
     if (!events) {
       return undefined
     }
     for (const event of events) {
-      if (typeof event.targetId === 'number') {
-        return event.targetId
+      if (event.defender.type === 'enemy') {
+        return event.defender.enemyId
       }
     }
     return undefined
   }
 
-  private calculateEnemyDamageWait(events: DamageAnimationEvent[]): number {
+  private calculateEnemyDamageWait(events: DamageEvent[]): number {
     if (events.length === 0) {
       return 0
     }
@@ -1378,10 +1410,7 @@ export class OperationRunner {
     if (!firstEvent) {
       return 0
     }
-    const hits =
-      firstEvent.hitCount && firstEvent.hitCount > 0
-        ? firstEvent.hitCount
-        : firstEvent.outcomes.length
+    const hits = firstEvent.outcomes.length
     const additional = Math.max(0, hits - 1) * 200
     return 500 + additional
   }

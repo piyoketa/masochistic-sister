@@ -23,14 +23,6 @@ const baseEnemy: EnemyInfo = {
   image: '/assets/enemies/snail.jpg',
   status: 'active',
   hp: { current: 80, max: 120 },
-  nextActions: [
-    {
-      title: '殴打',
-      type: 'attack',
-      description: 'シンプルな攻撃',
-      pattern: { amount: 20, count: 1, type: 'single' },
-    },
-  ],
   skills: [],
   states: [
     {
@@ -38,6 +30,7 @@ const baseEnemy: EnemyInfo = {
       name: '堅固',
       description: '被ダメージ-20（重要Trait）',
       magnitude: 20,
+      stackable: true,
       category: 'trait',
       isImportant: true,
     },
@@ -45,6 +38,7 @@ const baseEnemy: EnemyInfo = {
       id: 'state-flight',
       name: 'ダメージ固定',
       description: 'ダメージは常に1（重要Trait）',
+      stackable: false,
       category: 'trait',
       isImportant: true,
     },
@@ -53,6 +47,7 @@ const baseEnemy: EnemyInfo = {
       name: '打点上昇',
       description: '与ダメージ+10（通常Buff）',
       magnitude: 10,
+      stackable: true,
       category: 'buff',
     },
   ],

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h, ref, type Ref } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import DamageEffectsDemoView from '@/views/DamageEffectsDemoView.vue'
 
 const playMock = vi.fn()
@@ -52,6 +53,7 @@ vi.mock('@/components/DamageEffects.vue', () => {
 
 describe('/demo/damage-effects', () => {
   it('renders scenarios and switches outcomes per effectType', async () => {
+    setActivePinia(createPinia())
     const wrapper = mount(DamageEffectsDemoView)
 
     await wrapper.vm.$nextTick()

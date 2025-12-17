@@ -1,4 +1,4 @@
-import type { Action } from '../../Action'
+import type { Action } from '../../Action/ActionBase'
 import { EnemyActionQueue, type EnemyActionQueueStateSnapshot } from './EnemyActionQueue'
 
 export interface DefaultEnemyActionQueueOptions {
@@ -22,28 +22,7 @@ export class DefaultEnemyActionQueue extends EnemyActionQueue {
     super.onInitialize()
   }
 
-  protected populate(): void {
-    while (this.pending.length === 0) {
-      const next = this.pickNextAction()
-      if (!next) {
-        break
-      }
-      this.pending.push(next)
-    }
-  }
-
-  protected override onActionDequeued(action: Action): void {
-    const baseIndex = this.actions.indexOf(action)
-    if (baseIndex !== -1) {
-      this.lastIndex = baseIndex
-    }
-  }
-
-  protected override onActionDiscarded(_action: Action): void {
-    // discard should not affect lastIndex so that postponed actions execute next
-  }
-
-  private pickNextAction(): Action | undefined {
+  protected pickActionForTurn(_turn: number): Action | undefined {
     const count = this.actions.length
     if (count === 0) {
       return undefined

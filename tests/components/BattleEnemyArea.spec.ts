@@ -4,6 +4,8 @@ import { defineComponent } from 'vue'
 import BattleEnemyArea from '@/components/battle/BattleEnemyArea.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Battle } from '@/domain/battle/Battle'
+import { createActivatedTestingPinia } from './__helpers__/pinia'
+import { createTestingVuetify } from './__helpers__/vuetify'
 
 const enemyCardStub = defineComponent({
   props: ['enemy', 'selectable', 'hovered', 'selected', 'acting'],
@@ -104,6 +106,7 @@ describe('BattleEnemyArea コンポーネント', () => {
           EnemyCard: enemyCardStub,
           TransitionGroup: false,
         },
+        plugins: [createActivatedTestingPinia(), createTestingVuetify()],
       },
     })
 
@@ -126,6 +129,7 @@ describe('BattleEnemyArea コンポーネント', () => {
           EnemyCard: enemyCardStub,
           TransitionGroup: false,
         },
+        plugins: [createActivatedTestingPinia(), createTestingVuetify()],
       },
     })
 
@@ -163,6 +167,7 @@ describe('BattleEnemyArea コンポーネント', () => {
           EnemyCard: enemyCardStub,
           TransitionGroup: false,
         },
+        plugins: [createActivatedTestingPinia(), createTestingVuetify()],
       },
     })
 

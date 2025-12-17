@@ -62,9 +62,9 @@ const OPERATION_EXPECTATIONS = [
   { name: '被虐のオーラでオークランサーに追い風', lastActionIndex: 13 },
   { name: '突き刺すでオークランサーに連撃', lastActionIndex: 14 },
   { name: '日課で手札補充', lastActionIndex: 15 },
-  { name: 'ターン終了2 → 敵行動第2セット', lastActionIndex: 23 },
-  { name: '再装填で手札を更新', lastActionIndex: 24 },
-  { name: '突き刺すでかまいたち撃破＆臆病連鎖', lastActionIndex: 27 },
+  { name: 'ターン終了2 → 敵行動第2セット', lastActionIndex: 21 },
+  { name: '再装填で手札を更新', lastActionIndex: 22 },
+  { name: '突き刺すでかまいたち撃破＆臆病連鎖', lastActionIndex: 23 },
 ] as const
 
 function warmupActionLog(logDetails: boolean): void {
@@ -244,7 +244,23 @@ function sanitizePatch<T>(patch: T | undefined): T | undefined {
       delete (changes.player as any).relics
     }
   }
+  stripRuntimeAdjustments(clone)
   return clone
+}
+
+// runtimeCost / runtimeActive は実行中の評価値であり、ActionLog比較ではノイズになるため除去する
+function stripRuntimeAdjustments(value: unknown): void {
+  if (Array.isArray(value)) {
+    value.forEach(stripRuntimeAdjustments)
+    return
+  }
+  if (value && typeof value === 'object') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (value as any).runtimeCost
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (value as any).runtimeActive
+    Object.values(value).forEach(stripRuntimeAdjustments)
+  }
 }
 
 function mergeMemoryCardOnlyBatches(

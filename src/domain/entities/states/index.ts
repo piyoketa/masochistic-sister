@@ -18,11 +18,14 @@ export { WeakState } from './WeakState'
 export { JointDamageState } from './JointDamageState'
 export { ChargeState } from './ChargeState'
 export { EvilThoughtState } from './EvilThoughtState'
+export { GlossyLipsState } from './GlossyLipsState'
 export { TeamBondState } from './TeamBondState'
 export { StunCountState } from './StunCountState'
 export { FiveLegsState } from './FiveLegsState'
 export { StackedStressState } from './StackedStressState'
 export { CaringAllyTrait } from './CaringAllyTrait'
+export { DamageLinkState } from './DamageLinkState'
+export { MiasmaState } from './MiasmaState'
 
 import type { State } from '../State'
 import type { StateSnapshot } from '@/types/battle'
@@ -46,11 +49,14 @@ import { WeakState } from './WeakState'
 import { JointDamageState } from './JointDamageState'
 import { ChargeState } from './ChargeState'
 import { EvilThoughtState } from './EvilThoughtState'
+import { GlossyLipsState } from './GlossyLipsState'
 import { TeamBondState } from './TeamBondState'
 import { StunCountState } from './StunCountState'
 import { FiveLegsState } from './FiveLegsState'
 import { StackedStressState } from './StackedStressState'
 import { CaringAllyTrait } from './CaringAllyTrait'
+import { DamageLinkState } from './DamageLinkState'
+import { MiasmaState } from './MiasmaState'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
@@ -64,7 +70,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-barrier': (m) => new BarrierState(m),
   'state-guardian-petal': (m) => new GuardianPetalState(m),
   'state-heavyweight': () => new HeavyweightState(),
-  'state-lightweight': (m) => new LightweightState(m),
+  'state-lightweight': () => new LightweightState(),
   'state-flight': () => new FlightState(),
   'state-poison': (m) => new PoisonState(m),
   'state-large': () => new LargeState(),
@@ -74,11 +80,14 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-joint-damage': (m) => new JointDamageState(m),
   'state-charge': (m) => new ChargeState(m),
   'state-evil-thought': (m) => new EvilThoughtState(m),
+  'state-glossy-lips': (m) => new GlossyLipsState(m),
   'state-stacked-stress': () => new StackedStressState(),
   'trait-team-bond': () => new TeamBondState(),
   'state-stun-count': (m) => new StunCountState(m ?? 0),
   'trait-five-legs': () => new FiveLegsState(),
   'trait-caring-ally': () => new CaringAllyTrait(),
+  'state-damage-link': () => new DamageLinkState(),
+  'state-miasma': (m) => new MiasmaState(m ?? 10),
 }
 
 export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | undefined {
@@ -86,5 +95,8 @@ export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | u
   if (!factory) {
     return undefined
   }
-  return factory(snapshot.magnitude ?? 0)
+  if (snapshot.stackable) {
+    return factory(snapshot.magnitude)
+  }
+  return factory()
 }

@@ -36,6 +36,7 @@ export class PoisonState extends BadState {
     super({
       id: 'state-poison',
       name: '毒',
+      stackable: true,
       magnitude,
       cardDefinition: {
         title: '毒',
@@ -59,11 +60,21 @@ export class PoisonState extends BadState {
     }
 
     if (context.owner instanceof Enemy) {
-      context.battle.damageEnemy(context.owner, damage)
+      context.battle.damageEnemy(context.owner, {
+        actionId: 'poison',
+        attacker: null,
+        defender: { type: 'enemy', enemyId: context.owner.id ?? -1 },
+        outcomes: [{ damage, effectType: 'poison' }],
+      })
       return
     }
 
-    context.battle.damagePlayer(damage)
+    context.battle.damagePlayer({
+      actionId: 'poison',
+      attacker: null,
+      defender: { type: 'player' },
+      outcomes: [{ damage, effectType: 'poison' }],
+    })
   }
 
   override action(tags?: CardTag[]): StateAction {

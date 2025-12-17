@@ -7,10 +7,11 @@ import type { Player } from './Player'
 import type { Enemy } from './Enemy'
 import type { Action } from './Action'
 
-export interface StateProps {
+type StackableStateProps = {
   id: string
   name: string
-  magnitude?: number
+  stackable: true
+  magnitude: number
   cardDefinition?: CardDefinition
   isImportant?: boolean
   /**
@@ -18,6 +19,21 @@ export interface StateProps {
    */
   iconPath?: string
 }
+
+type NonStackableStateProps = {
+  id: string
+  name: string
+  stackable: false
+  magnitude?: undefined
+  cardDefinition?: CardDefinition
+  isImportant?: boolean
+  /**
+   * 状態を表すアイコンパス。デフォルトは未指定。派生クラスで上書き可能。
+   */
+  iconPath?: string
+}
+
+export type StateProps = StackableStateProps | NonStackableStateProps
 
 export type StateCategory = 'bad' | 'buff' | 'trait'
 
@@ -37,6 +53,9 @@ export class State {
   }
 
   get magnitude(): number | undefined {
+    if (!this.isStackable()) {
+      return undefined
+    }
     return this.props.magnitude
   }
 
@@ -97,8 +116,15 @@ export class State {
   }
 
   stackWith(state: State): void {
+    if (!this.isStackable()) {
+      return
+    }
     if (state.id !== this.id) {
       throw new Error(`State "${this.id}" cannot be stacked with different id "${state.id}"`)
+    }
+
+    if (!state.isStackable()) {
+      throw new Error(`State "${this.id}" cannot be stacked with non-stackable state "${state.id}"`)
     }
 
     const incoming = state.magnitude ?? 0
@@ -164,7 +190,14 @@ export class State {
   onAllyDefeated(_context: AllyDefeatedContext): void {}
 
   protected setMagnitude(value: number | undefined): void {
-    this.props.magnitude = value
+    if (!this.isStackable()) {
+      throw new Error(`State "${this.id}" is not stackable but setMagnitude was called`)
+    }
+    this.props.magnitude = value ?? this.props.magnitude
+  }
+
+  isStackable(): this is State & { props: StackableStateProps } {
+    return this.props.stackable
   }
 }
 

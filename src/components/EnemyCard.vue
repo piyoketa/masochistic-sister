@@ -1,7 +1,7 @@
 /**
  * EnemyCard
  * =========
- * 敵ステータスを表示し、次の行動予測や付与ステートの詳細を description overlay に流すコンポーネント。
+ * 敵ステータスを表示し、付与ステートの詳細を description overlay に流すコンポーネント。
  * このカードは親ビュー(BattleView)から敵情報を受け取り、hoverイベントで description overlay を更新する。
  * - props.enemy: 表示する敵情報 (EnemyInfo)
  * - emits hover-start/hover-end: 親に現在の hover 状態を伝搬
@@ -11,11 +11,9 @@
 import { computed, nextTick, ref } from 'vue'
 import HpGauge from '@/components/HpGauge.vue'
 import type { EnemyInfo, EnemySkill, StateSnapshot } from '@/types/battle'
-import { formatEnemyActionLabel } from '@/components/enemyActionFormatter.ts'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import DamageEffects from '@/components/DamageEffects.vue'
 import EnemyStateChip from '@/components/EnemyStateChip.vue'
-import EnemyActionChip from '@/components/EnemyActionChip.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
@@ -57,6 +55,7 @@ interface ActionChipEntry {
     change?: 'up' | 'down'
     showOverlay?: boolean
     iconPath?: string
+    tooltip?: string
   }>
   label: string
   description: string
@@ -71,7 +70,8 @@ const classes = computed(() => ({
   'enemy-card--selected': props.selected ?? false,
   'enemy-card--hovered': props.hovered ?? false,
   'enemy-card--acting': props.acting ?? false,
-  'enemy-card--defeated': props.enemy.status === 'defeated',
+  // escape でも defeat と同等の消失演出を適用する
+  'enemy-card--defeated': props.enemy.status === 'defeated' || props.enemy.status === 'escaped',
 }))
 
 const selectionStyleVars = computed(() => {
@@ -86,69 +86,6 @@ const selectionStyleVars = computed(() => {
 })
 
 const displayName = computed(() => props.enemy.name.replace('（短剣）', '')) // TODO: 削除
-
-const formattedActions = computed<ActionChipEntry[]>(() => {
-  const next = props.enemy.nextActions ?? []
-  if (next.length > 0) {
-    return next.map((action, index) => {
-      const includeTitle =
-        action.type !== 'attack' &&
-        !action.selfState &&
-        !action.status &&
-        Boolean(action.description)
-      const formatted = formatEnemyActionLabel(action, { includeTitle })
-      const tooltips: Partial<Record<number, string>> = {}
-      const descriptionText = action.description ?? action.title ?? formatted.label
-      const addTooltipIfPossible = (segmentIndex: number | undefined, text?: string) => {
-        if (
-          segmentIndex === undefined ||
-          segmentIndex < 0 ||
-          !text ||
-          formatted.segments[segmentIndex]?.showOverlay
-        ) {
-          return
-        }
-        tooltips[segmentIndex] = text
-      }
-
-      if (formatted.segments.length > 0 && descriptionText) {
-        const firstNonOverlay = formatted.segments.findIndex((segment) => !segment.showOverlay)
-        addTooltipIfPossible(firstNonOverlay === -1 ? undefined : firstNonOverlay, descriptionText)
-      }
-
-      const stateDescription = action.status?.description ?? action.selfState?.description
-      if (stateDescription && formatted.segments.length > 0) {
-        const lastIndex = formatted.segments.length - 1
-        addTooltipIfPossible(lastIndex, stateDescription)
-      }
-
-      return {
-        key: `${action.title}-${index}`,
-        icon: action.icon ?? '',
-        label: formatted.label,
-        segments: formatted.segments,
-        description: descriptionText,
-        tooltips,
-        tooltipKey: `enemy-action-${props.enemy.id}-${index}`,
-        disabled: Boolean(action.acted),
-        cardInfo: action.cardInfo,
-      }
-    })
-  }
-
-  return [
-    {
-      key: `enemy-action-placeholder-${props.enemy.id}`,
-      icon: '',
-      label: '-',
-      segments: [{ text: '-' }],
-      description: '',
-      tooltips: {},
-      tooltipKey: `enemy-action-placeholder-${props.enemy.id}`,
-      disabled: false,
-    },
-  ]
-})
 
 const traitChips = computed(() =>
   (props.enemy.states ?? [])
@@ -218,8 +155,7 @@ function formatStateChip(
   description: string
   isImportant?: boolean
 } {
-  const magnitude = state.magnitude
-  const label = magnitude !== undefined ? `${state.name}(${magnitude})` : state.name
+  const label = state.stackable ? `${state.name}(${(state.magnitude ?? 0)}点)` : state.name
   const description = state.description ?? state.name
   return {
     key,
@@ -267,22 +203,8 @@ defineExpose({ playDamage, playEnemySound })
       </div>
     </header>
 
-    <section v-if="formattedActions.length" class="enemy-card__section">
-      <h5 class="enemy-card__label">Next Action</h5>
-      <ul class="enemy-card__list enemy-card__list--chips">
-        <EnemyActionChip
-          v-for="action in formattedActions"
-          :key="action.key"
-          :action="action"
-          @enter="({ event, text, key }) => showTooltip(event, text, key)"
-          @move="({ event, text, key }) => updateTooltipPosition(event, key, text)"
-          @leave="({ key }) => hideTooltip(key)"
-        />
-      </ul>
-    </section>
-
     <section v-if="traitChips.length" class="enemy-card__section enemy-card__section--traits">
-      <h5 class="enemy-card__label">Traits</h5>
+      <!-- <h5 class="enemy-card__label">Traits</h5> -->
       <TransitionGroup
         tag="ul"
         name="enemy-state"
@@ -300,7 +222,7 @@ defineExpose({ playDamage, playEnemySound })
     </section>
 
     <section v-if="stateChips.length" class="enemy-card__section enemy-card__section--states">
-      <h5 class="enemy-card__label">States</h5>
+      <!-- <h5 class="enemy-card__label">States</h5> -->
       <TransitionGroup tag="ul" name="enemy-state" class="enemy-card__list enemy-card__list--chips">
         <EnemyStateChip
           v-for="state in stateChips"
@@ -329,7 +251,12 @@ defineExpose({ playDamage, playEnemySound })
   background: linear-gradient(180deg, rgba(18, 22, 40, 0.9), rgba(10, 12, 24, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
-  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    border-color 140ms ease,
+    opacity 400ms ease,
+    filter 400ms ease;
   cursor: default;
   overflow: hidden;
   --enemy-selection-border: rgba(255, 116, 116, 0.45);
@@ -360,8 +287,8 @@ defineExpose({ playDamage, playEnemySound })
 }
 
 .enemy-card--defeated {
-  opacity: 0.7;
-  filter: grayscale(0.45);
+  opacity: 0.35;
+  filter: grayscale(0.65);
   cursor: default;
   pointer-events: none;
 }

@@ -41,7 +41,9 @@ describe('Enemy.addState のスタック処理', () => {
     enemy.addState(new HeavyweightState())
 
     const heavy = enemy.states.find((state) => state.id === 'state-heavyweight')
-    expect(heavy?.magnitude).toBe(1)
+    expect(heavy).toBeDefined()
+    expect(heavy?.isStackable()).toBe(false)
+    expect(heavy?.magnitude).toBeUndefined()
     expect(enemy.states.filter((state) => state.id === 'state-heavyweight')).toHaveLength(1)
   })
 
@@ -51,7 +53,9 @@ describe('Enemy.addState のスタック処理', () => {
     enemy.addState(new LightweightState())
 
     const light = enemy.states.find((state) => state.id === 'state-lightweight')
-    expect(light?.magnitude).toBe(1)
+    expect(light).toBeDefined()
+    expect(light?.isStackable()).toBe(false)
+    expect(light?.magnitude).toBeUndefined()
     expect(enemy.states.filter((state) => state.id === 'state-lightweight')).toHaveLength(1)
   })
 })

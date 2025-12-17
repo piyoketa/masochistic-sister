@@ -34,6 +34,11 @@ import {
 import type { Battle, BattleSnapshot, FullBattleSnapshot } from '@/domain/battle/Battle'
 import type { StageEventMetadata } from '@/types/animation'
 
+// 敵 acted 表示の調査用デバッグログ。VITE_DEBUG_ENEMY_ACTED=true で有効。
+const DEBUG_ENEMY_ACTED =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_ENEMY_ACTED === 'true') ||
+  (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ENEMY_ACTED === 'true')
+
 declare global {
   interface Window {
     __MASO_ANIMATION_DEBUG__?: boolean
@@ -268,6 +273,11 @@ export class ViewManager {
     return this.battleInstance
   }
 
+  private initializeBattle(): void {
+    this.battleInstance = this.createBattle()
+    this.battleInstance.setInputLocked(this.stateValue.input.locked)
+  }
+
   getActionLog(): ActionLog {
     return this.actionLog
   }
@@ -342,6 +352,15 @@ export class ViewManager {
 
     this.operationLog.truncateAfter(lastIndex - 1)
     this.rebuildFromOperations(lastIndex - 1)
+    // 調査用ログ: Undo直後の状態を確認
+    // eslint-disable-next-line no-console
+    console.debug('[ViewManager] undoLastPlayerAction', {
+      truncatedTo: lastIndex - 1,
+      battleHp: this.battleInstance?.player.currentHp,
+      snapshotHp: this.stateValue.snapshot?.player.currentHp,
+      turn: this.stateValue.snapshot?.turnPosition?.turn,
+      side: this.stateValue.snapshot?.turnPosition?.side,
+    })
     return true
   }
 
@@ -627,6 +646,10 @@ export class ViewManager {
   }
 
   private rebuildFromOperations(targetOperationIndex: number): void {
+    if (DEBUG_ENEMY_ACTED) {
+      // eslint-disable-next-line no-console
+      console.log('[VM] rebuildFromOperations start', { targetOperationIndex, logLength: this.operationLog.length })
+    }
     const clampedIndex =
       this.operationLog.length === 0 ? -1 : Math.min(targetOperationIndex, this.operationLog.length - 1)
 
@@ -646,6 +669,7 @@ export class ViewManager {
         actionLog,
         initialSnapshot: this.initialBattleSnapshot,
         onEntryAppended: (entry, context) => this.handleRunnerEntryAppended(entry, context),
+        createBattle: () => this.createBattle(),
       })
 
       if (!this.initialBattleSnapshot) {
@@ -662,6 +686,10 @@ export class ViewManager {
         const operation = this.operationLog.at(index)
         if (!operation) {
           continue
+        }
+        if (DEBUG_ENEMY_ACTED) {
+          // eslint-disable-next-line no-console
+          console.log('[VM] replay operation', { index, type: operation.type })
         }
         this.executeOperationWithRunner(operation, { operationIndex: index })
       }
@@ -686,6 +714,13 @@ export class ViewManager {
     this.stateValue.input.queued.length = 0
 
     this.syncStateFromBattle()
+    // Undo/リプレイ完了直後は、前後スナップショットを一致させてHP表示の取り違いを防ぐ
+    this.stateValue.previousSnapshot = this.stateValue.snapshot
+    this.notifyState()
+    if (DEBUG_ENEMY_ACTED) {
+      // eslint-disable-next-line no-console
+      console.log('[VM] rebuildFromOperations end', { executedOperationIndex: this.executedOperationIndex })
+    }
   }
 
   private resolveActionLogEntry(
@@ -913,6 +948,7 @@ export class ViewManager {
     }
 
     this.stateValue.input.locked = locked
+    this.battleInstance?.setInputLocked(locked)
     if (!options.silent) {
       this.emit({ type: 'input-lock-changed', locked })
     }
