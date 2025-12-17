@@ -13,6 +13,7 @@ import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { CardInfo } from '@/types/battle'
 import { createCardFromBlueprint } from '@/domain/library/Library'
+import { useImageHub } from '@/composables/imageHub'
 import {
   SnailTeam,
   IronBloomTeam,
@@ -38,6 +39,10 @@ const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
 const pileOverlayStore = usePileOverlayStore()
+const imageHub = useImageHub()
+const SISTER_ICON_SRC = '/assets/players/icons/sister_dot.png'
+imageHub.getElement(SISTER_ICON_SRC)
+const sisterIconSrc = computed(() => imageHub.getSrc(SISTER_ICON_SRC))
 
 const router = useRouter()
 const debugMode = ref(false)
@@ -63,6 +68,10 @@ const deckCardInfos = computed<CardInfo[]>(() => {
 const currentLevel = computed(() => fieldStore.currentLevelIndex + 1)
 const levels = computed(() => fieldStore.field.levels)
 const playerHp = computed(() => ({ current: playerStore.hp, max: playerStore.maxHp }))
+const currentNodeCleared = computed(() => {
+  const node = fieldStore.currentNode
+  return node ? fieldStore.isNodeCleared(node.id) : false
+})
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
   snail: () => new SnailTeam(),
@@ -127,7 +136,13 @@ function isReachable(levelIndex: number, nodeIndex: number): boolean {
   if (!node) {
     return false
   }
-  // ルール: 現在いるレベルの「次のレベル」のマスだけを選択できる
+  // ルール:
+  // - 現在マス未クリア: 現在マスのみ進入可（次レベルは不可）
+  // - 現在マスクリア済み: 次レベルの到達可能マスのみ進入可（現在マスは不可）
+  const isCurrent = levelIndex === fieldStore.currentLevelIndex && nodeIndex === fieldStore.currentNodeIndex
+  if (!currentNodeCleared.value) {
+    return isCurrent
+  }
   if (levelIndex !== fieldStore.nextLevelIndex) {
     return false
   }
@@ -248,6 +263,17 @@ onMounted(() => {
               }"
             >
               <div class="node-title">{{ nodeLabel(node) }}</div>
+              <div
+                v-if="levelIdx === fieldStore.currentLevelIndex && idx === fieldStore.currentNodeIndex"
+                class="node-avatar"
+              >
+                <img
+                  v-if="sisterIconSrc"
+                  :src="sisterIconSrc"
+                  alt="現在位置"
+                  class="node-avatar__img"
+                >
+              </div>
               <div
                 v-if="fieldStore.field.isEnemyNode(node)"
                 class="node-chip"
@@ -378,6 +404,22 @@ onMounted(() => {
   min-width: 300px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   position: relative;
+}
+
+.node-avatar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 20px;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.node-avatar__img {
+  width: 80px;
 }
 
 .node-card--current {
