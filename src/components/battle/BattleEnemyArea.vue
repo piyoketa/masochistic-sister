@@ -12,11 +12,13 @@ BattleEnemyArea の責務:
 - BattleView（親）: props で snapshot / 選択状態を受け取り、hover-start・hover-end・enemy-click・cancel-selection を emit する。
 - EnemyCard: 各敵カードを描画する。`enemy: EnemyInfo`、`selectable: boolean` 等の既存インターフェースを利用。
   `EnemyInfo` は `@/types/battle` の型で、スナップショット + Battle インスタンスから生成した情報を格納する。類似する型として `BattleSnapshot['enemies'][number]` があるが、
-  EnemyInfo はビュー描画向けに行動予測（nextActions）や states の整形済み情報を持つ点が異なる。
+  EnemyInfo はビュー描画向けに states の整形済み情報を持つ点が異なる（行動予測は EnemyNextActions へ分離）。
 -->
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
+import EnemyNextActions from '@/components/battle/EnemyNextActions.vue'
+import { formatEnemyActionChipsForView } from '@/view/enemyActionHintsForView'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Battle } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
@@ -50,6 +52,9 @@ const emit = defineEmits<{
   (event: 'hover-end', enemyId: number): void
   (event: 'enemy-click', enemy: EnemyInfo): void
   (event: 'cancel-selection'): void
+  (event: 'action-tooltip-enter', payload: { event: MouseEvent; text?: string; key: string }): void
+  (event: 'action-tooltip-move', payload: { event: MouseEvent; text?: string; key: string }): void
+  (event: 'action-tooltip-leave', payload: { key: string }): void
 }>()
 const audioStore = useAudioStore()
 
@@ -107,7 +112,6 @@ const enemySlots = computed<EnemySlot[]>(() => {
             current: enemySnapshot.currentHp,
             max: enemySnapshot.maxHp,
           },
-          nextActions: actionHints,
           skills: enemySnapshot.skills ?? [],
           states: mapStatesToEntries(enemySnapshot.states) ?? [],
         }
@@ -408,6 +412,16 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
           'enemy-slot--defeated': slot.isDefeated,
         }"
       >
+        <EnemyNextActions
+          v-if="slot.nextActions.length"
+          class="enemy-slot__actions"
+          :enemy-id="slot.id"
+          :actions="slot.nextActions"
+          :highlighted="slot.enemy ? slot.enemy.id === actingEnemyId : false"
+          @tooltip-enter="(payload) => emit('action-tooltip-enter', payload)"
+          @tooltip-move="(payload) => emit('action-tooltip-move', payload)"
+          @tooltip-leave="(payload) => emit('action-tooltip-leave', payload)"
+        />
         <EnemyCard
           v-if="slot.enemy"
           :ref="(el) => registerEnemyCardRef(slot.enemy!.id, el as EnemyCardInstance | null)"
@@ -447,6 +461,9 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
 
 .enemy-slot {
   min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .enemy-slot--defeated {
@@ -459,6 +476,10 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.enemy-slot__actions {
+  padding: 2px 4px;
 }
 
 :deep(.enemy-card-enter-active),

@@ -9,6 +9,7 @@ import { CardDestinationTag, type CardTag } from '@/domain/entities/CardTag'
 import type { CardInfo, CardTagInfo, AttackStyle, DescriptionSegment } from '@/types/battle'
 import type { OperationContext } from '@/domain/entities/operations'
 import { resolveIsActive } from '@/utils/cardInfoBuilder'
+import { compareDamageToBase } from '@/view/enemyActionDamageFormatter'
 
 export interface HandEntry {
   key: string
@@ -156,12 +157,19 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     const applyDamageDisplay = (displayDamages: Damages): void => {
       const nextAmount = Math.max(0, Math.floor(displayDamages.amount))
       const nextCount = Math.max(0, Math.floor(displayDamages.count ?? 0))
-      damageAmount = nextAmount
-      damageCount = nextCount
-      damageAmountBoosted = nextAmount > baseDamageAmount
-      damageCountBoosted = nextCount > baseDamageCount
-      damageAmountReduced = nextAmount < baseDamageAmount
-      damageCountReduced = nextCount < baseDamageCount
+      const diff = compareDamageToBase({
+        baseAmount: baseDamageAmount,
+        baseCount: baseDamageCount,
+        amount: nextAmount,
+        count: nextCount,
+        hasBase: true,
+      })
+      damageAmount = diff.amount
+      damageCount = diff.count
+      damageAmountBoosted = diff.amountChange === 'up'
+      damageCountBoosted = diff.countChange === 'up'
+      damageAmountReduced = diff.amountChange === 'down'
+      damageCountReduced = diff.countChange === 'down'
     }
 
     // 1. 基本表示（補正なし）
