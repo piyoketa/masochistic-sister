@@ -85,6 +85,17 @@ function stripRelics(snapshot: unknown): unknown {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (snapshot as any).player.relics
   }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (snapshot as any).turnPosition
+    const enemies = (snapshot as any).enemies
+    if (Array.isArray(enemies)) {
+      enemies.forEach((enemy) => {
+        if (enemy && typeof enemy === 'object') {
+          delete (enemy as any).nextActions
+        }
+      })
+    }
+  }
   return snapshot
 }
 

@@ -57,6 +57,7 @@ interface ActionChipEntry {
     change?: 'up' | 'down'
     showOverlay?: boolean
     iconPath?: string
+    tooltip?: string
   }>
   label: string
   description: string
@@ -71,7 +72,8 @@ const classes = computed(() => ({
   'enemy-card--selected': props.selected ?? false,
   'enemy-card--hovered': props.hovered ?? false,
   'enemy-card--acting': props.acting ?? false,
-  'enemy-card--defeated': props.enemy.status === 'defeated',
+  // escape でも defeat と同等の消失演出を適用する
+  'enemy-card--defeated': props.enemy.status === 'defeated' || props.enemy.status === 'escaped',
 }))
 
 const selectionStyleVars = computed(() => {
@@ -91,43 +93,28 @@ const formattedActions = computed<ActionChipEntry[]>(() => {
   const next = props.enemy.nextActions ?? []
   if (next.length > 0) {
     return next.map((action, index) => {
-      const includeTitle =
-        action.type !== 'attack' &&
-        !action.selfState &&
-        !action.status &&
-        Boolean(action.description)
-      const formatted = formatEnemyActionLabel(action, { includeTitle })
+      const formatted = formatEnemyActionLabel(action, { includeTitle: false })
       const tooltips: Partial<Record<number, string>> = {}
-      const descriptionText = action.description ?? action.title ?? formatted.label
       const addTooltipIfPossible = (segmentIndex: number | undefined, text?: string) => {
-        if (
-          segmentIndex === undefined ||
-          segmentIndex < 0 ||
-          !text ||
-          formatted.segments[segmentIndex]?.showOverlay
-        ) {
+        if (segmentIndex === undefined || segmentIndex < 0 || !text) {
           return
         }
         tooltips[segmentIndex] = text
       }
 
-      if (formatted.segments.length > 0 && descriptionText) {
-        const firstNonOverlay = formatted.segments.findIndex((segment) => !segment.showOverlay)
-        addTooltipIfPossible(firstNonOverlay === -1 ? undefined : firstNonOverlay, descriptionText)
-      }
-
-      const stateDescription = action.status?.description ?? action.selfState?.description
-      if (stateDescription && formatted.segments.length > 0) {
-        const lastIndex = formatted.segments.length - 1
-        addTooltipIfPossible(lastIndex, stateDescription)
-      }
+      // セグメント自身が tooltip を持つ場合はそのまま登録する
+      formatted.segments.forEach((segment, idx) => {
+        if (segment.tooltip) {
+          tooltips[idx] = segment.tooltip
+        }
+      })
 
       return {
         key: `${action.title}-${index}`,
         icon: action.icon ?? '',
         label: formatted.label,
         segments: formatted.segments,
-        description: descriptionText,
+        description: '',
         tooltips,
         tooltipKey: `enemy-action-${props.enemy.id}-${index}`,
         disabled: Boolean(action.acted),
@@ -329,7 +316,12 @@ defineExpose({ playDamage, playEnemySound })
   background: linear-gradient(180deg, rgba(18, 22, 40, 0.9), rgba(10, 12, 24, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
-  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    border-color 140ms ease,
+    opacity 400ms ease,
+    filter 400ms ease;
   cursor: default;
   overflow: hidden;
   --enemy-selection-border: rgba(255, 116, 116, 0.45);
@@ -360,8 +352,8 @@ defineExpose({ playDamage, playEnemySound })
 }
 
 .enemy-card--defeated {
-  opacity: 0.7;
-  filter: grayscale(0.45);
+  opacity: 0.35;
+  filter: grayscale(0.65);
   cursor: default;
   pointer-events: none;
 }

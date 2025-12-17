@@ -10,72 +10,21 @@ AllyBuffSkill.ts の責務:
 - `EnemyTeam.planUpcomingActions`: `setPlannedTarget` を用いて、ターン開始時に対象IDを注入する。
 - `Enemy`/`Player`: `applyInflictedStates` を通じてStateを付与する。
 */
-import type { ActionContext } from './ActionBase'
-import { Skill, type SkillProps } from './Skill'
+import { AllyStateSkill, type AllyStateSkillProps } from './AllyStateSkill'
 import type { Enemy } from '../Enemy'
-import type { Player } from '../Player'
 import type { State } from '../State'
+import type { ActionContext } from './ActionBase'
 
-export interface AllyBuffSkillProps extends SkillProps {
-  targetTags: string[]
-  affinityKey: string
+export type AllyBuffSkillProps = AllyStateSkillProps & {
   inflictStates?: Array<() => State>
 }
 
-export abstract class AllyBuffSkill extends Skill {
-  private readonly requiredTags: string[]
-  private readonly affinityKeyValue: string
-  private plannedTargetId?: number
-
+export abstract class AllyBuffSkill extends AllyStateSkill {
   protected constructor(props: AllyBuffSkillProps) {
     super(props)
-    this.requiredTags = [...props.targetTags]
-    this.affinityKeyValue = props.affinityKey
   }
 
-  get requiredAllyTags(): string[] {
-    return [...this.requiredTags]
-  }
-
-  get affinityKey(): string {
-    return this.affinityKeyValue
-  }
-
-  setPlannedTarget(enemyId: number | undefined): void {
-    this.plannedTargetId = enemyId
-  }
-
-  getPlannedTarget(): number | undefined {
-    return this.plannedTargetId
-  }
-
-  protected clearPlannedTarget(): void {
-    this.plannedTargetId = undefined
-  }
-
-  override execute(context: ActionContext): void {
-    super.execute(context)
-    this.clearPlannedTarget()
-  }
-
-  override canUse(context: { battle: ActionContext['battle']; source: Player | Enemy }): boolean {
-    const team = context.battle.enemyTeam
-    return team
-      .members.filter((enemy) => enemy.isActive())
-      .some((enemy) =>
-        this.requiredTags.every((tag) => enemy.hasAllyTag(tag)),
-      )
-  }
-
-  protected resolveAllyTarget(context: ActionContext): Enemy | undefined {
-    const targetId = this.plannedTargetId
-    if (targetId === undefined) {
-      return undefined
-    }
-    return context.battle.enemyTeam.findEnemy(targetId)
-  }
-
-  protected afterBuffApplied(_context: ActionContext, _target: Enemy | Player): void {}
+  protected afterBuffApplied(_context: ActionContext, _target: Enemy): void {}
 
   protected override perform(context: ActionContext): void {
     const target = this.resolveAllyTarget(context)

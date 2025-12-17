@@ -18,13 +18,21 @@ import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
 import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
-import type { EnemyActionHint, EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
-import { buildEnemyActionHints } from './enemyActionHintBuilder'
+import type { EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
 import type { Relic } from '../entities/relics/Relic'
 import { instantiateStateFromSnapshot } from '../entities/states'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
+
+export type BattleTurnSide = 'player' | 'enemy'
+
+export interface BattleTurn {
+  /** 1-based のターン番号（先制行動に 0 を使う余地を残す） */
+  turn: number
+  /** 現在行動中のサイド */
+  side: BattleTurnSide
+}
 
 export interface BattleConfig {
   id: string
@@ -43,11 +51,15 @@ export interface BattleConfig {
 
 export interface BattleSnapshot {
   id: string
+  /** 現在のターン位置。先制行動などに備え turn=0 も許容する。 */
+  turnPosition: BattleTurn
   player: {
     id: string
     name: string
     currentHp: number
     maxHp: number
+    /** プレイヤーターン中に、即「ターン終了」した場合の予測HP。入力待ち時のみ算出する。 */
+    predictedPlayerHpAfterEndTurn?: number
     currentMana: number
     maxMana: number
     relics: Array<{ className: string; active: boolean }>
@@ -63,7 +75,6 @@ export interface BattleSnapshot {
     hasActedThisTurn: boolean
     status: EnemyStatus
     skills: EnemySkill[]
-    nextActions?: EnemyActionHint[]
   }>
   deck: Card[]
   hand: Card[]
@@ -177,6 +188,12 @@ export class Battle {
   private readonly handValue: Hand
   private readonly discardPileValue: DiscardPile
   private readonly exilePileValue: ExilePile
+  /** ViewManager などが入力ロックを反映するための簡易フラグ。Snapshot生成時の予測に利用。 */
+  private inputLocked = false
+  /** プレイヤーターンで算出した予測値を敵フェーズ中も保持するためのキャッシュ。 */
+  private cachedPredictedPlayerHpAfterEndTurn: number | undefined
+  /** OperationRunner などが提供する予測計算デリゲート */
+  private predictionDelegate?: () => number | undefined
   private readonly eventsValue: BattleEventQueue
   private readonly logValue: BattleLog
   private readonly turnValue: TurnManager
@@ -262,6 +279,22 @@ export class Battle {
 
   get exilePile(): ExilePile {
     return this.exilePileValue
+  }
+
+  /** ViewManager が入力ロック/解除を伝えるための API。Snapshot 時の予測計算に利用。 */
+  setInputLocked(locked: boolean): void {
+    this.inputLocked = locked
+  }
+
+  /**
+   * 現在のターン位置を Battle インスタンスから直接参照したいケース向けの簡易ゲッター。
+   * スナップショットを介さず、最新状態の turn/side を取得する。
+   */
+  get turnPosition(): BattleTurn {
+    return {
+      turn: this.turnValue.current.turnCount,
+      side: this.turnValue.current.activeSide,
+    }
   }
 
   get events(): BattleEventQueue {
@@ -367,7 +400,44 @@ export class Battle {
     return events
   }
 
-  getSnapshot(): BattleSnapshot {
+  /**
+   * 「今すぐターン終了したらプレイヤーHPはいくつ残るか」を予測する。
+   * OperationRunner などから委譲されたデリゲートを用いて、ログ再生込みで計算する。
+   */
+  private predictPlayerHpAfterEndTurn(): number | undefined {
+    // 調査用ログ: 予測計算の入口で状況を記録する
+    // eslint-disable-next-line no-console
+    console.debug('[Battle] predictPlayerHpAfterEndTurn start', {
+      activeSide: this.turnValue.current.activeSide,
+      turn: this.turnValue.current.turnCount,
+      hasDelegate: Boolean(this.predictionDelegate),
+      cached: this.cachedPredictedPlayerHpAfterEndTurn,
+    })
+    if (this.turnValue.current.activeSide === 'enemy') {
+      return this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
+    }
+    if (this.predictionDelegate) {
+      try {
+        const predicted = this.predictionDelegate()
+        // eslint-disable-next-line no-console
+        console.debug('[Battle] predictPlayerHpAfterEndTurn delegate result', {
+          predicted,
+          currentHp: this.playerValue.currentHp,
+        })
+        if (typeof predicted === 'number') {
+          this.cachedPredictedPlayerHpAfterEndTurn = predicted
+          return predicted
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('[Battle] predictPlayerHpAfterEndTurn via delegate failed', error)
+      }
+    }
+    return undefined
+  }
+
+  getSnapshot(options?: { includePrediction?: boolean }): BattleSnapshot {
+    const includePrediction = options?.includePrediction !== false
     const teamId = this.enemyTeamValue.id
     const relicSnapshots =
       this.relicInstances.map((relic) => {
@@ -380,14 +450,25 @@ export class Battle {
     const handWithRuntime = this.handValue.list().map((card) => this.applyCardRuntime(card))
     const discardWithCost = this.discardPileValue.list()
     const exileWithCost = this.exilePileValue.list()
+    const predictedHp =
+      includePrediction && this.turnValue.current.activeSide === 'player'
+        ? this.predictPlayerHpAfterEndTurn()
+        : includePrediction
+          ? this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
+          : undefined
 
     return {
       id: this.idValue,
+      turnPosition: {
+        turn: this.turnValue.current.turnCount,
+        side: this.turnValue.current.activeSide,
+      },
       player: {
         id: this.playerValue.id,
         name: this.playerValue.name,
         currentHp: this.playerValue.currentHp,
         maxHp: this.playerValue.maxHp,
+        predictedPlayerHpAfterEndTurn: predictedHp,
         currentMana: this.playerValue.currentMana,
         maxMana: this.playerValue.maxMana,
         relics: relicSnapshots,
@@ -412,7 +493,6 @@ export class Battle {
             name: action.name,
             detail: action.describe(),
           })),
-          nextActions: buildEnemyActionHints(this, enemy),
         }
       }),
       deck: deckWithCost,
@@ -456,7 +536,8 @@ export class Battle {
   }
 
   captureFullSnapshot(): FullBattleSnapshot {
-    const base = this.getSnapshot()
+    // 予測値も含めたスナップショットを保持する
+    const base = this.getSnapshot({ includePrediction: true })
     const enemyQueues = this.enemyTeamValue.members.map((enemy) => ({
       enemyId: enemy.id ?? -1,
       queue: enemy.serializeQueueSnapshot(),
@@ -501,11 +582,19 @@ export class Battle {
     return this.relicInstances.some((relic) => relic.id === relicId && relic.isActive({ battle: this, player: this.playerValue }))
   }
 
+  setPredictionDelegate(delegate?: () => number | undefined): void {
+    this.predictionDelegate = delegate
+  }
+
   restoreFullSnapshot(state: FullBattleSnapshot): void {
     const base = state.snapshot
     this.statusValue = base.status
+    this.cachedPredictedPlayerHpAfterEndTurn = base.player.predictedPlayerHpAfterEndTurn
     this.playerValue.setCurrentHp(base.player.currentHp)
     this.playerValue.setCurrentMana(base.player.currentMana)
+    // プレイヤーのステートをスナップショットに合わせて再構築する
+    const revivedPlayerStates = this.reviveStatesStrict(base.player.states, 'player')
+    this.playerValue.replaceBaseStates(revivedPlayerStates)
 
     this.deckValue.replace(base.deck)
     this.handValue.replace(base.hand)
@@ -531,11 +620,7 @@ export class Battle {
       enemy.setCurrentHp(enemySnapshot.currentHp)
       enemy.setStatus(enemySnapshot.status)
       enemy.setHasActedThisTurn(enemySnapshot.hasActedThisTurn)
-      enemy.replaceStates(
-        enemySnapshot.states
-          .map((entry) => instantiateStateFromSnapshot(entry))
-          .filter((entry): entry is State => Boolean(entry)),
-      )
+      enemy.replaceStates(this.reviveStatesStrict(enemySnapshot.states, `enemy:${enemySnapshot.id}`))
       const queueState = state.enemyQueues.find((entry) => entry.enemyId === enemySnapshot.id)
       if (queueState) {
         enemy.restoreQueueSnapshot(queueState.queue)
@@ -544,6 +629,20 @@ export class Battle {
 
     this.resolvedEventsBuffer = []
     this.stateEventBuffer = []
+  }
+
+  private reviveStatesStrict(states: StateSnapshot[] | undefined, context: string): State[] {
+    if (!states) {
+      throw new Error(`[Battle] State snapshots missing for ${context}`)
+    }
+    const revived = states
+      .map((entry) => instantiateStateFromSnapshot(entry))
+      .filter((entry): entry is State => Boolean(entry))
+    if (states.length > 0 && revived.length === 0) {
+      const ids = states.map((entry) => entry.id ?? 'undefined').join(', ')
+      throw new Error(`[Battle] Failed to revive states for ${context}. ids=[${ids}]`)
+    }
+    return revived
   }
 
   initialize(): void {
@@ -784,13 +883,15 @@ export class Battle {
       if (!enemy) {
         continue
       }
-      if (enemy.currentHp <= 0) {
+      if (!enemy.isActive()) {
+        const reason: EnemyTurnSkipReason =
+          enemy.status === 'escaped' ? 'escaped' : enemy.currentHp <= 0 ? 'defeated' : 'no-action'
         actions.push({
           enemyId,
           enemyName: enemy.name,
           actionName: '戦闘不能',
           skipped: true,
-          skipReason: 'defeated',
+          skipReason: reason,
           cardsAddedToPlayerHand: [],
           stateCardEvents: undefined,
           memoryCardEvents: undefined,
@@ -1170,6 +1271,8 @@ export class Battle {
           this.drawForPlayer(entry.draw)
         }
         this.resolveEvents()
+        // プレイヤーターン開始時に敵の次アクションを確定させ、ヒント生成に依存しないようにする
+        this.enemyTeam.ensureActionsForTurn(this, this.turnPosition.turn)
         this.enemyTeam.planUpcomingActions(this)
         break
       case 'play-card': {
@@ -1335,6 +1438,7 @@ export class Battle {
             : event.payload,
       })),
       turn: { ...source.turn },
+      turnPosition: { ...source.turnPosition },
       log: source.log.map((entry) => ({ ...entry })),
       status: source.status,
     }

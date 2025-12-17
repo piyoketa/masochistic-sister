@@ -11,19 +11,21 @@ BattleEnemyArea の責務:
 主な通信相手とインターフェース:
 - BattleView（親）: props で snapshot / 選択状態を受け取り、hover-start・hover-end・enemy-click・cancel-selection を emit する。
 - EnemyCard: 各敵カードを描画する。`enemy: EnemyInfo`、`selectable: boolean` 等の既存インターフェースを利用。
-  `EnemyInfo` は `@/types/battle` の型で、スナップショットから生成した情報を格納する。類似する型として `BattleSnapshot['enemies'][number]` があるが、
-  EnemyInfo はビュー描画向けに nextActions や states の整形済み情報を持つ点が異なる。
+  `EnemyInfo` は `@/types/battle` の型で、スナップショット + Battle インスタンスから生成した情報を格納する。類似する型として `BattleSnapshot['enemies'][number]` があるが、
+  EnemyInfo はビュー描画向けに行動予測（nextActions）や states の整形済み情報を持つ点が異なる。
 -->
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
+import type { Battle } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
 import type { EnemyInfo, EnemyActionHint, EnemyStatus, StateSnapshot } from '@/types/battle'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import { useAudioStore } from '@/stores/audioStore'
 
 interface EnemySelectionHint {
   enemyId: number
@@ -32,6 +34,7 @@ interface EnemySelectionHint {
 }
 
 const props = defineProps<{
+  battle?: Battle
   snapshot: BattleSnapshot | undefined
   isInitializing: boolean
   isSelectingEnemy: boolean
@@ -39,6 +42,7 @@ const props = defineProps<{
   stageEvent: StageEventPayload | null
   selectionHints?: EnemySelectionHint[]
   selectionTheme?: EnemySelectionTheme
+  actionHintsByEnemyId?: Map<number, EnemyActionHint[]>
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +51,7 @@ const emit = defineEmits<{
   (event: 'enemy-click', enemy: EnemyInfo): void
   (event: 'cancel-selection'): void
 }>()
+const audioStore = useAudioStore()
 
 interface EnemySlot {
   id: number
@@ -76,18 +81,22 @@ const selectionHintMap = computed<Map<number, EnemySelectionHint>>(() => {
   return map
 })
 
+const escapeAnimatingIds = ref(new Set<number>())
+
 const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
+  const hintsMap = props.actionHintsByEnemyId ?? new Map<number, EnemyActionHint[]>()
   if (!current) {
     return []
   }
 
   return current.enemies.map((enemySnapshot) => {
     // 撃破直後に HP ゲージが 0 になる描画を出すため、escaped 以外は表示対象とする
-    const isDefeated = enemySnapshot.status === 'defeated'
     const isEscaped = enemySnapshot.status === 'escaped'
-    const shouldDisplay = !isEscaped
-    const baseNextActions: EnemyActionHint[] = enemySnapshot.nextActions ?? []
+    const isDefeated = enemySnapshot.status === 'defeated'
+    const isEscapeAnimating = escapeAnimatingIds.value.has(enemySnapshot.id)
+    const shouldDisplay = !isEscaped || isEscapeAnimating
+    const actionHints = hintsMap.get(enemySnapshot.id) ?? []
     const enemyInfo = shouldDisplay
       ? {
           id: enemySnapshot.id,
@@ -98,7 +107,7 @@ const enemySlots = computed<EnemySlot[]>(() => {
             current: enemySnapshot.currentHp,
             max: enemySnapshot.maxHp,
           },
-          nextActions: baseNextActions,
+          nextActions: actionHints,
           skills: enemySnapshot.skills ?? [],
           states: mapStatesToEntries(enemySnapshot.states) ?? [],
         }
@@ -285,8 +294,18 @@ function handleEscapeStage(metadata: EscapeStageMetadata): void {
   if (enemyId === undefined) {
     return
   }
+  // 逃走中は defeat と同様にカードを表示したまま簡易の消失演出を出すため、逃走アニメーション対象として保持する。
+  escapeAnimatingIds.value.add(enemyId)
+  window.setTimeout(() => {
+    escapeAnimatingIds.value.delete(enemyId)
+  }, 1200)
   const target = enemyCardRefs.get(enemyId)
-  target?.playEnemySound?.('escape')
+  if (target) {
+    target.playEnemySound?.('escape')
+  } else {
+    // カードが既にアンマウントされていてもサウンドだけは確実に鳴らす
+    audioStore.playSe('/sounds/escape/kurage-kosho_esc01.mp3')
+  }
 }
 
 function extractEnemyIdFromResolvedEntry(
@@ -391,7 +410,7 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
           :hovered="isSelectingEnemy && isEnemySelectable(slot.enemy.id) && hoveredEnemyId === slot.enemy.id"
           :selected="isSelectingEnemy && isEnemySelectable(slot.enemy.id) && hoveredEnemyId === slot.enemy.id"
           :selection-theme="props.selectionTheme"
-          :acting="slot.enemy ? actingEnemyId === slot.enemy.id : false"
+          :acting="slot.enemy ? slot.enemy.status === 'active' && actingEnemyId === slot.enemy.id : false"
           :blocked-reason="blockedReason(slot.enemy.id)"
           @mouseenter="() => handleHoverStart(slot.enemy!.id)"
           @mouseleave="() => handleHoverEnd(slot.enemy!.id)"

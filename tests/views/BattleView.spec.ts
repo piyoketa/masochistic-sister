@@ -55,6 +55,10 @@ const HpGaugeStub = defineComponent({
 function createSnapshot(): BattleSnapshot {
   return {
     id: 'battle',
+    turnPosition: {
+      turn: 1,
+      side: 'player',
+    },
     player: {
       id: 'player',
       name: 'プレイヤー',
@@ -84,6 +88,10 @@ function createBattleStub(): Battle {
   return {
     enemyTeam: {
       findEnemy: vi.fn(),
+    },
+    turnPosition: {
+      turn: 1,
+      side: 'player',
     },
     player: {
       getStates: vi.fn(() => []),

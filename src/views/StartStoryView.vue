@@ -21,6 +21,8 @@ onMounted(() => {
 })
 
 async function handleFinish(): Promise<void> {
+  // スタートマスをクリア扱いにし、進行を正しく更新する
+  fieldStore.markCurrentCleared()
   // ストーリー終了後はフィールドに戻す。フィールドは既定の状態を保持する。
   await router.push('/field')
 }

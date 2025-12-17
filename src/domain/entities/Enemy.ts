@@ -1,4 +1,4 @@
-import type { Action } from './Action'
+import type { Action } from './Action/ActionBase'
 import type { State } from './State'
 import type { Battle, DamageAnimationEvent } from '../battle/Battle'
 import type { EnemyActionQueue, EnemyActionQueueStateSnapshot } from './enemy/actionQueues'
@@ -14,6 +14,7 @@ export interface EnemyProps {
   image: string
   futureActions?: Action[]
   rng?: () => number
+  rngSeed?: number | string
   actionQueueFactory?: () => EnemyActionQueue
   allyTags?: string[]
   allyBuffWeights?: Record<string, number>
@@ -34,6 +35,7 @@ export class Enemy {
   private readonly stateList: State[]
   private readonly imageValue: string
   private readonly rng: () => number
+  private readonly rngSeed?: number | string
   private readonly actionHistory: Action[] = []
   private readonly actionQueue: EnemyActionQueue
   private readonly allyTagsValue: string[]
@@ -50,14 +52,15 @@ export class Enemy {
     this.actionCandidates = [...props.actions]
     this.stateList = [...(props.states ?? [])]
     this.imageValue = props.image
+    this.rngSeed = props.rngSeed
     this.rng = props.rng ?? Math.random
     this.allyTagsValue = [...(props.allyTags ?? [])]
     this.allyBuffWeightsValue = { ...(props.allyBuffWeights ?? {}) }
     this.actionQueue = props.actionQueueFactory ? props.actionQueueFactory() : new DefaultEnemyActionQueue()
-    this.actionQueue.initialize(this.actionCandidates, this.rng)
+    this.actionQueue.initialize(this.actionCandidates, this.rng, this.rngSeed)
     if (props.futureActions) {
       for (const action of props.futureActions) {
-        this.actionQueue.append(action)
+        this.actionQueue.scheduleActionForNextTurn(action, { replace: false })
       }
     }
   }
@@ -80,6 +83,13 @@ export class Enemy {
 
   get queuedActions(): Action[] {
     return this.actionQueue.peek()
+  }
+
+  /**
+   * 指定ターンの行動を確定させて取得する（履歴に残す）。
+   */
+  confirmActionForTurn(turn: number): Action | null {
+    return this.actionQueue.ensureActionForTurn(turn)
   }
 
   get actionLog(): Action[] {
@@ -106,17 +116,13 @@ export class Enemy {
     return this.statusValue
   }
 
-  get plannedActionsForDisplay(): Action[] {
-    return this.actionQueue.getDisplayPlan()
+  setQueueContext(context: Record<string, unknown>): void {
+    this.actionQueue.setContext(context)
   }
 
-  refreshPlannedActionsForDisplay(): void {
-    this.actionQueue.snapshotDisplayPlan()
-  }
+  refreshPlannedActionsForDisplay(): void {}
 
-  clearPlannedActionsForDisplay(): void {
-    this.actionQueue.clearDisplayPlan()
-  }
+  clearPlannedActionsForDisplay(): void {}
 
   sampleRng(): number {
     return this.rng()
@@ -157,7 +163,7 @@ export class Enemy {
       ;(this.actionQueue as any).setContext({ battle, owner: this })
     }
 
-    const action = this.actionQueue.next()
+    const action = this.actionQueue.ensureActionForTurn(battle.turnPosition.turn)
     if (!action) {
       battle.addLogEntry({
         message: `${this.name}は行動候補を持っていない。`,
@@ -239,7 +245,7 @@ export class Enemy {
       return
     }
     this.statusValue = 'escaped'
-    this.actionQueue.clearAll()
+    this.actionQueue.clearScheduledActions()
     battle.addLogEntry({
       message: `${this.name}は恐怖に駆られて逃走した。`,
       metadata: { enemyId: this.id, reason: 'flee' },
@@ -287,27 +293,29 @@ export class Enemy {
     return [...this.stateList]
   }
 
-  discardNextScheduledAction(): Action | undefined {
-    const discarded = this.actionQueue.discardNext()
-    if (discarded) {
-      this.refreshPlannedActionsForDisplay()
-    }
+  /**
+   * 指定ターンの行動を別のアクションに置き換える。元の行動を返す。
+   * 天の鎖など、すでに確定済みの行動を書き換える用途で使用する。
+   */
+  replaceActionForTurn(turn: number, action: Action): Action | undefined {
+    return this.actionQueue.replaceActionForTurn(turn, action)
+  }
+
+  discardNextScheduledAction(currentTurn?: number): Action | undefined {
+    const discarded = this.actionQueue.discardTurn(currentTurn)
     return discarded
   }
 
   queueImmediateAction(action: Action): void {
-    this.actionQueue.prepend(action)
-    this.refreshPlannedActionsForDisplay()
+    this.actionQueue.scheduleActionForNextTurn(action, { replace: true })
   }
 
   enqueueAction(action: Action): void {
-    this.actionQueue.append(action)
-    this.refreshPlannedActionsForDisplay()
+    this.actionQueue.scheduleActionForNextTurn(action, { replace: true })
   }
 
   prependAction(action: Action): void {
-    this.actionQueue.prepend(action)
-    this.refreshPlannedActionsForDisplay()
+    this.actionQueue.scheduleActionForNextTurn(action, { replace: true })
   }
 
   hasAllyTag(tag: string): boolean {

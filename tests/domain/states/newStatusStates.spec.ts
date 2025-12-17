@@ -58,6 +58,18 @@ describe('軽量化Stateの挙動', () => {
     expect(damages.amount).toBe(15) // 重量化の+50%のみ適用
     expect(damages.count).toBe(2) // 攻撃側-1と防御側+1で元の2回へ戻る
   })
+
+  it('防御側の軽量化は攻撃回数を増やさない（単発攻撃は1回のまま）', () => {
+    const damages = new Damages({
+      baseAmount: 5,
+      baseCount: 1,
+      type: 'single',
+      cardId: 'shape-up',
+      defenderStates: [new LightweightState(1)],
+    })
+
+    expect(damages.count).toBe(1)
+  })
 })
 
 describe('ダメージ固定Stateの挙動', () => {
