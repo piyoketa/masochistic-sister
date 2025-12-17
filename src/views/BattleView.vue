@@ -992,25 +992,44 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
       </button>
     </template>
     <template #instructions>
-      コンセプト
-      Slay The Spire 風のカードバトルです。
-      プレイヤー「記憶の聖女」は、敵から受けた「被虐の記憶」をカードとして使用できます。
-      敵の攻撃と状態異常を上手く活用し、生きて最深部まで辿り着きましょう！
+      <!-- 説明文を段落化し、最小限の余白で読みやすくする -->
+      <section class="battle-instructions">
+        <h2 class="battle-instructions__title">コンセプト</h2>
+        <p class="battle-instructions__lead">
+          Slay The Spire 風のカードバトルです。プレイヤー「記憶の聖女」は、敵から受けた「被虐の記憶」をカードとして使用できます。敵の攻撃と状態異常を上手く活用し、生きて最深部まで辿り着きましょう！
+        </p>
 
-      操作
-      ・左クリック：選択
-      ・右クリック：キャンセル
+        <div class="battle-instructions__group">
+          <h3 class="battle-instructions__heading">操作</h3>
+          <ul class="battle-instructions__list">
+            <li>左クリック：選択</li>
+            <li>右クリック：キャンセル</li>
+          </ul>
+        </div>
 
-      状態異常
-      ・手札の「状態異常」カードは、使用することで治癒できます
-      ・腐食／粘液などの状態異常は累積します
+        <div class="battle-instructions__group">
+          <h3 class="battle-instructions__heading">状態異常</h3>
+          <ul class="battle-instructions__list">
+            <li>手札の「状態異常」カードは、使用することで治癒できます</li>
+            <li>腐食／粘液などの状態異常は累積します</li>
+          </ul>
+        </div>
 
-      マナ
-      ・黄色の円で示されるのが現在のマナです。
-      ・カードの左上がマナコストです。マナを消費してカードを使用できます。
+        <div class="battle-instructions__group">
+          <h3 class="battle-instructions__heading">マナ</h3>
+          <ul class="battle-instructions__list">
+            <li>黄色の円で示されるのが現在のマナです。</li>
+            <li>カードの左上がマナコストです。マナを消費してカードを使用できます。</li>
+          </ul>
+        </div>
 
-      戦闘報酬
-      ・一回の戦闘が終了すると、HPが50回復し、今回の戦闘で獲得した記憶から１枚をデッキに入れられます
+        <div class="battle-instructions__group">
+          <h3 class="battle-instructions__heading">戦闘報酬</h3>
+          <p class="battle-instructions__text">
+            一回の戦闘が終了すると、HPが50回復し、今回の戦闘で獲得した記憶から１枚をデッキに入れられます。
+          </p>
+        </div>
+      </section>
     </template>
 
     <main class="battle-main">
@@ -1119,6 +1138,55 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   border-radius: 0;
   border: none;
   overflow: hidden;
+}
+
+.battle-instructions {
+  margin: 0 auto;
+  max-width: 1000px;
+  padding: 20px 24px;
+  background: linear-gradient(180deg, #f9fafc, #f2f4fb);
+  border: 1px solid #e5e8ef;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+  color: #1f2430;
+  display: grid;
+  gap: 14px;
+  line-height: 1.75;
+}
+
+.battle-instructions__title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  color: #182030;
+}
+
+.battle-instructions__lead {
+  margin: 0;
+}
+
+.battle-instructions__group {
+  display: grid;
+  gap: 8px;
+}
+
+.battle-instructions__heading {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: #253047;
+}
+
+.battle-instructions__list {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 6px;
+  list-style: disc;
+}
+
+.battle-instructions__text {
+  margin: 0;
 }
 
 .battle-cutin-overlay {
