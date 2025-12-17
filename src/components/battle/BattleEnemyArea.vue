@@ -18,11 +18,11 @@ BattleEnemyArea の責務:
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import EnemyNextActions from '@/components/battle/EnemyNextActions.vue'
-import { formatEnemyActionChipsForView } from '@/view/enemyActionHintsForView'
+import { formatEnemyActionChipsForView, type EssentialEnemyActionHint } from '@/view/enemyActionHintsForView'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Battle } from '@/domain/battle/Battle'
 import type { State } from '@/domain/entities/State'
-import type { EnemyInfo, EnemyActionHint, EnemyStatus, StateSnapshot } from '@/types/battle'
+import type { EnemyInfo, EnemyStatus, StateSnapshot } from '@/types/battle'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
@@ -44,7 +44,7 @@ const props = defineProps<{
   stageEvent: StageEventPayload | null
   selectionHints?: EnemySelectionHint[]
   selectionTheme?: EnemySelectionTheme
-  actionHintsByEnemyId?: Map<number, EnemyActionHint[]>
+  actionHintsByEnemyId?: Map<number, EssentialEnemyActionHint[]>
 }>()
 
 const emit = defineEmits<{
@@ -62,6 +62,7 @@ interface EnemySlot {
   id: number
   status: EnemyStatus
   isDefeated: boolean
+  nextActions: EssentialEnemyActionHint[]
   enemy?: EnemyInfo
 }
 
@@ -90,7 +91,7 @@ const escapeAnimatingIds = ref(new Set<number>())
 
 const enemySlots = computed<EnemySlot[]>(() => {
   const current = props.snapshot
-  const hintsMap = props.actionHintsByEnemyId ?? new Map<number, EnemyActionHint[]>()
+  const hintsMap = props.actionHintsByEnemyId ?? new Map<number, EssentialEnemyActionHint[]>()
   if (!current) {
     return []
   }
@@ -120,6 +121,7 @@ const enemySlots = computed<EnemySlot[]>(() => {
       id: enemySnapshot.id,
       status: enemySnapshot.status,
       isDefeated,
+      nextActions: actionHints,
       enemy: enemyInfo,
     }
   })
@@ -379,21 +381,30 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
     if (typeof (state as State).getCategory === 'function') {
       const typed = state as State
       const stackable = typeof typed.isStackable === 'function' ? typed.isStackable() : Boolean(typed.magnitude !== undefined)
-      return {
+      if (stackable) {
+        const snapshot: StateSnapshot = {
+          id: typed.id,
+          name: typed.name,
+          description: typeof typed.description === 'function' ? typed.description() : '',
+          magnitude: typed.magnitude ?? 0,
+          category: typed.getCategory(),
+          isImportant: typeof typed.isImportant === 'function' ? typed.isImportant() : false,
+          stackable: true,
+        }
+        return snapshot
+      }
+      const snapshot: StateSnapshot = {
         id: typed.id,
         name: typed.name,
         description: typeof typed.description === 'function' ? typed.description() : '',
-        magnitude: stackable ? typed.magnitude : undefined,
+        magnitude: undefined,
         category: typed.getCategory(),
         isImportant: typeof typed.isImportant === 'function' ? typed.isImportant() : false,
-        stackable,
+        stackable: false,
       }
+      return snapshot
     }
-    const snapshot = state as StateSnapshot
-    return {
-      ...snapshot,
-      stackable: snapshot.stackable,
-    }
+    return state as StateSnapshot
   })
 }
 </script>

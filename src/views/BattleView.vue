@@ -117,7 +117,6 @@ const hoveredEnemyId = ref<number | null>(null)
 const { enemyActionHintsById } = useEnemyActionHints({
   battleGetter: () => viewManager.battle,
   snapshot,
-  planUpdateToken: computed(() => managerState.planUpdateToken),
 })
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)

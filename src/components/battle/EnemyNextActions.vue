@@ -18,7 +18,9 @@ const emit = defineEmits<{
 
 const formattedActions = computed<EnemyActionChipViewModel[]>(() =>
   props.actions.length > 0
-    ? props.actions.map((essential) => formatEnemyActionChipsForView(props.enemyId, [essential])[0])
+    ? props.actions
+        .map((essential) => formatEnemyActionChipsForView(props.enemyId, [essential])[0])
+        .filter((vm): vm is EnemyActionChipViewModel => Boolean(vm))
     : [],
 )
 </script>
@@ -34,7 +36,7 @@ const formattedActions = computed<EnemyActionChipViewModel[]>(() =>
       :class="{ 'enemy-next-actions__list--highlight': highlighted }"
     >
       <EnemyActionChip
-        v-for="action in formattedActions()"
+        v-for="action in formattedActions"
         :key="action.key"
         :action="action"
         @enter="(payload) => emit('tooltip-enter', payload)"

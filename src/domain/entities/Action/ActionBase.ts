@@ -59,6 +59,18 @@ export interface BaseActionProps {
   cutInCue?: ActionCutInCue
 }
 
+// 計画情報をスナップショットに載せるための簡易シリアライズ形。
+export interface ActionPlanSnapshot {
+  kind?: string
+  targetId?: number
+}
+
+// 計画フェーズを持つActionが実装するオプショナルインターフェース。
+export interface ActionWithPlan {
+  serializePlan(): ActionPlanSnapshot | undefined
+  restorePlan(plan: ActionPlanSnapshot | undefined): void
+}
+
 export interface ActionCostContext {
   battle?: Battle
   source?: Player | Enemy

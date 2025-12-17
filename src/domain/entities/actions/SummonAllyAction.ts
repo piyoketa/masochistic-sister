@@ -58,6 +58,7 @@ export class SummonAllyAction extends Skill {
       message: `${context.source.name}が${added.name}を呼び出した！`,
       metadata: { enemyId: added.id, action: 'summon-ally' },
     })
-    battle.enemyTeam.planUpcomingActions(battle)
+    // 召喚直後に次ターン行動も確定させ、味方バフの計画ターゲットも同時に決定する。
+    battle.enemyTeam.ensureActionsForTurn(battle, battle.turnPosition.turn)
   }
 }

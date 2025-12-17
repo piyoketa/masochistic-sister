@@ -96,11 +96,16 @@ export class Enemy {
     return this.actionQueue.peek()
   }
 
+  get queuedActionEntries(): import('./enemy/actionQueues').EnemyTurnActionEntry[] {
+    return this.actionQueue.peekEntries()
+  }
+
   /**
    * 指定ターンの行動を確定させて取得する（履歴に残す）。
+   * Enemy/Team/Battle コンテキストを渡し、計画フェーズ（味方バフのターゲット決定など）も同時に走らせる。
    */
-  confirmActionForTurn(turn: number): Action | null {
-    return this.actionQueue.ensureActionForTurn(turn)
+  confirmActionForTurn(turn: number, context?: { battle?: Battle; team?: import('./EnemyTeam').EnemyTeam }): Action | null {
+    return this.actionQueue.ensureActionForTurn(turn, { ...context, enemy: this })
   }
 
   get actionLog(): Action[] {
@@ -171,7 +176,7 @@ export class Enemy {
         id: this.id,
         actedThisTurn: this.actedThisTurn,
         turn: battle.turnPosition.turn,
-        side: battle.turnPosition.activeSide,
+        side: battle.turnPosition.side,
       })
       return
     }
@@ -181,7 +186,11 @@ export class Enemy {
       ;(this.actionQueue as any).setContext({ battle, owner: this })
     }
 
-    const action = this.actionQueue.ensureActionForTurn(battle.turnPosition.turn)
+    const action = this.actionQueue.ensureActionForTurn(battle.turnPosition.turn, {
+      battle,
+      enemy: this,
+      team: battle.enemyTeam,
+    })
     if (!action) {
       battle.addLogEntry({
         message: `${this.name}は行動候補を持っていない。`,
@@ -203,7 +212,7 @@ export class Enemy {
       name: this.name,
       id: this.id,
       turn: battle.turnPosition.turn,
-      side: battle.turnPosition.activeSide,
+      side: battle.turnPosition.side,
       action: action.name,
       actedThisTurn: this.actedThisTurn,
     })

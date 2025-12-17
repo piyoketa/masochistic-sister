@@ -15,6 +15,7 @@ import { Card } from '@/domain/entities/Card'
 import type { CardId } from '@/domain/library/Library'
 import { buildCardInfoFromBlueprint, mapActionToCardId } from '@/domain/library/Library'
 import type { State } from '@/domain/entities/State'
+import type { ActionPlanSnapshot } from '@/domain/entities/Action/ActionBase'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { EnemyActionHint } from '@/types/battle'
 
@@ -24,6 +25,7 @@ type SummarizeParams = {
   action: BattleAction
   enemyStates: State[]
   playerStates: State[]
+  plannedPlan?: ActionPlanSnapshot
 }
 
 export function summarizeEnemyAction(params: SummarizeParams): EnemyActionHint {
@@ -39,7 +41,7 @@ export function summarizeEnemyAction(params: SummarizeParams): EnemyActionHint {
         playerStates: params.playerStates,
       })
     default:
-      return buildSkillActionHint(params.battle, params.action)
+      return buildSkillActionHint(params.battle, params.action, params.plannedPlan)
   }
 }
 
@@ -91,6 +93,24 @@ function buildAttackActionHint({
   const primaryStateStackable =
     primaryState && typeof primaryState.isStackable === 'function' ? primaryState.isStackable() : false
 
+  const primaryStateSnapshot = primaryState
+    ? primaryStateStackable
+      ? {
+          name: primaryState.name,
+          stackable: true as const,
+          magnitude: primaryState.magnitude ?? 0,
+          description: primaryState.description(),
+          iconPath: primaryState.iconPath,
+        }
+      : {
+          name: primaryState.name,
+          stackable: false as const,
+          magnitude: undefined,
+          description: primaryState.description(),
+          iconPath: primaryState.iconPath,
+        }
+    : undefined
+
   const blueprint =
     cardId !== null
       ? {
@@ -111,15 +131,7 @@ function buildAttackActionHint({
       type: damages.type,
     },
     calculatedPattern,
-    status: primaryState
-      ? {
-          name: primaryState.name,
-          stackable: primaryStateStackable,
-          magnitude: primaryStateStackable ? primaryState.magnitude ?? 0 : undefined,
-          description: primaryState.description(),
-          iconPath: primaryState.iconPath,
-        }
-      : undefined,
+    status: primaryStateSnapshot,
     description: action.describe(),
     cardInfo: resolveCardInfoForAction({
       enemy,
@@ -130,7 +142,11 @@ function buildAttackActionHint({
   }
 }
 
-function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyActionHint {
+function buildSkillActionHint(
+  battle: Battle,
+  action: BattleAction,
+  plannedPlan?: ActionPlanSnapshot,
+): EnemyActionHint {
   const gainState = action.gainStatePreviews[0]
   const inflictState =
     'inflictStatePreviews' in action
@@ -138,12 +154,54 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
       : undefined
   let targetName: string | undefined
   if (action instanceof AllyBuffSkill) {
-    const plannedTargetId = action.getPlannedTarget?.()
+    const plannedTargetId = plannedPlan?.targetId ?? action.getPlannedTarget?.()
     if (plannedTargetId !== undefined) {
       const target = battle.enemyTeam.findEnemy(plannedTargetId)
       targetName = target?.name
     }
   }
+
+  const gainStateSnapshot = gainState
+    ? (() => {
+        const stackable = typeof gainState.isStackable === 'function' ? gainState.isStackable() : false
+        return stackable
+          ? {
+              name: gainState.name,
+              stackable: true as const,
+              magnitude: gainState.magnitude ?? 0,
+              description: gainState.description(),
+              iconPath: gainState.iconPath,
+            }
+          : {
+              name: gainState.name,
+              stackable: false as const,
+              magnitude: undefined,
+              description: gainState.description(),
+              iconPath: gainState.iconPath,
+            }
+      })()
+    : undefined
+
+  const inflictStateSnapshot = inflictState
+    ? (() => {
+        const stackable = typeof inflictState.isStackable === 'function' ? inflictState.isStackable() : false
+        return stackable
+          ? {
+              name: inflictState.name,
+              stackable: true as const,
+              magnitude: inflictState.magnitude ?? 0,
+              description: inflictState.description(),
+              iconPath: inflictState.iconPath,
+            }
+          : {
+              name: inflictState.name,
+              stackable: false as const,
+              magnitude: undefined,
+              description: inflictState.description(),
+              iconPath: inflictState.iconPath,
+            }
+      })()
+    : undefined
 
   return {
     title: action.name,
@@ -151,30 +209,8 @@ function buildSkillActionHint(battle: Battle, action: BattleAction): EnemyAction
     icon: '',
     description: action.describe(),
     targetName,
-    selfState: gainState
-      ? {
-          name: gainState.name,
-          stackable: typeof gainState.isStackable === 'function' ? gainState.isStackable() : false,
-          magnitude:
-            typeof gainState.isStackable === 'function' && gainState.isStackable()
-              ? gainState.magnitude ?? 0
-              : undefined,
-          description: gainState.description(),
-          iconPath: gainState.iconPath,
-        }
-      : undefined,
-    status: inflictState
-      ? {
-          name: inflictState.name,
-          stackable: typeof inflictState.isStackable === 'function' ? inflictState.isStackable() : false,
-          magnitude:
-            typeof inflictState.isStackable === 'function' && inflictState.isStackable()
-              ? inflictState.magnitude ?? 0
-              : undefined,
-          description: inflictState.description(),
-          iconPath: inflictState.iconPath,
-        }
-      : undefined,
+    selfState: gainStateSnapshot,
+    status: inflictStateSnapshot,
   }
 }
 

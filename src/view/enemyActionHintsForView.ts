@@ -20,7 +20,6 @@ const DEBUG_ENEMY_HINT =
 export interface EnemyActionHintBuildParams {
   battle: Battle
   snapshot: BattleSnapshot
-  cache?: Map<number, EnemyActionHint[]>
 }
 
 export type EssentialEnemyActionHint = {
@@ -34,8 +33,7 @@ export type EssentialEnemyActionHint = {
 }
 
 export function buildEnemyActionHintsForView(params: EnemyActionHintBuildParams): Map<number, EssentialEnemyActionHint[]> {
-  const { battle, snapshot, cache } = params
-  void cache // 将来的なキャッシュ利用を見据えつつ現在は未使用
+  const { battle, snapshot } = params
   const turnPosition: BattleTurn = snapshot.turnPosition ?? battle.turnPosition
   const result = new Map<number, EssentialEnemyActionHint[]>()
 
@@ -76,7 +74,8 @@ function buildEssentialsForEnemy(params: BuildEssentialParams): EssentialEnemyAc
     return []
   }
 
-  const actedThisTurn = turnPosition.activeSide === 'enemy' && enemySnapshot.hasActedThisTurn
+  const plannedPlan = enemySnapshot.plannedActions?.find((entry) => entry.turn === turnPosition.turn)?.plan
+  const actedThisTurn = turnPosition.side === 'enemy' && enemySnapshot.hasActedThisTurn
   const attackerStates = reviveStatesOrThrow(enemySnapshot.states, `enemy:${enemy.id ?? enemy.name}`)
   const defenderStates = reviveStatesOrThrow(playerSnapshot?.states, 'player')
   const hint = summarizeEnemyAction({
@@ -85,6 +84,7 @@ function buildEssentialsForEnemy(params: BuildEssentialParams): EssentialEnemyAc
     action: nextAction,
     enemyStates: attackerStates,
     playerStates: defenderStates,
+    plannedPlan,
   })
 
   return [
@@ -112,7 +112,7 @@ function logBuiltEnemyHints(
   console.info('[EnemyActionHintsForView] built', {
     enemy: { id: enemySnapshot.id, name: enemySnapshot.name },
     turn: turnPosition.turn,
-    side: turnPosition.activeSide,
+    side: turnPosition.side,
     actedThisTurn: enemySnapshot.hasActedThisTurn,
     hints,
   })

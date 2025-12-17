@@ -1,7 +1,6 @@
 import type { Enemy } from './Enemy'
 import { EnemyRepository } from '../repository/EnemyRepository'
 import type { Battle } from '../battle/Battle'
-import type { PlanAllyTargetSkill } from './Action/AllyStateSkill'
 import type { Player } from './Player'
 import type { Action } from './Action/ActionBase'
 
@@ -107,46 +106,14 @@ export class EnemyTeam {
         continue
       }
       enemy.setQueueContext({ battle, enemy, team: this })
-      enemy.confirmActionForTurn(turn)
+      enemy.confirmActionForTurn(turn, { battle, team: this })
     }
   }
 
   planUpcomingActions(battle: Battle): void {
-    for (const enemy of this.membersValue) {
-      if (!enemy.isActive()) {
-        enemy.clearPlannedActionsForDisplay()
-        continue
-      }
-      enemy.setQueueContext({ battle, enemy, team: this })
-      this.planAllySupportActionIfNeeded(battle, enemy)
-      enemy.refreshPlannedActionsForDisplay()
-    }
+    // 互換用の薄いラッパー。計画フェーズを ensureActionsForTurn に統合したため、ここでは同等の呼び出しを行う。
+    this.ensureActionsForTurn(battle, battle.turnPosition.turn)
   }
-  /**
-   * 味方支援系スキル（PlanAllyTargetSkill 実装）に対する事前ターゲット確定処理。
-   * Action 側が planTarget を持つ場合のみ介入し、対象が見つからなければそのアクションを破棄する。
-   */
-  private planAllySupportActionIfNeeded(battle: Battle, enemy: Enemy): void {
-    for (;;) {
-      const upcoming = enemy.queuedActions[0]
-      if (!this.isPlanAllyTargetSkill(upcoming)) {
-        return
-      }
-
-      const planned = upcoming.planTarget({ battle, source: enemy, team: this })
-      if (planned) {
-        return
-      }
-      enemy.discardNextScheduledAction(battle.turnPosition.turn)
-    }
-  }
-
-  private isPlanAllyTargetSkill(
-    action: Action | undefined,
-  ): action is Action & PlanAllyTargetSkill {
-    return Boolean(action) && typeof (action as any).planTarget === 'function'
-  }
-
   handleActionResolved(battle: Battle, actor: Player | Enemy, action: Action): void {
     this.membersValue.forEach((enemy) => enemy.handleActionResolved(battle, actor, action))
   }

@@ -54,7 +54,9 @@ export function formatEnemyActionChipsForView(
 function buildEffectSegments(hint: EnemyActionHint, targetName?: string): EnemyActionEffectSegment[] {
   const segments: EnemyActionEffectSegment[] = []
 
-  segments.push(...buildEffectSegmentsFromTags(hint.cardInfo?.effectTags))
+  const effectTags =
+    hint.cardInfo && 'effectTags' in hint.cardInfo ? (hint.cardInfo as { effectTags?: CardTagInfo[] }).effectTags : undefined
+  segments.push(...buildEffectSegmentsFromTags(effectTags))
 
   if (hint.status) {
     segments.push(

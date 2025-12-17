@@ -8,10 +8,11 @@ AllyStateSkill.ts の責務:
 - 個別スキル固有の追加効果やログ出力。必要なら派生クラスが perform/afterX をオーバーライドする。
 
 主な通信相手:
-- EnemyTeam.planUpcomingActions: `planTarget` を呼び出して対象を確定させる。
+- EnemyActionQueue.ensureActionForTurn / EnemyTeam.ensureActionsForTurn: `planTarget` を呼び出して対象を確定させる。
 - Enemy / Battle: `planTarget` 内で Battle/Enemy 情報を参照し、重み付き抽選を行う。
 */
 import type { ActionContext } from './ActionBase'
+import type { ActionPlanSnapshot, ActionWithPlan } from './ActionBase'
 import { Skill, type SkillProps } from './Skill'
 import type { Enemy } from '../Enemy'
 import type { Player } from '../Player'
@@ -33,7 +34,8 @@ export interface PlanAllyTargetSkill {
   planTarget(params: PlanAllyTargetParams): boolean
 }
 
-export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkill {
+// 「味方バフ/状態付与のターゲットを事前に確定し、スナップショットへ残す」責務を持つので、ActionWithPlanを実装する。
+export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkill, ActionWithPlan {
   // 味方バフのターゲット抽選をデバッグするためのフラグ。env.VITE_DEBUG_ALLY_BUFF_PLAN=true で有効化。
   private static readonly DEBUG_ALLY_BUFF_PLAN =
     (typeof import.meta !== 'undefined' &&
@@ -81,6 +83,18 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
     this.clearPlannedTarget()
   }
 
+  // スナップショット保存用に、計画済みターゲットをシリアライズする。
+  serializePlan(): ActionPlanSnapshot | undefined {
+    return this.plannedTargetId !== undefined
+      ? { kind: 'ally-target', targetId: this.plannedTargetId }
+      : undefined
+  }
+
+  // 復元時に計画済みターゲットをActionへ戻す。
+  restorePlan(plan: ActionPlanSnapshot | undefined): void {
+    this.setPlannedTarget(plan?.targetId)
+  }
+
   /**
    * Battle/Enemy 情報を使って対象を決定し、事前に保持する。
    * 抽選ロジック:
@@ -102,7 +116,7 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
       console.info('[AllyStateSkill.planTarget] candidates', {
         source: { id: source.id, name: source.name },
         turn: battle.turnPosition?.turn,
-        side: battle.turnPosition?.activeSide,
+        side: battle.turnPosition?.side,
         affinityKey: this.affinityKeyValue,
         requiredTags: [...this.requiredTags],
         candidates: candidates.map((ally) => ({
@@ -140,7 +154,7 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
       console.info('[AllyStateSkill.planTarget] weighted', {
         source: { id: source.id, name: source.name },
         turn: battle.turnPosition?.turn,
-        side: battle.turnPosition?.activeSide,
+        side: battle.turnPosition?.side,
         weighted: weighted.map(({ ally, weight }) => ({
           id: ally.id,
           name: ally.name,
@@ -172,7 +186,7 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
           source: { id: source.id, name: source.name },
           target: { id: entry.ally.id, name: entry.ally.name },
           turn: battle.turnPosition?.turn,
-          side: battle.turnPosition?.activeSide,
+          side: battle.turnPosition?.side,
           totalWeight: total,
           pickedWeight: entry.weight,
         })
@@ -189,7 +203,7 @@ export abstract class AllyStateSkill extends Skill implements PlanAllyTargetSkil
         source: { id: source.id, name: source.name },
         target: last ? { id: last.ally.id, name: last.ally.name } : undefined,
         turn: battle.turnPosition?.turn,
-        side: battle.turnPosition?.activeSide,
+        side: battle.turnPosition?.side,
         totalWeight: total,
       })
     }

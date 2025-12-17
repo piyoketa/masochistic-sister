@@ -30,7 +30,16 @@ const chip = computed<EnemyActionChipViewModel>(() => {
   if (isChipViewModel(props.action)) {
     return props.action
   }
-  return formatEnemyActionChipsForView(0, [props.action], { includeTitle: true })[0]
+  const vm = formatEnemyActionChipsForView(0, [props.action], { includeTitle: true })[0]
+  return (
+    vm ?? {
+      key: 'enemy-action-fallback',
+      category: 'skill',
+      title: (props.action as EssentialEnemyActionHint).hint.title,
+      acted: false,
+      effects: [],
+    }
+  )
 })
 
 const actionOverlay = useActionCardOverlay()

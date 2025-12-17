@@ -61,7 +61,7 @@ const createKamaitachi = (
 
 function planNextActions(battle: Battle): void {
   battle.enemyTeam.handlePlayerTurnStart(battle)
-  battle.enemyTeam.planUpcomingActions(battle)
+  battle.enemyTeam.ensureActionsForTurn(battle, battle.turnPosition.turn)
 }
 
 function createOrcSumoSquadBattleForTailwindTest(): {

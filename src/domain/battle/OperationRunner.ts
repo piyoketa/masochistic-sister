@@ -739,6 +739,12 @@ export class OperationRunner {
       enemies: source.enemies.map((enemy) => ({
         ...enemy,
         states: [...enemy.states],
+        plannedActions: enemy.plannedActions
+          ? enemy.plannedActions.map((entry) => ({
+              ...entry,
+              plan: entry.plan ? { ...entry.plan } : undefined,
+            }))
+          : undefined,
       })),
       deck: [...source.deck],
       hand: [...source.hand],
@@ -759,7 +765,10 @@ export class OperationRunner {
         queue: {
           queueState: {
             actions: [...entry.queue.queueState.actions],
-            turnActions: [...entry.queue.queueState.turnActions],
+            turnActions: entry.queue.queueState.turnActions.map((turnAction) => ({
+              ...turnAction,
+              plan: turnAction.plan ? { ...turnAction.plan } : undefined,
+            })),
             metadata: entry.queue.queueState.metadata
               ? { ...entry.queue.queueState.metadata }
               : undefined,

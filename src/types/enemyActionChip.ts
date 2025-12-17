@@ -20,6 +20,7 @@ export type EnemyActionEffectSegment =
       label: string
       iconPath?: string
       tooltip: string
+      targetName?: string
     }
   | {
       kind: 'state'

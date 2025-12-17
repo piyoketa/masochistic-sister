@@ -5,6 +5,7 @@ import type { Player } from '../entities/Player'
 import type { Enemy, EnemyQueueSnapshot, EnemyStatus } from '../entities/Enemy'
 import type { EnemyTeam } from '../entities/EnemyTeam'
 import type { Action, ActionAudioCue, ActionContext, ActionCutInCue } from '../entities/Action'
+import type { ActionPlanSnapshot } from '../entities/Action/ActionBase'
 import type { State } from '../entities/State'
 import { Hand } from './Hand'
 import { Deck } from './Deck'
@@ -76,6 +77,12 @@ export interface BattleSnapshot {
     hasActedThisTurn: boolean
     status: EnemyStatus
     skills: EnemySkill[]
+    plannedActions?: Array<{
+      turn: number
+      actionName: string
+      actionType: ActionType
+      plan?: ActionPlanSnapshot
+    }>
   }>
   deck: Card[]
   hand: Card[]
@@ -487,6 +494,12 @@ export class Battle {
             name: action.name,
             detail: action.describe(),
           })),
+          plannedActions: enemy.queuedActionEntries.map((entry) => ({
+            turn: entry.turn,
+            actionName: entry.action.name,
+            actionType: entry.action.type,
+            plan: entry.plan ? { ...entry.plan } : undefined,
+          })),
         }
       }),
       deck: deckWithCost,
@@ -508,14 +521,26 @@ export class Battle {
     const isImportant = importantFromTeam || (typeof state.isImportant === 'function' ? state.isImportant() : false)
     const stackable = typeof state.isStackable === 'function' ? state.isStackable() : false
 
+    if (stackable) {
+      return {
+        id: state.id,
+        name: state.name,
+        description,
+        category,
+        isImportant,
+        stackable: true,
+        magnitude: state.magnitude ?? 0,
+      }
+    }
+
     return {
       id: state.id,
       name: state.name,
       description,
       category,
       isImportant,
-      stackable,
-      magnitude: stackable ? state.magnitude ?? 0 : undefined,
+      stackable: false,
+      magnitude: undefined,
     }
   }
 
@@ -768,7 +793,7 @@ export class Battle {
       // eslint-disable-next-line no-console
       console.log('[Battle] startEnemyTurn', {
         turn: this.turnPosition.turn,
-        side: this.turnPosition.activeSide,
+        side: this.turnPosition.side,
       })
     }
     this.turn.startEnemyTurn()
@@ -884,7 +909,7 @@ export class Battle {
       // eslint-disable-next-line no-console
       console.log('[Battle] executeEnemyTurn start', {
         turn: this.turnPosition.turn,
-        side: this.turnPosition.activeSide,
+        side: this.turnPosition.side,
       })
     }
     // 敵の行動はActionLogに直接保存せず、ターン終了エントリ解決時に都度再計算する方針のため、
@@ -1235,11 +1260,13 @@ export class Battle {
   }
 
   private extractEnemyStateSummary(enemy: Enemy): EnemyStateDiff['states'] {
-    return enemy.getStates().map((state) => ({
-      id: state.id,
-      stackable: typeof state.isStackable === 'function' ? state.isStackable() : false,
-      magnitude: typeof state.isStackable === 'function' && state.isStackable() ? state.magnitude ?? 0 : undefined,
-    }))
+    return enemy.getStates().map((state) => {
+      const stackable = typeof state.isStackable === 'function' ? state.isStackable() : false
+      if (stackable) {
+        return { id: state.id, stackable: true, magnitude: state.magnitude ?? 0 }
+      }
+      return { id: state.id, stackable: false, magnitude: undefined }
+    })
   }
 
   private diffEnemyStates(before: Map<number, EnemyStateDiff['states']>): EnemyStateDiff[] {
@@ -1343,7 +1370,6 @@ export class Battle {
         this.resolveEvents()
         // プレイヤーターン開始時に敵の次アクションを確定させ、ヒント生成に依存しないようにする
         this.enemyTeam.ensureActionsForTurn(this, this.turnPosition.turn)
-        this.enemyTeam.planUpcomingActions(this)
         break
       case 'play-card': {
         const cardId = actionLog.resolveValue(entry.card, this)
@@ -1495,6 +1521,12 @@ export class Battle {
       enemies: source.enemies.map((enemy) => ({
         ...enemy,
         states: enemy.states.map((state) => ({ ...state })),
+        plannedActions: enemy.plannedActions
+          ? enemy.plannedActions.map((entry) => ({
+              ...entry,
+              plan: entry.plan ? { ...entry.plan } : undefined,
+            }))
+          : undefined,
       })),
       deck: [...source.deck],
       hand: [...source.hand],

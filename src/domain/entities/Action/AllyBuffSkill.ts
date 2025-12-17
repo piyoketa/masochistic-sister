@@ -7,7 +7,7 @@ AllyBuffSkill.ts の責務:
 - 個別スキル固有の付加演出や追加効果。必要に応じて派生クラスが `afterBuffApplied` をオーバーライドする。
 
 主要な通信相手:
-- `EnemyTeam.planUpcomingActions`: `setPlannedTarget` を用いて、ターン開始時に対象IDを注入する。
+- `EnemyActionQueue.ensureActionForTurn` / `EnemyTeam.ensureActionsForTurn`: `setPlannedTarget` を用いて、ターン開始時に対象IDを注入する。
 - `Enemy`/`Player`: `applyInflictedStates` を通じてStateを付与する。
 */
 import { AllyStateSkill, type AllyStateSkillProps } from './AllyStateSkill'
@@ -41,7 +41,7 @@ export abstract class AllyBuffSkill extends AllyStateSkill {
           action: this.name,
           source: { id: (context.source as Enemy).id, name: (context.source as Enemy).name },
           turn: context.battle.turnPosition?.turn,
-          side: context.battle.turnPosition?.activeSide,
+          side: context.battle.turnPosition?.side,
           plannedTargetId: this.getPlannedTarget(),
           targetFound: Boolean(target),
           targetActive: target?.isActive?.(),
@@ -63,7 +63,7 @@ export abstract class AllyBuffSkill extends AllyStateSkill {
         source: { id: (context.source as Enemy).id, name: (context.source as Enemy).name },
         target: { id: target.id, name: target.name },
         turn: context.battle.turnPosition?.turn,
-        side: context.battle.turnPosition?.activeSide,
+        side: context.battle.turnPosition?.side,
         inflictStates: this.inflictStateFactories.map((factory) => factory()?.id),
         beforeStates: target.getStates?.().map((state) => ({
           id: state.id,
@@ -81,7 +81,7 @@ export abstract class AllyBuffSkill extends AllyStateSkill {
       console.info('[AllyBuffSkill.perform] applied states', {
         target: { id: target.id, name: target.name },
         turn: context.battle.turnPosition?.turn,
-        side: context.battle.turnPosition?.activeSide,
+        side: context.battle.turnPosition?.side,
         states: target.getStates?.().map((state) => ({
           id: state.id,
           name: state.name,
