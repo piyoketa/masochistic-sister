@@ -89,7 +89,6 @@ export type EnemyInfo = {
     current: number
     max: number
   }
-  nextActions?: EnemyActionHint[]
   skills: EnemySkill[]
   states?: StateSnapshot[]
 }

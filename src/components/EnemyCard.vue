@@ -1,7 +1,7 @@
 /**
  * EnemyCard
  * =========
- * 敵ステータスを表示し、次の行動予測や付与ステートの詳細を description overlay に流すコンポーネント。
+ * 敵ステータスを表示し、付与ステートの詳細を description overlay に流すコンポーネント。
  * このカードは親ビュー(BattleView)から敵情報を受け取り、hoverイベントで description overlay を更新する。
  * - props.enemy: 表示する敵情報 (EnemyInfo)
  * - emits hover-start/hover-end: 親に現在の hover 状態を伝搬
@@ -204,7 +204,7 @@ defineExpose({ playDamage, playEnemySound })
     </header>
 
     <section v-if="traitChips.length" class="enemy-card__section enemy-card__section--traits">
-      <h5 class="enemy-card__label">Traits</h5>
+      <!-- <h5 class="enemy-card__label">Traits</h5> -->
       <TransitionGroup
         tag="ul"
         name="enemy-state"
@@ -222,7 +222,7 @@ defineExpose({ playDamage, playEnemySound })
     </section>
 
     <section v-if="stateChips.length" class="enemy-card__section enemy-card__section--states">
-      <h5 class="enemy-card__label">States</h5>
+      <!-- <h5 class="enemy-card__label">States</h5> -->
       <TransitionGroup tag="ul" name="enemy-state" class="enemy-card__list enemy-card__list--chips">
         <EnemyStateChip
           v-for="state in stateChips"

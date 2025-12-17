@@ -23,14 +23,6 @@ const baseEnemy: EnemyInfo = {
   image: '/assets/enemies/snail.jpg',
   status: 'active',
   hp: { current: 80, max: 120 },
-  nextActions: [
-    {
-      title: '殴打',
-      type: 'attack',
-      description: 'シンプルな攻撃',
-      pattern: { amount: 20, count: 1, type: 'single' },
-    },
-  ],
   skills: [],
   states: [
     {
