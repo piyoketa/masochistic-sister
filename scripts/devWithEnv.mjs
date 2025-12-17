@@ -17,15 +17,9 @@ env.VITE_DEBUG_ANIMATION_LOG = 'false'
 env.VITE_DEBUG_HAND_STAGE_EVENTS='false'
 env.VITE_DEBUG_PLAYER_IMAGE='false'
 env.VITE_DEBUG_PLAYER_CARDS='false'
-env.VITE_DEBUG_ENEMY_ACTED = 'false'
+env.VITE_DEBUG_ENEMY_ACTED = 'true'
 env.VITE_DEBUG_PLAYER_HP_LOG = 'false'
 env.VITE_ASSET_PRELOAD_LOG='false'
-// 味方バフ（追い風など）のターゲット抽選を追跡したい場合に true にする。
-env.VITE_DEBUG_ALLY_BUFF_PLAN='false'
-// 味方バフの実行結果（付与/スキップ）を追跡したい場合に true にする。
-env.VITE_DEBUG_ALLY_BUFF_APPLY='false'
-// 敵行動ヒント生成の入力/出力ログを追跡したい場合に true にする。
-env.VITE_DEBUG_ENEMY_HINT_LOG='false'
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {

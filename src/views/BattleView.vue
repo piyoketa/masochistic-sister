@@ -35,7 +35,7 @@ import {
   buildEnemyTeamFactoryMap,
   SnailTeam,
 } from '@/domain/entities/enemyTeams'
-import { useEnemyActionHints } from '@/components/battle/useEnemyActionHints'
+import { buildEnemyActionHints } from '@/domain/battle/enemyActionHintBuilder'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
 import DamageEffects from '@/components/DamageEffects.vue'
@@ -114,10 +114,43 @@ const canPlayerAct = computed(() => isPlayerTurn.value && !isInputLocked.value)
 const enemySelectionRequest = ref<EnemySelectionRequest | null>(null)
 const isSelectingEnemy = computed(() => enemySelectionRequest.value !== null)
 const hoveredEnemyId = ref<number | null>(null)
-const { enemyActionHintsById } = useEnemyActionHints({
-  battleGetter: () => viewManager.battle,
-  snapshot,
-  planUpdateToken: computed(() => managerState.planUpdateToken),
+// 敵行動ヒントの計算済み結果を保持し、敵ターン中に行動済みの敵は再計算しない
+const lastEnemyActionHints = ref<Map<number, EnemyActionHint[]>>(new Map())
+const enemyActionHintsById = computed<Map<number, EnemyActionHint[]>>(() => {
+  const battle = viewManager.battle
+  const snap = snapshot.value
+  if (!battle || !snap) {
+    return new Map<number, EnemyActionHint[]>()
+  }
+  const turnPosition = snap.turnPosition ?? battle.turnPosition
+  const map = new Map<number, EnemyActionHint[]>()
+  snap.enemies.forEach((enemySnapshot) => {
+    const enemy = battle.enemyTeam.findEnemy(enemySnapshot.id)
+    if (!enemy) {
+      return
+    }
+    const actedThisTurn = snap.turnPosition?.side === 'enemy' && enemySnapshot.hasActedThisTurn
+    if (actedThisTurn) {
+      const cached = lastEnemyActionHints.value.get(enemySnapshot.id)
+      if (cached) {
+        map.set(enemySnapshot.id, cached)
+        return
+      }
+    }
+    const hints = buildEnemyActionHints({
+      battle,
+      enemy,
+      turnPosition,
+      enemyStateSnapshots: enemySnapshot.states,
+      playerStateSnapshots: snap.player?.states,
+    })
+    // View の snapshot と Battle インスタンスの時間軸がズレるケース（end-player-turn 直後に Battle 側は次ターンへ進んでいる等）では、
+    // hasActedThisTurn を Battle 側から読むと行動済みフラグが落ちてしまうため、表示中 snapshot の値で上書きする。
+    const normalized = hints.map((hint) => ({ ...hint, acted: actedThisTurn }))
+    map.set(enemySnapshot.id, normalized)
+  })
+  lastEnemyActionHints.value = map
+  return map
 })
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
