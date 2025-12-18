@@ -11,10 +11,10 @@ import { useImageHub } from '@/composables/imageHub'
 import { buildCardInfoFromBlueprint, type CardBlueprint, type CardId } from '@/domain/library/Library'
 import type { CardInfo } from '@/types/battle'
 import type { EnemyActionChipViewModel } from '@/types/enemyActionChip'
-import { formatEnemyActionChipsForView, type EssentialEnemyActionHint } from '@/view/enemyActionHintsForView'
+import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const props = defineProps<{
-  action: EnemyActionChipViewModel | EssentialEnemyActionHint
+  action: EnemyActionChipViewModel
 }>()
 
 const SINGLE_ATTACK_ICON_SRC = '/assets/icons/single_attack.png'
@@ -26,24 +26,13 @@ const emit = defineEmits<{
   (event: 'leave', payload: { key: string }): void
 }>()
 
-const chip = computed<EnemyActionChipViewModel>(() => {
-  if (isChipViewModel(props.action)) {
-    return props.action
-  }
-  const vm = formatEnemyActionChipsForView(0, [props.action], { includeTitle: true })[0]
-  return (
-    vm ?? {
-      key: 'enemy-action-fallback',
-      category: 'skill',
-      title: (props.action as EssentialEnemyActionHint).hint.title,
-      acted: false,
-      effects: [],
-    }
-  )
-})
+const chip = computed<EnemyActionChipViewModel>(() => props.action)
 
 const actionOverlay = useActionCardOverlay()
 const imageHub = useImageHub()
+const { state: descriptionOverlay, show: showDescriptionOverlay, hide: hideDescriptionOverlay, updatePosition: updateDescriptionPosition } =
+  useDescriptionOverlay()
+let activeTooltip: { text: string; key: string } | null = null
 
 const hoverCardInfo = computed<CardInfo | null>(() => {
   const source = chip.value.hoverCardSource
@@ -71,12 +60,6 @@ function resolveBlueprintForHover(cardId: CardId, viewModel: EnemyActionChipView
   }
 }
 
-function isChipViewModel(
-  action: EnemyActionChipViewModel | EssentialEnemyActionHint,
-): action is EnemyActionChipViewModel {
-  return (action as EnemyActionChipViewModel).category !== undefined
-}
-
 function resolveIconSrc(path?: string): string | undefined {
   if (!path) return undefined
   // ImageHub経由で正規化＋キャッシュ済みのImageを確保しておき、毎回生パスを直参照しない。
@@ -88,6 +71,7 @@ function showCardOverlay(event: MouseEvent): void {
   if (!hoverCardInfo.value) {
     return
   }
+  hideEffectTooltip()
   actionOverlay.show(hoverCardInfo.value, { x: event.clientX, y: event.clientY })
 }
 
@@ -98,10 +82,43 @@ function updateCardOverlayPosition(event: MouseEvent): void {
   actionOverlay.updatePosition({ x: event.clientX, y: event.clientY })
 }
 
+function showEffectTooltip(event: MouseEvent, tooltip: string): void {
+  // エフェクト系はカードオーバーレイではなく DescriptionOverlay で説明を出す。
+  actionOverlay.hide()
+  activeTooltip = { text: tooltip, key: chip.value.key }
+  showDescriptionOverlay(tooltip, { x: event.clientX, y: event.clientY })
+}
+
+function updateEffectTooltipPosition(event: MouseEvent, tooltip?: string): void {
+  if (
+    !tooltip ||
+    !descriptionOverlay.visible ||
+    !activeTooltip ||
+    activeTooltip.text !== tooltip ||
+    activeTooltip.key !== chip.value.key
+  ) {
+    return
+  }
+  updateDescriptionPosition({ x: event.clientX, y: event.clientY })
+}
+
+function hideEffectTooltip(): void {
+  if (!activeTooltip) {
+    return
+  }
+  hideDescriptionOverlay()
+  activeTooltip = null
+}
+
 function handleEnter(event: MouseEvent, tooltip?: string, allowOverlay = false): void {
   if (allowOverlay && hoverCardInfo.value && chip.value.hoverCardSource?.show) {
     showCardOverlay(event)
     return
+  }
+  if (tooltip) {
+    showEffectTooltip(event, tooltip)
+  } else {
+    hideEffectTooltip()
   }
   emit('enter', { event, text: tooltip, key: chip.value.key })
 }
@@ -111,11 +128,20 @@ function handleMove(event: MouseEvent, tooltip?: string, allowOverlay = false): 
     updateCardOverlayPosition(event)
     return
   }
+  if (tooltip) {
+    updateEffectTooltipPosition(event, tooltip)
+  }
   emit('move', { event, text: tooltip, key: chip.value.key })
 }
 
 function handleLeave(): void {
   actionOverlay.hide()
+  hideEffectTooltip()
+  emit('leave', { key: chip.value.key })
+}
+
+function handleEffectLeave(): void {
+  hideEffectTooltip()
   emit('leave', { key: chip.value.key })
 }
 </script>
@@ -138,45 +164,46 @@ function handleLeave(): void {
         {{ chip.title }}
       </span>
       <span v-if="chip.category === 'skip'" class="chip-badge chip-badge--skip">行動不可</span>
-      <span v-else-if="chip.acted" class="chip-badge chip-badge--acted">Acted</span>
+      <!-- <span v-else-if="chip.acted" class="chip-badge chip-badge--acted">Acted</span> -->
+    </div>
+
+    <div
+      v-if="chip.category === 'attack' && chip.damage"
+      class="chip-damage"
+      @mouseenter="(event) => handleEnter(event, undefined, Boolean(chip.hoverCardSource?.show))"
+      @mousemove="(event) => handleMove(event, undefined, Boolean(chip.hoverCardSource?.show))"
+    >
+      <v-icon class="attack-icon" size="16">
+        <img
+          :src="chip.damage.icon === 'multi' ? MULTI_ATTACK_ICON_SRC : SINGLE_ATTACK_ICON_SRC"
+          :alt="chip.damage.icon === 'multi' ? '連続攻撃' : '一回攻撃'"
+        />
+      </v-icon>
+      <span
+        class="damage-amount"
+        :class="{
+          'value--boosted': chip.damage.amountChange === 'up',
+          'value--reduced': chip.damage.amountChange === 'down',
+          'value--changed': chip.damage.amountChange !== undefined,
+        }"
+      >
+        {{ chip.damage.amount }}
+      </span>
+      <span v-if="chip.damage.icon === 'multi'" class="damage-count">
+        ×
+        <span
+          :class="{
+            'value--boosted': chip.damage.countChange === 'up',
+            'value--reduced': chip.damage.countChange === 'down',
+            'value--changed': chip.damage.countChange !== undefined,
+          }"
+        >
+          {{ chip.damage.count }}
+        </span>
+      </span>
     </div>
 
     <div class="chip-body">
-      <div
-        v-if="chip.category === 'attack' && chip.damage"
-        class="chip-damage"
-        @mouseenter="(event) => handleEnter(event, undefined, Boolean(chip.hoverCardSource?.show))"
-        @mousemove="(event) => handleMove(event, undefined, Boolean(chip.hoverCardSource?.show))"
-      >
-        <v-icon class="attack-icon" size="16">
-          <img
-            :src="chip.damage.icon === 'multi' ? MULTI_ATTACK_ICON_SRC : SINGLE_ATTACK_ICON_SRC"
-            :alt="chip.damage.icon === 'multi' ? '連続攻撃' : '一回攻撃'"
-          />
-        </v-icon>
-        <span
-          class="damage-amount"
-          :class="{
-            'value--boosted': chip.damage.amountChange === 'up',
-            'value--reduced': chip.damage.amountChange === 'down',
-            'value--changed': chip.damage.amountChange !== undefined,
-          }"
-        >
-          {{ chip.damage.amount }}
-        </span>
-        <span v-if="chip.damage.icon === 'multi'" class="damage-count">
-          ×
-          <span
-            :class="{
-              'value--boosted': chip.damage.countChange === 'up',
-              'value--reduced': chip.damage.countChange === 'down',
-              'value--changed': chip.damage.countChange !== undefined,
-            }"
-          >
-            {{ chip.damage.count }}
-          </span>
-        </span>
-      </div>
 
       <div v-if="chip.effects.length" class="chip-effects">
         <span
@@ -185,6 +212,7 @@ function handleLeave(): void {
           class="effect"
           @mouseenter="(event) => handleEnter(event, effect.tooltip)"
           @mousemove="(event) => handleMove(event, effect.tooltip)"
+          @mouseleave="handleEffectLeave"
         >
           <template v-if="effect.iconPath">
             <v-icon class="effect-icon" size="14">
@@ -204,13 +232,13 @@ function handleLeave(): void {
 </template>
 
 <style scoped>
+
 .enemy-card__chip {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   flex-direction: column;
-  gap: 6px;
   padding: 8px 10px;
-  border-radius: 999px;
+  border-radius: 15px;
   background: rgba(255, 255, 255, 0.08);
   font-size: 13px;
   letter-spacing: 0.04em;
@@ -233,8 +261,8 @@ function handleLeave(): void {
 .chip-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  line-height: 1.2;
+  line-height: 1;
+  margin-bottom: 8px;
 }
 
 .chip-title {
@@ -245,14 +273,17 @@ function handleLeave(): void {
 .chip-body {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
 }
 
 .chip-damage {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  /* gap: 6px; */
   cursor: default;
+  /* margin-bottom: 4px; */
+  padding-right: 4px;
 }
 
 .attack-icon {

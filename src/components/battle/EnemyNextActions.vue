@@ -50,26 +50,22 @@ const formattedActions = computed<EnemyActionChipViewModel[]>(() =>
 <style scoped>
 .enemy-next-actions {
   display: flex;
+  height: 80px;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 
-.enemy-next-actions__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.enemy-card__chip {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
-.enemy-next-actions--highlighted,
-.enemy-next-actions__list--highlight {
-  transform: translateY(-2px);
-  box-shadow: 0 0 0 2px rgba(255, 235, 160, 0.35);
+.enemy-next-actions--highlighted .enemy-card__chip {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 0 2px rgba(255, 235, 160, 0.45), 0 8px 18px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 235, 160, 0.7);
   border-radius: 12px;
-  background: rgba(255, 255, 200, 0.06);
-  padding: 2px 4px;
+  background: radial-gradient(circle at 20% 30%, rgba(255, 235, 160, 0.16), transparent 45%),
+    rgba(255, 255, 200, 0.08);
 }
 </style>

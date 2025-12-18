@@ -58,9 +58,10 @@ export function buildCardInfoFromCard(
 
   const cost =
     options?.costContext !== undefined ? card.calculateCost(options.costContext) : (card as any).runtimeCost ?? card.cost
+  const title = resolveCardTitle(card)
   const baseInfo = {
     id: options?.id ?? `card-${card.id ?? 'unknown'}`,
-    title: card.title,
+    title,
     cost,
     subtitle,
     primaryTags,
@@ -157,6 +158,27 @@ function addTagEntry(
     // CardEffectTag などで指定されたアイコンを UI 側へ渡す
     iconPath: (tag as any).iconPath,
   })
+}
+
+function resolveCardTitle(card: Card): string {
+  if (card.type !== 'status') {
+    return card.title
+  }
+  const state = card.state
+  // Stackする状態異常カードは手札でもスタック数を明示するルール。
+  if (state && state.isStackable()) {
+    const amount = state.magnitude ?? 0
+    return `${card.title}(${amount}点)`
+  }
+  // Blueprint などで state が無い場合でも、cardDefinitionBase に stackable 情報があればそれを参照する。
+  const definition = card.state?.cardDefinitionBase ?? card.definition
+  const maybeStackable = 'stackable' in definition ? (definition as any).stackable : undefined
+  const maybeMagnitude = 'magnitude' in definition ? (definition as any).magnitude : undefined
+  if (maybeStackable === true) {
+    const amount = typeof maybeMagnitude === 'number' ? maybeMagnitude : 0
+    return `${card.title}(${amount}点)`
+  }
+  return card.title
 }
 
 function toTagInfos(

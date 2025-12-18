@@ -109,9 +109,11 @@ function toStateEffectSegment(entry: {
   target: 'self' | 'player' | 'ally'
   targetName?: string
 }): EnemyActionEffectSegment {
+  // スタック型のStateは表示上も必ずスタック数（点数）を明示するルールに従う。
+  const label = buildStateLabel(entry.name, entry.stackable, entry.magnitude)
   return {
     kind: 'state',
-    label: entry.name,
+    label,
     iconPath: entry.iconPath,
     tooltip: entry.tooltip,
     stackable: entry.stackable,
@@ -119,6 +121,14 @@ function toStateEffectSegment(entry: {
     target: entry.target,
     targetName: entry.targetName,
   }
+}
+
+function buildStateLabel(name: string, stackable: boolean, magnitude?: number): string {
+  if (!stackable) {
+    return name
+  }
+  const amount = magnitude ?? 0
+  return `${name}(${amount}点)`
 }
 
 function resolveStatusTarget(hint: EnemyActionHint, targetName?: string): 'self' | 'player' | 'ally' {

@@ -245,7 +245,8 @@ defineExpose({ playDamage, playEnemySound })
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 300px;
+  height: 220px;
+  margin-bottom: 30px;
   padding: 10px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(18, 22, 40, 0.9), rgba(10, 12, 24, 0.95));
@@ -280,29 +281,11 @@ defineExpose({ playDamage, playEnemySound })
   box-shadow: 0 20px 42px var(--enemy-selection-shadow-strong);
 }
 
-.enemy-card--acting {
-  border-color: rgba(255, 214, 111, 0.85);
-  box-shadow: 0 0 24px rgba(255, 214, 111, 0.55);
-  animation: enemy-card-acting 0.6s ease;
-}
-
 .enemy-card--defeated {
   opacity: 0.35;
   filter: grayscale(0.65);
   cursor: default;
   pointer-events: none;
-}
-
-@keyframes enemy-card-acting {
-  0% {
-    transform: scale(1);
-  }
-  30% {
-    transform: scale(1.04);
-  }
-  100% {
-    transform: scale(1);
-  }
 }
 
 .enemy-card__header {

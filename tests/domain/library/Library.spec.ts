@@ -37,4 +37,20 @@ describe('Library', () => {
     expect(Array.isArray(cards)).toBe(true)
     expect(cards.length).toBeGreaterThan(0)
   })
+
+  it('スタック型の状態異常カードはタイトルにスタック値を含める', () => {
+    const info = buildCardInfoFromBlueprint({ type: 'state-corrosion' }, 'status')
+    if (!info || info.type !== 'status') {
+      throw new Error('状態異常カードの生成に失敗しました')
+    }
+    expect(info.title).toBe('腐食(1点)')
+  })
+
+  it('Blueprint経由でもスタック型状態異常カードのタイトルに点数が付く', () => {
+    const info = buildCardInfoFromBlueprint({ type: 'state-sticky' }, 'status')
+    if (!info || info.type !== 'status') {
+      throw new Error('状態異常カードの生成に失敗しました')
+    }
+    expect(info.title).toBe('粘液(1点)')
+  })
 })
