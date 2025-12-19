@@ -10,5 +10,11 @@ if (typeof HTMLCanvasElement !== 'undefined') {
 }
 
 // Vuetifyコンポーネント（v-icon等）がテスト中に出るため、グローバルに簡易インスタンスを挿入して注入エラーを防ぐ。
+// すでに登録済みのプラグインがあれば多重登録しないようにチェックする。
 const vuetify = createVuetify({ components, directives })
-config.global.plugins = [...(config.global.plugins ?? []), vuetify]
+const existingPlugins = config.global.plugins ?? []
+const alreadyRegistered = existingPlugins.some((plugin) => {
+  // createVuetify が返すオブジェクトには install が含まれるので、それを識別子として判定する
+  return Boolean((plugin as { install?: unknown }).install) && plugin === vuetify
+})
+config.global.plugins = alreadyRegistered ? existingPlugins : [...existingPlugins, vuetify]
