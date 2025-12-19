@@ -6,7 +6,7 @@ import { FiveLegsState } from '../states/FiveLegsState'
 import { StunCountState } from '../states/StunCountState'
 
 /**
- * ゴブリン ビーム砲部隊: 天の鎖不可かつ5本脚でスタン耐性を持つタンク兼高火力砲。
+ * ゴブリン ビーム砲部隊: 天の鎖無効かつ5本脚でスタン耐性を持つタンク兼高火力砲。
  */
 export class GoblinBeamCannonEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {

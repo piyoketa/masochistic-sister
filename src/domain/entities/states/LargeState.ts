@@ -4,7 +4,7 @@ export class LargeState extends TraitState {
   constructor() {
     super({
       id: 'state-large',
-      name: '天の鎖不可',
+      name: '天の鎖無効',
       stackable: false,
     })
   }
@@ -17,6 +17,6 @@ export class LargeState extends TraitState {
     if (state.id !== this.id) {
       super.stackWith(state)
     }
-    // 同じ天の鎖不可は複数付与されても効果が変わらない
+    // 同じ天の鎖無効は複数付与されても効果が変わらない
   }
 }

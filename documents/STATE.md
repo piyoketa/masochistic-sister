@@ -32,7 +32,7 @@
 - 例：
   - ダメージ固定 FlightState
   - 鉄壁 HardShellState
-  - 天の鎖不可 LargeState
+  - 天の鎖無効 LargeState
   - 臆病 CowardTrait
   - 怒りの覚醒 FuryAwakeningState
   - バリア回復 GuardianPetalState

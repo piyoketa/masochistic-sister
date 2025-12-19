@@ -66,7 +66,7 @@ const enemyTeamLinks: LinkEntry[] = [
   },
   {
     label: 'Beam Cannon Elite',
-    description: '天の鎖不可ビーム砲＋酒飲みオークのエリート編成',
+    description: '天の鎖無効ビーム砲＋酒飲みオークのエリート編成',
     to: '/battle/beam-cannon-elite',
   },
   {
