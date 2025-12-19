@@ -28,7 +28,7 @@ export class CheerAction extends AllyBuffSkill {
   }
 
   protected override description(): string {
-    return '味方を鼓舞し、打点上昇(10)を付与する'
+    return '味方に打点上昇 10点を付与する'
   }
 
   protected override afterBuffApplied(context: ActionContext, target: Enemy): void {

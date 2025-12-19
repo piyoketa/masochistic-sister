@@ -79,6 +79,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: 'オーク相撲チーム（固定構成）',
     to: '/battle/orc-sumo-squad',
   },
+  {
+    label: 'Great Shield Orcs',
+    description: '大盾オーク＋治療師の防御ボスチーム',
+    to: '/battle/great-shield-orc-team',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [
