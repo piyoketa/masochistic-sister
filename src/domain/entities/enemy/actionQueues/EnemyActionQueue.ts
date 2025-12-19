@@ -121,9 +121,6 @@ export abstract class EnemyActionQueue {
    */
   ensureActionForTurn(turn: number, context?: { battle?: Battle; enemy?: Enemy; team?: EnemyTeam }): Action | null {
     const found = this.turnActions.find((entry) => entry.turn === turn)
-    if (found) {
-      return found.action
-    }
     // EnemyTeam/Enemy から渡されたコンテキストが無い場合は、setContext で与えられた値を使う。
     const effectiveContext =
       context ??
@@ -132,6 +129,22 @@ export abstract class EnemyActionQueue {
         enemy: (this.context as any)?.enemy ?? (this.context as any)?.owner,
         team: (this.context as any)?.team,
       } satisfies { battle?: Battle; enemy?: Enemy; team?: EnemyTeam })
+    if (found) {
+      // 初期化時に計画をしていない場合があるので、ここで欠損していれば補完する。
+      if (!found.plan) {
+        const planned = this.tryPlanAction(found.action, effectiveContext)
+        if (!planned.success) {
+          // 計画できないなら現在の予定を破棄して再抽選へ進む
+          this.discardTurn(turn)
+        } else {
+          this.assignActionForTurn(turn, found.action, { replace: true, plan: planned.plan })
+          return found.action
+        }
+      } else {
+        // 計画済みならそのまま返す
+        return found.action
+      }
+    }
 
     // 計画失敗時に次候補へ進むため、試行回数を制限しつつループする。
     const attemptLimit = Math.max(1, this.actions.length)

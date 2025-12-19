@@ -3,9 +3,8 @@ import { Player } from '@/domain/entities/Player'
 import { Hand } from '@/domain/battle/Hand'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import type { Battle } from '@/domain/battle/Battle'
-import { BadState } from '@/domain/entities/State'
-import { StatusTypeCardTag } from '@/domain/entities/cardTags'
-import { Card } from '@/domain/entities/Card'
+import { CorrosionState } from '@/domain/entities/states/CorrosionState'
+import { MiasmaState } from '@/domain/entities/states/MiasmaState'
 
 class TestPlayer extends Player {
   constructor() {
@@ -38,29 +37,17 @@ describe('Player.addState スタック処理', () => {
     return { battle, hand, repository }
   }
 
-  const createState = (id: string, magnitude: number) =>
-    new BadState({
-      id,
-      name: `state-${id}`,
-      magnitude,
-      cardDefinition: {
-        title: `state-${id}`,
-        cardType: 'status',
-        type: new StatusTypeCardTag(),
-        target: undefined,
-        cost: 0,
-      },
-    })
+  const createCorrosion = (magnitude: number) => new CorrosionState(magnitude)
 
   it('同一IDの状態を追加するとカードは増えるが合計値は加算される', () => {
     const player = new TestPlayer()
     const { battle, hand } = createBattleStub(player)
 
-    player.addState(createState('stack', 2), { battle })
+    player.addState(createCorrosion(2), { battle })
     expect(hand.list()).toHaveLength(1)
     expect(hand.list()[0]!.state?.magnitude).toBe(2)
 
-    player.addState(createState('stack', 3), { battle })
+    player.addState(createCorrosion(3), { battle })
     expect(hand.list()).toHaveLength(2)
   })
 
@@ -68,25 +55,25 @@ describe('Player.addState スタック処理', () => {
     const player = new TestPlayer()
     const { battle, hand } = createBattleStub(player)
 
-    player.addState(createState('accel', 1), { battle })
-    player.addState(createState('armor', 4), { battle })
+    player.addState(createCorrosion(1), { battle })
+    player.addState(new MiasmaState(4), { battle })
 
     expect(hand.list()).toHaveLength(2)
     const ids = hand.list().map((card) => card.state?.id)
-    expect(ids).toContain('accel')
-    expect(ids).toContain('armor')
+    expect(ids).toContain('state-corrosion')
+    expect(ids).toContain('state-miasma')
   })
 
   it('getStatesは同一IDの状態を一つにまとめて返す', () => {
     const player = new TestPlayer()
     const { battle } = createBattleStub(player)
 
-    player.addState(createState('stack', 2), { battle })
-    player.addState(createState('stack', 3), { battle })
+    player.addState(createCorrosion(2), { battle })
+    player.addState(createCorrosion(3), { battle })
 
     const aggregated = player
       .getStates()
-      .filter((state) => state.id === 'stack')
+      .filter((state) => state.id === 'state-corrosion')
 
     expect(aggregated).toHaveLength(1)
     expect(aggregated[0]?.magnitude).toBe(5)
