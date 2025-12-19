@@ -39,7 +39,7 @@ const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme | 'damaged-arcane' |
 }
 const STATUS_DIFF_SOURCES: Partial<Record<string, string>> = {
   // 'state-corrosion': buildStatusDiffSrc('CorrosionState.png'),
-  // 'state-sticky': buildStatusDiffSrc('StickyState.png'),
+  'state-sticky': buildStatusDiffSrc('StickyState.png'),
 }
 const debugEnabled =
   (typeof import.meta !== 'undefined' && import.meta.env?.DEV === true) ||
@@ -73,6 +73,10 @@ const selectionThemeActive = computed(
 )
 
 const faceDiffElement = computed(() => {
+  // HP0 のときは表情差分（ダメージ顔など）を表示しない
+  if (props.currentHp <= 0) {
+    return null
+  }
   if (props.faceDiffOverride) {
     const damaged = FACE_DIFF_SOURCES[props.faceDiffOverride]
     return damaged ? imageHub.getElement(damaged) ?? null : null
