@@ -27,7 +27,7 @@ describe('Enemy.addState のスタック処理', () => {
     expect(enemy.states.filter((state) => state.id === 'state-acceleration')).toHaveLength(1)
   })
 
-  it('大型などスタック対象外のStateは再付与しても増えない', () => {
+  it('天の鎖不可などスタック対象外のStateは再付与しても増えない', () => {
     const enemy = createEnemyWithStates([new LargeState()])
 
     enemy.addState(new LargeState())

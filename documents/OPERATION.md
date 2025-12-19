@@ -1,5 +1,5 @@
 - スキルの「使用可能対象」の概念を導入します。
-    - 「天の鎖」HeavenChainActionは、敵がState「大型」を持つ場合には選択できないようにします。
+    - 「天の鎖」HeavenChainActionは、敵がState「天の鎖不可」を持つ場合には選択できないようにします。
     - 現在、この処理はHeavenChainAction.perform() の中で処理していますが、変えましょう。
         
         ```bash
@@ -12,7 +12,7 @@
             }
         ```
         
-    - `TargetEnemyOperation` の生成時点で、現在のEnemyTeamに対して「使用可能／不可能」の判定を行い、`TargetEnemyOperation` の中にその情報を格納するようにしてください。選択できない敵がいる場合は、なぜ選択できないのかのコメントも`TargetEnemyOperation` の中にその情報を格納し、UI側で、敵にカーソルを合わせた時にそのコメントをoverlayとして表示するようにし、選択できないようにしてください。（例：「大型」の敵には使用できません）。
+    - `TargetEnemyOperation` の生成時点で、現在のEnemyTeamに対して「使用可能／不可能」の判定を行い、`TargetEnemyOperation` の中にその情報を格納するようにしてください。選択できない敵がいる場合は、なぜ選択できないのかのコメントも`TargetEnemyOperation` の中にその情報を格納し、UI側で、敵にカーソルを合わせた時にそのコメントをoverlayとして表示するようにし、選択できないようにしてください。（例：「天の鎖不可」の敵には使用できません）。
 
 - 「被虐のオーラ」にも、「使用可能対象」の概念を導入します。
     - 「被虐のオーラ」は、その時点でプレイヤー自身に対するAttackを次の行動として予定している敵のみを対象として発動できるようにしてください。
@@ -28,8 +28,8 @@
 1. **使用不可敵の判定データを TargetEnemyOperation に付与**
     - Operation 生成時に Battle/EnemyTeam へアクセスし、各敵の「選択可否」「理由テキスト」を計算して Operation インスタンスに格納するフィールド（例: `availability: Record<enemyId, { selectable: boolean; reason?: string }>`）を追加。
     - HeavenChainAction / MasochisticAuraAction など個別スキルは「対象候補を列挙するメソッド」を通じて条件を宣言する形へ変更し、perform 内からは消滅処理を削除。
-2. **HeavenChainAction の大型制限を Operation レイヤーへ移動**
-    - LargeState を持つ敵を Operation 生成時点で `selectable: false` にし、理由メッセージ（例: `大型の敵には天の鎖を使えません`）を付与。
+2. **HeavenChainAction の天の鎖不可制限を Operation レイヤーへ移動**
+    - LargeState を持つ敵を Operation 生成時点で `selectable: false` にし、理由メッセージ（例: `天の鎖不可の敵には天の鎖を使えません`）を付与。
     - perform では Operation が保証するため追加チェックを外しログ出力も Operation 経由（必要なら別ステージ）で行う。
 3. **MasochisticAuraAction の対象制限**
     - 敵の次行動キューを参照し、`target === 'player'` かつ `category === 'attack'` な敵のみを selectable とするロジックを Operation 側へ追加。

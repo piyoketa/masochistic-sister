@@ -47,7 +47,7 @@ export class HeavenChainAction extends Skill {
       new TargetEnemyOperation({
         restrictions: [
           {
-            reason: '大型の敵には天の鎖を使えません',
+            reason: '天の鎖不可の敵には天の鎖を使えません',
             test: ({ enemy }) => !enemy.getStates().some((state) => state instanceof LargeState),
           },
         ],
