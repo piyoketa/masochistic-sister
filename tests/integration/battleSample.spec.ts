@@ -11,6 +11,7 @@ import { BattleEventQueue } from '@/domain/battle/BattleEvent'
 import { BattleLog } from '@/domain/battle/BattleLog'
 import { TurnManager } from '@/domain/battle/TurnManager'
 import { OperationLogReplayer } from '@/domain/battle/OperationLogReplayer'
+import { ActionLogReplayer } from '@/domain/battle/ActionLogReplayer'
 import { buildTestDeck } from '@/domain/entities/decks'
 import { TestEnemyTeam } from '@/domain/entities/enemyTeams'
 import { ProtagonistPlayer } from '@/domain/entities/players'
@@ -29,6 +30,9 @@ import {
   requireCardId,
   requireEnemyId,
 } from './utils/scenarioEntityUtils'
+import { buildEnemyActionHintsForView, formatEnemyActionChipsForView } from '@/view/enemyActionHintsForView'
+import { useHandPresentation } from '@/components/battle/composables/useHandPresentation'
+import type { ViewManager } from '@/view/ViewManager'
 
 const battleFactory = () => {
   const cardRepository = new CardRepository()
@@ -154,6 +158,68 @@ describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () 
         lastAppliedSnapshot = entry.postEntrySnapshot
       }
     })
+  })
+
+  it('lastActionIndex:13 時点の手札では腐食カードのタイトルにスタック点数が付く', () => {
+    const operationLog = buildOperationLog(operationEntries, operationEntries.length - 1)
+    const replayer = new OperationLogReplayer({
+      createBattle: battleFactory,
+      operationLog,
+    })
+    const { actionLog } = replayer.buildActionLog()
+    const entries = actionLog.toArray()
+    const targetEntry = entries[13]
+    expect(targetEntry?.postEntrySnapshot).toBeTruthy()
+    const snapshot = targetEntry?.postEntrySnapshot as BattleSnapshot
+
+    const viewManagerStub = { battle: undefined } as unknown as ViewManager
+    const { cardTitleMap } = useHandPresentation({
+      props: {
+        snapshot,
+        hoveredEnemyId: null,
+        viewManager: viewManagerStub,
+      },
+      interactionState: { selectedCardKey: null, isAwaitingEnemy: false },
+    })
+
+    const corrosionCard = snapshot.hand.find((card) => card.title === '腐食')
+    expect(corrosionCard).toBeTruthy()
+    const magnitude = corrosionCard?.state?.magnitude ?? 0
+    const corrosionTitle = cardTitleMap.value.get(corrosionCard?.id as number)
+    expect(corrosionTitle).toBe(`腐食(${magnitude}点)`)
+  })
+
+  it('lastActionIndex:3 時点でかたつむりの行動チップがacted扱いになる', () => {
+    // 1つ目のOperation（被虐のオーラ）だけを適用し、行動ログから「かたつむりが行動済みになった」スナップショットを特定する。
+    const operationLog = buildOperationLog(operationEntries, 0)
+    const operationReplayer = new OperationLogReplayer({
+      createBattle: battleFactory,
+      operationLog,
+    })
+    const { actionLog } = operationReplayer.buildActionLog()
+
+    const actionReplayer = new ActionLogReplayer({
+      createBattle: battleFactory,
+      actionLog,
+    })
+    const snailId = references.enemyIds.snail
+
+    const targetIndex = actionLog
+      .toArray()
+      .findIndex((entry) =>
+        entry.postEntrySnapshot?.enemies.some((enemy) => enemy.id === snailId && enemy.hasActedThisTurn),
+      )
+
+    expect(targetIndex).toBeGreaterThanOrEqual(0)
+
+    const { battle } = actionReplayer.run(targetIndex)
+    const snapshot = actionLog.at(targetIndex)?.postEntrySnapshot as BattleSnapshot
+
+    const hintsMap = buildEnemyActionHintsForView({ battle, snapshot })
+    const snailHints = hintsMap.get(snailId) ?? []
+    const [chip] = formatEnemyActionChipsForView(snailId, snailHints)
+
+    expect(chip?.acted).toBe(true)
   })
 })
 

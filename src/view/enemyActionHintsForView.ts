@@ -75,7 +75,8 @@ function buildEssentialsForEnemy(params: BuildEssentialParams): EssentialEnemyAc
   }
 
   const plannedPlan = enemySnapshot.plannedActions?.find((entry) => entry.turn === turnPosition.turn)?.plan
-  const actedThisTurn = turnPosition.side === 'enemy' && enemySnapshot.hasActedThisTurn
+  // ターン側に関わらず「今ターン既に行動した」状態を表示側へ伝える。
+  const actedThisTurn = enemySnapshot.hasActedThisTurn
   const attackerStates = reviveStatesOrThrow(enemySnapshot.states, `enemy:${enemy.id ?? enemy.name}`)
   const defenderStates = reviveStatesOrThrow(playerSnapshot?.states, 'player')
   const hint = summarizeEnemyAction({
