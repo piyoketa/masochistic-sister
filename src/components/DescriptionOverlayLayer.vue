@@ -31,7 +31,7 @@ const overlayStyle = computed(() => ({
   </teleport>
 </template>
 
-<style scoped>
+<style>
 .description-overlay {
   position: fixed;
   min-width: 160px;
@@ -53,7 +53,7 @@ const overlayStyle = computed(() => ({
 }
 
 .text-magnitude {
-  color: #2ecc71;
+  color: #31d39e;
   font-weight: 700;
 }
 </style>

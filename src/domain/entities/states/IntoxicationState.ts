@@ -35,7 +35,7 @@ export class IntoxicationState extends BadState {
   override description(): string {
     const delta = this.magnitude ?? 0
     // 酩酊は「被虐の記憶」タグを持つカードにのみ影響する
-    return `被虐の記憶のコスト+${delta}`
+    return `被虐の記憶のコスト+<magnitude>${delta}</magnitude>`
   }
 
   override costAdjustment(context?: { cardType?: import('../CardDefinition').CardDefinition['cardType'] }): number {

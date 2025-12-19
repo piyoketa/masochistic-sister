@@ -29,7 +29,7 @@ export class MiasmaState extends BadState {
 
   override description(): string {
     const mag = this.magnitude ?? 0
-    return `ターン開始時に自傷 ${mag}\n敵からの攻撃ヒットごとに攻撃者へ${mag}の瘴気ダメージ`
+    return `ターン開始時に自傷 <magnitude>${mag}</magnitude>\n敵からの攻撃ヒットごとに攻撃者へ<magnitude>${mag}</magnitude>の瘴気ダメージ`
   }
 
   override onTurnStart(context: { battle: Battle; owner: Player | Enemy }): void {

@@ -35,7 +35,7 @@ export class StickyState extends BadState {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-   return `被攻撃回数+${bonus}\n（累積可）`
+    return `被攻撃回数+<magnitude>${bonus}</magnitude>\n（累積可）`
   }
 
   override get priority(): number {

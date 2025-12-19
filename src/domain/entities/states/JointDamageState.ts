@@ -16,7 +16,7 @@ class JointDamageStateAction extends StateAction {
   }
 }
 
-// 関節損傷: 「殴打（TackleAction）」の被ダメージをスタックごとに+20する
+// 関節損傷: 「殴打（TackleAction）」の被ダメージをスタックごとに+1する
 export class JointDamageState extends BadState {
   constructor(magnitude = 1) {
     super({
@@ -40,8 +40,8 @@ export class JointDamageState extends BadState {
   }
 
   override description(): string {
-    const bonus = 20 * (this.magnitude ?? 0)
-    return `殴打による被ダメージ+${bonus}\n（累積可）`
+    const bonus = this.magnitude ?? 0
+    return `殴打による被ダメージ+<magnitude>${bonus}</magnitude>\n（累積可）`
   }
 
   override affectsDefender(): boolean {
@@ -57,7 +57,7 @@ export class JointDamageState extends BadState {
     if (params.cardId !== 'tackle') {
       return params
     }
-    const bonus = 20 * (this.magnitude ?? 0)
+    const bonus = this.magnitude ?? 0
     return {
       ...params,
       // 1ヒットあたりに固定値を加算する（countが変動しても1回ごとに加算）

@@ -28,7 +28,7 @@ export class BarrierState extends BuffState {
 
   override description(): string {
     const stock = this.magnitude ?? 0
-    return `被弾時にダメージを無効化する。残量:${stock}`
+    return `被弾時に<magnitude>${stock}</magnitude>回までダメージを無効化する`
   }
 
   override isPostHitModifier(): boolean {

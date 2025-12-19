@@ -18,7 +18,7 @@ export class FiveLegsState extends TraitState {
   }
 
   override description(): string {
-    return '毎ターン開始時、スタンカウント(5)'
+    return '毎ターン開始時、スタンカウント 5点'
   }
 
   override onTurnStart(context: { battle: Battle; owner: Player | Enemy }): void {

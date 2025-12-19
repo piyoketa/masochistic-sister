@@ -13,7 +13,7 @@ export class StrengthState extends BuffState {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `与ダメージ+${bonus}`
+    return `攻撃時、打点+<magnitude>${bonus}</magnitude>`
   }
 
   override affectsAttacker(): boolean {

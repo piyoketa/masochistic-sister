@@ -19,7 +19,7 @@ export class TeamBondState extends TraitState {
   }
 
   override description(): string {
-    return '撃破時、他の味方全員に打点上昇(10)を付与'
+    return '撃破時、他の味方全員に打点上昇 10点を付与'
   }
 
   override onOwnerDefeated(context: { battle: Battle; owner: Player | Enemy }): void {

@@ -50,7 +50,7 @@ export class PoisonState extends BadState {
 
   override description(): string {
     const dmg = this.magnitude ?? 0
-    return `ターン開始時に自身へ${dmg}ダメージ`
+    return `ターン開始時に自身へ<magnitude>${dmg}</magnitude>ダメージ`
   }
 
   override onTurnStart(context: { battle: Battle; owner: Player | Enemy }): void {

@@ -11,15 +11,20 @@ import { computed, ref } from 'vue'
 import GameLayout from '@/components/GameLayout.vue'
 import { useActionCardOverlay } from '@/composables/actionCardOverlay'
 import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
+import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import type { CardBlueprint } from '@/domain/library/Library'
 
 const actionOverlay = useActionCardOverlay()
 const relicOverlay = useRelicCardOverlay()
+const { show: showDescriptionOverlay, hide: hideDescriptionOverlay, pin: pinDescriptionOverlay, unpin } =
+  useDescriptionOverlay()
 const corrosionBlueprint: CardBlueprint = { type: 'acid-spit', overrideAmount: 5, overrideCount: 1 }
 const tackleBlueprint: CardBlueprint = { type: 'tackle' }
 const pinnedBlueprint = corrosionBlueprint
+const corrosionDescription = '腐食 10点\n被ダメージ+<magnitude>10</magnitude>\n（累積可）'
 
 const pinned = ref(false)
+const descriptionPinned = ref(false)
 
 function showActionCard(blueprint: CardBlueprint, event: MouseEvent): void {
   actionOverlay.showFromBlueprint(blueprint, { x: event.clientX, y: event.clientY })
@@ -38,6 +43,16 @@ function hideRelicCard(): void {
   relicOverlay.hide()
 }
 
+function showCorrosionDescription(event: MouseEvent): void {
+  if (descriptionPinned.value) return
+  showDescriptionOverlay(corrosionDescription, { x: event.clientX, y: event.clientY })
+}
+
+function hideDescription(): void {
+  if (descriptionPinned.value) return
+  hideDescriptionOverlay()
+}
+
 function togglePinned(event: Event): void {
   const target = event.target as HTMLInputElement
   pinned.value = target.checked
@@ -45,6 +60,16 @@ function togglePinned(event: Event): void {
     actionOverlay.showFromBlueprint(pinnedBlueprint, { x: 24, y: window.innerHeight - 200 })
   } else {
     actionOverlay.hide()
+  }
+}
+
+function toggleDescriptionPinned(event: Event): void {
+  const target = event.target as HTMLInputElement
+  descriptionPinned.value = target.checked
+  if (descriptionPinned.value) {
+    pinDescriptionOverlay(corrosionDescription, { x: 24, y: window.innerHeight - 140 })
+  } else {
+    unpin()
   }
 }
 </script>
@@ -63,7 +88,7 @@ function togglePinned(event: Event): void {
               @mouseenter="(e) => showActionCard(corrosionBlueprint, e as MouseEvent)"
               @mouseleave="hideActionCard"
             >
-              腐食(1): 被ダメージ+10
+              腐食 10点: 被ダメージ+10
             </span>
           </div>
           <div class="demo-block">
@@ -82,9 +107,23 @@ function togglePinned(event: Event): void {
               記憶の聖女の証
             </span>
           </div>
+          <div class="demo-block">
+            <div class="demo-label">DescriptionOverlayのテキスト色確認</div>
+            <span
+              class="demo-link"
+              @mouseenter="(e) => showCorrosionDescription(e as MouseEvent)"
+              @mouseleave="hideDescription"
+            >
+              腐食 10点の説明を表示
+            </span>
+          </div>
           <label class="pin-toggle">
             <input type="checkbox" :checked="pinned" @change="togglePinned" />
             オーバーレイを固定表示
+          </label>
+          <label class="pin-toggle">
+            <input type="checkbox" :checked="descriptionPinned" @change="toggleDescriptionPinned" />
+            説明オーバーレイを固定表示
           </label>
         </div>
       </div>

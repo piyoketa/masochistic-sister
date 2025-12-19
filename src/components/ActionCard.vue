@@ -162,6 +162,7 @@ const { state: descriptionOverlay, show: showOverlay, hide: hideOverlay, updateP
   useDescriptionOverlay()
 
 const DEBUFF_ICON_SRC = '/assets/icons/debuff.png'
+const MAGNITUDE_HIGHLIGHT_CLASS = 'text-magnitude'
 
 function isDebuffSegment(segment: DescriptionSegment): boolean {
   return segment.text.startsWith('🌀')
@@ -220,6 +221,19 @@ const damageCountClasses = computed(() => [
   damageCountClass.value,
   { 'damage-value--boosted': props.damageCountBoosted, 'damage-value--reduced': props.damageCountReduced },
 ])
+
+function renderRichText(text: string): string {
+  // オーバーレイと同様に<magnitude>タグを緑色で強調し、それ以外はエスケープする
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+  return escaped.replace(
+    /&lt;magnitude&gt;(.*?)&lt;\/magnitude&gt;/g,
+    `<span class="${MAGNITUDE_HIGHLIGHT_CLASS}">$1</span>`,
+  )
+}
 
 let activeTag: { id: string; description: string } | null = null
 let activeSegment: { key: string; tooltip: string } | null = null
@@ -378,7 +392,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
                   <v-icon class="debuff-icon" size="14">
                     <img :src="DEBUFF_ICON_SRC" alt="デバフ" />
                   </v-icon>
-                  <span class="debuff-text">{{ stripDebuffEmoji(segment.text) }}</span>
+                  <span class="debuff-text" v-html="renderRichText(stripDebuffEmoji(segment.text))" />
                 </span>
                 <span
                   v-else
@@ -387,7 +401,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
                   @mousemove="(event) => handleSegmentMove(event, `segment-${index}`, segment.tooltip)"
                   @mouseleave="() => handleSegmentLeave(`segment-${index}`, segment.tooltip)"
                 >
-                  {{ segment.text }}
+                  <span v-html="renderRichText(segment.text)" />
                 </span>
               </template>
             </template>
@@ -406,10 +420,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
             </span>
           </p>
           <p v-if="props.type !== 'attack'" class="card-description">
-            <template v-for="(line, index) in (props.description ?? '').split('\n')" :key="index">
-              <span>{{ line }}</span>
-              <br v-if="index < (props.description ?? '').split('\n').length - 1" />
-            </template>
+            <span v-html="renderRichText(props.description ?? '')" />
           </p>
         <div v-if="primaryTagText" class="primary-tag-text">
           {{ primaryTagText }}
@@ -685,6 +696,10 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   font-size: 14px;
   font-weight: 700;
   padding-right: 8px;
+}
+.text-magnitude {
+  color: #31d39e;
+  font-weight: 700;
 }
 
 .damage-panel {

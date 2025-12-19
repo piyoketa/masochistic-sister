@@ -35,7 +35,7 @@ export class EvilThoughtState extends BadState {
 
   override description(): string {
     const add = this.magnitude ?? 0
-    return `神聖カードのコスト+${add}`
+    return `神聖カードのコスト+<magnitude>${add}</magnitude>`
   }
 
   override costAdjustment(context?: { cardTags?: CardTag[] }): number {

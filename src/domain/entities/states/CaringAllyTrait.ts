@@ -27,7 +27,7 @@ export class CaringAllyTrait extends TraitState {
   }
 
   override description(): string {
-    return '味方が撃破される度、自身の打点上昇(10)を得る'
+    return '味方が撃破される度、打点上昇 10点を得る'
   }
 
   override onAllyDefeated(context: { battle: Battle; owner: Player | Enemy; ally: Player | Enemy }): void {

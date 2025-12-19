@@ -13,7 +13,7 @@ export class AccelerationState extends BuffState {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `攻撃回数+${bonus}`
+    return `攻撃回数+<magnitude>${bonus}</magnitude>`
   }
 
   override affectsAttacker(): boolean {

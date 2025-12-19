@@ -23,7 +23,7 @@ export class StunCountState extends BuffState {
 
   override description(): string {
     const remain = this.magnitude ?? 0
-    return `このターン中、あと${remain}回ダメージを受けるとスタンする。`
+    return `このターン中、あと<magnitude>${remain}</magnitude>回ダメージを受けるとスタンする。`
   }
 
   override isPostHitModifier(): boolean {

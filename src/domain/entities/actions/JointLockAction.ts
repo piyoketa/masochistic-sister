@@ -9,7 +9,8 @@ export class JointLockAction extends Attack {
       name: '叩き潰す',
       baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'joint-lock' }),
       effectType: 'grapple',
-      inflictStates: [() => new JointDamageState(1)],
+      // JointDamageState は1点=+1ダメージに仕様変更したため、従来の+20相当を維持するよう20点付与する
+      inflictStates: [() => new JointDamageState(20)],
       cardDefinition: {
         title: '叩き潰す',
         cardType: 'attack',

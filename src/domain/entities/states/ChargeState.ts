@@ -21,7 +21,7 @@ export class ChargeState extends BuffState {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `次の攻撃ダメージ+${bonus}`
+    return `次の攻撃の打点+<magnitude>${bonus}</magnitude>`
   }
 
   override affectsAttacker(): boolean {

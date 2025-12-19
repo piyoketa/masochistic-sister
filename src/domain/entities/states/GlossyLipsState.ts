@@ -28,7 +28,7 @@ export class GlossyLipsState extends BuffState {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `口技の与ダメージ+${bonus}`
+    return `口づけの打点+<magnitude>${bonus}</magnitude>`
   }
 
   override get priority(): number {

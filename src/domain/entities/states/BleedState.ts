@@ -45,7 +45,7 @@ export class BleedState extends BadState {
 
   override description(): string {
     const mag = this.magnitude ?? 0
-    return `攻撃を行う度に自身へ${mag}ダメージ`
+    return `攻撃を行う度に自身へ<magnitude>${mag}</magnitude>ダメージ`
   }
 
   override onActionResolved(context: ActionResolvedContext): void {

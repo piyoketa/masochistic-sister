@@ -15,7 +15,7 @@ export class FuryAwakeningState extends TraitState {
   }
 
   override description(): string {
-    return 'ダメージを受ける度に打点上昇(10)を得る'
+    return 'ダメージを受ける度に打点上昇 10点を得る'
   }
 
   override isPostHitModifier(): boolean {

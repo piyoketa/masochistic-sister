@@ -13,7 +13,7 @@ export class HardShellState extends TraitState {
 
   override description(): string {
     const reduction = this.magnitude ?? 0
-    return `被ダメージ-${reduction}`
+    return `攻撃を受ける時、打点-<magnitude>${reduction}</magnitude>`
   }
 
   override get priority(): number {

@@ -5,8 +5,8 @@ import { TackleAction } from '@/domain/entities/actions/TackleAction'
 import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
 
 describe('関節損傷', () => {
-  it('殴打で被ダメージがスタックごとに+20される', () => {
-    const state = new JointDamageState(2) // 2スタック=+40
+  it('殴打で被ダメージがスタックごとに+1される（20点で+20）', () => {
+    const state = new JointDamageState(20) // 20スタック=+20
     const damages = new Damages({
       baseAmount: 20,
       baseCount: 1,
@@ -18,7 +18,7 @@ describe('関節損傷', () => {
       },
     })
 
-    expect(damages.amount).toBe(60) // 20 + 40
+    expect(damages.amount).toBe(40) // 20 + 20
   })
 
   it('殴打以外では効果がない', () => {

@@ -355,7 +355,7 @@ function handleEffectLeave(): void {
 }
 
 .value--boosted {
-  color: #1f8c68;
+  color: #31d39e;
   text-shadow:
     0 0 6px rgba(31, 140, 104, 0.35),
     0 0 1px rgba(0, 0, 0, 0.6);
