@@ -186,7 +186,7 @@ describe('シナリオ1: OperationLog → ActionLog + AnimationInstruction', () 
     expect(corrosionCard).toBeTruthy()
     const magnitude = corrosionCard?.state?.magnitude ?? 0
     const corrosionTitle = cardTitleMap.value.get(corrosionCard?.id as number)
-    expect(corrosionTitle).toBe(`腐食(${magnitude}点)`)
+    expect(corrosionTitle).toBe(`腐食 ${magnitude}点`)
   })
 
   it('lastActionIndex:3 時点でかたつむりの行動チップがacted扱いになる', () => {

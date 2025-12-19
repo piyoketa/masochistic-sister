@@ -17,7 +17,7 @@ class CorrosionStateAction extends StateAction {
 }
 
 export class CorrosionState extends BadState {
-  constructor(magnitude = 10) {
+  constructor(magnitude = 1) {
     super({
       id: 'state-corrosion',
       name: '腐食',
@@ -34,7 +34,8 @@ export class CorrosionState extends BadState {
   }
 
   override description(): string {
-    return `被ダメージ+${this.magnitude}\n（累積可）`
+    const amount = this.magnitude ?? 0
+    return `被ダメージ+<magnitude>${amount}</magnitude>\n（累積可）`
   }
 
   override get priority(): number {
@@ -54,7 +55,7 @@ export class CorrosionState extends BadState {
       return params
     }
 
-    const bonus = (this.magnitude ?? 0) * 1
+    const bonus = this.magnitude ?? 0
     return {
       ...params,
       amount: params.amount + bonus,

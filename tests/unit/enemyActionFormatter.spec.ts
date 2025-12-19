@@ -68,7 +68,7 @@ describe('formatEnemyActionLabel', () => {
         title: '溶かす',
         type: 'attack',
         pattern: { amount: 5, count: 1, type: 'single' },
-        status: { name: '腐食', magnitude: 1, iconPath: '/assets/icons/debuff.png' },
+        status: { name: '腐食', magnitude: 10, iconPath: '/assets/icons/debuff.png' },
       }),
     )
     expect(label).toBe('溶かす: 💥5+腐食 10点')
@@ -89,7 +89,7 @@ describe('formatEnemyActionLabel', () => {
         pattern: { amount: 5, count: 1, type: 'single' },
         status: {
           name: '腐食',
-          magnitude: 1,
+          magnitude: 10,
           iconPath: '/assets/icons/debuff.png',
           description: '受ける物理ダメージが増加する',
         },

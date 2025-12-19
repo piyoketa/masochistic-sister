@@ -4,6 +4,15 @@ import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 
 const { state } = useDescriptionOverlay()
 
+function renderHtml(text: string): string {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+  return escaped.replace(/&lt;magnitude&gt;(.*?)&lt;\/magnitude&gt;/g, '<span class="text-magnitude">$1</span>')
+}
+
 const overlayStyle = computed(() => ({
   left: `${(state.x ?? 0) + 12}px`,
   top: `${(state.y ?? 0) + 12}px`,
@@ -12,8 +21,12 @@ const overlayStyle = computed(() => ({
 
 <template>
   <teleport to="body">
-    <div v-if="state.visible" class="description-overlay" :style="overlayStyle">
-      {{ state.text }}
+    <div
+      v-if="state.visible"
+      class="description-overlay"
+      :style="overlayStyle"
+      v-html="renderHtml(state.text)"
+    >
     </div>
   </teleport>
 </template>
@@ -37,5 +50,10 @@ const overlayStyle = computed(() => ({
   z-index: 1500;
   backdrop-filter: blur(6px);
   white-space: pre-line;
+}
+
+.text-magnitude {
+  color: #2ecc71;
+  font-weight: 700;
 }
 </style>

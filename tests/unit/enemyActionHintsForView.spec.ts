@@ -223,7 +223,7 @@ describe('formatEnemyActionChipsForView', () => {
           description: '防御を削る',
           iconPath: '/assets/icons/debuff.png',
           stackable: true,
-          magnitude: 1,
+          magnitude: 10,
         },
       }),
     ]

@@ -245,9 +245,11 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     }
   }
 
+  const statusAwareTitle = card.type === 'status' ? resolveStatusCardTitle(card) : card.title
+
   const baseInfo = {
     id: card.id !== undefined ? `card-${card.id}` : `card-${index}`,
-    title: card.title,
+    title: statusAwareTitle,
     subtitle,
     cost: card.cost,
     primaryTags,
@@ -357,6 +359,19 @@ function addTagEntries(
       iconPath: (tag as any).iconPath,
     })
   }
+}
+
+function resolveStatusCardTitle(card: Card): string {
+  const state = card.state
+  if (card.type !== 'status') {
+    return card.title
+  }
+  if (state && state.isStackable()) {
+    const amount = state.magnitude ?? 0
+    const base = card.title.replace(/\s*\(?\d+点\)?$/, '')
+    return `${base} ${amount}点`
+  }
+  return card.title
 }
 
 function stripDamageInfoFromDescription(formatted: {
