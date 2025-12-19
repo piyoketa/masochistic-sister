@@ -84,6 +84,11 @@ const enemyTeamLinks: LinkEntry[] = [
     description: '大盾オーク＋治療師の防御ボスチーム',
     to: '/battle/great-shield-orc-team',
   },
+  {
+    label: 'Orc Shamans',
+    description: 'ハイオーク＋呪術師のサポート編成',
+    to: '/battle/orc-shaman-team',
+  },
 ]
 
 const demoLinks: LinkEntry[] = [

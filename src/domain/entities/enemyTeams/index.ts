@@ -13,6 +13,7 @@ export { OrcSumoSquad } from './OrcSumoSquad'
 export { HighOrcSquad } from './HighOrcSquad'
 export { TutorialEnemyTeam } from './TutorialEnemyTeam'
 export { GreatShieldOrcTeam } from './GreatShieldOrcTeam'
+export { OrcShamanTeam } from './OrcShamanTeam'
 
 import type { EnemyTeam } from '../EnemyTeam'
 import { SnailTeam } from './SnailTeam'
@@ -30,6 +31,7 @@ import { OrcSumoSquad } from './OrcSumoSquad'
 import { HighOrcSquad } from './HighOrcSquad'
 import { TutorialEnemyTeam } from './TutorialEnemyTeam'
 import { GreatShieldOrcTeam } from './GreatShieldOrcTeam'
+import { OrcShamanTeam } from './OrcShamanTeam'
 
 /**
  * 敵チームIDとファクトリ関数のマッピングを返す。
@@ -53,5 +55,6 @@ export function buildEnemyTeamFactoryMap(): Record<string, () => EnemyTeam> {
     'high-orc-squad': () => new HighOrcSquad(),
     'enemy-team-tutorial': () => new TutorialEnemyTeam(),
     'great-shield-orc-team': () => new GreatShieldOrcTeam(),
+    'orc-shaman-team': () => new OrcShamanTeam(),
   }
 }
