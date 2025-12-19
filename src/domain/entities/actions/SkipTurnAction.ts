@@ -8,9 +8,9 @@ export class SkipTurnAction extends Action {
 
   constructor(message?: string | ((enemy: Enemy) => string)) {
     super({
-      name: '足止め',
+      name: '天の鎖',
       cardDefinition: {
-        title: '足止め',
+        title: '天の鎖',
         cardType: 'skip',
         type: new SkipTypeCardTag(),
         cost: 0,
