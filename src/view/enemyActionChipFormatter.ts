@@ -128,7 +128,7 @@ function buildStateLabel(name: string, stackable: boolean, magnitude?: number): 
     return name
   }
   const amount = magnitude ?? 0
-  return `${name}(${amount}点)`
+  return `${name} ${amount}点`
 }
 
 function resolveStatusTarget(hint: EnemyActionHint, targetName?: string): 'self' | 'player' | 'ally' {

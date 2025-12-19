@@ -502,7 +502,7 @@ export abstract class Attack extends Action {
       }
       const stackable =
         typeof state.isStackable === 'function' ? state.isStackable() : state.magnitude !== undefined
-      const magnitude = stackable ? `(${state.magnitude ?? 0}点)` : ''
+      const magnitude = stackable ? ` ${state.magnitude ?? 0}点` : ''
       const description = state.description?.() ?? ''
       segments.push({
         text: `🌀${state.name}${magnitude}`,

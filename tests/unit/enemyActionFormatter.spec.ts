@@ -71,13 +71,13 @@ describe('formatEnemyActionLabel', () => {
         status: { name: '腐食', magnitude: 1, iconPath: '/assets/icons/debuff.png' },
       }),
     )
-    expect(label).toBe('溶かす: 💥5+腐食(1点)')
+    expect(label).toBe('溶かす: 💥5+腐食 10点')
     expect(segments).toEqual([
       { text: '溶かす: ', showOverlay: true },
       { text: '💥', showOverlay: true },
       { text: '5', highlighted: false, change: undefined, showOverlay: true },
       { text: '+' },
-      { text: '腐食(1点)', iconPath: '/assets/icons/debuff.png' },
+      { text: '腐食 10点', iconPath: '/assets/icons/debuff.png' },
     ])
   })
 
@@ -101,7 +101,7 @@ describe('formatEnemyActionLabel', () => {
       { text: '5', highlighted: false, change: undefined, showOverlay: true },
       { text: '+' },
       {
-        text: '腐食(1点)',
+        text: '腐食 10点',
         iconPath: '/assets/icons/debuff.png',
         tooltip: '受ける物理ダメージが増加する',
       },
@@ -133,10 +133,10 @@ describe('formatEnemyActionLabel', () => {
         selfState: { name: '筋肉強化', magnitude: 10, iconPath: '/assets/icons/buff.png' },
       }),
     )
-    expect(label).toBe('ビルドアップ：筋肉強化(10点)')
+    expect(label).toBe('ビルドアップ：筋肉強化 10点')
     expect(segments).toEqual([
       { text: 'ビルドアップ：' },
-      { text: '筋肉強化(10点)', iconPath: '/assets/icons/buff.png' },
+      { text: '筋肉強化 10点', iconPath: '/assets/icons/buff.png' },
     ])
   })
 

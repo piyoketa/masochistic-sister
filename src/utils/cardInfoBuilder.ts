@@ -168,7 +168,7 @@ function resolveCardTitle(card: Card): string {
   // Stackする状態異常カードは手札でもスタック数を明示するルール。
   if (state && state.isStackable()) {
     const amount = state.magnitude ?? 0
-    return `${card.title}(${amount}点)`
+    return `${card.title} ${amount}点`
   }
   // Blueprint などで state が無い場合でも、cardDefinitionBase に stackable 情報があればそれを参照する。
   const definition = card.state?.cardDefinitionBase ?? card.definition
@@ -176,7 +176,7 @@ function resolveCardTitle(card: Card): string {
   const maybeMagnitude = 'magnitude' in definition ? (definition as any).magnitude : undefined
   if (maybeStackable === true) {
     const amount = typeof maybeMagnitude === 'number' ? maybeMagnitude : 0
-    return `${card.title}(${amount}点)`
+    return `${card.title} ${amount}点`
   }
   return card.title
 }

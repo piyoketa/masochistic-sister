@@ -43,7 +43,7 @@ describe('Library', () => {
     if (!info || info.type !== 'status') {
       throw new Error('状態異常カードの生成に失敗しました')
     }
-    expect(info.title).toBe('腐食(1点)')
+    expect(info.title).toBe('腐食 10点')
   })
 
   it('Blueprint経由でもスタック型状態異常カードのタイトルに点数が付く', () => {
@@ -51,6 +51,6 @@ describe('Library', () => {
     if (!info || info.type !== 'status') {
       throw new Error('状態異常カードの生成に失敗しました')
     }
-    expect(info.title).toBe('粘液(1点)')
+    expect(info.title).toBe('粘液 1点')
   })
 })

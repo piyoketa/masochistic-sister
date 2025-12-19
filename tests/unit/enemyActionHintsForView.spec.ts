@@ -232,7 +232,7 @@ describe('formatEnemyActionChipsForView', () => {
     const stateEffect = vm.effects.find((effect) => effect.kind === 'state')
 
     expect(vm.category).toBe('attack')
-    expect(stateEffect?.label).toBe('腐食(1点)')
+    expect(stateEffect?.label).toBe('腐食 10点')
     expect(stateEffect?.tooltip).toBe('防御を削る')
     expect(stateEffect?.target).toBe('player')
     expect(vm.hoverCardSource?.cardId).toBe('acid-spit')
@@ -292,7 +292,7 @@ describe('formatEnemyActionChipsForView', () => {
 
     expect(vm.category).toBe('skill')
     expect(vm.hoverCardSource).toBeUndefined()
-    expect(stateEffect?.label).toBe('酩酊(2点)')
+    expect(stateEffect?.label).toBe('酩酊 2点')
     expect(stateEffect?.tooltip).toBe('命中率が下がる')
     expect(stateEffect?.target).toBe('player')
   })
@@ -316,7 +316,7 @@ describe('formatEnemyActionChipsForView', () => {
     const selfBuff = vm.effects.find((effect) => effect.kind === 'state')
 
     expect(vm.category).toBe('skill')
-    expect(selfBuff?.label).toBe('打点上昇(10点)')
+    expect(selfBuff?.label).toBe('打点上昇 10点')
     expect(selfBuff?.target).toBe('self')
     expect(selfBuff?.magnitude).toBe(10)
   })
