@@ -20,6 +20,7 @@ import { ActionLog } from './ActionLog'
 import type { Card } from '../entities/Card'
 import type { ActionAudioCue, ActionCutInCue } from '../entities/Action'
 import type { DamageOutcome } from '../entities/Damages'
+import { isPredictionDisabled } from '../utils/predictionToggle'
 
 export interface EntryAppendContext {
   index: number
@@ -791,6 +792,9 @@ export class OperationRunner {
    * Battle の状態は汚さない。
    */
   private simulateEndTurnPrediction(): number | undefined {
+    if (isPredictionDisabled()) {
+      return undefined
+    }
     if (!this.createBattle) {
       return undefined
     }

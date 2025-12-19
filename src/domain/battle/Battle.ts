@@ -24,6 +24,7 @@ import type { EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
 import type { Relic } from '../entities/relics/Relic'
 import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
+import { isPredictionDisabled } from '../utils/predictionToggle'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -419,6 +420,10 @@ export class Battle {
    * OperationRunner などから委譲されたデリゲートを用いて、ログ再生込みで計算する。
    */
   private predictPlayerHpAfterEndTurn(): number | undefined {
+    if (isPredictionDisabled()) {
+      this.cachedPredictedPlayerHpAfterEndTurn = undefined
+      return undefined
+    }
     if (this.turnValue.current.activeSide === 'enemy') {
       return this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
     }
@@ -452,11 +457,11 @@ export class Battle {
     const discardWithCost = this.discardPileValue.list()
     const exileWithCost = this.exilePileValue.list()
     const predictedHp =
-      includePrediction && this.turnValue.current.activeSide === 'player'
-        ? this.predictPlayerHpAfterEndTurn()
-        : includePrediction
-          ? this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
-          : undefined
+      includePrediction && !isPredictionDisabled()
+        ? this.turnValue.current.activeSide === 'player'
+          ? this.predictPlayerHpAfterEndTurn()
+          : this.cachedPredictedPlayerHpAfterEndTurn ?? this.playerValue.currentHp
+        : undefined
 
     return {
       id: this.idValue,
