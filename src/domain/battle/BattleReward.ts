@@ -8,6 +8,7 @@
 import type { Battle } from './Battle'
 import type { Card } from '../entities/Card'
 import { buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
+import { MemorySaintRelic } from '../entities/relics/MemorySaintRelic'
 
 export interface ComputedBattleReward {
   defeatedCount: number
@@ -28,10 +29,12 @@ export class BattleReward {
     const cardBlueprints = newCards
       .map((card) => this.toRewardBlueprint(card))
       .filter((entry): entry is CardBlueprint => Boolean(entry))
-    // HP回復は固定値 50 とする
+    // MemorySaintRelic を所持している場合のみHP50回復、それ以外は0とする
+    const memorySaintId = new MemorySaintRelic().id
+    const hpHeal = this.battle.hasRelic(memorySaintId) ? 50 : 0
     return {
       defeatedCount,
-      hpHeal: 50,
+      hpHeal,
       goldGain: defeatedCount * 10,
       cards: cardBlueprints,
     }
