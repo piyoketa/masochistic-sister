@@ -206,6 +206,7 @@ function resetErrorMessage(): void {
 function handleManagerEvent(event: ViewManagerEvent) {
   switch (event.type) {
     case 'error':
+      console.error('[BattleView] ViewManager error event:', event.error)
       showTransientError(event.error.message)
       break
     case 'animation-start':
