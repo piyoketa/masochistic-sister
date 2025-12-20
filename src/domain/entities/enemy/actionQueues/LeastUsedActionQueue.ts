@@ -21,12 +21,13 @@ export class LeastUsedActionQueue extends EnemyActionQueue {
     const battle = (this.context as any)?.battle as Battle | undefined
     const enemy = ((this.context as any)?.enemy ?? (this.context as any)?.owner) as Enemy | undefined
     const team = (this.context as any)?.team as EnemyTeam | undefined
+    // コンテキスト未設定の場合は canUse を持つアクションを除外し、安全に初期化する
     const usable = this.actions.filter((action) => {
       if (typeof action.canUse !== 'function') {
         return true
       }
       if (!battle || !enemy) {
-        return action.canUse({ battle: undefined as any, source: undefined as any })
+        return false
       }
       return action.canUse({ battle, source: enemy })
     })

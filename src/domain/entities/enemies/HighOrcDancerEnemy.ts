@@ -24,7 +24,7 @@ export class HighOrcDancerEnemy extends Enemy {
       actions: [flurry, new TailwindAction()],
       states: [new TeamBondState()],
       image: '/assets/enemies/orc-dancer.jpg',
-      allyBuffWeights: { tailwind: 20 },
+      allyBuffWeights: { tailwind: 20, cheer: 100 },
       ...overrides,
     })
   }

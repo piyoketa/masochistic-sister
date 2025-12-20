@@ -28,6 +28,7 @@ export function createHighOrcTrainer(): Enemy {
       ),
       new CheerAction(),
     ],
+    allyBuffWeights: { tailwind: 100, cheer: 100 },    
     states: [new CaringAllyTrait(), new LightweightState()],
     image: '/assets/enemies/orc-dancer.jpg',
   })

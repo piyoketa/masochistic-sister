@@ -28,6 +28,7 @@ export function createHighOrcTrainerB(): Enemy {
     currentHp: 60,
     actions: [flurry, new CheerAction(), new TailwindAction()],
     states: [new CaringAllyTrait(), new LightweightState()],
+    allyBuffWeights: { tailwind: 100, cheer: 100 },    
     image: '/assets/enemies/orc-dancer.jpg',
     actionQueueFactory: () => new LeastUsedActionQueue(),
   })

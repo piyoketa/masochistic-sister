@@ -59,7 +59,7 @@ export class CureBadStateAction extends AllyStateSkill {
       return
     }
 
-    const badStates = this.listBadStates(target.getStates())
+    const badStates = this.listCleansableStates(target.getStates())
     if (badStates.length === 0) {
       context.metadata = { ...(context.metadata ?? {}), skipped: true, skipReason: 'ally-cure-no-state' }
       return
@@ -81,11 +81,12 @@ export class CureBadStateAction extends AllyStateSkill {
     return battle.enemyTeam.members.filter(
       (ally) =>
         ally.isActive() &&
-        this.listBadStates(ally.getStates()).length > 0,
+        this.listCleansableStates(ally.getStates()).length > 0,
     )
   }
 
-  private listBadStates(states: State[]): State[] {
-    return states.filter((state) => state.getCategory() === 'bad')
+  private listCleansableStates(states: State[]): State[] {
+    const targetIds = new Set(['state-corrosion', 'state-joint-damage', 'state-sticky'])
+    return states.filter((state) => targetIds.has(state.id))
   }
 }
