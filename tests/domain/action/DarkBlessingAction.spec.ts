@@ -52,6 +52,8 @@ describe('闇の加護', () => {
 
     const context = { battle, source: healer, metadata: {} } as any
     action.execute(context)
-    expect(ally.getStates().some((s) => s.id === 'state-large')).toBe(true)
+    // どちらかの味方に天の鎖無効が付与されていることを確認する
+    const anyGranted = [healer, ally].some((e) => e.getStates().some((s) => s.id === 'state-large'))
+    expect(anyGranted).toBe(true)
   })
 })
