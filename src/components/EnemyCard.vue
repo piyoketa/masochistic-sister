@@ -85,6 +85,11 @@ const selectionStyleVars = computed(() => {
   }
 })
 
+const rootStyleVars = computed(() => ({
+  ...selectionStyleVars.value,
+  '--enemy-bg-image': `url(${props.enemy.image})`,
+}))
+
 const displayName = computed(() => props.enemy.name.replace('（短剣）', '')) // TODO: 削除
 
 const traitChips = computed(() =>
@@ -155,7 +160,7 @@ function formatStateChip(
   description: string
   isImportant?: boolean
 } {
-  const label = state.stackable ? `${state.name} ${(state.magnitude ?? 0)}点` : state.name
+  const label = state.stackable ? `${state.name}(${state.magnitude ?? 0}点)` : state.name
   const description = state.description ?? state.name
   return {
     key,
@@ -185,14 +190,47 @@ defineExpose({ playDamage, playEnemySound })
   <article
     class="enemy-card"
     :class="classes"
-    :style="selectionStyleVars"
+    :style="rootStyleVars"
     role="button"
     :aria-disabled="!props.selectable || props.enemy.status === 'defeated' ? 'true' : undefined"
     @mouseenter="handleEnter"
     @mouseleave="handleLeave"
   >
-    <header class="enemy-card__header">
-      <div class="enemy-card__title">{{ displayName }}</div>
+    <div class="enemy-card__overlay">
+      <div class="enemy-card__spacer" />
+
+      <section v-if="traitChips.length" class="enemy-card__section enemy-card__section--traits">
+        <TransitionGroup
+          tag="ul"
+          name="enemy-state"
+          class="enemy-card__list enemy-card__list--chips enemy-card__list--traits"
+        >
+          <EnemyStateChip
+            v-for="state in traitChips"
+            :key="state.key"
+            :chip="state"
+            @enter="(event) => showTooltip(event, state.description, `enemy-state-${state.key}`)"
+            @move="(event) => updateTooltipPosition(event, `enemy-state-${state.key}`, state.description)"
+            @leave="() => hideTooltip(`enemy-state-${state.key}`)"
+          />
+        </TransitionGroup>
+      </section>
+
+      <section v-if="stateChips.length" class="enemy-card__section enemy-card__section--states">
+        <TransitionGroup tag="ul" name="enemy-state" class="enemy-card__list enemy-card__list--chips">
+          <EnemyStateChip
+            v-for="state in stateChips"
+            :key="state.key"
+            :chip="state"
+            @enter="(event) => showTooltip(event, state.description, `enemy-state-${state.key}`)"
+            @move="(event) => updateTooltipPosition(event, `enemy-state-${state.key}`, state.description)"
+            @leave="() => hideTooltip(`enemy-state-${state.key}`)"
+          />
+        </TransitionGroup>
+      </section>
+
+      <div class="enemy-card__name">{{ displayName }}</div>
+
       <div class="enemy-card__hp">
         <HpGauge :current="props.enemy.hp.current" :max="props.enemy.hp.max" />
         <DamageEffects
@@ -201,39 +239,8 @@ defineExpose({ playDamage, playEnemySound })
           :outcomes="damageOutcomes"
         />
       </div>
-    </header>
+    </div>
 
-    <section v-if="traitChips.length" class="enemy-card__section enemy-card__section--traits">
-      <!-- <h5 class="enemy-card__label">Traits</h5> -->
-      <TransitionGroup
-        tag="ul"
-        name="enemy-state"
-        class="enemy-card__list enemy-card__list--chips enemy-card__list--traits"
-      >
-        <EnemyStateChip
-          v-for="state in traitChips"
-          :key="state.key"
-          :chip="state"
-          @enter="(event) => showTooltip(event, state.description, `enemy-state-${state.key}`)"
-          @move="(event) => updateTooltipPosition(event, `enemy-state-${state.key}`, state.description)"
-          @leave="() => hideTooltip(`enemy-state-${state.key}`)"
-        />
-      </TransitionGroup>
-    </section>
-
-    <section v-if="stateChips.length" class="enemy-card__section enemy-card__section--states">
-      <!-- <h5 class="enemy-card__label">States</h5> -->
-      <TransitionGroup tag="ul" name="enemy-state" class="enemy-card__list enemy-card__list--chips">
-        <EnemyStateChip
-          v-for="state in stateChips"
-          :key="state.key"
-          :chip="state"
-          @enter="(event) => showTooltip(event, state.description, `enemy-state-${state.key}`)"
-          @move="(event) => updateTooltipPosition(event, `enemy-state-${state.key}`, state.description)"
-          @leave="() => hideTooltip(`enemy-state-${state.key}`)"
-        />
-      </TransitionGroup>
-    </section>
     <div v-if="props.blockedReason && !props.selectable && props.hovered" class="enemy-card__blocked-overlay">
       {{ props.blockedReason }}
     </div>
@@ -245,13 +252,16 @@ defineExpose({ playDamage, playEnemySound })
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 220px;
+  gap: 10px;
+  min-height: 220px;
   margin-bottom: 30px;
-  padding: 10px;
+  padding: 12px;
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(18, 22, 40, 0.9), rgba(10, 12, 24, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  background-image: var(--enemy-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
   transition:
     transform 140ms ease,
     box-shadow 140ms ease,
@@ -268,7 +278,7 @@ defineExpose({ playDamage, playEnemySound })
 
 .enemy-card--selectable {
   cursor: pointer;
-  border-color: var(--enemy-selection-border);
+  box-shadow: 0 18px 36px var(--enemy-selection-shadow);
 }
 
 .enemy-card--hovered.enemy-card--selectable {
@@ -277,7 +287,6 @@ defineExpose({ playDamage, playEnemySound })
 }
 
 .enemy-card--selected {
-  border-color: var(--enemy-selection-strong);
   box-shadow: 0 20px 42px var(--enemy-selection-shadow-strong);
 }
 
@@ -288,47 +297,40 @@ defineExpose({ playDamage, playEnemySound })
   pointer-events: none;
 }
 
-.enemy-card__header {
+.enemy-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(4, 5, 12, 0.1), rgba(4, 5, 12, 0.8));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.enemy-card__overlay {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
+  justify-content: flex-end;
+  padding: 12px;
+  z-index: 1;
 }
 
-.enemy-card__title {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: rgba(255, 255, 255, 0.92);
-  line-height: 1.2;
-}
-
-.enemy-card__hp {
-  position: relative;
-}
-
-.enemy-card__damage-effects {
-  position: absolute;
-  top: -12px;
-  right: -6px;
-  width: 80px;
-  height: 60px;
-  pointer-events: none;
+.enemy-card__spacer {
+  flex: 1;
 }
 
 .enemy-card__section {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 8px;
 }
 
-.enemy-card__label {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
+.enemy-card__name {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
 }
 
 .enemy-card__list {
@@ -344,18 +346,18 @@ defineExpose({ playDamage, playEnemySound })
   gap: 8px;
 }
 
-/* chip styles moved to EnemyStateChip.vue */
-
-@property --gradient-angle {
-  syntax: '<angle>';
-  initial-value: 0turn;
-  inherits: false;
+.enemy-card__hp {
+  position: relative;
 }
 
-@keyframes gradient-angle {
-  to {
-    --gradient-angle: 1turn;
-  }
+.enemy-card__damage-effects {
+  position: absolute;
+  top: -12px;
+  right: -6px;
+  width: 82px;
+  height: 60px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .enemy-card__blocked-overlay {
