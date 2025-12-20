@@ -26,6 +26,8 @@ import type { Relic } from '../entities/relics/Relic'
 import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 import { isPredictionDisabled } from '../utils/predictionToggle'
 
+export type HandRuleVariant = 'classic' | 'experimental'
+
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
 export type BattleTurnSide = 'player' | 'enemy'
@@ -50,6 +52,7 @@ export interface BattleConfig {
   turn?: TurnManager
   cardRepository?: CardRepository
   relicClassNames?: string[]
+  handRuleVariant?: HandRuleVariant
 }
 
 export interface BattleSnapshot {
@@ -215,6 +218,7 @@ export class Battle {
   private readonly cardRepositoryValue: CardRepository
   private relicClassNames: string[]
   private relicInstances: Relic[]
+  private readonly handRuleVariantValue: HandRuleVariant
   private logSequence = 0
   private executedActionLogIndex = -1
   private eventSequence = 0
@@ -258,6 +262,7 @@ export class Battle {
     this.turnValue = config.turn ?? new TurnManager()
     this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
     this.relicClassNames = [...(config.relicClassNames ?? [])]
+    this.handRuleVariantValue = config.handRuleVariant ?? resolveHandRuleVariantFromEnv()
     this.relicInstances = this.buildRelicInstances(this.relicClassNames, [])
     this.playerValue.bindHand(this.handValue)
     this.cardRepositoryValue.bindZones({
@@ -278,6 +283,10 @@ export class Battle {
 
   get enemyTeam(): EnemyTeam {
     return this.enemyTeamValue
+  }
+
+  get handRuleVariant(): HandRuleVariant {
+    return this.handRuleVariantValue
   }
 
   get deck(): Deck {
@@ -789,6 +798,9 @@ export class Battle {
     if (this.isDebugEnemyActedLogEnabled()) {
       // eslint-disable-next-line no-console
       console.log('[Battle] endPlayerTurn')
+    }
+    if (this.handRuleVariantValue === 'experimental') {
+      this.discardNonStatusHandCards()
     }
     this.turn.moveToPhase('player-end')
   }
@@ -1323,6 +1335,26 @@ export class Battle {
     this.discardPileValue.add(card)
   }
 
+  private discardNonStatusHandCards(): void {
+    const targets = this.handValue.list().filter((card) => card.definition.cardType !== 'status')
+    if (targets.length === 0) {
+      return
+    }
+
+    targets.forEach((card) => {
+      this.handValue.remove(card)
+      this.discardPileValue.add(card)
+    })
+
+    const cardIds = targets
+      .map((card) => card.id)
+      .filter((id): id is number => typeof id === 'number')
+    const cardTitles = targets.map((card) => card.title).filter(Boolean)
+    if (cardIds.length > 0) {
+      this.recordCardTrashAnimation({ cardIds, cardTitles })
+    }
+  }
+
   /**
    * 山札から指定したカードIDのカードを引き、手札へ加える。
    * 手札がいっぱいの場合は既存の addCardToPlayerHand の挙動に従う（捨て札送りなど）。
@@ -1595,4 +1627,14 @@ export class Battle {
       this.recordOutcome('victory')
     }
   }
+}
+
+function resolveHandRuleVariantFromEnv(): HandRuleVariant {
+  const envFlag =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_EXPERIMENT_HAND_RULE) ||
+    (typeof process !== 'undefined' ? process.env?.EXPERIMENT_HAND_RULE : undefined)
+  if (envFlag === '1' || envFlag === 'true') {
+    return 'experimental'
+  }
+  return 'classic'
 }

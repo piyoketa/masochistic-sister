@@ -998,6 +998,11 @@ export class ViewManager {
 
     batches.forEach((batch) => {
       const instructions = batch.instructions ?? []
+      const batchWait = instructions.reduce((max, instruction) => Math.max(max, Math.max(0, instruction.waitMs)), 0)
+      const shouldDelayPatchUntilAfterWait = instructions.some((instruction) => {
+        const stage = (instruction.metadata as { stage?: string } | undefined)?.stage
+        return stage === 'card-trash' || stage === 'card-eliminate'
+      })
       instructions.forEach((instruction) => {
         commands.push({
           type: 'stage-event',
@@ -1008,21 +1013,33 @@ export class ViewManager {
         })
       })
       if (batch.patch) {
-        commands.push({
-          type: 'apply-patch',
-          patch: batch.patch,
-          snapshot: batch.snapshot,
-          resolvedEntry,
-        })
+        if (shouldDelayPatchUntilAfterWait && batchWait > 0) {
+          commands.push({ type: 'wait', duration: batchWait })
+          commands.push({
+            type: 'apply-patch',
+            patch: batch.patch,
+            snapshot: batch.snapshot,
+            resolvedEntry,
+          })
+        } else {
+          commands.push({
+            type: 'apply-patch',
+            patch: batch.patch,
+            snapshot: batch.snapshot,
+            resolvedEntry,
+          })
+          if (batchWait > 0) {
+            commands.push({ type: 'wait', duration: batchWait })
+          }
+        }
       } else {
         commands.push({
           type: 'update-snapshot',
           snapshot: batch.snapshot,
         })
-      }      
-      const batchWait = instructions.reduce((max, instruction) => Math.max(max, Math.max(0, instruction.waitMs)), 0)
-      if (batchWait > 0) {
-        commands.push({ type: 'wait', duration: batchWait })
+        if (batchWait > 0) {
+          commands.push({ type: 'wait', duration: batchWait })
+        }
       }
     })
 

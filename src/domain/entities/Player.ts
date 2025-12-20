@@ -276,6 +276,10 @@ export class Player {
    * 基本は3枚。入念な準備レリックが有効なら+1枚。
    */
   calculateInitialDraw(battle?: Battle): number {
+    const variant = battle?.handRuleVariant ?? 'classic'
+    if (variant === 'experimental') {
+      return 0
+    }
     let draw = 3
     if (battle) {
       if (battle.hasActiveRelic('thorough-preparation')) {

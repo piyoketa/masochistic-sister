@@ -21,6 +21,7 @@ import type { Card } from '../entities/Card'
 import type { ActionAudioCue, ActionCutInCue } from '../entities/Action'
 import type { DamageOutcome } from '../entities/Damages'
 import { isPredictionDisabled } from '../utils/predictionToggle'
+import type { HandRuleVariant } from './Battle'
 
 export interface EntryAppendContext {
   index: number
@@ -34,6 +35,7 @@ export interface OperationRunnerConfig {
   initialSnapshot?: FullBattleSnapshot
   onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
   createBattle?: () => Battle
+  handRuleVariant?: HandRuleVariant
 }
 
 interface AppendOptions {
@@ -90,6 +92,7 @@ const ENEMY_ACTION_AUDIO_MAP = new Map<string, EnemyActionAudioConfig>([
 
 export class OperationRunner {
   private static readonly CARD_CREATE_ANIMATION_DURATION_MS = 1500
+  private static readonly CARD_TRASH_ANIMATION_DURATION_MS = 600
   private static readonly CARD_ELIMINATE_ANIMATION_DURATION_MS = 720
   private static readonly STATE_CARD_ANIMATION_DURATION_MS = 500
   private static readonly MEMORY_CARD_ANIMATION_DURATION_MS = 1500
@@ -105,6 +108,7 @@ export class OperationRunner {
   private enemyActGroupCounter = 0
   private pendingEnemyActSummaries: EnemyTurnActionSummary[] = []
   private instructionBatchCounter = 0
+  private readonly handRuleVariant: HandRuleVariant
 
   constructor(config: OperationRunnerConfig) {
     this.battle = config.battle
@@ -119,6 +123,7 @@ export class OperationRunner {
     }
     // Battle からの予測計算依頼に応じるためのデリゲートをセットする
     this.battle.setPredictionDelegate(() => this.simulateEndTurnPrediction())
+    this.handRuleVariant = config.handRuleVariant ?? this.battle.handRuleVariant ?? 'classic'
   }
 
   getActionLog(): ActionLog {
@@ -502,7 +507,10 @@ export class OperationRunner {
       return []
     }
     return events.map((event) => ({
-      waitMs: 0,
+      waitMs:
+        event.variant === 'eliminate'
+          ? 0
+          : OperationRunner.CARD_TRASH_ANIMATION_DURATION_MS,
       metadata: {
         stage: event.variant === 'eliminate' ? 'card-eliminate' : 'card-trash',
         cardIds: event.cardIds,
@@ -535,7 +543,10 @@ export class OperationRunner {
         ? 'card-eliminate'
         : 'card-trash'
     return {
-      waitMs: resolvedStage === 'card-eliminate' ? OperationRunner.CARD_ELIMINATE_ANIMATION_DURATION_MS : 0,
+      waitMs:
+        resolvedStage === 'card-eliminate'
+          ? OperationRunner.CARD_ELIMINATE_ANIMATION_DURATION_MS
+          : OperationRunner.CARD_TRASH_ANIMATION_DURATION_MS,
       metadata: {
         stage: resolvedStage,
         cardIds: [cardId],
@@ -1214,7 +1225,7 @@ export class OperationRunner {
         snapshot,
         [
           {
-            waitMs: 0,
+            waitMs: OperationRunner.CARD_TRASH_ANIMATION_DURATION_MS,
             metadata: {
               stage: 'card-trash',
               cardIds: event.cardIds,
@@ -1437,7 +1448,7 @@ export class OperationRunner {
   }
 
   private calculateTurnStartDraw(): number {
-    return 2
+    return this.handRuleVariant === 'experimental' ? 4 : 2
   }
 
   private nextBatchId(stage: string): string {

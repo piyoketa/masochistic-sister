@@ -24,7 +24,7 @@ export class DevilsKissRelic extends Relic {
   readonly icon = '💋'
 
   description(): string {
-    return '自身の状態異常カード枚数×10だけ口技の打点を上昇させる'
+    return '自身の状態異常カード枚数×5だけ口技の打点を上昇させる'
   }
 
   override isActive(context?: { battle?: Battle; player?: Player }): boolean {
@@ -44,6 +44,6 @@ export class DevilsKissRelic extends Relic {
       return []
     }
     // 手札状態異常1枚につき口技打点+10。艶唇を通して口技に限定して加算する。
-    return [new GlossyLipsState(statusCount * 10)]
+    return [new GlossyLipsState(statusCount * 5)]
   }
 }
