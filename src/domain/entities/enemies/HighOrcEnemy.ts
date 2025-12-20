@@ -37,7 +37,7 @@ export class HighOrcEnemy extends Enemy {
       actions: [flurry, new BuildUpAction()],
       states: [new HardShellState(10), new CaringAllyTrait()],
       allyBuffWeights: { tailwind: 100, cheer: 100 },
-      image: '/assets/enemies/orc.jpg',
+      image: '/assets/enemies/high-orc.png',
       ...overrides,
     })
   }

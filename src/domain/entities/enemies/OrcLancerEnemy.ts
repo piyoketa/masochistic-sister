@@ -21,7 +21,7 @@ export class OrcLancerEnemy extends Enemy {
       maxHp: 40,
       currentHp: 40,
       actions: [battleDance, flurry],
-      image: '/assets/enemies/orc-lancer.jpg',
+      image: '/assets/enemies/orc_lancer.png',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 50 },
       ...overrides,

@@ -11,12 +11,12 @@ import { StunCountState } from '../states/StunCountState'
 export class GoblinBeamCannonEnemy extends Enemy {
   constructor(overrides?: Partial<EnemyProps>) {
     super({
-      name: 'ゴブリン ビーム砲部隊',
+      name: 'ビーム砲',
       maxHp: 150,
       currentHp: 150,
       actions: [new BeamShotAction(20), new PowerChargeAction(80)],
       states: [new LargeState(), new FiveLegsState(), new StunCountState(5)],
-      image: '/assets/enemies/orc-lancer.jpg',
+      image: '/assets/enemies/big-canon.png',
       ...overrides,
     })
   }

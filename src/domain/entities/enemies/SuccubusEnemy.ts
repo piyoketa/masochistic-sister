@@ -23,7 +23,7 @@ export class SuccubusEnemy extends Enemy {
       maxHp: 40,
       currentHp: 40,
       actions: [new BloodSuckAction(), new ConfusingGazeAction()],
-      image: '/assets/enemies/bat.jpg',
+      image: '/assets/enemies/succubus.png',
       ...overrides,
     })
   }

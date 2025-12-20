@@ -301,7 +301,7 @@ defineExpose({ playDamage, playEnemySound })
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(4, 5, 12, 0.1), rgba(4, 5, 12, 0.8));
+  background: linear-gradient(180deg, rgba(4, 5, 12, 0.0), rgba(4, 5, 12, 0.3));
   pointer-events: none;
   z-index: 0;
 }

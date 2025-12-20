@@ -28,7 +28,7 @@ export class OrcSumoEnemy extends Enemy {
       // 追い風の対象になれるよう、加速向き・多段攻撃タグを付与する。
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 100 },
-      image: '/assets/enemies/orc.jpg',
+      image: '/assets/enemies/orc-sumo.png',
       actionQueueFactory: () => new ConditionalOrcSumoQueue(),
       ...overrides,
     })

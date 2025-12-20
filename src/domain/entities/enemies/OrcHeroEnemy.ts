@@ -17,7 +17,7 @@ export class OrcHeroEnemy extends Enemy {
       currentHp: 150,
       actions: [flurry, new BuildUpAction()],
       states: [new LargeState(), new FuryAwakeningState()],
-      image: '/assets/enemies/orc-hero.jpg',
+      image: '/assets/enemies/orc-hero.png',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 100 },
       ...overrides,

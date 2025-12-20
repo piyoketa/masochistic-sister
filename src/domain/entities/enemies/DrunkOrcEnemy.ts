@@ -16,7 +16,7 @@ export class DrunkOrcEnemy extends Enemy {
       maxHp: 40,
       currentHp: 40,
       actions: [flurry, new DrunkenBreathAction()],
-      image: '/assets/enemies/orc.jpg',
+      image: '/assets/enemies/drunk-orc.png',
       ...overrides,
     })
   }
