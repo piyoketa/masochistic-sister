@@ -90,7 +90,7 @@ const ENEMY_ACTION_AUDIO_MAP = new Map<string, EnemyActionAudioConfig>([
 
 export class OperationRunner {
   private static readonly CARD_CREATE_ANIMATION_DURATION_MS = 1500
-  private static readonly CARD_TRASH_ANIMATION_DURATION_MS = 600
+  private static readonly CARD_TRASH_ANIMATION_DURATION_MS = 400
   private static readonly CARD_ELIMINATE_ANIMATION_DURATION_MS = 720
   private static readonly STATE_CARD_ANIMATION_DURATION_MS = 500
   private static readonly MEMORY_CARD_ANIMATION_DURATION_MS = 1500
@@ -903,13 +903,24 @@ export class OperationRunner {
     }
 
     if (metadata) {
+      const shouldSkipSnapshot = metadata.stage === 'turn-end'
       batches.push(
-        this.createBatch(snapshot, [
-          {
-            waitMs,
-            metadata,
-          },
-        ]),
+        this.createBatch(
+          snapshot,
+          [
+            {
+              waitMs,
+              metadata,
+            },
+          ],
+          undefined,
+          shouldSkipSnapshot
+            ? {
+                skipSnapshotUpdate: true,
+                omitPatch: true,
+              }
+            : undefined,
+        ),
       )
     }
 
@@ -1232,6 +1243,9 @@ export class OperationRunner {
           },
         ],
         batchId,
+        {
+          skipSnapshotUpdate: false,
+        },
       )
     })
   }
@@ -1360,6 +1374,7 @@ export class OperationRunner {
     snapshot: BattleSnapshot,
     instructions: AnimationInstruction[],
     batchId?: string,
+    options?: { skipSnapshotUpdate?: boolean; omitPatch?: boolean },
   ): AnimationBatch {
     const normalizedInstructions = instructions.map((instruction) => {
       const metadata = instruction.metadata ? { ...instruction.metadata } : undefined
@@ -1382,8 +1397,9 @@ export class OperationRunner {
     return {
       batchId: batchId ?? this.nextBatchId(typeof firstStage === 'string' ? firstStage : 'instruction'),
       snapshot: clonedSnapshot,
-      patch: this.createSnapshotPatch(clonedSnapshot),
+      patch: options?.omitPatch ? undefined : this.createSnapshotPatch(clonedSnapshot),
       instructions: normalizedInstructions,
+      skipSnapshotUpdate: options?.skipSnapshotUpdate,
     }
   }
 

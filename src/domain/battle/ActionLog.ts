@@ -30,6 +30,7 @@ export interface AnimationBatch {
   snapshot: BattleSnapshot
   patch?: BattleSnapshotPatch
   instructions: AnimationInstruction[]
+  skipSnapshotUpdate?: boolean
 }
 
 export type AnimationStageMetadata =
