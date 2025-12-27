@@ -81,7 +81,6 @@ const {
   props,
   interactionState,
 })
-const hasCards = computed(() => handEntries.value.length > 0)
 const handCount = computed(() => props.snapshot?.hand.length ?? 0)
 const handLimit = computed(() => props.viewManager.battle?.hand.maxSize() ?? 10)
 const deckCount = computed(() => props.snapshot?.deck.length ?? 0)
@@ -199,7 +198,6 @@ defineExpose({ resetSelection, cancelSelection })
 <template>
   <section ref="handZoneRef" class="hand-zone" @contextmenu="handleHandContextMenu">
     <div v-if="isInitializing" class="zone-message">カード情報を読み込み中...</div>
-    <div v-else-if="!hasCards" class="zone-message">手札は空です</div>
     <transition name="hand-selection-banner">
       <div v-if="handSelectionRequest" class="hand-selection-banner">
         {{ handSelectionRequest.message }}
