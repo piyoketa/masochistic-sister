@@ -49,7 +49,7 @@ export class HeavyweightState extends BadState {
 
   override description(): string {
     const stacks = this.magnitude ?? 0
-    return `与ダメージ×<magnitude>${(2 + stacks) / 2}</magnitude>\n連続攻撃の回数-<magnitude>${stacks}</magnitude>\n（累積可）`
+    return `攻撃時の打点が<magnitude>${stacks}</magnitude>段階上がる\n(<magnitude>${2+stacks}</magnitude>/2になる)\n連続攻撃の回数-<magnitude>${stacks}</magnitude>`
   }
 
   override get priority(): number {
@@ -57,7 +57,6 @@ export class HeavyweightState extends BadState {
   }
 
   override affectsAttacker(): boolean {
-    return true
   }
 
   override isPreHitModifier(): boolean {

@@ -50,7 +50,7 @@ export class LightweightState extends BadState {
   override description(): string {
     const stacks = this.magnitude ?? 0
     const multiplier = 2 / (2 + stacks)
-    return `与ダメージ×<magnitude>${multiplier}</magnitude>\n連続攻撃の回数+<magnitude>${stacks}</magnitude>\n（累積可）`
+    return `攻撃時の打点が<magnitude>${stacks}</magnitude>段階下がる\n(2/<magnitude>${2+stacks}</magnitude>になる)\n連続攻撃の回数+<magnitude>${stacks}</magnitude>`
   }
 
   override get priority(): number {
