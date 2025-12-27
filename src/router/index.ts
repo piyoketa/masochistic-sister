@@ -49,6 +49,11 @@ const router = createRouter({
       component: () => import('@/views/TraitHighlightDemoView.vue'),
     },
     {
+      path: '/demo/enemy-card',
+      name: 'enemy-card-demo',
+      component: () => import('@/views/EnemyCardDemoView.vue'),
+    },
+    {
       path: '/demo/cut-in',
       name: 'cut-in-demo',
       component: () => import('@/views/CutInDemoView.vue'),

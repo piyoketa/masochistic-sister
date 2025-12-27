@@ -40,7 +40,7 @@ export class OrcTrainerEnemy extends Enemy {
       actions: [flurry, new ShapeUpAction(), new BuildUpAction()],
       states: [new LightweightState()],
       allyBuffWeights: { tailwind: 100 },
-      image: '/assets/enemies/orc.jpg',
+      image: '/assets/enemies/orc-trainer.png',
       actionQueueFactory: () => new ConditionalOrcTrainerQueue(),
       ...overrides,
     })

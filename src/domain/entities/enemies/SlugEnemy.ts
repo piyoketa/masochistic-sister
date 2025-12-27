@@ -20,7 +20,7 @@ export class SlugEnemy extends Enemy {
       currentHp: 30,
       actions: [new TackleAction(), new AcidSpitAction()],
       states: [new CowardTrait()],
-      image: '/assets/enemies/slug.jpg',
+      image: '/assets/enemies/slug.png',
       ...overrides,
     })
   }

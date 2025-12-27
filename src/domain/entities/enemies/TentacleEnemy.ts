@@ -14,7 +14,7 @@ export class TentacleEnemy extends Enemy {
       maxHp: 25,
       currentHp: 25,
       actions: [tentacleFlurry, new MucusShotAction()],
-      image: '',
+      image: '/assets/enemies/tentacle.png',
       ...overrides,
     })
   }

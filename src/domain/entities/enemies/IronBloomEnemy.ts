@@ -20,7 +20,7 @@ export class IronBloomEnemy extends Enemy {
       currentHp: 10,
       actions: [new MucusShotAction(), new FlurryAction()],
       states: [new GuardianPetalState(3)],
-      image: '/assets/enemies/iron-bloom.jpg',
+      image: '/assets/enemies/iron-bloom.png',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 30 },
       ...overrides,

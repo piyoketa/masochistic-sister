@@ -98,6 +98,11 @@ const demoLinks: LinkEntry[] = [
     to: '/demo/damage-effects',
   },
   {
+    label: 'EnemyCard Demo',
+    description: 'OrcEnemy の EnemyCard 表示を確認',
+    to: '/demo/enemy-card',
+  },
+  {
     label: 'Cut-in Demo',
     description: 'カットイン画像の再生実験ページ',
     to: '/demo/cut-in',

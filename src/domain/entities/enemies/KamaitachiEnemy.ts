@@ -23,7 +23,7 @@ export class KamaitachiEnemy extends Enemy {
       maxHp: 35,
       currentHp: 35,
       actions: [kamaitachiFlurry, new TailwindAction()],
-      image: '/assets/enemies/kamaitachi.jpg',
+      image: '/assets/enemies/kamaitachi.png',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 20 },
       ...overrides,

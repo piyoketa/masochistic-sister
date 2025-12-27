@@ -11,7 +11,7 @@ export class OrcWrestlerEnemy extends Enemy {
       currentHp: 40,
       actions: [new TackleAction(), new JointLockAction()],
       states: [new HardShellState(10)],
-      image: '/assets/enemies/orc.jpg',
+      image: '/assets/enemies/orc_sheild.png',
       ...overrides,
     })
   }

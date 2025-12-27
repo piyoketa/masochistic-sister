@@ -14,7 +14,7 @@ export class GunGoblinEnemy extends Enemy {
       maxHp: 60,
       currentHp: 60,
       actions: [new BeamShotAction(20), new PowerChargeAction(40)],
-      image: '/assets/enemies/kamaitachi.jpg',
+      image: '/assets/enemies/canon.png',
       ...overrides,
     })
   }
