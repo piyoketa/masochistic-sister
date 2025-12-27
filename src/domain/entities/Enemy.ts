@@ -303,6 +303,12 @@ export class Enemy {
   }
 
   addState(state: State, _options?: { battle?: Battle }): void {
+    // 状態異常無効(Trait)を持つ場合は、あらゆる新規State付与を拒否する。
+    const hasStatusImmunity = this.stateList.some((entry) => entry.id === 'trait-status-immunity')
+    if (hasStatusImmunity && state.id !== 'trait-status-immunity') {
+      return
+    }
+
     const existing = this.stateList.find((entry) => entry.id === state.id)
     if (existing) {
       existing.stackWith(state)

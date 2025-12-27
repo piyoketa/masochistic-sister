@@ -2,7 +2,14 @@ import { describe, it, expect } from 'vitest'
 
 import { Enemy } from '@/domain/entities/Enemy'
 import { BattlePrepAction } from '@/domain/entities/actions/BattlePrepAction'
-import { AccelerationState, LargeState, HeavyweightState, LightweightState } from '@/domain/entities/states'
+import {
+  AccelerationState,
+  LargeState,
+  HeavyweightState,
+  LightweightState,
+  StatusImmunityTrait,
+  CorrosionState,
+} from '@/domain/entities/states'
 import type { State } from '@/domain/entities/State'
 
 function createEnemyWithStates(states: State[] = []): Enemy {
@@ -57,5 +64,15 @@ describe('Enemy.addState のスタック処理', () => {
     expect(light?.isStackable()).toBe(true)
     expect(light?.magnitude).toBe(2)
     expect(enemy.states.filter((state) => state.id === 'state-lightweight')).toHaveLength(1)
+  })
+
+  it('状態異常無効を持つ敵は新規State付与を拒否する', () => {
+    const immunity = new StatusImmunityTrait()
+    const enemy = createEnemyWithStates([immunity])
+
+    enemy.addState(new CorrosionState(3))
+
+    expect(enemy.states).toContain(immunity)
+    expect(enemy.states.some((state) => state instanceof CorrosionState)).toBe(false)
   })
 })

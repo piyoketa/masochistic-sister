@@ -26,6 +26,7 @@ export { StackedStressState } from './StackedStressState'
 export { CaringAllyTrait } from './CaringAllyTrait'
 export { DamageLinkState } from './DamageLinkState'
 export { MiasmaState } from './MiasmaState'
+export { StatusImmunityTrait } from './StatusImmunityTrait'
 
 import type { State } from '../State'
 import type { StateSnapshot } from '@/types/battle'
@@ -57,6 +58,7 @@ import { StackedStressState } from './StackedStressState'
 import { CaringAllyTrait } from './CaringAllyTrait'
 import { DamageLinkState } from './DamageLinkState'
 import { MiasmaState } from './MiasmaState'
+import { StatusImmunityTrait } from './StatusImmunityTrait'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
@@ -69,8 +71,8 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-bleed': (m) => new BleedState(m),
   'state-barrier': (m) => new BarrierState(m),
   'state-guardian-petal': (m) => new GuardianPetalState(m),
-  'state-heavyweight': () => new HeavyweightState(),
-  'state-lightweight': () => new LightweightState(),
+  'state-heavyweight': (m) => new HeavyweightState(m),
+  'state-lightweight': (m) => new LightweightState(m),
   'state-flight': () => new FlightState(),
   'state-poison': (m) => new PoisonState(m),
   'state-large': () => new LargeState(),
@@ -88,6 +90,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'trait-caring-ally': () => new CaringAllyTrait(),
   'state-damage-link': () => new DamageLinkState(),
   'state-miasma': (m) => new MiasmaState(m ?? 10),
+  'trait-status-immunity': () => new StatusImmunityTrait(),
 }
 
 export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | undefined {
