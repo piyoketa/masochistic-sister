@@ -94,6 +94,8 @@ const managerState = viewManager.state
 const errorMessage = ref<string | null>(null)
 const currentAnimationId = ref<string | null>(null)
 let errorOverlayTimer: number | null = null
+// チュートリアル専用UIの制御用フラグ。preset に依存するため単純な computed で十分。
+const isTutorialBattle = computed(() => props.preset === 'tutorial')
 
 const subscriptions: Array<() => void> = []
 
@@ -998,6 +1000,30 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
         <p class="battle-instructions__lead">
           Slay The Spire 風のカードバトルです。プレイヤー「記憶の聖女」は、敵から受けた「被虐の記憶」をカードとして使用できます。敵の攻撃と状態異常を上手く活用し、生きて最深部まで辿り着きましょう！
         </p>
+        <div v-if="isTutorialBattle" class="battle-instructions__tutorial">
+          <p class="battle-instructions__tutorial-lead">
+            チュートリアル専用の指示です。カードの使用順や状態異常の挙動を体験しながら進めてください。
+          </p>
+          <ol class="battle-instructions__tutorial-list">
+            <li>シスターは攻撃手段を持ちません。敵を攻撃するには、敵からの攻撃を「記憶」する必要があります。</li>
+            <li>指示１：「被虐のオーラ」をカタツムリに使ってみましょう。</li>
+            <li>手札に攻撃カード「溶かす」が追加されました。</li>
+            <li>指示２：「溶かす」をオークに使ってみましょう。</li>
+            <li>ダメージを与えることができました！</li>
+            <li>ここで、状態異常について解説します。</li>
+            <li>現在、プレイヤーは状態異常「腐食10点」を持っています。これにより、次の敵の攻撃の打点が上がります。</li>
+            <li>オークの20×2のダメージを受けたくないので、オークの攻撃を止めましょう。</li>
+            <li>指示３：「天の鎖」をオークに使ってください。</li>
+            <li>オークが次のターンは行動しなくなりました。</li>
+            <li>指示４：「戦いの準備」を使い、ターン終了してください。</li>
+            <li>敵が行動し、手札に30ダメージの殴打が追加されました。「腐食」によって増えたダメージ量がカードにも反映されています。</li>
+            <li>指示５：30ダメージの「殴打」を使って、かたつむりを倒しましょう。</li>
+            <li>状態異常は使うことで解除できます。</li>
+            <li>指示６：状態異常「腐食」を使い、状態異常を解除しましょう。</li>
+            <li>指示７：手札の「日課」を使いましょう。</li>
+            <li>指示８：「殴打」でオークを倒しましょう。</li>
+          </ol>
+        </div>
 
         <div class="battle-instructions__group">
           <h3 class="battle-instructions__heading">操作</h3>
@@ -1168,6 +1194,30 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
 .battle-instructions__group {
   display: grid;
   gap: 8px;
+}
+
+.battle-instructions__tutorial {
+  background: linear-gradient(135deg, #fff7fb, #f9e5ff);
+  border: 2px solid #c73a9a;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 22px rgba(199, 58, 154, 0.18);
+}
+
+.battle-instructions__tutorial-lead {
+  margin: 0 0 10px;
+  font-weight: 700;
+  color: #79145c;
+}
+
+.battle-instructions__tutorial-list {
+  margin: 0;
+  padding-left: 1.4em;
+  display: grid;
+  gap: 6px;
+  color: #2d0f24;
+  font-weight: 600;
+  list-style: decimal-leading-zero;
 }
 
 .battle-instructions__heading {

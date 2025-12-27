@@ -28,17 +28,23 @@ export function buildTestDeck(cardRepository: CardRepository): TestDeckResult {
   const battlePrep = cardRepository.create(() => new Card({ action: new BattlePrepAction() }))
   const dailyRoutine = cardRepository.create(() => new Card({ action: new DailyRoutineAction() }))
   const ache = cardRepository.create(() => new Card({ action: new ScarRegenerationAction() }))
+  const extraHeavenChains = Array.from({ length: 2 }, () =>
+    cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
+  )
 
+  // experimental 手札ルール（初期ドロー0枚・ターン開始4枚）でも初手/ターン3で必要カードが途切れないよう、並びと余剰カードを固定する
   const deck: Card[] = [
-    heavenChains[0],
-    heavenChains[1],
-    battlePrep,
     masochisticAuras[0],
     dailyRoutine,
-    heavenChains[2],
-    ache,
+    battlePrep,
+    heavenChains[0],
+    heavenChains[1],
     masochisticAuras[1],
+    heavenChains[2],
+    extraHeavenChains[0],
     heavenChains[3],
+    extraHeavenChains[1],
+    ache,
   ]
 
   return {
@@ -105,41 +111,39 @@ export function buildDefaultDeck2(cardRepository: CardRepository): Scenario2Deck
 
 export interface TutorialDeckResult {
   deck: Card[]
-  heavenChains: readonly [Card, Card, Card, Card]
+  heavenChain: Card
   masochisticAura: Card
-  battlePrep: Card
+  battlePreps: readonly [Card, Card]
   dailyRoutine: Card
 }
 
 /**
  * チュートリアル用の固定デッキ。
- * 初手5枚: 天の鎖×3 / 被虐のオーラ / 戦いの準備
- * 山札残り: 天の鎖 / 日課
+ * 初手5枚（山札上からの順番）: 被虐のオーラ / 天の鎖 / 戦いの準備 / 戦いの準備 / 日課
+ * 学習用にドロー順を固定し、最低限の5枚構成に絞ることでチュートリアルの体験を安定させる。
  */
 export function buildTutorialDeck(cardRepository: CardRepository): TutorialDeckResult {
-  const heavenChains = Array.from({ length: 4 }, () =>
-    cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
-  ) as [Card, Card, Card, Card]
-
+  // チュートリアルでは攻撃/防御/サポートの流れを明示するため、必要枚数のみ生成する。
+  const heavenChain = cardRepository.create(() => new Card({ action: new HeavenChainAction() }))
   const masochisticAura = cardRepository.create(() => new Card({ action: new MasochisticAuraAction() }))
-  const battlePrep = cardRepository.create(() => new Card({ action: new BattlePrepAction() }))
+  const battlePreps = Array.from({ length: 2 }, () =>
+    cardRepository.create(() => new Card({ action: new BattlePrepAction() })),
+  ) as [Card, Card]
   const dailyRoutine = cardRepository.create(() => new Card({ action: new DailyRoutineAction() }))
 
   const deck: Card[] = [
-    heavenChains[0],
-    heavenChains[1],
-    heavenChains[2],
     masochisticAura,
-    battlePrep,
-    heavenChains[3],
+    heavenChain,
+    battlePreps[0],
+    battlePreps[1],
     dailyRoutine,
   ]
 
   return {
     deck,
-    heavenChains,
+    heavenChain,
     masochisticAura,
-    battlePrep,
+    battlePreps,
     dailyRoutine,
   }
 }
