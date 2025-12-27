@@ -1004,25 +1004,32 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
           <p class="battle-instructions__tutorial-lead">
             チュートリアル専用の指示です。カードの使用順や状態異常の挙動を体験しながら進めてください。
           </p>
-          <ol class="battle-instructions__tutorial-list">
-            <li>シスターは攻撃手段を持ちません。敵を攻撃するには、敵からの攻撃を「記憶」する必要があります。</li>
-            <li>指示１：「被虐のオーラ」をカタツムリに使ってみましょう。</li>
-            <li>手札に攻撃カード「溶かす」が追加されました。</li>
-            <li>指示２：「溶かす」をオークに使ってみましょう。</li>
-            <li>ダメージを与えることができました！</li>
-            <li>ここで、状態異常について解説します。</li>
-            <li>現在、プレイヤーは状態異常「腐食10点」を持っています。これにより、次の敵の攻撃の打点が上がります。</li>
-            <li>オークの20×2のダメージを受けたくないので、オークの攻撃を止めましょう。</li>
-            <li>指示３：「天の鎖」をオークに使ってください。</li>
-            <li>オークが次のターンは行動しなくなりました。</li>
-            <li>指示４：「戦いの準備」を使い、ターン終了してください。</li>
-            <li>敵が行動し、手札に30ダメージの殴打が追加されました。「腐食」によって増えたダメージ量がカードにも反映されています。</li>
-            <li>指示５：30ダメージの「殴打」を使って、かたつむりを倒しましょう。</li>
-            <li>状態異常は使うことで解除できます。</li>
-            <li>指示６：状態異常「腐食」を使い、状態異常を解除しましょう。</li>
-            <li>指示７：手札の「日課」を使いましょう。</li>
-            <li>指示８：「殴打」でオークを倒しましょう。</li>
-          </ol>
+          <p class="battle-instructions__tutorial-step">指示１：「被虐のオーラ」をカタツムリに使ってみましょう。</p>
+          <p class="battle-instructions__tutorial-note">シスターは攻撃手段を持ちません。敵を攻撃するには、敵からの攻撃を「記憶」する必要があります。</p>
+
+          <p class="battle-instructions__tutorial-step">指示２：手に入れたカード「溶かす」をオークに使ってみましょう。</p>
+          <p class="battle-instructions__tutorial-note">被虐の記憶を利用して、ダメージを与えることができます。</p>
+
+          <p class="battle-instructions__tutorial-step">指示３：「天の鎖」をオークに使ってください。</p>
+          <p class="battle-instructions__tutorial-note">状態異常「腐食」のせいで、次の敵の攻撃の打点が上がっていますね。</p>
+          <p class="battle-instructions__tutorial-note">オークの20×2のダメージを受けたくないので、オークの攻撃を止めましょう。</p>
+
+          <p class="battle-instructions__tutorial-step">指示４：「戦いの準備」を使い、ターン終了してください。</p>
+          <p class="battle-instructions__tutorial-note">ターンを終了すると、状態異常以外の手札が捨て札に送られます。</p>
+
+          <p class="battle-instructions__tutorial-enemy">敵のターン<br>かたつむりが行動し、30ダメージ(元の打点20ダメージ+腐食10点)の殴打が手札に追加されました。</p>
+
+          <p class="battle-instructions__tutorial-step">指示５：30ダメージの「殴打」を使って、かたつむりを倒しましょう。</p>
+          <p class="battle-instructions__tutorial-note">鉄壁20点を超えて、かたつむりを倒すことができました！</p>          
+
+          <p class="battle-instructions__tutorial-step">指示６：状態異常「腐食」を使い、状態異常を解除しましょう。</p>
+          <p class="battle-instructions__tutorial-note">カードとして使用することで、状態異常を解除できます。</p>          
+
+          <p class="battle-instructions__tutorial-step">指示７：手札の「日課」を使いましょう。</p>
+          <p class="battle-instructions__tutorial-note">山札が尽きると、捨て札をシャッフルして新しい山札にします。捨て札の「殴打」を拾いましょう。</p>          
+
+          <p class="battle-instructions__tutorial-step">指示８：再び「殴打」でオークを倒しましょう。</p>
+          <p class="battle-instructions__tutorial-note">オークの「腐食」によって、殴打の打点が上がっているので、倒しきることができました！<br>なめくじは「臆病」で逃走するので、これで勝利です！</p>          
         </div>
 
         <div class="battle-instructions__group">
@@ -1202,6 +1209,8 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   border-radius: 12px;
   padding: 14px 16px;
   box-shadow: 0 10px 22px rgba(199, 58, 154, 0.18);
+  display: grid;
+  gap: 8px;
 }
 
 .battle-instructions__tutorial-lead {
@@ -1210,14 +1219,31 @@ function resolveEnemyTeam(teamId: string): EnemyTeam {
   color: #79145c;
 }
 
-.battle-instructions__tutorial-list {
+.battle-instructions__tutorial-note {
   margin: 0;
-  padding-left: 1.4em;
-  display: grid;
-  gap: 6px;
-  color: #2d0f24;
+  color: #3b1f2d;
   font-weight: 600;
-  list-style: decimal-leading-zero;
+}
+
+.battle-instructions__tutorial-enemy {
+  margin: 0;
+  padding: 8px 10px;
+  background: linear-gradient(120deg, #edf9ef, #daf3de);
+  border: 2px solid #4c9b5f;
+  color: #1d4f2c;
+  font-weight: 800;
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.battle-instructions__tutorial-step {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 4px solid #c73a9a;
+  background: rgba(199, 58, 154, 0.08);
+  color: #520f3d;
+  font-weight: 800;
+  border-radius: 8px;
 }
 
 .battle-instructions__heading {
