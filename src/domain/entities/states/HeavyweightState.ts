@@ -1,12 +1,12 @@
 /*
 HeavyweightState.ts の責務:
-- 攻撃側のヒット前ダメージを増幅しつつ、連撃回数を圧縮する重量化ステートを表現する。
-- 加算倍率（1スタックあたり+50%）とヒット数減少（1スタックごとに-1）を計算へ適用する。
-- 非スタック仕様を担保し、同一状態の重複付与で効果が強化されないようにする。
+- 攻撃側のヒット前ダメージをスタック量に応じて増幅し、連撃回数を減少させる重量化ステートを表現する。
+- スタック可とし、magnitude(=X点)を (2+X)/2 倍の打点増幅と、連続攻撃回数-Xの減少として計算へ適用する。
+- 連撃かどうかの判定には `DamagePattern` を用い、count>1 などの回数から逆算しない。
 
 責務ではないこと:
 - ヒット後処理やバリアとの整合性。これらは Attack 側および他Stateが担う。
-- スタック制御の外部調整（付与・解除はAction等が担当）。
+- スタックの付与・除去ロジック（Action等が担当）。
 
 主要な通信相手:
 - `Attack.calcDamages`: pre-hit段階で `modifyPreHit` が呼び出され、ダメージ倍率と回数補正を適用する。
@@ -31,11 +31,12 @@ class HeavyweightStateAction extends StateAction {
 }
 
 export class HeavyweightState extends BadState {
-  constructor() {
+  constructor(magnitude = 1) {
     super({
       id: 'state-heavyweight',
       name: '重量化',
-      stackable: false,
+      stackable: true,
+      magnitude,
       cardDefinition: {
         title: '重量化',
         cardType: 'status',
@@ -47,7 +48,8 @@ export class HeavyweightState extends BadState {
   }
 
   override description(): string {
-    return '与ダメージ+50%\n与攻撃回数-1\n（累積しない）'
+    const stacks = this.magnitude ?? 0
+    return `与ダメージ×<magnitude>${(2 + stacks) / 2}</magnitude>\n連続攻撃の回数-<magnitude>${stacks}</magnitude>\n（累積可）`
   }
 
   override get priority(): number {
@@ -67,14 +69,16 @@ export class HeavyweightState extends BadState {
       return params
     }
 
-    // スタックしない前提で、固定倍率(+50%)と回数-1を適用する。
-    const multiplier = 1.5
-    const reducedCount = Math.max(1, params.count - 1)
+    // 仕様: ダメージは (2+X)/2 倍、連撃回数は DamagePattern が multi の時だけ -X。
+    const stacks = Math.max(0, this.magnitude ?? 0)
+    const multiplier = (2 + stacks) / 2
+    const isMultiAttack = params.type === 'multi'
+    const nextCount = isMultiAttack ? Math.max(1, params.count - stacks) : params.count
 
     return {
       ...params,
       amount: params.amount * multiplier,
-      count: reducedCount,
+      count: nextCount,
     }
   }
 

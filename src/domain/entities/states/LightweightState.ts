@@ -1,8 +1,8 @@
 /*
 LightweightState.ts の責務:
-- 攻撃側のヒット前ダメージを軽量化し（2/3倍）つつ、連撃回数を+1する非スタック状態を実装する。
-- pre-hitフェーズで倍率・回数の補正を行い、他フェーズの処理へ影響しないようにする。
-- 非スタック仕様を `stackWith` で明示し、同一状態の重複付与で効果が変化しないことを保証する。
+- 攻撃側のヒット前ダメージをスタック量に応じて減衰させ、連撃回数を増やす軽量化ステートを表現する。
+- スタック可とし、magnitude(=X点)を 2/(2+X) 倍の打点減衰と、連続攻撃回数+Xとして計算へ適用する。
+- 連撃判定には `DamagePattern` を用い、count>1 といった回数からの推測を避ける。
 
 責務ではないこと:
 - ヒット後の演出制御や、追加スタックの発生源の管理。
@@ -31,11 +31,12 @@ class LightweightStateAction extends StateAction {
 }
 
 export class LightweightState extends BadState {
-  constructor() {
+  constructor(magnitude = 1) {
     super({
       id: 'state-lightweight',
       name: '軽量化',
-      stackable: false,
+      stackable: true,
+      magnitude,
       cardDefinition: {
         title: '軽量化',
         cardType: 'status',
@@ -47,7 +48,9 @@ export class LightweightState extends BadState {
   }
 
   override description(): string {
-    return '与ダメージ2/3倍\n与攻撃回数+1\n（累積しない）'
+    const stacks = this.magnitude ?? 0
+    const multiplier = 2 / (2 + stacks)
+    return `与ダメージ×<magnitude>${multiplier}</magnitude>\n連続攻撃の回数+<magnitude>${stacks}</magnitude>\n（累積可）`
   }
 
   override get priority(): number {
@@ -67,14 +70,16 @@ export class LightweightState extends BadState {
       return params
     }
 
-    // 軽量化は非スタックなので常に1段の効果を固定適用する。
-    const stacks = 1
-    const multiplier = 2 / 3
+    // 仕様: ダメージは 2/(2+X) 倍、連撃回数は DamagePattern が multi の時だけ +X。
+    const stacks = Math.max(0, this.magnitude ?? 0)
+    const multiplier = 2 / (2 + stacks)
+    const isMultiAttack = params.type === 'multi'
+    const nextCount = isMultiAttack ? params.count + stacks : params.count
 
     return {
       ...params,
       amount: params.amount * multiplier,
-      count: params.count + stacks,
+      count: nextCount,
     }
   }
 

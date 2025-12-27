@@ -37,6 +37,6 @@ export class AccelerationState extends BuffState {
   }
 
   override get priority(): number {
-    return 10
+    return 15
   }
 }

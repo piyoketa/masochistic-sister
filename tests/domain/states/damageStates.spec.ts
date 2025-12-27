@@ -29,6 +29,19 @@ describe('重量化Stateの挙動', () => {
     expect(damages.amount).toBe(15)
     expect(damages.count).toBe(2)
   })
+
+  it('複数スタックで倍率と回数減少が累積する', () => {
+    const damages = new Damages({
+      baseAmount: 8,
+      baseCount: 4,
+      type: 'multi',
+      cardId: 'test-card',
+      attackerStates: [new HeavyweightState(3)],
+    })
+
+    expect(damages.amount).toBe(20)
+    expect(damages.count).toBe(1)
+  })
 })
 
 describe('軽量化Stateの挙動', () => {
@@ -43,6 +56,19 @@ describe('軽量化Stateの挙動', () => {
 
     expect(damages.amount).toBe(8)
     expect(damages.count).toBe(3)
+  })
+
+  it('複数スタックで倍率と回数増加が累積する', () => {
+    const damages = new Damages({
+      baseAmount: 10,
+      baseCount: 2,
+      type: 'multi',
+      cardId: 'test-card',
+      attackerStates: [new LightweightState(3)],
+    })
+
+    expect(damages.amount).toBe(4)
+    expect(damages.count).toBe(5)
   })
 
   it('重量化(攻撃側)と粘液(防御側)で回数補正が相殺される', () => {

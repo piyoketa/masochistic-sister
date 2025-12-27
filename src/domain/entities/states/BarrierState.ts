@@ -31,6 +31,10 @@ export class BarrierState extends BuffState {
     return `被弾時に<magnitude>${stock}</magnitude>回までダメージを無効化する`
   }
 
+  override get priority(): number {
+    return 120
+  }
+
   override isPostHitModifier(): boolean {
     return true
   }

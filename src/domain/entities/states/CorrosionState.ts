@@ -39,7 +39,7 @@ export class CorrosionState extends BadState {
   }
 
   override get priority(): number {
-    return 20
+    return 10
   }
 
   override affectsDefender(): boolean {

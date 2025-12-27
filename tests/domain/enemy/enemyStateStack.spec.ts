@@ -35,27 +35,27 @@ describe('Enemy.addState のスタック処理', () => {
     expect(enemy.states.filter((state) => state.id === 'state-large')).toHaveLength(1)
   })
 
-  it('重量化は再付与しても1段のまま据え置きになる', () => {
-    const enemy = createEnemyWithStates([new HeavyweightState()])
+  it('重量化は再付与でスタックが加算される', () => {
+    const enemy = createEnemyWithStates([new HeavyweightState(1)])
 
-    enemy.addState(new HeavyweightState())
+    enemy.addState(new HeavyweightState(2))
 
     const heavy = enemy.states.find((state) => state.id === 'state-heavyweight')
     expect(heavy).toBeDefined()
-    expect(heavy?.isStackable()).toBe(false)
-    expect(heavy?.magnitude).toBeUndefined()
+    expect(heavy?.isStackable()).toBe(true)
+    expect(heavy?.magnitude).toBe(3)
     expect(enemy.states.filter((state) => state.id === 'state-heavyweight')).toHaveLength(1)
   })
 
-  it('軽量化も非スタックで1段のまま維持される', () => {
-    const enemy = createEnemyWithStates([new LightweightState()])
+  it('軽量化も再付与でスタックが加算される', () => {
+    const enemy = createEnemyWithStates([new LightweightState(1)])
 
-    enemy.addState(new LightweightState())
+    enemy.addState(new LightweightState(1))
 
     const light = enemy.states.find((state) => state.id === 'state-lightweight')
     expect(light).toBeDefined()
-    expect(light?.isStackable()).toBe(false)
-    expect(light?.magnitude).toBeUndefined()
+    expect(light?.isStackable()).toBe(true)
+    expect(light?.magnitude).toBe(2)
     expect(enemy.states.filter((state) => state.id === 'state-lightweight')).toHaveLength(1)
   })
 })

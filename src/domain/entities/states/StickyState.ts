@@ -39,7 +39,7 @@ export class StickyState extends BadState {
   }
 
   override get priority(): number {
-    return 20
+    return 15
   }
 
   override isPreHitModifier(): boolean {

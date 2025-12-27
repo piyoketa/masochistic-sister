@@ -44,18 +44,24 @@
 
 # ダメージ計算に関わるStateの実行優先度
 - 優先度の値が小さいほど先に処理します。
-- 優先度:10  攻撃者自身に関わるバフ・デバフで、加減算のもの
-  - 加速 AccelerationState
+- 優先度:10 ダメージ加算系
   - 打点上昇 StrengthState
-- 優先度:15　攻撃者自身に関わるバフ・デバフで、掛け算のもの
+  - 腐食 CorrosionState
+  - 関節損傷 JointDamageState（殴打被ダメージ+スタック値）
+- 優先度:15 ダメージ乗算系・回数増減系
   - 重量化 HeavyweightState
   - 軽量化 LightweightState
-  - 弱気
-- 優先度:20 被攻撃者に関わるバフ・デバフで、加減算のもの
-  - 腐食 CorrosionState
   - 粘液 StickyState
+  - 加速 AccelerationState
+  - 弱気
+- 優先度:20 ダメージ減算系
   - 鉄壁 HardShellState
-  - 関節損傷 JointDamageState（殴打被ダメージ+スタック値）
-- 優先度:25 被攻撃者に関わるバフ・デバフで、掛け算のもの
 - 優先度:120 被攻撃者に関わるバフ・デバフで、特定の値に固定する（代入する）もの
   - ダメージ固定 FlightState
+  - バリア BarrierState
+
+HeavyweightStateとLightweightStateをstackする状態異常に変更します。
+- HeavyweightState
+  - X点の時、自分が攻撃する時の打点を（2+X）/2倍にし、連続攻撃の攻撃回数を-X回する。例えば3点なら、(2+3)/2で2.5倍になる。
+- LightweightState
+  - X点の時、自分が攻撃する時の打点を 2/(2+X) 倍にし、連続攻撃の攻撃回数を+X回する。例えば3点なら、2/(2+3)で0.4倍になる。
