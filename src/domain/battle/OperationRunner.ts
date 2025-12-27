@@ -21,7 +21,6 @@ import type { Card } from '../entities/Card'
 import type { ActionAudioCue, ActionCutInCue } from '../entities/Action'
 import type { DamageOutcome } from '../entities/Damages'
 import { isPredictionDisabled } from '../utils/predictionToggle'
-import type { HandRuleVariant } from './Battle'
 
 export interface EntryAppendContext {
   index: number
@@ -35,7 +34,6 @@ export interface OperationRunnerConfig {
   initialSnapshot?: FullBattleSnapshot
   onEntryAppended?: (entry: BattleActionLogEntry, context: EntryAppendContext) => void
   createBattle?: () => Battle
-  handRuleVariant?: HandRuleVariant
 }
 
 interface AppendOptions {
@@ -108,7 +106,6 @@ export class OperationRunner {
   private enemyActGroupCounter = 0
   private pendingEnemyActSummaries: EnemyTurnActionSummary[] = []
   private instructionBatchCounter = 0
-  private readonly handRuleVariant: HandRuleVariant
 
   constructor(config: OperationRunnerConfig) {
     this.battle = config.battle
@@ -123,7 +120,6 @@ export class OperationRunner {
     }
     // Battle からの予測計算依頼に応じるためのデリゲートをセットする
     this.battle.setPredictionDelegate(() => this.simulateEndTurnPrediction())
-    this.handRuleVariant = config.handRuleVariant ?? this.battle.handRuleVariant ?? 'classic'
   }
 
   getActionLog(): ActionLog {
@@ -1448,7 +1444,8 @@ export class OperationRunner {
   }
 
   private calculateTurnStartDraw(): number {
-    return this.handRuleVariant === 'experimental' ? 4 : 2
+    // 手札ルールは experimental をデフォルトとし、ターン開始時は常に4枚ドローする
+    return 4
   }
 
   private nextBatchId(stage: string): string {

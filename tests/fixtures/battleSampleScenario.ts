@@ -32,10 +32,10 @@ const scenarioStepKeys = [
   'playMasochisticAuraOnSnail',
   'playDailyRoutine',
   'playBattlePrep',
+  'playAcidSpitOnTentacle',
   'endPlayerTurn1',
   'playerTurn2Start',
   'playTackleOnSnail',
-  'playAcidSpitOnTentacle',
   'playMucusShotOnTentacle',
   'playCorrosion',
   'endPlayerTurn2',
@@ -234,16 +234,16 @@ export function createBattleScenario(): BattleScenario {
     type: 'play-card',
     card: references.battlePrepId,
   })
+  registerOperation('playAcidSpitOnTentacle', {
+    type: 'play-card',
+    card: (battle: Battle) => findMemoryCardId(battle, '溶かす'),
+    operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
+  })
   registerOperation('endPlayerTurn1', { type: 'end-player-turn' })
   registerOperation('playTackleOnSnail', {
     type: 'play-card',
     card: (battle: Battle) => findMemoryCardId(battle, '殴打'),
     operations: [{ type: 'target-enemy', payload: references.enemyIds.snail }],
-  })
-  registerOperation('playAcidSpitOnTentacle', {
-    type: 'play-card',
-    card: (battle: Battle) => findMemoryCardId(battle, '溶かす'),
-    operations: [{ type: 'target-enemy', payload: references.enemyIds.tentacle }],
   })
   registerOperation('playMucusShotOnTentacle', {
     type: 'play-card',

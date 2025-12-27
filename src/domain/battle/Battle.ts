@@ -26,8 +26,6 @@ import type { Relic } from '../entities/relics/Relic'
 import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 import { isPredictionDisabled } from '../utils/predictionToggle'
 
-export type HandRuleVariant = 'classic' | 'experimental'
-
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
 export type BattleTurnSide = 'player' | 'enemy'
@@ -52,7 +50,6 @@ export interface BattleConfig {
   turn?: TurnManager
   cardRepository?: CardRepository
   relicClassNames?: string[]
-  handRuleVariant?: HandRuleVariant
 }
 
 export interface BattleSnapshot {
@@ -218,7 +215,6 @@ export class Battle {
   private readonly cardRepositoryValue: CardRepository
   private relicClassNames: string[]
   private relicInstances: Relic[]
-  private readonly handRuleVariantValue: HandRuleVariant
   private logSequence = 0
   private executedActionLogIndex = -1
   private eventSequence = 0
@@ -262,7 +258,6 @@ export class Battle {
     this.turnValue = config.turn ?? new TurnManager()
     this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
     this.relicClassNames = [...(config.relicClassNames ?? [])]
-    this.handRuleVariantValue = config.handRuleVariant ?? resolveHandRuleVariantFromEnv()
     this.relicInstances = this.buildRelicInstances(this.relicClassNames, [])
     this.playerValue.bindHand(this.handValue)
     this.cardRepositoryValue.bindZones({
@@ -283,10 +278,6 @@ export class Battle {
 
   get enemyTeam(): EnemyTeam {
     return this.enemyTeamValue
-  }
-
-  get handRuleVariant(): HandRuleVariant {
-    return this.handRuleVariantValue
   }
 
   get deck(): Deck {
@@ -799,9 +790,8 @@ export class Battle {
       // eslint-disable-next-line no-console
       console.log('[Battle] endPlayerTurn')
     }
-    if (this.handRuleVariantValue === 'experimental') {
-      this.discardNonStatusHandCards()
-    }
+    // 手札ルールはexperimentalをデフォルトとし、ターン終了時に状態異常以外を必ず捨て札へ送る
+    this.discardNonStatusHandCards()
     this.turn.moveToPhase('player-end')
   }
 
@@ -1627,14 +1617,4 @@ export class Battle {
       this.recordOutcome('victory')
     }
   }
-}
-
-function resolveHandRuleVariantFromEnv(): HandRuleVariant {
-  const envFlag =
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_EXPERIMENT_HAND_RULE) ||
-    (typeof process !== 'undefined' ? process.env?.EXPERIMENT_HAND_RULE : undefined)
-  if (envFlag === '1' || envFlag === 'true') {
-    return 'experimental'
-  }
-  return 'classic'
 }
