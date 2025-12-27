@@ -110,6 +110,12 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
       return
     }
 
+    if (options.interactionState.isAwaitingEnemy && options.interactionState.selectedCardKey === entry.key) {
+      // 敵選択待ちで同じカードを再クリックした場合は、右クリックと同じキャンセル操作として扱い二重リクエストを防ぐ
+      cancelSelection()
+      return
+    }
+
     if (options.interactionState.isAwaitingEnemy && options.interactionState.selectedCardKey !== entry.key) {
       return
     }
@@ -179,7 +185,8 @@ export function useHandInteraction(options: UseHandInteractionOptions) {
         if (hints.length > 0) {
           options.emit('show-enemy-selection-hints', hints)
         }
-        options.emit('update-footer', '対象の敵を選択：左クリックで決定　右クリックでキャンセル')
+        // UI案内を拡張: 再クリックキャンセルを明示して操作方法を一貫させる
+        options.emit('update-footer', '対象の敵を選択：左クリックで決定　右クリック/再クリックでキャンセル')
         try {
           const enemyId = await options.props.requestEnemyTarget(options.interactionState.selectionTheme)
           collectedOperations.push({

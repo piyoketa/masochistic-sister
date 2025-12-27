@@ -378,4 +378,41 @@ describe('BattleView', () => {
 
     queueSpy.mockRestore()
   })
+
+  it('敵選択中に同じカードを再クリックするとキャンセルされる', async () => {
+    const scenario = createBattleSampleScenario()
+    const viewManager = new ViewManager({
+      createBattle: scenario.createBattle,
+      operationLog: scenario.operationLog,
+      initialOperationIndex: -1,
+    })
+
+    const queueSpy = vi.spyOn(viewManager, 'queuePlayerAction')
+
+    const wrapper = mountWithManager(viewManager)
+
+    await flushPromises()
+
+    const snapshot = viewManager.state.snapshot
+    expect(snapshot).toBeTruthy()
+    const targetIndex = snapshot!.hand.findIndex((card) =>
+      card.definition.operations?.includes(TargetEnemyOperation.TYPE),
+    )
+    expect(targetIndex).toBeGreaterThan(-1)
+
+    const cardEl = wrapper.findAll('.action-card-stub')[targetIndex]!
+    await cardEl.trigger('click')
+    await flushPromises()
+
+    expect(cardEl.attributes()['data-selected']).toBe('true')
+
+    await cardEl.trigger('click')
+    await flushPromises()
+    await flushPromises()
+
+    expect(queueSpy).not.toHaveBeenCalled()
+    expect(cardEl.attributes()['data-selected']).toBe('false')
+
+    queueSpy.mockRestore()
+  })
 })
