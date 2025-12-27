@@ -1,8 +1,18 @@
+<!--
+TitleView の責務:
+- 各種テストケース・デモ・フィールド・敵チームへのナビゲーションを一覧で提示するホーム画面。
+- ルーティングとリンク文言の管理に専念し、状態管理や初期化は各ビュー/ストアに委譲する。
+主な通信相手とインターフェース:
+- RouterLink 経由でルート名・パス・クエリを渡すだけで、ストアとの直接通信は行わない。
+- フィールド導線は start-story ルートへ fieldId クエリを付与して遷移先を指定し、類似する他のリンクとは役割が異なる。
+-->
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
+
 interface LinkEntry {
   label: string
   description: string
-  to: string | { name: string }
+  to: RouteLocationRaw
 }
 
 const testcaseLinks: LinkEntry[] = [
@@ -161,9 +171,14 @@ const demoLinks: LinkEntry[] = [
 
 const fieldLinks: LinkEntry[] = [
   {
-    label: 'フィールドに出る',
+    label: 'First Field に出る',
     description: 'First Field のスタートマスへ',
-    to: { name: 'start-story' },
+    to: { name: 'start-story', query: { fieldId: 'first-field' } },
+  },
+  {
+    label: 'Second Field に出る',
+    description: 'Second Field のスタートマスへ',
+    to: { name: 'start-story', query: { fieldId: 'second-field' } },
   },
   // {
   //   label: '悪魔の像イベント',

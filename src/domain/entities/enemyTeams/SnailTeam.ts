@@ -14,7 +14,7 @@ export class SnailTeam extends EnemyTeam {
     const snail = new SnailEnemy(options?.snailOverrides)
 
     super({
-      id: 'snail',
+      id: 'snail-team',
       name: 'かたつむりチーム',
       members: [orc, orcDancer, tentacle, snail],
     })

@@ -41,9 +41,10 @@ import { OrcShamanTeam } from './OrcShamanTeam'
  */
 export function buildEnemyTeamFactoryMap(): Record<string, () => EnemyTeam> {
   return {
+    'snail-team': () => new SnailTeam(),
     snail: () => new SnailTeam(),
     'test-enemy-team': () => new TestEnemyTeam(),
-    'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
+    'iron-bloom-team': () => new IronBloomTeam({ mode: 'random' }),
     'iron-bloom-scripted': () => new IronBloomTeam({ mode: 'scripted' }),
     'hummingbird-allies': () => new HummingbirdAlliesTeam(),
     'orc-hero-elite': () => new OrcHeroEliteTeam(),

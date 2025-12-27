@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { FieldNode } from '@/fields/domains/FieldNode'
-import { FirstField } from '@/fields/domains/FirstField'
 import PlayerStatusHeader from '@/components/battle/PlayerStatusHeader.vue'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { useAudioStore } from '@/stores/audioStore'
@@ -14,19 +13,7 @@ import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { CardInfo } from '@/types/battle'
 import { createCardFromBlueprint } from '@/domain/library/Library'
 import { useImageHub } from '@/composables/imageHub'
-import {
-  SnailTeam,
-  IronBloomTeam,
-  HummingbirdAlliesTeam,
-  OrcWrestlerTeam,
-  GunGoblinTeam,
-  OrcHeroEliteTeam,
-  HighOrcBandTeam,
-  BeamCannonEliteTeam,
-  GiantSlugEliteTeam,
-  TestEnemyTeam,
-  HighOrcSquad,
-} from '@/domain/entities/enemyTeams'
+import { buildEnemyTeamFactoryMap } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 
 type FieldViewProps = {
@@ -72,24 +59,15 @@ const currentNodeCleared = computed(() => {
   const node = fieldStore.currentNode
   return node ? fieldStore.isNodeCleared(node.id) : false
 })
+const targetFieldId = computed(() => props.fieldId ?? 'first-field')
 
-const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
-  snail: () => new SnailTeam(),
-  'iron-bloom': () => new IronBloomTeam({ mode: 'random' }),
-  'hummingbird-allies': () => new HummingbirdAlliesTeam(),
-  'orc-wrestler-team': () => new OrcWrestlerTeam(),
-  'gun-goblin-team': () => new GunGoblinTeam(),
-  'orc-hero-elite': () => new OrcHeroEliteTeam(),
-  'high-orc-band': () => new HighOrcBandTeam(),
-  'beam-cannon-elite': () => new BeamCannonEliteTeam(),
-  'giant-slug-elite': () => new GiantSlugEliteTeam(),
-  'test-enemy-team': () => new TestEnemyTeam(),
-  'high-orc-squad': () => new HighOrcSquad(),
-}
+const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = buildEnemyTeamFactoryMap()
 
 const ENEMY_EFFECTIVE_HINTS: Record<string, string> = {
+  'snail-team': '打点',
   'test-enemy-team': '打点',
-  'iron-bloom': '攻撃回数',
+  'iron-bloom-team': '攻撃回数',
+  'iron-bloom-scripted': '攻撃回数',
   'orc-wrestler-team': '打点',
   'hummingbird-allies': '攻撃回数',
   'gun-goblin-team': 'なし',
@@ -161,7 +139,7 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
     return
   }
   if (node.type === 'start') {
-    await router.push({ path: '/field/start-story' })
+    await router.push({ name: 'start-story', query: { fieldId: fieldStore.field.id } })
     return
   }
   fieldStore.selectNextNode(nodeIndex)
@@ -198,8 +176,8 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
 audioStore.playBgm('/sounds/bgm/field.mp3')
 
 onMounted(() => {
-  if (props.fieldId === 'first-field' && fieldStore.field.id !== 'first-field') {
-    fieldStore.initializeField('first-field')
+  if (fieldStore.field.id !== targetFieldId.value) {
+    fieldStore.initializeField(targetFieldId.value)
   }
   // フィールド系BGMは報酬画面への遷移でも途切れさせないため、アンマウント時に stop しない。
   // BattleView などで別のBGMを再生する際は audioHub 側で切り替わる想定。

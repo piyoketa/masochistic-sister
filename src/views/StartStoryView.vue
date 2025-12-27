@@ -2,29 +2,40 @@
 StartStoryView の責務:
 - スタートマスで表示される導入ストーリーをシンプルなHTMLで描画し、進むボタンでフィールドに戻す。
 - 共通レイアウト MainGameLayout を利用しつつ、ストーリー本文はテンプレート内で直接記述する。
+- フィールドIDをクエリ/propsで受け取り、対応するフィールドを初期化した上で遷移する（フィールド切替にも対応）。
 -->
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import { useFieldStore } from '@/stores/fieldStore'
 import { usePlayerStore } from '@/stores/playerStore'
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
+
+type StartStoryProps = {
+  fieldId?: string
+}
+
+const props = defineProps<StartStoryProps>()
 
 const router = useRouter()
 const fieldStore = useFieldStore()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
+const targetFieldId = computed(() => props.fieldId ?? 'first-field')
 
 onMounted(() => {
-  // フィールド開始時にFirstFieldを初期化しておく
-  fieldStore.initializeField('first-field')
+  // フィールド開始時に指定されたフィールドを初期化する（別フィールド導線にも対応）
+  if (fieldStore.field.id !== targetFieldId.value) {
+    fieldStore.initializeField(targetFieldId.value)
+  }
 })
 
 async function handleFinish(): Promise<void> {
   // スタートマスをクリア扱いにし、進行を正しく更新する
   fieldStore.markCurrentCleared()
   // ストーリー終了後はフィールドに戻す。フィールドは既定の状態を保持する。
-  await router.push('/field')
+  const nextPath = targetFieldId.value === 'second-field' ? '/field/second' : '/field'
+  await router.push(nextPath)
 }
 </script>
 

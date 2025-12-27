@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
 import { FirstField } from '@/fields/domains/FirstField'
+import { SecondField } from '@/fields/domains/SecondField'
 import type { Field } from '@/fields/domains/Field'
 import type { FieldNode } from '@/fields/domains/FieldNode'
 import { usePlayerStore } from './playerStore'
 
 export const useFieldStore = defineStore('field', {
   state: () => ({
-    field: new FirstField(usePlayerStore().relics) as Field,
+    field: createField('first-field') as Field,
     currentLevelIndex: 0,
     currentNodeIndex: 0,
     clearedNodes: new Set<string>([]),
@@ -27,7 +28,7 @@ export const useFieldStore = defineStore('field', {
     reset(): void {
       const playerStore = usePlayerStore()
       playerStore.ensureInitialized()
-      this.field = new FirstField(playerStore.relics)
+      this.field = createField(this.field.id)
       this.currentLevelIndex = 0
       this.currentNodeIndex = 0
       this.clearedNodes = new Set<string>([])
@@ -35,7 +36,7 @@ export const useFieldStore = defineStore('field', {
     initializeField(fieldId?: string): void {
       const playerStore = usePlayerStore()
       playerStore.ensureInitialized()
-      this.field = new FirstField(playerStore.relics)
+      this.field = createField(fieldId ?? 'first-field')
       this.currentLevelIndex = 0
       this.currentNodeIndex = 0
       this.clearedNodes = new Set<string>([])
@@ -67,3 +68,13 @@ export const useFieldStore = defineStore('field', {
     },
   },
 })
+
+function createField(fieldId: string): Field {
+  switch (fieldId) {
+    case 'second-field':
+      return new SecondField()
+    case 'first-field':
+    default:
+      return new FirstField()
+  }
+}

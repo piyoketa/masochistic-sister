@@ -1,26 +1,37 @@
 /*
-FirstFieldの責務:
-- 第一フィールドの一本道構成（スタート → テスト編成 → ハチドリ支援 → ハイオーク小隊 → オーク英雄ボス）を定義し、FieldStore/FieldViewへ提供する。
-- ノード同士の遷移設定と表示ラベルの付与のみを扱い、報酬生成や難易度スケーリングの責務は持たない。
+SecondFieldの責務:
+- 第二フィールドの固定構成（スタート → かたつむり/鉄花(スクリプト) → ハチドリ/レスラー → ハイオーク小隊/銃ゴブリン → ビーム砲ボス）を定義し、FieldStore/FieldViewへ供給する。
+- ノード遷移と表示ラベル付与に専念し、報酬生成や難易度補正は担当しない。
 主な通信相手とインターフェース:
-- FieldStore/FieldView: levels配列と各FieldNodeを通じて進行情報を渡す。enemyTeamIdはBattleViewのbuildEnemyTeamFactoryMapで解決されるキー。
-- BattleView: enemyTeamIdを受け取るだけで直接参照はしない。start/enemy/boss-enemyノードのみを扱い、報酬系ノード型との混在は行わない。
+- FieldStore/FieldView: levels配列とFieldNodeを介して進行情報を渡す。enemyTeamIdはBattleViewのbuildEnemyTeamFactoryMapで解決されるキーとなる。
+- BattleView: enemyTeamIdを渡すのみで直接参照は持たない。start/enemy/boss-enemyノードのみを扱い、報酬ノードとはインターフェースを共有しない。
 */
 import { Field, type FieldLevel } from './Field'
 import type { BossEnemyNode, EnemyNode, FieldNode, StartNode } from './FieldNode'
-import { HummingbirdAlliesTeam, HighOrcSquad, OrcHeroEliteTeam, TestEnemyTeam } from '@/domain/entities/enemyTeams'
+import {
+  BeamCannonEliteTeam,
+  GunGoblinTeam,
+  HighOrcSquad,
+  HummingbirdAlliesTeam,
+  IronBloomTeam,
+  OrcWrestlerTeam,
+  SnailTeam,
+} from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 
 const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = {
-  'test-enemy-team': () => new TestEnemyTeam(),
+  'snail-team': () => new SnailTeam(),
+  'iron-bloom-scripted': () => new IronBloomTeam({ mode: 'scripted' }),
   'hummingbird-allies': () => new HummingbirdAlliesTeam(),
+  'orc-wrestler-team': () => new OrcWrestlerTeam(),
   'high-orc-squad': () => new HighOrcSquad(),
-  'orc-hero-elite': () => new OrcHeroEliteTeam(),
+  'gun-goblin-team': () => new GunGoblinTeam(),
+  'beam-cannon-elite': () => new BeamCannonEliteTeam(),
 }
 
-export class FirstField extends Field {
-  readonly id = 'first-field'
-  readonly name = 'First Field'
+export class SecondField extends Field {
+  readonly id = 'second-field'
+  readonly name = 'Second Field'
   readonly levels: FieldLevel[]
 
   constructor() {
@@ -32,10 +43,10 @@ export class FirstField extends Field {
 function buildLevels(): FieldLevel[] {
   const nodesByLevel: FieldNode[][] = [
     [createStartNode()],
-    [createEnemyNode('test-enemy-team', 2, 0)],
-    [createEnemyNode('hummingbird-allies', 3, 0)],
-    [createEnemyNode('high-orc-squad', 4, 0)],
-    [createBossEnemyNode('orc-hero-elite', 5, 0)],
+    [createEnemyNode('snail-team', 2, 0), createEnemyNode('iron-bloom-scripted', 2, 1)],
+    [createEnemyNode('hummingbird-allies', 3, 0), createEnemyNode('orc-wrestler-team', 3, 1)],
+    [createEnemyNode('high-orc-squad', 4, 0), createEnemyNode('gun-goblin-team', 4, 1)],
+    [createBossEnemyNode('beam-cannon-elite', 5, 0)],
   ]
 
   return nodesByLevel.map((nodes, levelIdx, arr) => {
@@ -50,7 +61,7 @@ function buildLevels(): FieldLevel[] {
 
 function createStartNode(): StartNode {
   return {
-    id: 'start-1',
+    id: 'second-start-1',
     type: 'start',
     level: 1,
     label: '入口',

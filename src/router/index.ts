@@ -81,6 +81,12 @@ const router = createRouter({
       props: { fieldId: 'first-field' },
     },
     {
+      path: '/field/second',
+      name: 'field-view-second',
+      component: () => import('@/views/FieldView.vue'),
+      props: { fieldId: 'second-field' },
+    },
+    {
       path: '/lab/action-cards',
       name: 'action-card-lab',
       component: () => import('@/views/ActionCardLabView.vue'),
@@ -129,6 +135,7 @@ const router = createRouter({
       path: '/field/start-story',
       name: 'start-story',
       component: () => import('@/views/StartStoryView.vue'),
+      props: (route) => ({ fieldId: (route.query.fieldId as string | undefined) ?? 'first-field' }),
     },
     {
       path: '/field/relic-reward',
