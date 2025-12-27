@@ -8,7 +8,7 @@ import { BattleLog } from './BattleLog'
 import { TurnManager } from './TurnManager'
 import { CardRepository } from '../repository/CardRepository'
 import { ProtagonistPlayer } from '../entities/players'
-import type { Card } from '../entities/Card'
+import { Card } from '../entities/Card'
 import {
   buildDefaultDeck,
   buildTestDeck,
@@ -23,8 +23,12 @@ import {
   HummingbirdAlliesTeam,
   OrcHeroEliteTeam,
   TutorialEnemyTeam,
+  TestOrcWrestlerTeam,
 } from '../entities/enemyTeams'
 import type { EnemyTeam } from '../entities/EnemyTeam'
+import { MasochisticAuraAction } from '../entities/actions/MasochisticAuraAction'
+import { BattlePrepAction } from '../entities/actions/BattlePrepAction'
+import { HeavenChainAction } from '../entities/actions/HeavenChainAction'
 
 interface DeckBuilderResult {
   deck: Card[]
@@ -111,5 +115,34 @@ export function createTutorialBattle(): Battle {
     id: 'battle-tutorial',
     deckBuilder: buildTutorialDeck,
     enemyTeamFactory: () => new TutorialEnemyTeam(),
+  })
+}
+
+export function createTestCaseBattle3(): Battle {
+  const cardRepository = new CardRepository()
+  const createCard = <T extends Card>(factory: () => T) => cardRepository.create(factory)
+  const deck: Card[] = [
+    createCard(() => new Card({ action: new MasochisticAuraAction() })),
+    createCard(() => new Card({ action: new BattlePrepAction() })),
+    createCard(() => new Card({ action: new HeavenChainAction() })),
+    createCard(() => new Card({ action: new HeavenChainAction() })),
+    createCard(() => new Card({ action: new HeavenChainAction() })),
+    createCard(() => new Card({ action: new HeavenChainAction() })),
+  ]
+  const hand: Card[] = []
+
+  return new Battle({
+    id: 'battle-testcase3',
+    cardRepository,
+    player: new ProtagonistPlayer(),
+    enemyTeam: new TestOrcWrestlerTeam(),
+    deck: new Deck(deck),
+    hand: new Hand(hand),
+    discardPile: new DiscardPile(),
+    exilePile: new ExilePile(),
+    events: new BattleEventQueue(),
+    log: new BattleLog(),
+    turn: new TurnManager(),
+    relicClassNames: [],
   })
 }

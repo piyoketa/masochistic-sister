@@ -17,6 +17,11 @@ const testcaseLinks: LinkEntry[] = [
     to: { name: 'battle-testcase2' },
   },
   {
+    label: 'Testcase 3',
+    description: 'シナリオ3 レスラー編成＋固定デッキの演出確認',
+    to: { name: 'battle-testcase3' },
+  },
+  {
     label: 'チュートリアルバトル',
     description: '固定デッキ＋固定行動の入門シナリオ',
     to: { name: 'battle-tutorial' },

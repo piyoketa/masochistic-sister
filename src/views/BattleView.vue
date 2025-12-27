@@ -17,6 +17,7 @@ import {
   createDefaultSnailBattle,
   createTestCaseBattle,
   createTestCaseBattle2,
+  createTestCaseBattle3,
   createStage2Battle,
   createStage3Battle,
   createStage4Battle,
@@ -71,6 +72,7 @@ type BattlePresetKey =
   | 'stage1'
   | 'testcase1'
   | 'testcase2'
+  | 'testcase3'
   | 'stage2'
   | 'stage3'
   | 'stage4'
@@ -884,6 +886,8 @@ function resolveBattleFactory(
       return createTestCaseBattle
     case 'testcase2':
       return createTestCaseBattle2
+    case 'testcase3':
+      return createTestCaseBattle3
     case 'tutorial':
       return createTutorialBattle
     case 'stage2':

@@ -27,6 +27,12 @@ const router = createRouter({
       props: { preset: 'testcase2' },
     },
     {
+      path: '/battle/testcase3',
+      name: 'battle-testcase3',
+      component: () => import('@/views/BattleView.vue'),
+      props: { preset: 'testcase3' },
+    },
+    {
       path: '/battle/tutorial',
       name: 'battle-tutorial',
       component: () => import('@/views/BattleView.vue'),

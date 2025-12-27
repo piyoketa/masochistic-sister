@@ -5,6 +5,7 @@ export { HummingbirdAlliesTeam } from './HummingbirdAlliesTeam'
 export { OrcHeroEliteTeam } from './OrcHeroEliteTeam'
 export { TestSlug5HpTeam } from './TestSlug5HpTeam'
 export { OrcWrestlerTeam } from './OrcWrestlerTeam'
+export { TestOrcWrestlerTeam } from './TestOrcWrestlerTeam'
 export { GunGoblinTeam } from './GunGoblinTeam'
 export { HighOrcBandTeam } from './HighOrcBandTeam'
 export { BeamCannonEliteTeam } from './BeamCannonEliteTeam'
@@ -23,6 +24,7 @@ import { HummingbirdAlliesTeam } from './HummingbirdAlliesTeam'
 import { OrcHeroEliteTeam } from './OrcHeroEliteTeam'
 import { TestSlug5HpTeam } from './TestSlug5HpTeam'
 import { OrcWrestlerTeam } from './OrcWrestlerTeam'
+import { TestOrcWrestlerTeam } from './TestOrcWrestlerTeam'
 import { GunGoblinTeam } from './GunGoblinTeam'
 import { HighOrcBandTeam } from './HighOrcBandTeam'
 import { BeamCannonEliteTeam } from './BeamCannonEliteTeam'
@@ -47,6 +49,7 @@ export function buildEnemyTeamFactoryMap(): Record<string, () => EnemyTeam> {
     'orc-hero-elite': () => new OrcHeroEliteTeam(),
     'test-slug-5hp': () => new TestSlug5HpTeam(),
     'orc-wrestler-team': () => new OrcWrestlerTeam(),
+    'test-orc-wrestler-team': () => new TestOrcWrestlerTeam(),
     'gun-goblin-team': () => new GunGoblinTeam(),
     'high-orc-band': () => new HighOrcBandTeam(),
     'beam-cannon-elite': () => new BeamCannonEliteTeam(),
