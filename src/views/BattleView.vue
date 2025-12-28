@@ -45,6 +45,7 @@ import CutInOverlay from '@/components/CutInOverlay.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRewardStore } from '@/stores/rewardStore'
+import { useFieldStore } from '@/stores/fieldStore'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import type { RelicDisplayEntry, RelicUiState } from '@/view/relicDisplayMapper'
@@ -95,6 +96,7 @@ const router = useRouter()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const rewardStore = useRewardStore()
+const fieldStore = useFieldStore()
 const pileOverlayStore = usePileOverlayStore()
 
 const battleFactory = resolveBattleFactory(props, playerStore)
@@ -439,6 +441,8 @@ const isGameOver = computed(() => battleStatus.value === 'gameover')
 // victory Overlay はステージイベントに合わせて表示する。スナップショットの勝利判定とは分離。
 const hasVictoryStage = computed(() => latestStageEvent.value?.metadata?.stage === 'victory')
 const isVictory = computed(() => battleStatus.value === 'victory' && hasVictoryStage.value)
+// 報酬遷移で戻り先フィールドを明示するために、現在のフィールドIDをqueryに乗せる。
+const currentFieldId = computed(() => fieldStore.field.id ?? 'first-field')
 const canRetry = computed(() => {
   void managerState.snapshot
   return viewManager.canRetry()
@@ -459,7 +463,7 @@ async function handleForceVictory(): Promise<void> {
     cards: reward.cards,
   })
   rewardPrepared.value = true
-  await router.push('/reward')
+  await router.push({ path: '/reward', query: { fieldId: currentFieldId.value } })
 }
 
 function requestEnemyTarget(theme: EnemySelectionTheme): Promise<number> {
@@ -695,7 +699,7 @@ function buildCardInfosFromPlayerStoreDeck(deck: CardBlueprint[], prefix: string
 async function handleOpenReward(): Promise<void> {
   // 勝利後の報酬表示を一度だけセットアップし、RewardView へ遷移する。
   if (rewardPrepared.value) {
-    await router.push('/reward')
+    await router.push({ path: '/reward', query: { fieldId: currentFieldId.value } })
     return
   }
   const battle = viewManager.battle
@@ -714,7 +718,8 @@ async function handleOpenReward(): Promise<void> {
     cards: reward.cards,
   })
   rewardPrepared.value = true
-  await router.push('/reward')
+  // fieldId を query で明示して RewardView で戻り先フィールドを判別させる。
+  await router.push({ path: '/reward', query: { fieldId: currentFieldId.value } })
 }
 
 function handleHandPlayCard(payload: { cardId: number; operations: CardOperation[] }): void {

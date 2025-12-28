@@ -174,6 +174,7 @@ const router = createRouter({
       path: '/reward',
       name: 'reward-view',
       component: () => import('@/views/RewardView.vue'),
+      props: (route) => ({ fieldId: route.query.fieldId as string | undefined }),
     },
   ],
 })
