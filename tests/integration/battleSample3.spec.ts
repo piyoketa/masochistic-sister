@@ -22,6 +22,7 @@ import { TestOrcWrestlerTeam } from '@/domain/entities/enemyTeams'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import { buildOperationLog, type OperationLogEntryConfig } from './utils/battleLogTestUtils'
 import { requireCardId } from './utils/scenarioEntityUtils'
+import { describeAsyncBattle } from './utils/asyncBattleTestUtils'
 
 function buildFixedDeckAndHand(cardRepository: CardRepository): { deck: Card[]; hand: Card[] } {
   const create = <T extends Card>(factory: () => T) => cardRepository.create(factory)
@@ -262,5 +263,29 @@ describe('シナリオ3: 戦いの準備のプレイ時演出', () => {
     )
     expect(relicSnapshot?.usesRemaining).toBe(0)
     expect(relicSnapshot?.usable).toBe(false)
+  })
+
+  describeAsyncBattle('3秒後に贄の自覚を起動できる', {
+    path: '/battle/testcase3',
+    waitMsBeforeAction: 3000,
+    actions: [
+      {
+        type: 'click-active-relic',
+        relicId: 'sacrificial-awareness',
+      },
+    ],
+    assertions: [
+      {
+        type: 'expect-player-state',
+        stateId: 'state-sacrifice',
+        magnitude: 1,
+      },
+      {
+        type: 'expect-relic-usable',
+        relicId: 'sacrificial-awareness',
+        usable: false,
+        usesRemaining: 0,
+      },
+    ],
   })
 })
