@@ -24,7 +24,8 @@ const demoReward: PendingReward = {
 
 function setRewardAndGo(): void {
   rewardStore.setReward(demoReward)
-  router.push('/reward')
+  // デモ遷移でも fieldId をクエリで明示し、戻り先フィールドを判別可能にする。
+  router.push({ path: '/reward', query: { fieldId: 'first-field' } })
 }
 </script>
 

@@ -45,9 +45,10 @@ import CutInOverlay from '@/components/CutInOverlay.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRewardStore } from '@/stores/rewardStore'
+import { useFieldStore } from '@/stores/fieldStore'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
-import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
+import type { RelicDisplayEntry, RelicUiState } from '@/view/relicDisplayMapper'
 import { mapSnapshotRelics } from '@/view/relicDisplayMapper'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { BattleReward } from '@/domain/battle/BattleReward'
@@ -62,6 +63,7 @@ import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 import { createCardFromBlueprint, type CardBlueprint } from '@/domain/library/Library'
+import { safeClearTimeout, safeSetTimeout, type SafeTimeoutHandle } from '@/utils/safeTimeout'
 
 declare global {
   interface Window {
@@ -94,6 +96,7 @@ const router = useRouter()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const rewardStore = useRewardStore()
+const fieldStore = useFieldStore()
 const pileOverlayStore = usePileOverlayStore()
 
 const battleFactory = resolveBattleFactory(props, playerStore)
@@ -102,7 +105,7 @@ const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
 const managerState = viewManager.state
 const errorMessage = ref<string | null>(null)
 const currentAnimationId = ref<string | null>(null)
-let errorOverlayTimer: number | null = null
+let errorOverlayTimer: SafeTimeoutHandle = null
 // チュートリアル専用UIの制御用フラグ。preset に依存するため単純な computed で十分。
 const isTutorialBattle = computed(() => props.preset === 'tutorial')
 
@@ -162,8 +165,31 @@ const randomizedDeckCardInfos = ref<CardInfo[]>([])
 const discardCardInfos = computed<CardInfo[]>(() =>
   buildCardInfos(snapshot.value?.discardPile ?? [], 'discard'),
 )
+const processingRelicId = computed<string | null>(() => {
+  const currentScript = managerState.playback.current?.script
+  if (!currentScript) return null
+  const entryType = currentScript.metadata?.entryType ?? currentScript.resolvedEntry?.type
+  if (entryType !== 'play-relic') return null
+  return currentScript.resolvedEntry?.type === 'play-relic' ? currentScript.resolvedEntry.relicId : null
+})
 const battleRelics = computed<RelicDisplayEntry[]>(() =>
-  snapshot.value?.player?.relics ? mapSnapshotRelics(snapshot.value.player.relics) : [],
+  snapshot.value?.player?.relics
+    ? mapSnapshotRelics(snapshot.value.player.relics, {
+        playerSnapshot: { maxHp: snapshot.value.player.maxHp },
+      }).map((relic) => {
+        const uiState: RelicUiState = (() => {
+          if (relic.usageType === 'field') return 'field-disabled'
+          if (relic.usageType === 'passive') return relic.active ? 'passive-active' : 'passive-inactive'
+          if (relic.usageType === 'active') {
+            if (processingRelicId.value === relic.id) return 'active-processing'
+            if (relic.usable) return 'active-ready'
+            return 'disabled'
+          }
+          return 'disabled'
+        })()
+        return { ...relic, uiState }
+      })
+    : [],
 )
 const deckOverlaySource = ref<'player' | 'battle'>('player')
 const audioStore = useAudioStore()
@@ -194,7 +220,7 @@ function clearErrorOverlayTimer(): void {
   if (!errorOverlayTimer) {
     return
   }
-  window.clearTimeout(errorOverlayTimer)
+  safeClearTimeout(errorOverlayTimer)
   errorOverlayTimer = null
 }
 
@@ -202,7 +228,8 @@ function clearErrorOverlayTimer(): void {
 function showTransientError(message: string): void {
   errorMessage.value = message
   clearErrorOverlayTimer()
-  errorOverlayTimer = window.setTimeout(() => {
+  // jsdom / SSR で window が未定義でも落ちないよう safeSetTimeout を経由する
+  errorOverlayTimer = safeSetTimeout(() => {
     errorMessage.value = null
     errorOverlayTimer = null
   }, ERROR_OVERLAY_DURATION_MS)
@@ -414,6 +441,8 @@ const isGameOver = computed(() => battleStatus.value === 'gameover')
 // victory Overlay はステージイベントに合わせて表示する。スナップショットの勝利判定とは分離。
 const hasVictoryStage = computed(() => latestStageEvent.value?.metadata?.stage === 'victory')
 const isVictory = computed(() => battleStatus.value === 'victory' && hasVictoryStage.value)
+// 報酬遷移で戻り先フィールドを明示するために、現在のフィールドIDをqueryに乗せる。
+const currentFieldId = computed(() => fieldStore.field.id ?? 'first-field')
 const canRetry = computed(() => {
   void managerState.snapshot
   return viewManager.canRetry()
@@ -434,7 +463,7 @@ async function handleForceVictory(): Promise<void> {
     cards: reward.cards,
   })
   rewardPrepared.value = true
-  await router.push('/reward')
+  await router.push({ path: '/reward', query: { fieldId: currentFieldId.value } })
 }
 
 function requestEnemyTarget(theme: EnemySelectionTheme): Promise<number> {
@@ -670,7 +699,7 @@ function buildCardInfosFromPlayerStoreDeck(deck: CardBlueprint[], prefix: string
 async function handleOpenReward(): Promise<void> {
   // 勝利後の報酬表示を一度だけセットアップし、RewardView へ遷移する。
   if (rewardPrepared.value) {
-    await router.push('/reward')
+    await router.push({ path: '/reward', query: { fieldId: currentFieldId.value } })
     return
   }
   const battle = viewManager.battle
@@ -689,7 +718,8 @@ async function handleOpenReward(): Promise<void> {
     cards: reward.cards,
   })
   rewardPrepared.value = true
-  await router.push('/reward')
+  // fieldId を query で明示して RewardView で戻り先フィールドを判別させる。
+  await router.push({ path: '/reward', query: { fieldId: currentFieldId.value } })
 }
 
 function handleHandPlayCard(payload: { cardId: number; operations: CardOperation[] }): void {

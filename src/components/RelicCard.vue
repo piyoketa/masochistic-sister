@@ -6,11 +6,16 @@ RelicCard の責務:
 - オーバーレイ位置決定や表示制御（呼び出し元が行う）。
 -->
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+import { renderRichText } from '@/utils/richText'
+
+const props = defineProps<{
   icon?: string
   name: string
   description: string
 }>()
+
+const renderedDescription = computed(() => renderRichText(props.description))
 </script>
 
 <template>
@@ -19,7 +24,7 @@ defineProps<{
       <span class="relic-card__icon">{{ icon }}</span>
       <span class="relic-card__title">{{ name }}</span>
     </div>
-    <div class="relic-card__body">{{ description }}</div>
+    <div class="relic-card__body" v-html="renderedDescription"></div>
   </div>
 </template>
 
@@ -54,5 +59,11 @@ defineProps<{
 .relic-card__body {
   font-size: 13px;
   line-height: 1.5;
+}
+
+.text-magnitude,
+.text-variable {
+  color: #31d39e;
+  font-weight: 700;
 }
 </style>

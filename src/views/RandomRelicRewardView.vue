@@ -77,7 +77,7 @@ function drawRelicOptions(classNames: string[], owned: string[], offer: number):
   const shuffled = shuffle(pool)
   const picks = shuffled.slice(0, Math.min(offer, shuffled.length))
   return picks
-    .map((className) => getRelicInfo(className))
+    .map((className) => getRelicInfo(className, { playerSnapshot: { maxHp: playerStore.maxHp } }))
     .filter((info): info is RelicInfo => Boolean(info))
 }
 

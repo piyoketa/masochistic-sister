@@ -12,8 +12,7 @@ import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
 import { RepulsionRelic } from './RepulsionRelic'
 import { DeathMatchRelic } from './DeathMatchRelic'
 import { DevilsKissRelic } from './DevilsKissRelic'
-import { DailyRoutineRelic } from './DailyRoutineRelic'
-import type { Relic, RelicUsageType } from './Relic'
+import type { Relic, RelicDescriptionContext, RelicUsageType } from './Relic'
 import type { RelicId } from './relicTypes'
 
 export type RelicInfo = {
@@ -57,7 +56,7 @@ export function instantiateRelic(className: string): Relic | null {
   }
 }
 
-export function getRelicInfo(className: string): RelicInfo | null {
+export function getRelicInfo(className: string, context?: RelicDescriptionContext): RelicInfo | null {
   const relic = instantiateRelic(className)
   if (!relic) return null
   return {
@@ -66,7 +65,7 @@ export function getRelicInfo(className: string): RelicInfo | null {
     name: relic.name,
     usageType: relic.usageType,
     icon: relic.icon,
-    description: relic.description(),
+    description: relic.description(context),
   }
 }
 

@@ -29,6 +29,7 @@ import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { ResolvedBattleActionLogEntry } from '@/domain/battle/ActionLogReplayer'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { useAudioStore } from '@/stores/audioStore'
+import { safeClearTimeout, safeSetTimeout, type SafeTimeoutHandle } from '@/utils/safeTimeout'
 
 interface EnemySelectionHint {
   enemyId: number
@@ -75,7 +76,7 @@ type DamageStageMetadata = EnemyDamageStageMetadata | PlayerDamageStageMetadata
 type AlreadyActedStageMetadata = Extract<StageEventMetadata, { stage: 'already-acted-enemy' }>
 type DefeatStageMetadata = Extract<StageEventMetadata, { stage: 'defeat' }>
 type EscapeStageMetadata = Extract<StageEventMetadata, { stage: 'escape' }>
-let actingTimer: number | null = null
+let actingTimer: SafeTimeoutHandle = null
 type EnemyCardInstance = InstanceType<typeof EnemyCard>
 const enemyCardRefs = new Map<number, EnemyCardInstance>()
 
@@ -235,9 +236,10 @@ function triggerEnemyHighlight(enemyId: number | null): void {
     }
   }
   if (actingTimer) {
-    window.clearTimeout(actingTimer)
+    safeClearTimeout(actingTimer)
   }
-  actingTimer = window.setTimeout(() => {
+  // jsdom では window が無いので safeSetTimeout 経由でガードする
+  actingTimer = safeSetTimeout(() => {
     if (actingEnemyId.value === enemyId) {
       actingEnemyId.value = null
     }
@@ -247,7 +249,7 @@ function triggerEnemyHighlight(enemyId: number | null): void {
 
 onBeforeUnmount(() => {
   if (actingTimer) {
-    window.clearTimeout(actingTimer)
+    safeClearTimeout(actingTimer)
     actingTimer = null
   }
 })

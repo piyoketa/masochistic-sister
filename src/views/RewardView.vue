@@ -2,6 +2,7 @@
 RewardView の責務:
 - Battle 勝利時に rewardStore に保持された褒章カード一覧を表示し、選択したカードをデッキへ追加する。
 - HP回復・ゴールド獲得など数値報酬を適用し、受け取り後に fieldStore を更新してフィールドへ戻る遷移を提供する。
+- 戻り先フィールドを query パラメータ経由の fieldId で特定し、SecondField など別フィールドに戻せるようにする。
 
 非責務:
 - 報酬の計算（BattleReward に委譲）やバトル進行。
@@ -16,6 +17,12 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { useAudioStore } from '@/stores/audioStore'
 import { buildCardInfosFromBlueprints, type CardBlueprint } from '@/domain/library/Library'
+
+type RewardViewProps = {
+  fieldId?: string
+}
+
+const props = defineProps<RewardViewProps>()
 
 const rewardStore = useRewardStore()
 const playerStore = usePlayerStore()
@@ -43,6 +50,9 @@ const rewardSummary = computed(() => ({
 const rewardBlueprints = computed<CardBlueprint[]>(() => reward.value?.cards ?? [])
 const rewardCardInfos = computed(() => buildCardInfosFromBlueprints(rewardBlueprints.value, 'reward'))
 
+const targetFieldId = computed(() => props.fieldId ?? fieldStore.field.id ?? 'first-field')
+const targetFieldPath = computed(() => (targetFieldId.value === 'second-field' ? '/field/second' : '/field'))
+
 const hasRewardCards = computed(() => rewardSummary.value.cardCount > 0)
 const canClaimCard = computed(
   () =>
@@ -62,8 +72,8 @@ const hasRemainingRewards = computed(() => {
 
 onMounted(() => {
   if (!reward.value) {
-    // バトルを経由せずに直接アクセスされた場合はフィールドへ戻す。
-    void router.replace('/field')
+    // バトルを経由せずに直接アクセスされた場合はフィールドへ戻す。fieldId をクエリに乗せて戻り先を明示する。
+    void router.replace({ path: targetFieldPath.value, query: { fieldId: targetFieldId.value } })
     return
   }
   // 初期状態ではカードを自動選択せず、プレイヤーに明示的な選択操作を要求する
@@ -129,7 +139,8 @@ async function handleReturn(): Promise<void> {
   // 残報酬があっても破棄してフィールドへ戻る
   fieldStore.markCurrentCleared()
   rewardStore.clear()
-  await router.push('/field')
+  // fieldId をクエリで渡して SecondField などにも戻せるようにする
+  await router.push({ path: targetFieldPath.value, query: { fieldId: targetFieldId.value } })
 }
 </script>
 

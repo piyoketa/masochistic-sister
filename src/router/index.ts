@@ -125,6 +125,11 @@ const router = createRouter({
       component: () => import('@/views/RewardDemoView.vue'),
     },
     {
+      path: '/demo/relic-icons',
+      name: 'relic-icon-demo',
+      component: () => import('@/views/RelicIconDemoView.vue'),
+    },
+    {
       path: '/demo/overlays',
       name: 'overlay-demo',
       component: () => import('@/views/OverlayDemoView.vue'),
@@ -169,6 +174,7 @@ const router = createRouter({
       path: '/reward',
       name: 'reward-view',
       component: () => import('@/views/RewardView.vue'),
+      props: (route) => ({ fieldId: route.query.fieldId as string | undefined }),
     },
   ],
 })

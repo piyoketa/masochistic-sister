@@ -1,6 +1,16 @@
 import type { RelicId } from './relicTypes'
 
-export type RelicUsageType = 'active' | 'passive'
+export type RelicUsageType = 'active' | 'passive' | 'field'
+
+export interface RelicDescriptionContext {
+  battle?: import('@/domain/battle/Battle').Battle
+  player?: import('../Player').Player
+  /**
+   * Battle インスタンスがないビュー層からでも最大HPなどを参照できるように、
+   * 軽量なスナップショットも許容する。
+   */
+  playerSnapshot?: { maxHp: number }
+}
 
 /**
  * レリックの基底クラス。
@@ -12,7 +22,7 @@ export abstract class Relic {
   abstract readonly usageType: RelicUsageType
   abstract readonly icon: string
 
-  abstract description(): string
+  abstract description(context?: RelicDescriptionContext): string
 
   /**
    * レリックが現在有効かどうかを判定する。

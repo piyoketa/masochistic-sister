@@ -31,7 +31,11 @@ const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 
 const playerRelics = computed<RelicDisplayEntry[]>(() =>
-  props.battleRelics ? [...props.battleRelics] : mapClassNamesToDisplay(playerStore.relics),
+  props.battleRelics
+    ? [...props.battleRelics]
+    : mapClassNamesToDisplay(playerStore.relics, {
+        playerSnapshot: { maxHp: playerStore.maxHp },
+      }),
 )
 const playerStatus = computed(() => ({
   gold: playerStore.gold,

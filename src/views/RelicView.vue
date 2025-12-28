@@ -18,20 +18,21 @@ import GameLayout from '@/components/GameLayout.vue'
 import RelicList from '@/components/RelicList.vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import { getRelicInfo, listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
+import { renderRichText } from '@/utils/richText'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 
 const ownedRelics = computed(() =>
   playerStore.relics
-    .map((className) => getRelicInfo(className))
+    .map((className) => getRelicInfo(className, { playerSnapshot: { maxHp: playerStore.maxHp } }))
     .filter((info): info is NonNullable<ReturnType<typeof getRelicInfo>> => info !== null),
 )
 
 const addableRelics = computed(() =>
   listRelicClassNames()
     .filter((className) => !playerStore.relics.includes(className))
-    .map((className) => getRelicInfo(className))
+    .map((className) => getRelicInfo(className, { playerSnapshot: { maxHp: playerStore.maxHp } }))
     .filter((info): info is NonNullable<ReturnType<typeof getRelicInfo>> => info !== null),
 )
 
@@ -52,6 +53,8 @@ function handleRemove(className: string): void {
     selectedAddClass.value = addableRelics.value[0]?.className ?? null
   }
 }
+
+const renderDescription = (text: string): string => renderRichText(text)
 </script>
 
 <template>
@@ -82,7 +85,7 @@ function handleRemove(className: string): void {
                 <span class="owned-icon">{{ relic.icon }}</span>
                 <div class="owned-text">
                   <div class="owned-name">{{ relic.name }}</div>
-                  <div class="owned-desc">{{ relic.description }}</div>
+                  <div class="owned-desc" v-html="renderDescription(relic.description)"></div>
                 </div>
               </div>
               <button type="button" class="btn btn-danger" @click="handleRemove(relic.className)">
@@ -114,17 +117,12 @@ function handleRemove(className: string): void {
               "
               :enable-glow="false"
             />
-            <p class="preview-desc">
-              {{
-                addableRelics.find((r) => r.className === selectedAddClass)?.description ??
-                '説明はありません'
-              }}
-            </p>
+            <p class="preview-desc" v-html="renderDescription(addableRelics.find((r) => r.className === selectedAddClass)?.description ?? '説明はありません')"></p>
           </div>
         </section>
 
         <section v-if="hoverDescription" class="hover-help">
-          <p>{{ hoverDescription }}</p>
+          <p v-html="renderDescription(hoverDescription)"></p>
         </section>
       </div>
     </template>

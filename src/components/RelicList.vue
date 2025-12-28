@@ -7,13 +7,18 @@ RelicList の責務:
 - 発動判定やレリックの状態管理。active フラグは props で受け取るのみ。
 -->
 <script setup lang="ts">
-import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
+import type { RelicDisplayEntry, RelicUiState } from '@/view/relicDisplayMapper'
 
-const props = defineProps<{
-  relics: RelicDisplayEntry[]
-  /** バトル中のみ縁の光沢を付けたいので、フィールド等では false を渡す */
-  enableGlow?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    relics: RelicDisplayEntry[]
+    /** バトル中のみ縁の光沢を付けたいので、フィールド等では false を渡す */
+    enableGlow?: boolean
+  }>(),
+  {
+    enableGlow: true,
+  },
+)
 
 const emit = defineEmits<{
   (event: 'hover', relic: RelicDisplayEntry, e: MouseEvent | FocusEvent): void
@@ -38,6 +43,56 @@ function formatUsesRemaining(uses?: number | null): string | undefined {
   if (uses === null) return '∞'
   return `${uses}`
 }
+
+function resolveUiState(relic: RelicDisplayEntry): RelicUiState {
+  if (relic.uiState) return relic.uiState
+  if (relic.usageType === 'field') return 'field-disabled'
+  if (relic.usageType === 'passive') return relic.active ? 'passive-active' : 'passive-inactive'
+  if (relic.usageType === 'active') {
+    if (relic.usable) return 'active-ready'
+    return 'disabled'
+  }
+  return 'disabled'
+}
+
+function isEnabledState(state: RelicUiState): boolean {
+  return (
+    state === 'passive-inactive' ||
+    state === 'passive-active' ||
+    state === 'active-ready' ||
+    state === 'active-processing'
+  )
+}
+
+function isGlowState(state: RelicUiState): boolean {
+  return state === 'passive-active'
+}
+
+function isDisabledState(state: RelicUiState): boolean {
+  return state === 'disabled' || state === 'field-disabled'
+}
+
+function isButtonDisabled(relic: RelicDisplayEntry): boolean {
+  const state = resolveUiState(relic)
+  if (relic.usageType !== 'active') return true
+  return state !== 'active-ready'
+}
+
+function buildClass(relic: RelicDisplayEntry) {
+  const state = resolveUiState(relic)
+  return {
+    'relic-icon--active': relic.usageType === 'active',
+    'relic-icon--passive': relic.usageType === 'passive',
+    'relic-icon--field': relic.usageType === 'field' || state === 'field-disabled',
+    'relic-icon--ready': state === 'active-ready',
+    'relic-icon--enabled': isEnabledState(state),
+    // パッシブの発動中は必ず縁光沢を付与する（uiStateが欠落しても active フラグをフォールバック利用）
+    'relic-icon--glow':
+      (isGlowState(state) || (relic.usageType === 'passive' && relic.active)) && props.enableGlow !== false,
+    'relic-icon--disabled': isDisabledState(state),
+    'relic-icon--processing': state === 'active-processing',
+  }
+}
 </script>
 
 <template>
@@ -47,17 +102,12 @@ function formatUsesRemaining(uses?: number | null): string | undefined {
       :key="relic.id"
       type="button"
       class="relic-icon"
-      :class="{
-        'relic-icon--active': relic.usageType === 'active',
-        'relic-icon--passive': relic.usageType !== 'active',
-        'relic-icon--enabled': relic.active,
-        'relic-icon--glow': relic.active && props.enableGlow !== false,
-        'relic-icon--disabled': relic.usable === false,
-      }"
+      :class="buildClass(relic)"
+      :data-ui-state="resolveUiState(relic)"
+      :data-active="relic.active"
       :aria-label="relic.name"
-      :title="`コスト:${relic.manaCost ?? 0} / 残回数:${formatUsesRemaining(relic.usesRemaining) ?? '-'}${relic.usable === false ? '（使用不可）' : ''}`"
-      :aria-disabled="relic.usable === false || relic.usageType !== 'active' ? 'true' : undefined"
-      :disabled="relic.usable === false || relic.usageType !== 'active'"
+      :aria-disabled="isButtonDisabled(relic) ? 'true' : undefined"
+      :disabled="isButtonDisabled(relic)"
       @mouseenter="(event) => handleHover(relic, event)"
       @focusin="(event) => handleHover(relic, event)"
       @mouseleave="handleLeave"
@@ -106,9 +156,56 @@ function formatUsesRemaining(uses?: number | null): string | undefined {
   opacity: 0.9;
 }
 
+.relic-icon--field {
+  opacity: 0.9;
+  border-style: dashed;
+}
+
 .relic-icon--enabled {
   border-color: rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 8px rgba(255, 236, 170, 0.6);
+}
+
+.relic-icon--processing {
+  background: linear-gradient(180deg, rgba(255, 130, 130, 0.18), rgba(255, 82, 82, 0.08)),
+    rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 142, 142, 0.9);
+  box-shadow:
+    0 0 10px rgba(255, 132, 132, 0.55),
+    0 0 0 1px rgba(255, 132, 132, 0.35);
+}
+
+.relic-icon--processing .relic-icon__glyph {
+  color: #ffe7e7;
+}
+
+.relic-icon--ready:hover {
+  border-color: rgba(255, 142, 142, 0.9);
+  box-shadow:
+    0 0 10px rgba(255, 132, 132, 0.55),
+    0 0 0 1px rgba(255, 132, 132, 0.35);
+  background: linear-gradient(180deg, rgba(255, 130, 130, 0.12), rgba(255, 82, 82, 0.06)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.relic-icon--ready:focus-visible {
+  animation: relic-focus-pop 0.24s ease;
+}
+
+.relic-icon--enabled:hover {
+  transform: scale(1.06);
+}
+
+@keyframes relic-focus-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* BattleView の発動中レリックに、card-glow 相当の縁光沢を付与 */
