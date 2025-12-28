@@ -12,19 +12,24 @@ SuccubusEnemy.ts の責務:
 - `ConfusingGazeAction`: 邪念付与デバフを提供し、コスト上昇を誘発する。
 - `Enemy` 基底: HP・行動リスト・画像パスの保持と行動キュー初期化を管理する。
 */
-import { Enemy, type EnemyProps } from '../Enemy'
+import { Enemy } from '../Enemy'
 import { BloodSuckAction } from '../actions/BloodSuckAction'
 import { ConfusingGazeAction } from '../actions/ConfusingGazeAction'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type SuccubusEnemyOptions = EnemyLevelOption
 
 export class SuccubusEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
-    super({
+  constructor(options?: SuccubusEnemyOptions) {
+    const baseProps = {
       name: '淫魔',
       maxHp: 40,
       currentHp: 40,
       actions: [new BloodSuckAction(), new ConfusingGazeAction()],
       image: '/assets/enemies/succubus.png',
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

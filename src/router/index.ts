@@ -42,7 +42,10 @@ const router = createRouter({
       path: '/battle/:teamId',
       name: 'battle-team',
       component: () => import('@/views/BattleView.vue'),
-      props: (route) => ({ teamId: route.params.teamId as string }),
+      props: (route) => ({
+        teamId: route.params.teamId as string,
+        bonusLevels: route.query.bonusLevels ? Number(route.query.bonusLevels) : undefined,
+      }),
     },
     {
       path: '/demo/damage-effects',

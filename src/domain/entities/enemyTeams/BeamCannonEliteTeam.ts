@@ -8,33 +8,51 @@ import { TentacleEnemy } from '../enemies/TentacleEnemy'
 import { BeamShotAction } from '../actions/BeamShotAction'
 import { PowerChargeAction } from '../actions/PowerChargeAction'
 import { DrunkenBreathAction } from '../actions/DrunkenBreathAction'
+import { createMembersWithLevels } from './bonusLevelUtils'
+
+export interface BeamCannonEliteTeamOptions {
+  // ボスはレベル固定: bonusLevels は無視する。
+  bonusLevels?: number
+  rng?: () => number
+}
 
 /**
  * エリート: ビーム砲チーム
  */
 export class BeamCannonEliteTeam extends EnemyTeam {
-  constructor() {
-    const cannon = new GoblinBeamCannonEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
-    })
-    const drunkOrc = new DrunkOrcEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
-    })
-    const trainer = new OrcTrainerEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
-    })
-    const tentacle = new TentacleEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue(),
-    })
+  constructor(options?: BeamCannonEliteTeamOptions) {
+    const rng = options?.rng ?? Math.random
+    const members = createMembersWithLevels(
+      [
+        (level) =>
+          new GoblinBeamCannonEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue(),
+          }),
+        (level) =>
+          new DrunkOrcEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue(),
+          }),
+        (level) =>
+          new OrcTrainerEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue(),
+          }),
+        (level) =>
+          new TentacleEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue(),
+          }),
+      ],
+      0,
+      rng,
+    )
 
     super({
       id: 'beam-cannon-elite',
       name: 'ビーム砲',
-      members: [cannon, drunkOrc, trainer, tentacle],
+      members,
     })
   }
 }

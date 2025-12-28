@@ -4,6 +4,7 @@ import { SelfRegenerationAction } from '../actions/SelfRegenerationAction'
 import { TackleAction } from '../actions/TackleAction'
 import { LeastUsedActionQueue } from '../enemy/actionQueues/LeastUsedActionQueue'
 import { Damages } from '../Damages'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 /*
 オーク治療師:
@@ -11,8 +12,8 @@ import { Damages } from '../Damages'
 - 行動選択は使用条件を満たす技のうち、戦闘中の選択回数が最も少ないものを優先し、同数ならランダム。
 - HP: 80
 */
-export function createOrcHealerEnemy(): Enemy {
-  return new Enemy({
+export function createOrcHealerEnemy(options?: EnemyLevelOption): Enemy {
+  const baseProps = {
     name: 'オーク治療師',
     maxHp: 80,
     currentHp: 80,
@@ -31,5 +32,8 @@ export function createOrcHealerEnemy(): Enemy {
     ],
     image: '/assets/enemies/orc.jpg',
     actionQueueFactory: () => new LeastUsedActionQueue(),
-  })
+  }
+  const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+  return new Enemy(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
 }

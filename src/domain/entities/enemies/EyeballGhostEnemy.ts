@@ -6,16 +6,21 @@
 import { Enemy, type EnemyProps } from '../Enemy'
 import { BeamShotAction } from '../actions/BeamShotAction'
 import { ConfusingGazeAction } from '../actions/ConfusingGazeAction'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type EyeballGhostEnemyOptions = EnemyLevelOption
 
 export class EyeballGhostEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
-    super({
+  constructor(options?: EyeballGhostEnemyOptions) {
+    const baseProps = {
       name: 'お化け目玉',
       maxHp: 30,
       currentHp: 30,
       actions: [new BeamShotAction(15), new ConfusingGazeAction()],
       image: '/assets/enemies/kamaitachi.jpg',
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

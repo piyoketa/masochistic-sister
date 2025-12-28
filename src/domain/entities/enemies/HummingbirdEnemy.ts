@@ -1,16 +1,19 @@
-import { Enemy, type EnemyProps } from '../Enemy'
+import { Enemy } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { TailwindAction } from '../actions/TailwindAction'
 import { Damages } from '../Damages'
 import { FlightState } from '../states/FlightState'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type HummingbirdEnemyOptions = EnemyLevelOption
 
 export class HummingbirdEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
+  constructor(options?: HummingbirdEnemyOptions) {
     const flurry = new FlurryAction().cloneWithDamages(
       new Damages({ baseAmount: 10, baseCount: 3, type: 'multi', cardId: 'flurry' }),
     )
 
-    super({
+    const baseProps = {
       name: 'ハチドリ',
       maxHp: 6,
       currentHp: 6,
@@ -19,7 +22,9 @@ export class HummingbirdEnemy extends Enemy {
       image: '/assets/enemies/hummingbird.png',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 20 },
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp, 3)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

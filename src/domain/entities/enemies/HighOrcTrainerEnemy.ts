@@ -4,6 +4,7 @@ import { LightweightState } from '../states/LightweightState'
 import { FlurryAction } from '../actions/FlurryAction'
 import { Damages } from '../Damages'
 import { CheerAction } from '../actions/CheerAction'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 /*
 ハイオークトレーナー:
@@ -12,8 +13,8 @@ import { CheerAction } from '../actions/CheerAction'
 - 初期State: 軽量化
 - 技: 突き刺す(15x2), 応援
 */
-export function createHighOrcTrainer(): Enemy {
-  return new Enemy({
+export function createHighOrcTrainer(options?: EnemyLevelOption): Enemy {
+  const baseProps = {
     name: 'ハイオークトレーナー',
     maxHp: 60,
     currentHp: 60,
@@ -28,8 +29,11 @@ export function createHighOrcTrainer(): Enemy {
       ),
       new CheerAction(),
     ],
-    allyBuffWeights: { tailwind: 100, cheer: 100 },    
+    allyBuffWeights: { tailwind: 100, cheer: 100 },
     states: [new CaringAllyTrait(), new LightweightState()],
     image: '/assets/enemies/orc-dancer.jpg',
-  })
+  }
+  const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+  return new Enemy(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
 }

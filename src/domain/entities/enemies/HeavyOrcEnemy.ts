@@ -3,6 +3,7 @@ import { JointLockAction } from '../actions/JointLockAction'
 import { TackleAction } from '../actions/TackleAction'
 import { HardShellState } from '../states/HardShellState'
 import { HeavyweightState } from '../states/HeavyweightState'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 /*
 重装オーク:
@@ -10,8 +11,8 @@ import { HeavyweightState } from '../states/HeavyweightState'
 - Trait: 堅固(20)
 - 技: 叩き潰す / 殴打(20)
 */
-export function createHeavyOrc(): Enemy {
-  return new Enemy({
+export function createHeavyOrc(options?: EnemyLevelOption): Enemy {
+  const baseProps = {
     name: '重装オーク',
     maxHp: 60,
     currentHp: 60,
@@ -19,5 +20,8 @@ export function createHeavyOrc(): Enemy {
     // 堅固(20)で被ダメ軽減しつつ、重量化で与ダメ増・回数減の重戦士
     states: [new HardShellState(20), new HeavyweightState()],
     image: '/assets/enemies/orc.jpg',
-  })
+  }
+  const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+  return new Enemy(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
 }

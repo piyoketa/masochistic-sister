@@ -7,18 +7,21 @@ KamaitachiEnemy.ts の責務:
 - 追い風実行時の対象選択ロジック（EnemyTeam側）や、ダメージ適用など汎用的なバトル処理。
 - 逃走や撃破判定といった状態遷移（Enemy基底クラスが管理）。
 */
-import { Enemy, type EnemyProps } from '../Enemy'
+import { Enemy } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { TailwindAction } from '../actions/TailwindAction'
 import { Damages } from '../Damages'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type KamaitachiEnemyOptions = EnemyLevelOption
 
 export class KamaitachiEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
+  constructor(options?: KamaitachiEnemyOptions) {
     const kamaitachiFlurry = new FlurryAction().cloneWithDamages(
       new Damages({ baseAmount: 5, baseCount: 4, type: 'multi', cardId: 'flurry' }),
     )
 
-    super({
+    const baseProps = {
       name: 'かまいたち',
       maxHp: 35,
       currentHp: 35,
@@ -26,7 +29,9 @@ export class KamaitachiEnemy extends Enemy {
       image: '/assets/enemies/kamaitachi.png',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 20 },
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp, 7)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

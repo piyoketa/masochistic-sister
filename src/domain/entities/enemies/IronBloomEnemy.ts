@@ -11,10 +11,13 @@ import { Enemy, type EnemyProps } from '../Enemy'
 import { MucusShotAction } from '../actions/MucusShotAction'
 import { FlurryAction } from '../actions/FlurryAction'
 import { GuardianPetalState } from '../states/GuardianPetalState'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type IronBloomEnemyOptions = EnemyLevelOption
 
 export class IronBloomEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
-    super({
+  constructor(options?: IronBloomEnemyOptions) {
+    const baseProps = {
       name: '鉄花',
       maxHp: 10,
       currentHp: 10,
@@ -23,7 +26,9 @@ export class IronBloomEnemy extends Enemy {
       image: '/assets/enemies/iron-bloom.png',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 30 },
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp, 5)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

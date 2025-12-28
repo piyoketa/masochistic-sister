@@ -7,16 +7,19 @@ OrcLancerEnemy.ts の責務:
 - 戦闘ロジック（行動順制御やバフ適用）は Enemy / EnemyTeam が担い、本クラスは初期値の提供に限定する。
 - 被ダメージ処理や行動後のリセット等、汎用的な敵挙動。
 */
-import { Enemy, type EnemyProps } from '../Enemy'
+import { Enemy } from '../Enemy'
 import { BattleDanceAction } from '../actions/BattleDanceAction'
 import { FlurryAction } from '../actions/FlurryAction'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type OrcLancerEnemyOptions = EnemyLevelOption
 
 export class OrcLancerEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
+  constructor(options?: OrcLancerEnemyOptions) {
     const battleDance = new BattleDanceAction()
     const flurry = new FlurryAction()
 
-    super({
+    const baseProps = {
       name: 'オークランサー',
       maxHp: 40,
       currentHp: 40,
@@ -24,7 +27,9 @@ export class OrcLancerEnemy extends Enemy {
       image: '/assets/enemies/orc_lancer.png',
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 50 },
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

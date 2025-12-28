@@ -12,16 +12,19 @@ OrcTrainerEnemy.ts の責務:
 - `FlurryAction`/`ShapeUpAction`: 所持アクションとしてダメージ/状態付与を実行する。Flurry は `cloneWithDamages` で 15×2 (type: 'multi') に調整。
 - `LightweightState`: 初期状態として付与し、攻撃補正を持ったまま戦闘に参加する。
 */
-import { Enemy, type EnemyProps } from '../Enemy'
+import { Enemy } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { ShapeUpAction } from '../actions/ShapeUpAction'
 import { Damages } from '../Damages'
 import { LightweightState } from '../states/LightweightState'
 import { BuildUpAction } from '../actions/BuildUpAction'
 import { ConditionalOrcTrainerQueue } from '../enemy/actionQueues/ConditionalOrcTrainerQueue'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type OrcTrainerEnemyOptions = EnemyLevelOption
 
 export class OrcTrainerEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
+  constructor(options?: OrcTrainerEnemyOptions) {
     // 15×2 の連続攻撃を作成。連撃カテゴリは Damages.type='multi' で明示し、回数変動で判定しない。
     const flurry = new FlurryAction().cloneWithDamages(
       new Damages({
@@ -32,7 +35,7 @@ export class OrcTrainerEnemy extends Enemy {
       }),
     )
 
-    super({
+    const baseProps = {
       name: 'オークトレーナー',
       maxHp: 40,
       currentHp: 40,
@@ -42,7 +45,9 @@ export class OrcTrainerEnemy extends Enemy {
       allyBuffWeights: { tailwind: 100 },
       image: '/assets/enemies/orc-trainer.png',
       actionQueueFactory: () => new ConditionalOrcTrainerQueue(),
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

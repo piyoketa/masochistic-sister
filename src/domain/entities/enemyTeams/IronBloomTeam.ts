@@ -19,52 +19,70 @@ import { BattleDanceAction } from '../actions/BattleDanceAction'
 import { FlurryAction } from '../actions/FlurryAction'
 import { MucusShotAction } from '../actions/MucusShotAction'
 import { TackleAction } from '../actions/TackleAction'
+import { createMembersWithLevels } from './bonusLevelUtils'
 
 export interface IronBloomTeamOptions {
   mode?: 'scripted' | 'random'
+  bonusLevels?: number
+  rng?: () => number
 }
 
 export class IronBloomTeam extends EnemyTeam {
   constructor(options?: IronBloomTeamOptions) {
     const scripted = options?.mode !== 'random'
+    const bonusLevels = options?.bonusLevels ?? 0
+    const rng = options?.rng ?? Math.random
+    const members = createMembersWithLevels(
+      [
+        (level) =>
+          new OrcLancerEnemy(
+            scripted
+              ? {
+                  level,
+                  actionQueueFactory: () =>
+                    new DefaultEnemyActionQueue({ initialActionType: BattleDanceAction }),
+                }
+              : { level },
+          ),
+        (level) =>
+          new KamaitachiEnemy(
+            scripted
+              ? {
+                  level,
+                  actionQueueFactory: () =>
+                    new DefaultEnemyActionQueue({ initialActionType: FlurryAction }),
+                  rng: () => 0,
+                }
+              : { level },
+          ),
+        (level) =>
+          new IronBloomEnemy(
+            scripted
+              ? {
+                  level,
+                  actionQueueFactory: () =>
+                    new DefaultEnemyActionQueue({ initialActionType: MucusShotAction }),
+                }
+              : { level },
+          ),
+        (level) =>
+          new SlugEnemy(
+            scripted
+              ? {
+                  level,
+                  actionQueueFactory: () =>
+                    new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
+                }
+              : { level },
+          ),
+      ],
+      bonusLevels,
+      rng,
+    )
     super({
       id: 'iron-bloom',
       name: '鉄花',
-      members: [
-        new OrcLancerEnemy(
-          scripted
-            ? {
-                actionQueueFactory: () =>
-                  new DefaultEnemyActionQueue({ initialActionType: BattleDanceAction }),
-              }
-            : undefined,
-        ),
-        new KamaitachiEnemy(
-          scripted
-            ? {
-                actionQueueFactory: () =>
-                  new DefaultEnemyActionQueue({ initialActionType: FlurryAction }),
-                rng: () => 0,
-              }
-            : undefined,
-        ),
-        new IronBloomEnemy(
-          scripted
-            ? {
-                actionQueueFactory: () =>
-                  new DefaultEnemyActionQueue({ initialActionType: MucusShotAction }),
-              }
-            : undefined,
-        ),
-        new SlugEnemy(
-          scripted
-            ? {
-                actionQueueFactory: () =>
-                  new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
-              }
-            : undefined,
-        ),
-      ],
+      members,
     })
   }
 }

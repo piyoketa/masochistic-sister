@@ -19,18 +19,31 @@ import {
   OrcSumoEnemy,
   SlugEnemy,
 } from '../enemies'
+import { createMembersWithLevels } from './bonusLevelUtils'
+
+export interface OrcHeroEliteTeamOptions {
+  // ボス戦なので追加レベルは無視する。
+  bonusLevels?: number
+  rng?: () => number
+}
 
 export class OrcHeroEliteTeam extends EnemyTeam {
-  constructor() {
+  constructor(options?: OrcHeroEliteTeamOptions) {
+    const rng = options?.rng ?? Math.random
+    const members = createMembersWithLevels(
+      [
+        (level) => new OrcHeroEnemy({ level }),
+        (level) => new SuccubusEnemy({ level }),
+        (level) => new OrcSumoEnemy({ level }),
+        (level) => new SlugEnemy({ level }),
+      ],
+      0,
+      rng,
+    )
     super({
       id: 'orc-hero-elite',
       name: 'オークヒーロー',
-      members: [
-        new OrcHeroEnemy(),
-        new SuccubusEnemy(),
-        new OrcSumoEnemy(),
-        new SlugEnemy(),
-      ],
+      members,
     })
   }
 }

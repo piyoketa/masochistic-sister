@@ -28,6 +28,8 @@ export interface EnemyNode extends FieldNode {
   type: 'enemy'
   enemyTeamId: string
   label?: string
+  /** 追加分レベル（EnemyTeamへ渡す）。ボス以外の補正用。 */
+  bonusLevels?: number
 }
 
 export interface CardRewardNode extends FieldNode {

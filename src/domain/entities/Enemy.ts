@@ -29,6 +29,7 @@ export interface EnemyProps {
   actionQueueFactory?: () => EnemyActionQueue
   allyTags?: string[]
   allyBuffWeights?: Record<string, number>
+  level?: number
 }
 
 export type EnemyStatus = 'active' | 'defeated' | 'escaped'
@@ -51,6 +52,7 @@ export class Enemy {
   private readonly actionQueue: EnemyActionQueue
   private readonly allyTagsValue: string[]
   private readonly allyBuffWeightsValue: Record<string, number>
+  private readonly levelValue: number
   private actedThisTurn = false
   private idValue?: number
   private statusValue: EnemyStatus = 'active'
@@ -67,6 +69,7 @@ export class Enemy {
     this.rng = props.rng ?? Math.random
     this.allyTagsValue = [...(props.allyTags ?? [])]
     this.allyBuffWeightsValue = { ...(props.allyBuffWeights ?? {}) }
+    this.levelValue = props.level ?? 1
     this.actionQueue = props.actionQueueFactory ? props.actionQueueFactory() : new DefaultEnemyActionQueue()
     this.actionQueue.initialize(this.actionCandidates, this.rng, this.rngSeed)
     if (props.futureActions) {
@@ -130,6 +133,10 @@ export class Enemy {
 
   get status(): EnemyStatus {
     return this.statusValue
+  }
+
+  get level(): number {
+    return this.levelValue
   }
 
   setQueueContext(context: Record<string, unknown>): void {

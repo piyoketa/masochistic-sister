@@ -8,6 +8,12 @@ import { TackleAction } from '../actions/TackleAction'
 import { AcidSpitAction } from '../actions/AcidSpitAction'
 import { Damages } from '../Damages'
 import { BuildUpAction } from '../actions/BuildUpAction'
+import { createMembersWithLevels } from './bonusLevelUtils'
+
+export interface TutorialEnemyTeamOptions {
+  bonusLevels?: number
+  rng?: () => number
+}
 
 /**
  * チュートリアル用の固定敵チーム。
@@ -16,29 +22,40 @@ import { BuildUpAction } from '../actions/BuildUpAction'
  * - かたつむり: 初手「溶かす」(AcidSpit)。
  */
 export class TutorialEnemyTeam extends EnemyTeam {
-  constructor() {
+  constructor(options?: TutorialEnemyTeamOptions) {
     const flurry = new FlurryAction().cloneWithDamages(
       new Damages({ baseAmount: 10, baseCount: 2, type: 'multi', cardId: 'flurry' }),
     )
-    const orc = new OrcEnemy({
-      actions: [flurry, new TackleAction(), new BuildUpAction()],
-      actionQueueFactory: () => new DefaultEnemyActionQueue({ initialActionType: FlurryAction }),
-    })
-
-    const slug = new SlugEnemy({
-      maxHp: 30,
-      currentHp: 30,
-      actionQueueFactory: () => new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
-    })
-
-    const snail = new SnailEnemy({
-      actionQueueFactory: () => new DefaultEnemyActionQueue({ initialActionType: AcidSpitAction }),
-    })
+    const rng = options?.rng ?? Math.random
+    const members = createMembersWithLevels(
+      [
+        (level) =>
+          new OrcEnemy({
+            level,
+            actions: [flurry, new TackleAction(), new BuildUpAction()],
+            actionQueueFactory: () => new DefaultEnemyActionQueue({ initialActionType: FlurryAction }),
+          }),
+        (level) =>
+          new SlugEnemy({
+            level,
+            maxHp: 30,
+            currentHp: 30,
+            actionQueueFactory: () => new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
+          }),
+        (level) =>
+          new SnailEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue({ initialActionType: AcidSpitAction }),
+          }),
+      ],
+      0,
+      rng,
+    )
 
     super({
       id: 'enemy-team-tutorial',
       name: 'チュートリアル',
-      members: [orc, slug, snail],
+      members,
     })
   }
 }

@@ -7,21 +7,26 @@ SlugEnemy.ts の責務:
 - 逃走タイミングの判定（CowardTrait や EnemyTeam 側が担当）。
 - 防御ステータスやバリア等の複雑な計算。本クラスは初期化に専念する。
 */
-import { Enemy, type EnemyProps } from '../Enemy'
+import { Enemy } from '../Enemy'
 import { TackleAction } from '../actions/TackleAction'
 import { AcidSpitAction } from '../actions/AcidSpitAction'
 import { CowardTrait } from '../states/CowardTrait'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type SlugEnemyOptions = EnemyLevelOption
 
 export class SlugEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
-    super({
+  constructor(options?: SlugEnemyOptions) {
+    const baseProps = {
       name: 'なめくじ',
       maxHp: 30,
       currentHp: 30,
       actions: [new TackleAction(), new AcidSpitAction()],
       states: [new CowardTrait()],
       image: '/assets/enemies/slug.png',
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

@@ -58,7 +58,7 @@ function createStartNode(): StartNode {
   }
 }
 
-function createEnemyNode(teamId: string, level: number, idx: number): EnemyNode {
+function createEnemyNode(teamId: string, level: number, idx: number, bonusLevels = 0): EnemyNode {
   const teamFactory = ENEMY_TEAM_FACTORIES[teamId]
   const team = teamFactory?.()
   const labelName = team?.name ?? teamId
@@ -68,6 +68,7 @@ function createEnemyNode(teamId: string, level: number, idx: number): EnemyNode 
     level,
     label: `敵「${labelName}」`,
     enemyTeamId: teamId,
+    bonusLevels: bonusLevels > 0 ? bonusLevels : undefined,
     nextNodeIndices: [],
   }
 }

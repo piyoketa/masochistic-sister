@@ -4,26 +4,48 @@ import { GunGoblinEnemy } from '../enemies/GunGoblinEnemy'
 import { DrunkOrcEnemy } from '../enemies/DrunkOrcEnemy'
 import { SnailEnemy } from '../enemies/SnailEnemy'
 import { SuccubusEnemy } from '../enemies/SuccubusEnemy'
+import { createMembersWithLevels } from './bonusLevelUtils'
+
+export interface GunGoblinTeamOptions {
+  bonusLevels?: number
+  rng?: () => number
+}
 
 export class GunGoblinTeam extends EnemyTeam {
-  constructor() {
-    const gunGoblin = new GunGoblinEnemy({
-      actionQueueFactory: () => new DefaultEnemyActionQueue(),
-    })
-    const succubus = new SuccubusEnemy({
-      actionQueueFactory: () => new DefaultEnemyActionQueue(),
-    })
-    const drunk = new DrunkOrcEnemy({
-      actionQueueFactory: () => new DefaultEnemyActionQueue(),
-    })
-    const snail = new SnailEnemy({
-      actionQueueFactory: () => new DefaultEnemyActionQueue(),
-    })
+  constructor(options?: GunGoblinTeamOptions) {
+    const bonusLevels = options?.bonusLevels ?? 0
+    const rng = options?.rng ?? Math.random
+    const members = createMembersWithLevels(
+      [
+        (level) =>
+          new GunGoblinEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue(),
+          }),
+        (level) =>
+          new SuccubusEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue(),
+          }),
+        (level) =>
+          new DrunkOrcEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue(),
+          }),
+        (level) =>
+          new SnailEnemy({
+            level,
+            actionQueueFactory: () => new DefaultEnemyActionQueue(),
+          }),
+      ],
+      bonusLevels,
+      rng,
+    )
 
     super({
       id: 'gun-goblin-team',
       name: '砲台',
-      members: [gunGoblin, succubus, drunk, snail],
+      members,
     })
   }
 }

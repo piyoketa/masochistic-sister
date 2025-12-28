@@ -23,43 +23,58 @@ import { ShapeUpAction } from '../actions/ShapeUpAction'
 import { DrunkenBreathAction } from '../actions/DrunkenBreathAction'
 import { TackleAction } from '../actions/TackleAction'
 import { JointLockAction } from '../actions/JointLockAction'
+import { createMembersWithLevels } from './bonusLevelUtils'
 
 export interface TestOrcWrestlerTeamOptions {
   overrides?: Partial<Record<string, Partial<EnemyProps>>>
+  bonusLevels?: number
+  rng?: () => number
 }
 
 export class TestOrcWrestlerTeam extends EnemyTeam {
   constructor(options?: TestOrcWrestlerTeamOptions) {
     const overrides = options?.overrides ?? {}
-
-    const trainer = new OrcTrainerEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: ShapeUpAction }),
-      ...(overrides['オークトレーナー'] ?? {}),
-    })
-
-    const drunk = new DrunkOrcEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: DrunkenBreathAction }),
-      ...(overrides['酔いどれオーク'] ?? {}),
-    })
-
-    const snail = new SnailEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
-      ...(overrides['かたつむり'] ?? {}),
-    })
-
-    const wrestler = new OrcWrestlerEnemy({
-      actionQueueFactory: () =>
-        new DefaultEnemyActionQueue({ initialActionType: JointLockAction }),
-      ...(overrides['オークレスラー'] ?? {}),
-    })
+    const bonusLevels = options?.bonusLevels ?? 0
+    const rng = options?.rng ?? Math.random
+    const members = createMembersWithLevels(
+      [
+        (level) =>
+          new OrcTrainerEnemy({
+            level,
+            actionQueueFactory: () =>
+              new DefaultEnemyActionQueue({ initialActionType: ShapeUpAction }),
+            ...(overrides['オークトレーナー'] ?? {}),
+          }),
+        (level) =>
+          new DrunkOrcEnemy({
+            level,
+            actionQueueFactory: () =>
+              new DefaultEnemyActionQueue({ initialActionType: DrunkenBreathAction }),
+            ...(overrides['酔いどれオーク'] ?? {}),
+          }),
+        (level) =>
+          new SnailEnemy({
+            level,
+            actionQueueFactory: () =>
+              new DefaultEnemyActionQueue({ initialActionType: TackleAction }),
+            ...(overrides['かたつむり'] ?? {}),
+          }),
+        (level) =>
+          new OrcWrestlerEnemy({
+            level,
+            actionQueueFactory: () =>
+              new DefaultEnemyActionQueue({ initialActionType: JointLockAction }),
+            ...(overrides['オークレスラー'] ?? {}),
+          }),
+      ],
+      bonusLevels,
+      rng,
+    )
 
     super({
       id: 'test-orc-wrestler-team',
       name: 'テスト用盾持ちオーク',
-      members: [trainer, drunk, snail, wrestler],
+      members,
     })
   }
 }

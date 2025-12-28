@@ -14,16 +14,21 @@ BatEnemy.ts の責務:
 */
 import { Enemy, type EnemyProps } from '../Enemy'
 import { BloodSuckAction } from '../actions/BloodSuckAction'
+import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+
+export type BatEnemyOptions = EnemyLevelOption
 
 export class BatEnemy extends Enemy {
-  constructor(overrides?: Partial<EnemyProps>) {
-    super({
+  constructor(options?: BatEnemyOptions) {
+    const baseProps = {
       name: 'コウモリ',
       maxHp: 30,
       currentHp: 30,
       actions: [new BloodSuckAction()],
       image: '/assets/enemies/bat.jpg',
-      ...overrides,
-    })
+    }
+    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+
+    super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
 }

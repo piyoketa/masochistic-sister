@@ -34,6 +34,7 @@ import { CardRepository } from '@/domain/repository/CardRepository'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import {
   buildEnemyTeamFactoryMap,
+  type EnemyTeamFactoryOptions,
   SnailTeam,
 } from '@/domain/entities/enemyTeams'
 import { useEnemyActionHints } from '@/components/battle/useEnemyActionHints'
@@ -78,7 +79,12 @@ type BattlePresetKey =
   | 'stage4'
   | 'tutorial'
 
-type BattleViewProps = { viewManager?: ViewManager; preset?: BattlePresetKey; teamId?: string }
+type BattleViewProps = {
+  viewManager?: ViewManager
+  preset?: BattlePresetKey
+  teamId?: string
+  bonusLevels?: number
+}
 
 const ERROR_OVERLAY_DURATION_MS = 2000
 
@@ -899,15 +905,16 @@ function resolveBattleFactory(
     case 'stage1':
     case 'default':
     default:
-      return () => createBattleFromPlayerStore(props.teamId ?? 'snail', playerStore)
+      return () => createBattleFromPlayerStore(props.teamId ?? 'snail', playerStore, props.bonusLevels)
   }
 }
 
 function createBattleFromPlayerStore(
   teamId: string,
   playerStore: ReturnType<typeof usePlayerStore>,
+  bonusLevels?: number,
 ): Battle {
-  const enemyTeam = resolveEnemyTeam(teamId)
+  const enemyTeam = resolveEnemyTeam(teamId, { bonusLevels })
   playerStore.ensureInitialized()
   const cardRepository = new CardRepository()
   const deckCards = playerStore.buildDeck(cardRepository)
@@ -932,20 +939,21 @@ function createBattleFromPlayerStore(
   })
 }
 
-const DEFAULT_ENEMY_TEAM_FACTORY = () => new SnailTeam()
+const DEFAULT_ENEMY_TEAM_FACTORY = (options?: EnemyTeamFactoryOptions) => new SnailTeam(options)
 
-const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = buildEnemyTeamFactoryMap()
+const ENEMY_TEAM_FACTORIES: Record<string, (options?: EnemyTeamFactoryOptions) => EnemyTeam> =
+  buildEnemyTeamFactoryMap()
 
 /**
  * teamId で該当する factory が取れない場合には snail チームを使って
  * 予期せぬ undefined を防ぎつつ type-safe な EnemyTeam を返す。
  */
-function resolveEnemyTeam(teamId: string): EnemyTeam {
+function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): EnemyTeam {
   const factory = ENEMY_TEAM_FACTORIES[teamId]
   if (factory) {
-    return factory()
+    return factory(options)
   }
-  return DEFAULT_ENEMY_TEAM_FACTORY()
+  return DEFAULT_ENEMY_TEAM_FACTORY(options)
 }
 </script>
 

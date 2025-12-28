@@ -61,7 +61,7 @@ const currentNodeCleared = computed(() => {
 })
 const targetFieldId = computed(() => props.fieldId ?? 'first-field')
 
-const ENEMY_TEAM_FACTORIES: Record<string, () => EnemyTeam> = buildEnemyTeamFactoryMap()
+const ENEMY_TEAM_FACTORIES = buildEnemyTeamFactoryMap()
 
 const ENEMY_EFFECTIVE_HINTS: Record<string, string> = {
   'snail-team': '打点',
@@ -144,7 +144,8 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
   }
   fieldStore.selectNextNode(nodeIndex)
   if (fieldStore.field.isEnemyNode(node)) {
-    await router.push({ path: `/battle/${node.enemyTeamId}` })
+    const query = node.bonusLevels ? { bonusLevels: node.bonusLevels } : undefined
+    await router.push({ path: `/battle/${node.enemyTeamId}`, query })
     return
   }
   if (node.type === 'card-reward') {
