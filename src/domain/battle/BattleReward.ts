@@ -29,9 +29,11 @@ export class BattleReward {
     const cardBlueprints = newCards
       .map((card) => this.toRewardBlueprint(card))
       .filter((entry): entry is CardBlueprint => Boolean(entry))
-    // MemorySaintRelic を所持している場合のみHP50回復、それ以外は0とする
+    // MemorySaintRelic を所持している場合のみ、最大HPの1/3回復、それ以外は0とする
     const memorySaintId = new MemorySaintRelic().id
-    const hpHeal = this.battle.hasRelic(memorySaintId) ? 50 : 0
+    const hpHeal = this.battle.hasRelic(memorySaintId)
+      ? Math.max(0, Math.floor(this.battle.player.maxHp / 3))
+      : 0
     return {
       defeatedCount,
       hpHeal,

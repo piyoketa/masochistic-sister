@@ -16,6 +16,6 @@ export class MemorySaintRelic extends Relic {
   readonly icon = '🕯️'
 
   override description(): string {
-    return '戦闘終了時、HPを50回復する'
+    return '戦闘終了時、最大HPの1/3を回復する'
   }
 }
