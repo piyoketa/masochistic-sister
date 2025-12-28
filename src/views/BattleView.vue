@@ -62,6 +62,7 @@ import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 import { createCardFromBlueprint, type CardBlueprint } from '@/domain/library/Library'
+import { safeClearTimeout, safeSetTimeout, type SafeTimeoutHandle } from '@/utils/safeTimeout'
 
 declare global {
   interface Window {
@@ -102,7 +103,7 @@ const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
 const managerState = viewManager.state
 const errorMessage = ref<string | null>(null)
 const currentAnimationId = ref<string | null>(null)
-let errorOverlayTimer: number | null = null
+let errorOverlayTimer: SafeTimeoutHandle = null
 // チュートリアル専用UIの制御用フラグ。preset に依存するため単純な computed で十分。
 const isTutorialBattle = computed(() => props.preset === 'tutorial')
 
@@ -217,7 +218,7 @@ function clearErrorOverlayTimer(): void {
   if (!errorOverlayTimer) {
     return
   }
-  window.clearTimeout(errorOverlayTimer)
+  safeClearTimeout(errorOverlayTimer)
   errorOverlayTimer = null
 }
 
@@ -225,7 +226,8 @@ function clearErrorOverlayTimer(): void {
 function showTransientError(message: string): void {
   errorMessage.value = message
   clearErrorOverlayTimer()
-  errorOverlayTimer = window.setTimeout(() => {
+  // jsdom / SSR で window が未定義でも落ちないよう safeSetTimeout を経由する
+  errorOverlayTimer = safeSetTimeout(() => {
     errorMessage.value = null
     errorOverlayTimer = null
   }, ERROR_OVERLAY_DURATION_MS)

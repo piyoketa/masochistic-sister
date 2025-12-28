@@ -97,7 +97,7 @@ describe('BattleView', () => {
     const actionCards = wrapper.findAll('.action-card-stub')
 
     expect(enemyCards).toHaveLength(4)
-    expect(actionCards).toHaveLength(5)
+    expect(actionCards).toHaveLength(4)
     expect(wrapper.html()).toContain('ターン')
   })
 
@@ -113,9 +113,10 @@ describe('BattleView', () => {
 
     await flushPromises()
 
-    const result = scenario.replayer.run(scenario.steps.playMasochisticAuraOnSnail)
+    // マナ消費を伴う検証にしたいため、コスト1の「日課」プレイ結果を利用する
+    const result = scenario.replayer.run(scenario.steps.playDailyRoutine)
     viewManager.enqueueAnimation({
-      entryIndex: scenario.steps.playMasochisticAuraOnSnail,
+      entryIndex: scenario.steps.playDailyRoutine,
       commands: [
         {
           type: 'update-snapshot',
