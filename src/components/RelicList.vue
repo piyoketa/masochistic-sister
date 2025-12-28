@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'hover', relic: RelicDisplayEntry, e: MouseEvent | FocusEvent): void
   (event: 'leave'): void
+  (event: 'click', relic: RelicDisplayEntry): void
 }>()
 
 function handleHover(relic: RelicDisplayEntry, e: MouseEvent | FocusEvent): void {
@@ -26,6 +27,10 @@ function handleHover(relic: RelicDisplayEntry, e: MouseEvent | FocusEvent): void
 
 function handleLeave(): void {
   emit('leave')
+}
+
+function handleClick(relic: RelicDisplayEntry): void {
+  emit('click', relic)
 }
 
 function formatUsesRemaining(uses?: number | null): string | undefined {
@@ -57,6 +62,7 @@ function formatUsesRemaining(uses?: number | null): string | undefined {
       @focusin="(event) => handleHover(relic, event)"
       @mouseleave="handleLeave"
       @focusout="handleLeave"
+      @click="() => handleClick(relic)"
     >
       <span class="relic-icon__glyph">{{ relic.icon }}</span>
       <span v-if="relic.usageType === 'active' && formatUsesRemaining(relic.usesRemaining)" class="relic-icon__uses">
