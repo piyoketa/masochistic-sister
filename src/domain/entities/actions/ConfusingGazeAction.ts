@@ -8,7 +8,9 @@ import { SkillTypeCardTag, EnemySingleTargetCardTag } from '../cardTags'
 import { EvilThoughtState } from '../states/EvilThoughtState'
 
 export class ConfusingGazeAction extends Skill {
-  constructor() {
+  private readonly magnitude: number
+
+  constructor(magnitude = 1) {
     super({
       name: '惑わす',
       cardDefinition: {
@@ -19,11 +21,12 @@ export class ConfusingGazeAction extends Skill {
         cost: 1,
         subtitle: '',
       },
-      inflictStates: [() => new EvilThoughtState(1)],
+      inflictStates: [() => new EvilThoughtState(magnitude)],
     })
+    this.magnitude = magnitude
   }
 
   protected override description(): string {
-    return '対象に邪念を付与する'
+    return `対象に邪念(${this.magnitude})を付与する`
   }
 }

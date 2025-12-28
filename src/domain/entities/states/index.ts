@@ -59,7 +59,6 @@ import { CaringAllyTrait } from './CaringAllyTrait'
 import { DamageLinkState } from './DamageLinkState'
 import { MiasmaState } from './MiasmaState'
 import { StatusImmunityTrait } from './StatusImmunityTrait'
-import { FiveLegsState } from './FiveLegsState'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {

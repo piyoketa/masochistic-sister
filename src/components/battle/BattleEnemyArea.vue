@@ -18,6 +18,7 @@ BattleEnemyArea の責務:
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import EnemyCard from '@/components/EnemyCard.vue'
 import EnemyNextActions from '@/components/battle/EnemyNextActions.vue'
+import { formatEnemyNameWithLevel } from '@/components/battle/enemyNameFormatter'
 import { formatEnemyActionChipsForView, type EssentialEnemyActionHint } from '@/view/enemyActionHintsForView'
 import type { BattleSnapshot } from '@/domain/battle/Battle'
 import type { Battle } from '@/domain/battle/Battle'
@@ -106,7 +107,8 @@ const enemySlots = computed<EnemySlot[]>(() => {
     const enemyInfo = shouldDisplay
       ? {
           id: enemySnapshot.id,
-          name: enemySnapshot.name,
+          name: formatEnemyNameWithLevel(enemySnapshot.name, enemySnapshot.level),
+          level: enemySnapshot.level,
           status: enemySnapshot.status,
           image: enemySnapshot.image ?? '',
           hp: {
@@ -165,6 +167,7 @@ function isEnemySelectable(enemyId: number | undefined): boolean {
   }
   return hint.selectable
 }
+
 
 function blockedReason(enemyId: number | undefined): string | undefined {
   if (!props.isSelectingEnemy || enemyId === undefined || !isEnemyAlive(enemyId)) {

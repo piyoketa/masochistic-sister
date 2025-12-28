@@ -6,7 +6,7 @@
 import { Enemy, type EnemyProps } from '../Enemy'
 import { BeamShotAction } from '../actions/BeamShotAction'
 import { PowerChargeAction } from '../actions/PowerChargeAction'
-import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+import { buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 export type GunGoblinEnemyOptions = EnemyLevelOption
 
@@ -19,7 +19,23 @@ export class GunGoblinEnemy extends Enemy {
       actions: [new BeamShotAction(20), new PowerChargeAction(40)],
       image: '/assets/enemies/canon.png',
     }
-    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+    const levelConfigs = [
+      {
+        level: 2,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          maxHp: 80,
+          currentHp: 80,
+        }),
+      },
+      {
+        level: 3,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          actions: [new BeamShotAction(20), new PowerChargeAction(60)],
+        }),
+      },
+    ]
 
     super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }

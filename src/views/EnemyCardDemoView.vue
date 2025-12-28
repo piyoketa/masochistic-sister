@@ -35,6 +35,7 @@ function mapEnemyToInfo(enemy: Enemy): EnemyInfo {
   return {
     id: enemy.id ?? 0,
     name: enemy.name,
+    level: enemy.level,
     image: enemy.image,
     status: enemy.status,
     hp: {

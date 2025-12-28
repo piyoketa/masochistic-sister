@@ -1,9 +1,9 @@
-import { Enemy } from '../Enemy'
+import { Enemy, type EnemyProps } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { TailwindAction } from '../actions/TailwindAction'
 import { Damages } from '../Damages'
 import { FlightState } from '../states/FlightState'
-import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+import { buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 export type HummingbirdEnemyOptions = EnemyLevelOption
 
@@ -23,7 +23,24 @@ export class HummingbirdEnemy extends Enemy {
       allyTags: ['acceleratable', 'multi-attack'],
       allyBuffWeights: { tailwind: 20 },
     }
-    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp, 3)
+    const levelConfigs = [
+      {
+        level: 2,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          maxHp: 8,
+          currentHp: 8,
+        }),
+      },
+      {
+        level: 3,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          maxHp: 10,
+          currentHp: 10,
+        }),
+      },
+    ]
 
     super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }

@@ -1,8 +1,8 @@
-import { Enemy } from '../Enemy'
+import { Enemy, type EnemyProps } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { DrunkenBreathAction } from '../actions/DrunkenBreathAction'
 import { Damages } from '../Damages'
-import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+import { buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 export type DrunkOrcEnemyOptions = EnemyLevelOption
 
@@ -21,7 +21,23 @@ export class DrunkOrcEnemy extends Enemy {
       actions: [flurry, new DrunkenBreathAction()],
       image: '/assets/enemies/drunk-orc.png',
     }
-    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+    const levelConfigs = [
+      {
+        level: 2,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          maxHp: 50,
+          currentHp: 50,
+        }),
+      },
+      {
+        level: 3,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          actions: [flurry, new DrunkenBreathAction(2)],
+        }),
+      },
+    ]
 
     super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
