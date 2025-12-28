@@ -930,24 +930,32 @@ export class OperationRunner {
 
     if (metadata) {
       const shouldSkipSnapshot = metadata.stage === 'turn-end'
-      batches.push(
-        this.createBatch(
-          snapshot,
-          [
-            {
-              waitMs,
-              metadata,
-            },
-          ],
-          undefined,
-          shouldSkipSnapshot
-            ? {
-                skipSnapshotUpdate: true,
-                omitPatch: true,
-              }
-            : undefined,
-        ),
+      const batchOptions = shouldSkipSnapshot
+        ? {
+            skipSnapshotUpdate: true,
+            omitPatch: true,
+          }
+        : metadata.stage === 'relic-activate'
+        ? {
+            omitPatch: true,
+          }
+        : undefined
+      const batch = this.createBatch(
+        snapshot,
+        [
+          {
+            waitMs,
+            metadata,
+          },
+        ],
+        undefined,
+        batchOptions,
       )
+      if (metadata.stage === 'relic-activate') {
+        // 手札差分ウォッチャが前のスナップショットを参照できるよう、レリック起動バッチはレリック領域だけを更新するパッチに絞る
+        batch.patch = this.createRelicOnlySnapshotPatch(snapshot)
+      }
+      batches.push(batch)
     }
 
     const damageEvents = drainedEvents.damageEvents
@@ -1426,6 +1434,16 @@ export class OperationRunner {
       patch: options?.omitPatch ? undefined : this.createSnapshotPatch(clonedSnapshot),
       instructions: normalizedInstructions,
       skipSnapshotUpdate: options?.skipSnapshotUpdate,
+    }
+  }
+
+  private createRelicOnlySnapshotPatch(snapshot: BattleSnapshot): BattleSnapshotPatch {
+    // レリック起動時は手札の差分検出を壊さないよう、プレイヤー（レリック領域）のみを差し替えるパッチを生成する
+    const clone = this.cloneBattleSnapshot(snapshot)
+    return {
+      changes: {
+        player: clone.player,
+      },
     }
   }
 

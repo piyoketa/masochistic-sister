@@ -35,6 +35,11 @@
 | `turn-end` | プレイヤーターン終了状態 | `end-player-turn` |
 | `victory` / `gameover` | リザルトオーバーレイ | それぞれの終端エントリ |
 
+### card-trash / card-eliminate バッチのスナップショット要件
+- `batchId: 'card-trash'` 直前の snapshot では、対象の `cardIds` が手札に残っていること。  
+- `batchId: 'card-trash'` バッチ内の snapshot では、対象の `cardIds` がすでに削除されていること。  
+- 理由: `buildAnimationScriptFromEntry` は `stage-event` の直後に `apply-patch` を差し込み、そのタイミングで DOM からカードを除去しないと、`wait` の間に「捨てられたはずのカード」が残存してしまうため。スナップショットの前後関係で手札差分を正しく検出できる状態を維持する。
+
 ## AnimationInstruction生成ルール（エントリ種別ごと）
 
 | Entry type | Instruction ラフ | 待機時間 | 備考 |

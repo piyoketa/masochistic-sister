@@ -45,7 +45,7 @@ describe('アクティブレリックの起動', () => {
     const relicSnapshot = snapshot.player.relics.find((relic) => relic.id === 'sacrificial-awareness')
     expect(relicSnapshot?.usesRemaining).toBe(0)
     expect(relicSnapshot?.usable).toBe(false)
-})
+  })
 
   it('日課レリックを起動すると2枚ドローし、残回数が0になる', () => {
     const cardRepository = new CardRepository()
@@ -84,5 +84,56 @@ describe('アクティブレリックの起動', () => {
     const relicSnapshot = snapshot.player.relics.find((relic) => relic.id === 'daily-routine-relic')
     expect(relicSnapshot?.usesRemaining).toBe(0)
     expect(relicSnapshot?.usable).toBe(false)
+  })
+
+  it('日課レリックのrelic-activateバッチは手札を更新せず、レリック領域だけを差し替える', () => {
+    const cardRepository = new CardRepository()
+    // card-trash 等の後続バッチが正しく動けるよう、手札更新はrelic-activateのパッチに含めないことを確認する
+    const deckCards = [
+      cardRepository.create(() => new Card({ action: new DailyRoutineAction() })),
+      cardRepository.create(() => new Card({ action: new DailyRoutineAction() })),
+      cardRepository.create(() => new Card({ action: new DailyRoutineAction() })),
+    ]
+
+    const battle = new Battle({
+      id: 'active-relic-daily-routine-hand-patch',
+      player: new ProtagonistPlayer({ currentMana: 3, maxMana: 3 }),
+      enemyTeam: new TestEnemyTeam({ bonusLevels: 0 }),
+      deck: new Deck(deckCards),
+      hand: new Hand(),
+      discardPile: new DiscardPile(),
+      exilePile: new ExilePile(),
+      events: new BattleEventQueue(),
+      log: new BattleLog(),
+      turn: new TurnManager(),
+      cardRepository,
+      relicClassNames: ['DailyRoutineRelic'],
+    })
+
+    const runner = new OperationRunner({ battle })
+    runner.initializeIfNeeded()
+
+    runner.playRelic('daily-routine-relic')
+
+    const actionLog = runner.getActionLog()
+    const lastEntry = actionLog.at(actionLog.length - 1)
+    expect(lastEntry?.type).toBe('play-relic')
+
+    const relicBatch = lastEntry?.animationBatches?.find((batch) =>
+      batch.instructions.some((instruction) => instruction.metadata?.stage === 'relic-activate'),
+    )
+    expect(relicBatch).toBeTruthy()
+    const changes = relicBatch?.patch?.changes as {
+      player?: unknown
+      hand?: unknown
+      deck?: unknown
+      discardPile?: unknown
+      exilePile?: unknown
+    }
+    expect(changes?.player).toBeTruthy()
+    expect(changes?.hand).toBeUndefined()
+    expect(changes?.deck).toBeUndefined()
+    expect(changes?.discardPile).toBeUndefined()
+    expect(changes?.exilePile).toBeUndefined()
   })
 })
