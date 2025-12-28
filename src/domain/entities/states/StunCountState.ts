@@ -4,6 +4,7 @@ import { SkipTurnAction } from '../actions/SkipTurnAction'
 import { Enemy } from '../Enemy'
 import type { DamageHitContext } from '../State'
 import { BuffState } from '../State'
+import { FiveLegsState } from './FiveLegsState'
 
 /**
  * スタンカウント:
@@ -51,6 +52,11 @@ export class StunCountState extends BuffState {
   }
 
   private applyStun(owner: Enemy, battle: Battle): void {
+    // スタンが成立した時点で、次回必要ヒット数を+5して硬くしていく。
+    const fiveLegs = owner.states.find((state) => state instanceof FiveLegsState) as
+      | FiveLegsState
+      | undefined
+    fiveLegs?.increaseRequirement(5)
     owner.discardNextScheduledAction()
     owner.queueImmediateAction(new SkipTurnAction(`${owner.name}はスタンして動けない！`))
     battle.addLogEntry({

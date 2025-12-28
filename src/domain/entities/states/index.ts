@@ -59,6 +59,7 @@ import { CaringAllyTrait } from './CaringAllyTrait'
 import { DamageLinkState } from './DamageLinkState'
 import { MiasmaState } from './MiasmaState'
 import { StatusImmunityTrait } from './StatusImmunityTrait'
+import { FiveLegsState } from './FiveLegsState'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
@@ -86,7 +87,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-stacked-stress': () => new StackedStressState(),
   'trait-team-bond': () => new TeamBondState(),
   'state-stun-count': (m) => new StunCountState(m ?? 0),
-  'trait-five-legs': () => new FiveLegsState(),
+  'trait-five-legs': (m) => new FiveLegsState(m ?? 5),
   'trait-caring-ally': () => new CaringAllyTrait(),
   'state-damage-link': () => new DamageLinkState(),
   'state-miasma': (m) => new MiasmaState(m ?? 10),
