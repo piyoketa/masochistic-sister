@@ -17,6 +17,7 @@ import { ActionLog, type BattleActionLogEntry, type EnemyActEntryMetadata } from
 import type { Battle } from './Battle'
 import type { Enemy } from '../entities/Enemy'
 import type { Card } from '../entities/Card'
+import type { RelicId } from '../entities/relics/relicTypes'
 
 export interface ActionLogReplayerConfig {
   createBattle: () => Battle
@@ -84,6 +85,8 @@ export class ActionLogReplayer {
         return entry
       case 'play-card':
         return this.resolvePlayCardEntry(entry, battle)
+      case 'play-relic':
+        return this.resolvePlayRelicEntry(entry, battle)
       case 'end-player-turn':
         return this.resolveEndPlayerTurnEntry()
       case 'victory':
@@ -159,6 +162,72 @@ export class ActionLogReplayer {
     }
   }
 
+  private resolvePlayRelicEntry(
+    entry: Extract<BattleActionLogEntry, { type: 'play-relic' }>,
+    battle: Battle,
+  ): ResolvedBattleActionLogEntry {
+    const relicId = this.actionLog.resolveValue(entry.relic, battle)
+
+    const resolved: {
+      operations: ResolvedPlayCardOperation[]
+      targetEnemyId?: number
+      targetEnemy?: EnemySummary
+      selectedHandCardId?: number
+      selectedHandCard?: CardSummary
+    } = { operations: [] }
+
+    const operations = entry.operations ?? []
+    for (const operation of operations) {
+      const payload =
+        operation.payload === undefined ? undefined : this.actionLog.resolveValue(operation.payload, battle)
+
+      switch (operation.type) {
+        case 'target-enemy': {
+          const enemyId = this.extractEnemyId(payload)
+          const enemy = battle.enemyTeam.findEnemy(enemyId)
+          const summary = enemy ? summarizeEnemy(enemy) : undefined
+          resolved.targetEnemyId = enemyId
+          resolved.targetEnemy = summary
+          resolved.operations.push({
+            type: 'target-enemy',
+            enemyId,
+            enemy: summary,
+          })
+          break
+        }
+        case 'select-hand-card': {
+          const selectedId = this.extractCardId(payload)
+          const located = battle.cardRepository.findWithLocation(selectedId)
+          const summary = located ? summarizeCard(located.card) : undefined
+          resolved.selectedHandCardId = selectedId
+          resolved.selectedHandCard = summary
+          resolved.operations.push({
+            type: 'select-hand-card',
+            cardId: selectedId,
+            card: summary,
+          })
+          break
+        }
+        default: {
+          resolved.operations.push({
+            type: operation.type,
+            payload,
+          })
+        }
+      }
+    }
+
+    return {
+      type: 'play-relic',
+      relicId,
+      operations: resolved.operations,
+      targetEnemyId: resolved.targetEnemyId,
+      targetEnemy: resolved.targetEnemy,
+      selectedHandCardId: resolved.selectedHandCardId,
+      selectedHandCard: resolved.selectedHandCard,
+    }
+  }
+
   private resolveEndPlayerTurnEntry(): ResolvedBattleActionLogEntry {
     return { type: 'end-player-turn' }
   }
@@ -205,6 +274,15 @@ export type ResolvedBattleActionLogEntry =
   | {
       type: 'play-card'
       cardId: number
+      operations: ResolvedPlayCardOperation[]
+      targetEnemyId?: number
+      targetEnemy?: EnemySummary
+      selectedHandCardId?: number
+      selectedHandCard?: CardSummary
+    }
+  | {
+      type: 'play-relic'
+      relicId: RelicId
       operations: ResolvedPlayCardOperation[]
       targetEnemyId?: number
       targetEnemy?: EnemySummary

@@ -20,6 +20,7 @@ import { ActionLog } from './ActionLog'
 import type { Card } from '../entities/Card'
 import type { ActionAudioCue, ActionCutInCue } from '../entities/Action'
 import type { DamageOutcome } from '../entities/Damages'
+import type { RelicId } from '../entities/relics/relicTypes'
 import { isPredictionDisabled } from '../utils/predictionToggle'
 
 export interface EntryAppendContext {
@@ -71,9 +72,9 @@ export class OperationRunnableError extends Error {
   }
 }
 
-type PlayCardOperations = Extract<
+type PlayActionOperations = Extract<
   BattleActionLogEntry,
-  { type: 'play-card' }
+  { type: 'play-card' | 'play-relic' }
 >['operations']
 
 interface EnemyActionAudioConfig {
@@ -152,6 +153,15 @@ export class OperationRunner {
     })
   }
 
+  playRelic(relicId: string | number, operations?: PlayActionOperations): number {
+    this.initializeIfNeeded()
+    return this.appendEntry({
+      type: 'play-relic',
+      relic: relicId,
+      operations,
+    })
+  }
+
   endPlayerTurn(): number {
     this.initializeIfNeeded()
     const index = this.appendEntry({ type: 'end-player-turn' }, { suppressFlush: true })
@@ -175,7 +185,7 @@ export class OperationRunner {
 
   private appendEntry(entry: BattleActionLogEntry, options?: AppendOptions): number {
     let index = -1 // ActionLog 上の挿入位置を初期化
-    const needsBeforeSnapshot = entry.type === 'play-card' // play-card の場合のみ前スナップショットが必要
+    const needsBeforeSnapshot = entry.type === 'play-card' || entry.type === 'play-relic' // play-card / play-relic の場合のみ前スナップショットが必要
     const snapshotBefore = needsBeforeSnapshot ? this.battle.captureFullSnapshot() : undefined // 前スナップショットを取得
     try {
       index = this.actionLog.push(entry) // ActionLog にエントリを追記してインデックスを得る
@@ -823,6 +833,12 @@ export class OperationRunner {
     return cards.find((card) => card.id === cardId)
   }
 
+  private findRelicName(relicId: string | number): string | undefined {
+    const normalized = String(relicId)
+    const relic = this.battle.getRelicById(normalized as RelicId)
+    return relic?.name
+  }
+
   private removeCardFromAllZones(snapshot: BattleSnapshot, cardId: number): void {
     snapshot.hand = this.removeCardById(snapshot.hand, cardId)
     snapshot.discardPile = this.removeCardById(snapshot.discardPile, cardId)
@@ -855,6 +871,16 @@ export class OperationRunner {
       case 'start-player-turn':
         entry.animationBatches = [this.buildStartPlayerTurnBatch(snapshot, drainedEvents)]
         return
+      case 'play-relic': {
+        const relicId = this.actionLog.resolveValue(entry.relic, this.battle)
+        metadata = {
+          stage: 'relic-activate',
+          relicId: String(relicId),
+          relicName: this.findRelicName(relicId),
+        }
+        waitMs = 200
+        break
+      }
       case 'end-player-turn':
         metadata = { stage: 'turn-end' }
         break

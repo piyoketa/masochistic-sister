@@ -143,6 +143,6 @@ export function createTestCaseBattle3(): Battle {
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
-    relicClassNames: [],
+    relicClassNames: ['SacrificialAwarenessRelic'],
   })
 }

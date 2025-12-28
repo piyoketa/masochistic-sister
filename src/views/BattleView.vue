@@ -48,6 +48,7 @@ import { useRewardStore } from '@/stores/rewardStore'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
+import { mapSnapshotRelics } from '@/view/relicDisplayMapper'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { BattleReward } from '@/domain/battle/BattleReward'
 import { useAudioStore } from '@/stores/audioStore'
@@ -160,6 +161,9 @@ const battleDeckCardInfos = computed<CardInfo[]>(() => buildCardInfos(snapshot.v
 const randomizedDeckCardInfos = ref<CardInfo[]>([])
 const discardCardInfos = computed<CardInfo[]>(() =>
   buildCardInfos(snapshot.value?.discardPile ?? [], 'discard'),
+)
+const battleRelics = computed<RelicDisplayEntry[]>(() =>
+  snapshot.value?.player?.relics ? mapSnapshotRelics(snapshot.value.player.relics) : [],
 )
 const deckOverlaySource = ref<'player' | 'battle'>('player')
 const audioStore = useAudioStore()
@@ -726,7 +730,16 @@ function handleRelicLeave(): void {
 }
 
 function handleRelicClick(_relic: RelicDisplayEntry): void {
-  // いまのところクリック発火はなし（パッシブのみ想定）
+  if (!canPlayerAct.value) {
+    showTransientError('現在は行動できません')
+    return
+  }
+  if (_relic.usable === false || _relic.usageType !== 'active') {
+    showTransientError('このレリックは現在使用できません')
+    return
+  }
+  viewManager.queuePlayerAction({ type: 'play-relic', relicId: _relic.id, operations: [] })
+  resetErrorMessage()
 }
 
 function handleEnemySelectionHints(hints: TargetEnemyAvailabilityEntry[]): void {
@@ -968,12 +981,13 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
     :player-states="playerStates"
     :player-state-snapshots="playerStateSnapshots"
     :player-predicted-hp="projectedPlayerHp ?? undefined"
+    :relics="battleRelics"
     @contextmenu="handleContextMenu"
-  @relic-hover="(relic, event) => handleRelicHover(event, relic)"
-  @relic-leave="handleRelicLeave"
-  @relic-click="handleRelicClick"
-  @deck-click="openPlayerDeckOverlay"
->
+    @relic-hover="(relic, event) => handleRelicHover(event, relic)"
+    @relic-leave="handleRelicLeave"
+    @relic-click="handleRelicClick"
+    @deck-click="openPlayerDeckOverlay"
+  >
     <template #overlays>
       <transition name="battle-error">
         <div v-if="errorMessage" class="battle-error-overlay" role="alert">

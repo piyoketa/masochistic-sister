@@ -1,11 +1,20 @@
 import type { CardOperation } from '../entities/operations'
 import type { ValueFactory } from './ActionLog'
 import type { Battle } from './Battle'
+import type { RelicId } from '../entities/relics/relicTypes'
 
 export type OperationLogEntry =
   | {
       type: 'play-card'
       card: ValueFactory<number>
+      operations?: Array<{
+        type: CardOperation['type']
+        payload?: ValueFactory<CardOperation['payload']>
+      }>
+    }
+  | {
+      type: 'play-relic'
+      relicId: ValueFactory<RelicId>
       operations?: Array<{
         type: CardOperation['type']
         payload?: ValueFactory<CardOperation['payload']>

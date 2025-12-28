@@ -13,6 +13,7 @@ const props = withDefaults(
   defineProps<{
     sticky?: boolean
     enableGlow?: boolean
+    battleRelics?: RelicDisplayEntry[]
   }>(),
   {
     enableGlow: true,
@@ -29,7 +30,9 @@ const emit = defineEmits<{
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 
-const playerRelics = computed<RelicDisplayEntry[]>(() => mapClassNamesToDisplay(playerStore.relics))
+const playerRelics = computed<RelicDisplayEntry[]>(() =>
+  props.battleRelics ? [...props.battleRelics] : mapClassNamesToDisplay(playerStore.relics),
+)
 const playerStatus = computed(() => ({
   gold: playerStore.gold,
   deckCount: playerStore.deck.length,

@@ -27,6 +27,7 @@ export { CaringAllyTrait } from './CaringAllyTrait'
 export { DamageLinkState } from './DamageLinkState'
 export { MiasmaState } from './MiasmaState'
 export { StatusImmunityTrait } from './StatusImmunityTrait'
+export { SacrificeState } from './SacrificeState'
 
 import type { State } from '../State'
 import type { StateSnapshot } from '@/types/battle'
@@ -59,7 +60,7 @@ import { CaringAllyTrait } from './CaringAllyTrait'
 import { DamageLinkState } from './DamageLinkState'
 import { MiasmaState } from './MiasmaState'
 import { StatusImmunityTrait } from './StatusImmunityTrait'
-import { FiveLegsState } from './FiveLegsState'
+import { SacrificeState } from './SacrificeState'
 
 // Snapshot復元用のStateファクトリを集約し、Battle以外でも使えるようにする。
 export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
@@ -92,6 +93,7 @@ export const STATE_FACTORY: Record<string, (magnitude?: number) => State> = {
   'state-damage-link': () => new DamageLinkState(),
   'state-miasma': (m) => new MiasmaState(m ?? 10),
   'trait-status-immunity': () => new StatusImmunityTrait(),
+  'state-sacrifice': (m) => new SacrificeState(m ?? 1),
 }
 
 export function instantiateStateFromSnapshot(snapshot: StateSnapshot): State | undefined {

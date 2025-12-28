@@ -1,3 +1,5 @@
+import type { RelicId } from './relicTypes'
+
 export type RelicUsageType = 'active' | 'passive'
 
 /**
@@ -5,7 +7,7 @@ export type RelicUsageType = 'active' | 'passive'
  * 今は名前と説明だけを返す最小構成。
  */
 export abstract class Relic {
-  abstract readonly id: string
+  abstract readonly id: RelicId
   abstract readonly name: string
   abstract readonly usageType: RelicUsageType
   abstract readonly icon: string

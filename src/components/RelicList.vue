@@ -27,6 +27,12 @@ function handleHover(relic: RelicDisplayEntry, e: MouseEvent | FocusEvent): void
 function handleLeave(): void {
   emit('leave')
 }
+
+function formatUsesRemaining(uses?: number | null): string | undefined {
+  if (uses === undefined) return undefined
+  if (uses === null) return '∞'
+  return `${uses}`
+}
 </script>
 
 <template>
@@ -41,15 +47,21 @@ function handleLeave(): void {
         'relic-icon--passive': relic.usageType !== 'active',
         'relic-icon--enabled': relic.active,
         'relic-icon--glow': relic.active && props.enableGlow !== false,
+        'relic-icon--disabled': relic.usable === false,
       }"
       :aria-label="relic.name"
-      :aria-disabled="relic.usageType !== 'active' ? 'true' : undefined"
+      :title="`コスト:${relic.manaCost ?? 0} / 残回数:${formatUsesRemaining(relic.usesRemaining) ?? '-'}${relic.usable === false ? '（使用不可）' : ''}`"
+      :aria-disabled="relic.usable === false || relic.usageType !== 'active' ? 'true' : undefined"
+      :disabled="relic.usable === false || relic.usageType !== 'active'"
       @mouseenter="(event) => handleHover(relic, event)"
       @focusin="(event) => handleHover(relic, event)"
       @mouseleave="handleLeave"
       @focusout="handleLeave"
     >
       <span class="relic-icon__glyph">{{ relic.icon }}</span>
+      <span v-if="relic.usageType === 'active' && formatUsesRemaining(relic.usesRemaining)" class="relic-icon__uses">
+        {{ formatUsesRemaining(relic.usesRemaining) }}
+      </span>
     </button>
   </div>
 </template>
@@ -135,5 +147,23 @@ function handleLeave(): void {
 .relic-icon:not(.relic-icon--enabled) {
   filter: grayscale(0.7);
   opacity: 0.6;
+}
+
+.relic-icon--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.relic-icon__uses {
+  position: absolute;
+  bottom: -8px;
+  right: -6px;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ffd680;
+  padding: 2px 4px;
+  border-radius: 6px;
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 </style>

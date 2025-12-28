@@ -22,7 +22,9 @@ import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
 import type { CardId } from '../library/Library'
 import type { EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
-import type { Relic } from '../entities/relics/Relic'
+import type { Relic, RelicUsageType } from '../entities/relics/Relic'
+import { ActiveRelic } from '../entities/relics/ActiveRelic'
+import type { RelicId } from '../entities/relics/relicTypes'
 import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 import { isPredictionDisabled } from '../utils/predictionToggle'
 
@@ -52,6 +54,17 @@ export interface BattleConfig {
   relicClassNames?: string[]
 }
 
+export interface BattleSnapshotRelic {
+  className: string
+  id: RelicId
+  name: string
+  usageType: RelicUsageType
+  active: boolean
+  usesRemaining?: number | null
+  manaCost?: number | null
+  usable?: boolean
+}
+
 export interface BattleSnapshot {
   id: string
   /** 現在のターン位置。先制行動などに備え turn=0 も許容する。 */
@@ -65,7 +78,7 @@ export interface BattleSnapshot {
     predictedPlayerHpAfterEndTurn?: number
     currentMana: number
     maxMana: number
-    relics: Array<{ className: string; active: boolean }>
+    relics: BattleSnapshotRelic[]
     states?: StateSnapshot[]
   }
   enemies: Array<{
@@ -446,11 +459,7 @@ export class Battle {
     const includePrediction = options?.includePrediction !== false
     const teamId = this.enemyTeamValue.id
     const relicSnapshots =
-      this.relicInstances.map((relic) => {
-        const className = relic.constructor.name
-        const active = relic.isActive({ battle: this, player: this.playerValue })
-        return { className, active }
-      }) ?? []
+      this.relicInstances.map((relic) => this.buildRelicSnapshotEntry(relic)) ?? []
 
     const deckWithCost = this.deckValue.list()
     const handWithRuntime = this.handValue.list().map((card) => this.applyCardRuntime(card))
@@ -515,6 +524,40 @@ export class Battle {
       turn: this.turnValue.current,
       log: this.logValue.list(),
       status: this.statusValue,
+    }
+  }
+
+  private buildRelicSnapshotEntry(relic: Relic): BattleSnapshotRelic {
+    const active = relic.isActive({ battle: this, player: this.playerValue })
+    const usageType = relic.usageType
+    if (usageType === 'active' && relic instanceof ActiveRelic) {
+      const usesRemaining = relic.getUsesRemaining()
+      const manaCost = relic.manaCost ?? null
+      // プレイヤーターンかつ入力ロックなし、かつ canActivate が true の場合にのみ usable を true にする。
+      const canUseNow =
+        this.turnValue.current.activeSide === 'player' &&
+        !this.inputLocked &&
+        this.statusValue === 'in-progress' &&
+        relic.canActivate({ battle: this, player: this.playerValue })
+      return {
+        className: relic.constructor.name,
+        id: relic.id,
+        name: relic.name,
+        usageType,
+        active,
+        usesRemaining,
+        manaCost,
+        usable: canUseNow,
+      }
+    }
+
+    return {
+      className: relic.constructor.name,
+      id: relic.id,
+      name: relic.name,
+      usageType,
+      active,
+      usable: active,
     }
   }
 
@@ -590,21 +633,21 @@ export class Battle {
   /**
    * 指定した id のレリックを所持しているか判定する（active かどうかは問わない）。
    */
-  hasRelic(relicId: string): boolean {
+  hasRelic(relicId: RelicId): boolean {
     return this.relicInstances.some((relic) => relic.id === relicId)
   }
 
   /**
    * 指定した id のレリックインスタンスを取得する（見つからなければ undefined）。
    */
-  getRelicById(relicId: string): Relic | undefined {
+  getRelicById(relicId: RelicId): Relic | undefined {
     return this.relicInstances.find((relic) => relic.id === relicId)
   }
 
   /**
    * 指定した id のレリックを所持し、かつ isActive が true か判定する。
    */
-  hasActiveRelic(relicId: string): boolean {
+  hasActiveRelic(relicId: RelicId): boolean {
     return this.relicInstances.some((relic) => relic.id === relicId && relic.isActive({ battle: this, player: this.playerValue }))
   }
 
@@ -783,6 +826,36 @@ export class Battle {
       throw new Error(`Card ${cardId} not found in hand`)
     }
     card.play(this, operations)
+  }
+
+  playRelic(relicId: RelicId, operations: CardOperation[] = []): void {
+    if (this.turn.current.activeSide !== 'player') {
+      throw new Error('It is not the player turn')
+    }
+    if (this.inputLocked) {
+      throw new Error('Input is locked')
+    }
+
+    const relic = this.getRelicById(relicId)
+    if (!relic) {
+      throw new Error(`Relic ${relicId} not found`)
+    }
+    if (!(relic instanceof ActiveRelic)) {
+      throw new Error(`Relic ${relicId} is not activatable`)
+    }
+
+    const context = { battle: this, player: this.playerValue }
+    const usableNow =
+      this.turnValue.current.activeSide === 'player' &&
+      !this.inputLocked &&
+      this.statusValue === 'in-progress' &&
+      relic.canActivate(context)
+
+    if (!usableNow) {
+      throw new Error(`Relic ${relicId} cannot be activated now`)
+    }
+
+    relic.perform(context, operations)
   }
 
   endPlayerTurn(): void {
@@ -1409,6 +1482,19 @@ export class Battle {
                 : actionLog.resolveValue(operation.payload, this),
           })) ?? []
         this.playCard(cardId, operations)
+        break
+      }
+      case 'play-relic': {
+        const relicId = actionLog.resolveValue(entry.relic, this)
+        const operations =
+          entry.operations?.map((operation) => ({
+            type: operation.type,
+            payload:
+              operation.payload === undefined
+                ? undefined
+                : actionLog.resolveValue(operation.payload, this),
+          })) ?? []
+        this.playRelic(relicId as RelicId, operations)
         break
       }
       case 'player-event':

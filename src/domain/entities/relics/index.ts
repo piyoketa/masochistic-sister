@@ -15,6 +15,7 @@ import { RepulsionRelic } from './RepulsionRelic'
 import { DeathMatchRelic } from './DeathMatchRelic'
 
 export type { Relic } from './Relic'
+export { ActiveRelic } from './ActiveRelic'
 export {
   SacrificialAwarenessRelic,
   AdversityExcitementRelic,

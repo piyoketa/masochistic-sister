@@ -33,6 +33,7 @@ import {
 } from '@/domain/battle/ActionLogReplayer'
 import type { Battle, BattleSnapshot, FullBattleSnapshot } from '@/domain/battle/Battle'
 import type { StageEventMetadata } from '@/types/animation'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 
 // 敵 acted 表示の調査用デバッグログ。VITE_DEBUG_ENEMY_ACTED=true で有効。
 const DEBUG_ENEMY_ACTED =
@@ -66,6 +67,7 @@ export interface ViewManagerConfig {
 
 export type PlayerInput =
   | { type: 'play-card'; cardId: number; operations?: CardOperation[] }
+  | { type: 'play-relic'; relicId: RelicId; operations?: CardOperation[] }
   | { type: 'end-player-turn' }
   | { type: 'start-battle' }
   | { type: 'custom'; action: string; payload?: unknown }
@@ -220,6 +222,17 @@ export class ViewManager {
         // eslint-disable-next-line no-console
         // console.info('[ViewManager] executeOperationWithRunner play-card', { cardId, resolvedOperations })
         runner.playCard(cardId, resolvedOperations)
+        break
+      }
+      case 'play-relic': {
+        const relicId = sourceLog.resolveValue(operation.relicId, battle)
+        const resolvedOperations =
+          operation.operations?.map((op) => ({
+            type: op.type,
+            payload:
+              op.payload === undefined ? undefined : sourceLog.resolveValue(op.payload, battle),
+          })) ?? undefined
+        runner.playRelic(relicId, resolvedOperations)
         break
       }
       case 'end-player-turn': {
@@ -619,6 +632,15 @@ export class ViewManager {
             payload: operation.payload,
           })),
         }
+      case 'play-relic':
+        return {
+          type: 'play-relic',
+          relicId: input.relicId,
+          operations: input.operations?.map((operation) => ({
+            type: operation.type,
+            payload: operation.payload,
+          })),
+        }
       case 'end-player-turn':
         return { type: 'end-player-turn' }
       case 'start-battle':
@@ -734,6 +756,8 @@ export class ViewManager {
         return { ...entry }
       case 'play-card':
         return this.resolvePlayCardEntry(entry, battle)
+      case 'play-relic':
+        return this.resolvePlayRelicEntry(entry, battle)
       case 'end-player-turn':
         return { type: 'end-player-turn' }
       case 'victory':
@@ -804,6 +828,74 @@ export class ViewManager {
     return {
       type: 'play-card',
       cardId,
+      operations: resolved.operations,
+      targetEnemyId: resolved.targetEnemyId,
+      targetEnemy: resolved.targetEnemy,
+      selectedHandCardId: resolved.selectedHandCardId,
+      selectedHandCard: resolved.selectedHandCard,
+    }
+  }
+
+  private resolvePlayRelicEntry(
+    entry: Extract<BattleActionLogEntry, { type: 'play-relic' }>,
+    battle: Battle,
+  ): ResolvedBattleActionLogEntry {
+    const relicId = this.actionLog.resolveValue(entry.relic, battle)
+
+    const resolved: {
+      targetEnemyId?: number
+      targetEnemy?: EnemySummary
+      selectedHandCardId?: number
+      selectedHandCard?: CardSummary
+      operations: ResolvedPlayCardOperation[]
+    } = {
+      operations: [],
+    }
+
+    const operations = entry.operations ?? []
+    for (const operation of operations) {
+      const payload =
+        operation.payload === undefined ? undefined : this.actionLog.resolveValue(operation.payload, battle)
+
+      switch (operation.type) {
+        case 'target-enemy': {
+          const enemyId = this.extractEnemyId(payload)
+          const enemy = battle.enemyTeam.findEnemy(enemyId)
+          const summary = enemy ? this.summarizeEnemy(enemy) : undefined
+          resolved.targetEnemyId = enemyId
+          resolved.targetEnemy = summary
+          resolved.operations.push({
+            type: 'target-enemy',
+            enemyId,
+            enemy: summary,
+          })
+          break
+        }
+        case 'select-hand-card': {
+          const selectedId = this.extractCardId(payload)
+          const located = battle.cardRepository.findWithLocation(selectedId)
+          const summary = located ? this.summarizeCard(located.card) : undefined
+          resolved.selectedHandCardId = selectedId
+          resolved.selectedHandCard = summary
+          resolved.operations.push({
+            type: 'select-hand-card',
+            cardId: selectedId,
+            card: summary,
+          })
+          break
+        }
+        default: {
+          resolved.operations.push({
+            type: operation.type,
+            payload,
+          })
+        }
+      }
+    }
+
+    return {
+      type: 'play-relic',
+      relicId,
       operations: resolved.operations,
       targetEnemyId: resolved.targetEnemyId,
       targetEnemy: resolved.targetEnemy,

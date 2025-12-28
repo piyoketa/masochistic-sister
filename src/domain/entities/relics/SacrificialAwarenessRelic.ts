@@ -1,15 +1,36 @@
-import { Relic } from './Relic'
+/*
+SacrificialAwarenessRelic の責務:
+- 1 戦闘 1 回まで自身に「贄」状態を付与する起動レリックとして振る舞う。
+- ActiveRelic 基盤を通じて使用回数やマナ支払い、起動可否の判断を行う。
 
-/**
- * 贄の自覚：起動効果
- */
-export class SacrificialAwarenessRelic extends Relic {
-  readonly id = 'sacrificial-awareness'
-  readonly name = '贄の自覚'
-  readonly usageType = 'active' as const
-  readonly icon = '🩸'
+非責務:
+- 「贄」状態の効果内容や数値調整（SacrificeState が担当）。
+- 入力キューやアニメーション制御（Battle/OperationRunner/ViewManager が担当）。
+
+主な通信相手:
+- `Battle` / `Player`: 起動時のコンテキストを受け取り、Action 実行を委譲する。
+- `SacrificialOfferingAction`: 実際の状態付与を行う Action。
+*/
+import type { ActiveRelicContext } from './ActiveRelic'
+import { ActiveRelic } from './ActiveRelic'
+import { SacrificialOfferingAction } from '../actions/SacrificialOfferingAction'
+
+export class SacrificialAwarenessRelic extends ActiveRelic {
+  constructor() {
+    super({
+      id: 'sacrificial-awareness',
+      name: '贄の自覚',
+      icon: '🩸',
+      manaCost: 0,
+      usageLimitPerBattle: 1,
+    })
+  }
 
   description(): string {
     return '起動：自身に状態異常「贄」を付与する。1戦闘につき1回だけ使用可能。'
+  }
+
+  protected createAction(_context: ActiveRelicContext) {
+    return new SacrificialOfferingAction()
   }
 }

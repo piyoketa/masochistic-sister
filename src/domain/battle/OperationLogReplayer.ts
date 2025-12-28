@@ -75,6 +75,22 @@ export class OperationLogReplayer {
             })
             break
           }
+          case 'play-relic': {
+            const relicId = this.operationLog.resolveValue(operation.relicId, battle)
+            const resolvedOperations =
+              operation.operations?.map((op) => ({
+                type: op.type,
+                payload:
+                  op.payload === undefined ? undefined : this.operationLog.resolveValue(op.payload, battle),
+              })) ?? undefined
+            const actionLogIndex = runner.playRelic(relicId, resolvedOperations)
+            this.onOperationApplied?.({
+              operation,
+              operationIndex: index,
+              actionLogIndex,
+            })
+            break
+          }
           case 'end-player-turn': {
             const actionLogIndex = runner.endPlayerTurn()
             this.onOperationApplied?.({

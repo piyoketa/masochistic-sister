@@ -4,7 +4,6 @@ import type { Hand } from '../battle/Hand'
 import { MemoryManager } from './players/MemoryManager'
 import type { Attack } from './Action'
 import type { Damages } from './Damages'
-import { instantiateRelic } from './relics/relicLibrary'
 import { StatusTypeCardTag } from './cardTags'
 
 export interface PlayerProps {

@@ -24,6 +24,7 @@ const props = defineProps<{
   playerStateSnapshots?: StateSnapshot[]
   playerPredictedHp?: number | null
   relicGlow?: boolean
+  relics?: RelicDisplayEntry[]
 }>()
 
 const emit = defineEmits<{
@@ -66,6 +67,7 @@ defineExpose({ getPlayerCardRect })
         <slot name="overlays" />
         <PlayerStatusHeader
           :enable-glow="props.relicGlow !== false"
+          :battle-relics="props.relics"
           @relic-hover="(relic, event) => emit('relic-hover', relic, event)"
           @relic-leave="emit('relic-leave')"
           @relic-click="(relic) => emit('relic-click', relic)"

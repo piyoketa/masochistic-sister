@@ -57,6 +57,7 @@ const battleFactory = () => {
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
+    relicClassNames: ['SacrificialAwarenessRelic'],
   })
 }
 
@@ -93,7 +94,7 @@ describe('シナリオ3: 戦いの準備のプレイ時演出', () => {
     )
     expect(cardTrash).toBeTruthy()
     if (cardTrash) {
-      expect(cardTrash.waitMs).toBe(600)
+      expect(cardTrash.waitMs).toBe(400)
       const metadata = cardTrash.metadata as { cardIds?: number[]; cardTitles?: string[] }
       expect(metadata.cardIds ?? []).toContain(battlePrepId)
       expect(metadata.cardTitles ?? []).toContain('戦いの準備')
@@ -147,7 +148,7 @@ describe('シナリオ3: 戦いの準備のプレイ時演出', () => {
     if (!cardTrash) {
       return
     }
-    expect(cardTrash.waitMs).toBe(600)
+    expect(cardTrash.waitMs).toBe(400)
     const metadata = cardTrash.metadata as { cardIds?: number[]; cardTitles?: string[] }
     expect(metadata.cardIds?.length).toBe(handIdsBeforeEnd.length)
     expect(metadata.cardIds ?? []).toEqual(expect.arrayContaining(handIdsBeforeEnd))
@@ -219,5 +220,47 @@ describe('シナリオ3: 戦いの準備のプレイ時演出', () => {
         .filter((id): id is number => typeof id === 'number')
       expect(startHandIds).toEqual(expect.arrayContaining(targetCardIds))
     }
+  })
+
+  it('戦闘開始直後にレリック「贄の自覚」を起動すると贄が付与される', () => {
+    const operationLog = buildOperationLog(
+      [
+        {
+          type: 'play-relic',
+          relicId: 'sacrificial-awareness',
+        },
+      ],
+      0,
+    )
+
+    const replayer = new OperationLogReplayer({
+      createBattle: battleFactory,
+      operationLog,
+    })
+
+    const { actionLog, finalSnapshot } = replayer.buildActionLog()
+    const playRelicEntry = actionLog.toArray().find((entry) => entry.type === 'play-relic')
+    expect(playRelicEntry).toBeTruthy()
+    if (!playRelicEntry) {
+      return
+    }
+
+    const instructions =
+      (playRelicEntry.animationBatches ?? []).flatMap((batch) => batch.instructions ?? [])
+    const stages = instructions
+      .map((instruction) => (instruction.metadata as { stage?: string } | undefined)?.stage)
+      .filter((stage): stage is string => typeof stage === 'string')
+    expect(stages).toContain('relic-activate')
+
+    const sacrificeState = finalSnapshot.snapshot.player.states?.find(
+      (state) => state.id === 'state-sacrifice',
+    )
+    expect(sacrificeState?.magnitude).toBe(1)
+
+    const relicSnapshot = finalSnapshot.snapshot.player.relics.find(
+      (relic) => relic.id === 'sacrificial-awareness',
+    )
+    expect(relicSnapshot?.usesRemaining).toBe(0)
+    expect(relicSnapshot?.usable).toBe(false)
   })
 })

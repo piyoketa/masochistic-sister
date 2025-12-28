@@ -6,6 +6,7 @@ import type {
   InterruptEnemyActionTrigger,
 } from './Battle'
 import type { DamageOutcome } from '../entities/Damages'
+import type { RelicId } from '../entities/relics/relicTypes'
 
 type ValueFactory<T> = T | ((battle: Battle) => T)
 
@@ -39,6 +40,7 @@ export type AnimationStageMetadata =
   | { stage: 'turn-end' }
   | { stage: 'victory' }
   | { stage: 'gameover' }
+  | { stage: 'relic-activate'; relicId?: string; relicName?: string }
   | { stage: 'card-trash'; cardIds: number[]; cardTitles?: string[] }
   | { stage: 'card-eliminate'; cardIds: number[]; cardTitles?: string[] }
   | { stage: 'deck-draw'; cardIds: number[]; durationMs?: number; draw?: number; handOverflow?: boolean }
@@ -114,6 +116,14 @@ export type BattleActionLogEntry =
   | ({
       type: 'play-card'
       card: ValueFactory<number>
+      operations?: Array<{
+        type: CardOperation['type']
+        payload?: ValueFactory<CardOperation['payload']>
+      }>
+    } & BaseActionLogEntry)
+  | ({
+      type: 'play-relic'
+      relic: ValueFactory<RelicId>
       operations?: Array<{
         type: CardOperation['type']
         payload?: ValueFactory<CardOperation['payload']>

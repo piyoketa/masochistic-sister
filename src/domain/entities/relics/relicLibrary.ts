@@ -13,10 +13,11 @@ import { RepulsionRelic } from './RepulsionRelic'
 import { DeathMatchRelic } from './DeathMatchRelic'
 import { DevilsKissRelic } from './DevilsKissRelic'
 import type { Relic, RelicUsageType } from './Relic'
+import type { RelicId } from './relicTypes'
 
 export type RelicInfo = {
   className: string
-  id: string
+  id: RelicId
   name: string
   usageType: RelicUsageType
   icon: string
@@ -66,3 +67,5 @@ export function getRelicInfo(className: string): RelicInfo | null {
     description: relic.description(),
   }
 }
+
+export type { RelicId }
