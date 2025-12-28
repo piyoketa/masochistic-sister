@@ -272,6 +272,8 @@ function handleSaveSlot(): void {
   if (exists && !window.confirm(`「${name}」を上書き保存しますか？`)) {
     return
   }
+  // セーブ直前にHP/最大HP/所持金の入力値をストアへ反映させ、保存データへ漏れなく含める
+  applyPlayerStatus()
   const result = playerStore.saveCurrentToSlot(name)
   if (result.success) {
     saveMessage.value = result.message
@@ -287,6 +289,11 @@ function handleLoadSlot(slotId: string): void {
   const result = playerStore.loadFromSlot(slotId)
   if (result.success) {
     saveMessage.value = result.message
+    // ロード後にフォーム値や選択状態も保存内容へ揃え、表示の不整合を防ぐ
+    syncStatusEditors()
+    selectedCardId.value = null
+    syncAttackEditor()
+    refreshShopState()
   } else {
     saveError.value = result.message
   }

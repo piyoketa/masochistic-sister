@@ -30,7 +30,7 @@ export function buildTestDeck(cardRepository: CardRepository): TestDeckResult {
   const ache = cardRepository.create(() => new Card({ action: new ScarRegenerationAction() }))
   const extraHeavenChains = Array.from({ length: 2 }, () =>
     cardRepository.create(() => new Card({ action: new HeavenChainAction() })),
-  )
+  ) as [Card, Card]
 
   // experimental 手札ルール（初期ドロー0枚・ターン開始4枚）でも初手/ターン3で必要カードが途切れないよう、並びと余剰カードを固定する
   const deck: Card[] = [
