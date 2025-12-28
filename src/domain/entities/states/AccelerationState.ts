@@ -29,6 +29,12 @@ export class AccelerationState extends BuffState {
       return params
     }
 
+    // 仕様: 「一回攻撃」カードは回数操作の影響を受けず、必ず1回攻撃のままにする。
+    // 連撃（multi）のみ加速で回数を増やす。
+    if (params.type === 'single') {
+      return params
+    }
+
     const bonus = this.magnitude ?? 0
     return {
       ...params,

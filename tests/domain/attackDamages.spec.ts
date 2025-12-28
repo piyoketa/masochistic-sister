@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { FlurryAction } from '@/domain/entities/actions/FlurryAction'
 import { TackleAction } from '@/domain/entities/actions/TackleAction'
 import { BloodSuckAction } from '@/domain/entities/actions/BloodSuckAction'
+import { AcidSpitAction } from '@/domain/entities/actions/AcidSpitAction'
 import { ProtagonistPlayer } from '@/domain/entities/players'
 import {
   StrengthState,
@@ -272,6 +273,25 @@ describe('Attack#calcDamagesの挙動', () => {
     expect(damages.amount).toBe(20)
     expect(damages.count).toBe(1)
     expect(damages.defenderStates).not.toContain(sticky)
+  })
+
+  it('単体攻撃「溶かす」は加速が付与されても攻撃回数が増えない', () => {
+    // プレイヤー側が加速(1)を持った上で単体攻撃を使用するシナリオを再現し、
+    // 「一回攻撃」は回数操作の影響を受けない仕様を担保する。
+    const action = new AcidSpitAction()
+    const attackerHelper = createPlayerWithHand()
+    attackerHelper.addState(new AccelerationState(1))
+    const defenderEnemy = createEnemyWithStates()
+
+    const damages = action.calcDamages(attackerHelper.player, defenderEnemy)
+
+    expect(damages.amount).toBe(5)
+    expect(damages.count).toBe(1)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof AccelerationState && (state.magnitude ?? 0) === 1,
+      ),
+    ).toBe(true)
   })
 
   it('重量化(1)でダメージが15、回数が2になる', () => {
