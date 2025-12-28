@@ -13,6 +13,7 @@ import { useFieldStore } from '@/stores/fieldStore'
 import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
 import type { RelicInfo } from '@/domain/entities/relics/relicLibrary'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import { renderRichText } from '@/utils/richText'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -26,7 +27,7 @@ const states: string[] = []
 const relicInfo = computed<RelicInfo | null>(() => {
   const node = fieldStore.currentNode
   if (node && fieldStore.field.isFixedRelicRewardNode(node)) {
-    return getRelicInfo(node.selectedRelic) ?? null
+    return getRelicInfo(node.selectedRelic, { playerSnapshot: { maxHp: playerStore.maxHp } }) ?? null
   }
   return null
 })
@@ -43,6 +44,8 @@ const alreadyOwned = computed(() =>
 )
 
 const canClaim = computed(() => Boolean(relicInfo.value) && !claimed.value && !alreadyOwned.value)
+
+const renderDescription = (text: string): string => renderRichText(text)
 
 function handleClaim(): void {
   if (!relicInfo.value || claimed.value || alreadyOwned.value) return
@@ -87,7 +90,7 @@ async function handleProceed(): Promise<void> {
               <div class="relic-card__body">
                 <div class="relic-card__title">{{ relicInfo.name }}</div>
                 <div class="relic-card__type">種別: {{ relicInfo.usageType }}</div>
-                <p class="relic-card__description">{{ relicInfo.description }}</p>
+                <p class="relic-card__description" v-html="renderDescription(relicInfo.description)"></p>
                 <p v-if="alreadyOwned" class="relic-card__owned">すでに所持しています</p>
               </div>
             </div>
@@ -183,6 +186,12 @@ async function handleProceed(): Promise<void> {
   font-size: 13px;
   line-height: 1.4;
   color: rgba(245, 242, 255, 0.85);
+}
+
+.text-magnitude,
+.text-variable {
+  color: #31d39e;
+  font-weight: 700;
 }
 
 .relic-card__owned {

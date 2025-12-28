@@ -72,7 +72,7 @@ function drawRelics(classNames: string[], count: number): RelicInfo[] {
   const results: RelicInfo[] = []
   for (let i = 0; i < count; i += 1) {
     const pick = pool[Math.floor(Math.random() * pool.length)]
-    const info = pick ? getRelicInfo(pick) : null
+    const info = pick ? getRelicInfo(pick, { playerSnapshot: { maxHp: playerStore.maxHp } }) : null
     if (info) {
       results.push(info)
     }

@@ -104,7 +104,7 @@ function toggleDescriptionPinned(event: Event): void {
           <div class="demo-block">
             <div class="demo-label">レリック名（hoverでレリックカード表示）</div>
             <span class="demo-link" @mouseenter="(e) => showRelicCard(e as MouseEvent)" @mouseleave="hideRelicCard">
-              記憶の聖女の証
+              神の寵愛の証
             </span>
           </div>
           <div class="demo-block">

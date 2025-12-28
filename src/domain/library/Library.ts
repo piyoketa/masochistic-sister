@@ -265,8 +265,11 @@ export function listAttackSupportRelicClassNames(): string[] {
   return ATTACK_SUPPORT_RELICS.map((ctor) => ctor.name)
 }
 
-export function getRelicInfoByClassName(className: string): RelicInfo | null {
-  return getRelicInfo(className)
+export function getRelicInfoByClassName(
+  className: string,
+  context?: import('../entities/relics/Relic').RelicDescriptionContext,
+): RelicInfo | null {
+  return getRelicInfo(className, context)
 }
 
 export class Library {

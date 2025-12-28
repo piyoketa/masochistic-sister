@@ -1,17 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
+import { renderRichText } from '@/utils/richText'
 
 const { state } = useDescriptionOverlay()
 
-function renderHtml(text: string): string {
-  const escaped = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>')
-  return escaped.replace(/&lt;magnitude&gt;(.*?)&lt;\/magnitude&gt;/g, '<span class="text-magnitude">$1</span>')
-}
+const renderHtml = (text: string): string => renderRichText(text)
 
 const overlayStyle = computed(() => ({
   left: `${(state.x ?? 0) + 12}px`,
@@ -53,6 +47,11 @@ const overlayStyle = computed(() => ({
 }
 
 .text-magnitude {
+  color: #31d39e;
+  font-weight: 700;
+}
+
+.text-variable {
   color: #31d39e;
   font-weight: 700;
 }

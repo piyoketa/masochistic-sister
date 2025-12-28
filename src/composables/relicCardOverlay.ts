@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import type { RelicDescriptionContext } from '@/domain/entities/relics/Relic'
 import type { RelicInfo } from '@/domain/entities/relics/relicLibrary'
 import { getRelicInfoByClassName } from '@/domain/library/Library'
 
@@ -30,8 +31,8 @@ export function useRelicCardOverlay() {
     overlayState.visible = true
   }
 
-  const showByClassName = (className: string, position: OverlayPosition) => {
-    const relic = getRelicInfoByClassName(className)
+  const showByClassName = (className: string, position: OverlayPosition, context?: RelicDescriptionContext) => {
+    const relic = getRelicInfoByClassName(className, context)
     overlayState.relicClassName = className
     overlayState.relic = relic
     overlayState.x = position.x

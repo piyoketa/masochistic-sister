@@ -47,7 +47,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useRewardStore } from '@/stores/rewardStore'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
-import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
+import type { RelicDisplayEntry, RelicUiState } from '@/view/relicDisplayMapper'
 import { mapSnapshotRelics } from '@/view/relicDisplayMapper'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { BattleReward } from '@/domain/battle/BattleReward'
@@ -162,8 +162,31 @@ const randomizedDeckCardInfos = ref<CardInfo[]>([])
 const discardCardInfos = computed<CardInfo[]>(() =>
   buildCardInfos(snapshot.value?.discardPile ?? [], 'discard'),
 )
+const processingRelicId = computed<string | null>(() => {
+  const currentScript = managerState.playback.current?.script
+  if (!currentScript) return null
+  const entryType = currentScript.metadata?.entryType ?? currentScript.resolvedEntry?.type
+  if (entryType !== 'play-relic') return null
+  return currentScript.resolvedEntry?.type === 'play-relic' ? currentScript.resolvedEntry.relicId : null
+})
 const battleRelics = computed<RelicDisplayEntry[]>(() =>
-  snapshot.value?.player?.relics ? mapSnapshotRelics(snapshot.value.player.relics) : [],
+  snapshot.value?.player?.relics
+    ? mapSnapshotRelics(snapshot.value.player.relics, {
+        playerSnapshot: { maxHp: snapshot.value.player.maxHp },
+      }).map((relic) => {
+        const uiState: RelicUiState = (() => {
+          if (relic.usageType === 'field') return 'field-disabled'
+          if (relic.usageType === 'passive') return relic.active ? 'passive-active' : 'passive-inactive'
+          if (relic.usageType === 'active') {
+            if (processingRelicId.value === relic.id) return 'active-processing'
+            if (relic.usable) return 'active-ready'
+            return 'disabled'
+          }
+          return 'disabled'
+        })()
+        return { ...relic, uiState }
+      })
+    : [],
 )
 const deckOverlaySource = ref<'player' | 'battle'>('player')
 const audioStore = useAudioStore()

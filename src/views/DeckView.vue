@@ -229,7 +229,9 @@ function hideCardOverlay(): void {
 }
 
 function showRelicOverlay(className: string, event: MouseEvent): void {
-  relicOverlay.showByClassName(className, { x: event.clientX, y: event.clientY })
+  relicOverlay.showByClassName(className, { x: event.clientX, y: event.clientY }, {
+    playerSnapshot: { maxHp: playerStore.maxHp },
+  })
 }
 
 function hideRelicOverlay(): void {
