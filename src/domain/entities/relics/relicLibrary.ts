@@ -12,6 +12,7 @@ import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
 import { RepulsionRelic } from './RepulsionRelic'
 import { DeathMatchRelic } from './DeathMatchRelic'
 import { DevilsKissRelic } from './DevilsKissRelic'
+import { DailyRoutineRelic } from './DailyRoutineRelic'
 import type { Relic, RelicUsageType } from './Relic'
 import type { RelicId } from './relicTypes'
 
@@ -39,6 +40,7 @@ const RELIC_FACTORIES: Record<string, () => Relic> = {
   RepulsionRelic: () => new RepulsionRelic(),
   DeathMatchRelic: () => new DeathMatchRelic(),
   DevilsKissRelic: () => new DevilsKissRelic(),
+  DailyRoutineRelic: () => new DailyRoutineRelic(),
 }
 
 export function listRelicClassNames(): string[] {

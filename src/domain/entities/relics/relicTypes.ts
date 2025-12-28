@@ -17,6 +17,7 @@ export type RelicId =
   | 'death-match'
   | 'devils-kiss'
   | 'devout-believer'
+  | 'daily-routine-relic'
   | 'lightweight-combat'
   | 'memory-saint-relic'
   | 'no-violence'

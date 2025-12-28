@@ -13,6 +13,7 @@ import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
 import { MemorySaintRelic } from './MemorySaintRelic'
 import { RepulsionRelic } from './RepulsionRelic'
 import { DeathMatchRelic } from './DeathMatchRelic'
+import { DailyRoutineRelic } from './DailyRoutineRelic'
 
 export type { Relic } from './Relic'
 export { ActiveRelic } from './ActiveRelic'
@@ -31,6 +32,7 @@ export {
   MemorySaintRelic,
   RepulsionRelic,
   DeathMatchRelic,
+  DailyRoutineRelic,
 }
 
 export const DEFAULT_PLAYER_RELICS: Relic[] = [
@@ -48,4 +50,5 @@ export const DEFAULT_PLAYER_RELICS: Relic[] = [
   new ThoroughPreparationRelic(),
   new RepulsionRelic(),
   new DeathMatchRelic(),
+  new DailyRoutineRelic(),
 ]
