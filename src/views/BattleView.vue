@@ -730,6 +730,32 @@ function handleRelicLeave(): void {
 }
 
 function handleRelicClick(_relic: RelicDisplayEntry): void {
+  if (import.meta.env.VITE_DEBUG_RELIC_USABLE_LOG === 'true') {
+    // eslint-disable-next-line no-console
+    console.info('[BattleView] handleRelicClick', {
+      relicId: _relic.id,
+      usable: _relic.usable,
+      active: _relic.active,
+      usageType: _relic.usageType,
+      usesRemaining: _relic.usesRemaining,
+      currentTurn: snapshot.value?.turnPosition,
+      inputLocked: isInputLocked.value,
+      relicsInView: battleRelics.value?.map((r) => ({
+        id: r.id,
+        usable: r.usable,
+        active: r.active,
+        usesRemaining: r.usesRemaining,
+      })),
+      snapshotRelics: snapshot.value?.player?.relics,
+    })
+    if (!_relic || !_relic.id) {
+      // eslint-disable-next-line no-console
+      console.warn('[BattleView] relic click received invalid relic', {
+        relic: _relic,
+        snapshot: snapshot.value,
+      })
+    }
+  }
   if (!canPlayerAct.value) {
     showTransientError('現在は行動できません')
     return

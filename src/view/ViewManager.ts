@@ -54,6 +54,9 @@ const envAnimationDebugFlag =
   typeof import.meta.env !== 'undefined' &&
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
 const DEFAULT_ANIMATION_DEBUG_LOGGING = globalAnimationDebugFlag || envAnimationDebugFlag
+const DEBUG_RELIC_USABLE_LOG =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true') ||
+  (typeof process !== 'undefined' && process.env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true')
 
 export interface ViewManagerConfig {
   createBattle: () => Battle
@@ -1034,13 +1037,45 @@ export class ViewManager {
     this.emit({ type: 'animation-start', script: next })
   }
 
-  private setInputLock(locked: boolean, options: { silent?: boolean } = {}): void {
+  private setInputLock(locked: boolean, options: { silent?: boolean; refreshSnapshot?: boolean } = {}): void {
     if (this.stateValue.input.locked === locked) {
       return
     }
 
     this.stateValue.input.locked = locked
     this.battleInstance?.setInputLocked(locked)
+    if (DEBUG_RELIC_USABLE_LOG) {
+      // eslint-disable-next-line no-console
+      console.info('[ViewManager] setInputLock', {
+        locked,
+        snapshotRelics: this.stateValue.snapshot?.player?.relics?.map((relic) => ({
+          id: relic.id,
+          usable: relic.usable,
+          usesRemaining: relic.usesRemaining,
+        })),
+      })
+    }
+    const shouldRefreshSnapshot =
+      options.refreshSnapshot !== false &&
+      this.battleInstance &&
+      !this.stateValue.playback.current &&
+      this.stateValue.playback.queue.length === 0 &&
+      this.stateValue.snapshot
+    if (shouldRefreshSnapshot) {
+      this.stateValue.previousSnapshot = this.stateValue.snapshot
+      this.stateValue.snapshot = this.battleInstance.getSnapshot()
+      if (DEBUG_RELIC_USABLE_LOG) {
+        // eslint-disable-next-line no-console
+        console.info('[ViewManager] refreshed snapshot after lock change', {
+          locked,
+          snapshotRelics: this.stateValue.snapshot?.player?.relics?.map((relic) => ({
+            id: relic.id,
+            usable: relic.usable,
+            usesRemaining: relic.usesRemaining,
+          })),
+        })
+      }
+    }
     if (!options.silent) {
       this.emit({ type: 'input-lock-changed', locked })
     }

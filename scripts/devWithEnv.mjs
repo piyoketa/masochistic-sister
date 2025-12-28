@@ -35,6 +35,8 @@ env.VITE_DEBUG_ALLY_BUFF_PLAN='false'
 env.VITE_DEBUG_ALLY_BUFF_APPLY='false'
 // 敵行動ヒント生成の入力/出力ログを追跡したい場合に true にする。
 env.VITE_DEBUG_ENEMY_HINT_LOG='false'
+// レリック usable 判定のデバッグログ。/battle/testcase3 での入力ロック解除後のスナップショット確認用。
+env.VITE_DEBUG_RELIC_USABLE_LOG='false'
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {

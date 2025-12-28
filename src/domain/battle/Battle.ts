@@ -27,6 +27,9 @@ import { ActiveRelic } from '../entities/relics/ActiveRelic'
 import type { RelicId } from '../entities/relics/relicTypes'
 import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 import { isPredictionDisabled } from '../utils/predictionToggle'
+const DEBUG_RELIC_USABLE_LOG =
+  (typeof process !== 'undefined' && process.env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true') ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true')
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -460,6 +463,20 @@ export class Battle {
     const teamId = this.enemyTeamValue.id
     const relicSnapshots =
       this.relicInstances.map((relic) => this.buildRelicSnapshotEntry(relic)) ?? []
+    if (DEBUG_RELIC_USABLE_LOG) {
+      // eslint-disable-next-line no-console
+      console.info('[Battle.getSnapshot] relics', {
+        inputLocked: this.inputLocked,
+        turnSide: this.turnValue.current.activeSide,
+        playerMana: this.playerValue.currentMana,
+        relics: relicSnapshots.map((entry) => ({
+          id: entry.id,
+          usable: entry.usable,
+          usesRemaining: entry.usesRemaining,
+          manaCost: entry.manaCost,
+        })),
+      })
+    }
 
     const deckWithCost = this.deckValue.list()
     const handWithRuntime = this.handValue.list().map((card) => this.applyCardRuntime(card))
@@ -539,6 +556,19 @@ export class Battle {
         !this.inputLocked &&
         this.statusValue === 'in-progress' &&
         relic.canActivate({ battle: this, player: this.playerValue })
+      if (DEBUG_RELIC_USABLE_LOG) {
+        // eslint-disable-next-line no-console
+        console.info('[Battle.buildRelicSnapshotEntry]', {
+          relicId: relic.id,
+          active,
+          canUseNow,
+          inputLocked: this.inputLocked,
+          turnSide: this.turnValue.current.activeSide,
+          playerMana: this.playerValue.currentMana,
+          usesRemaining,
+          manaCost,
+        })
+      }
       return {
         className: relic.constructor.name,
         id: relic.id,
