@@ -146,7 +146,8 @@ export abstract class Attack extends Action {
     this.applyInflictedStates(context, defender)
     this.onAfterDamage(context, damages, defender)
 
-    if (this.isPlayer(defender)) {
+    const hasHits = damages.count > 0 && damages.outcomes.length > 0
+    if (this.isPlayer(defender) && hasHits) {
       const rememberedEnemyId = isEnemyEntity(context.source) ? context.source.id : undefined
       defender.rememberEnemyAttack(damages, this, context.battle, {
         enemyId: typeof rememberedEnemyId === 'number' ? rememberedEnemyId : undefined,
