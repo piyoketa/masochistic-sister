@@ -57,6 +57,8 @@ export class HeavyweightState extends BadState {
   }
 
   override affectsAttacker(): boolean {
+    // 攻撃者側の打点/回数を事前補正するため true を返す
+    return true
   }
 
   override isPreHitModifier(): boolean {
