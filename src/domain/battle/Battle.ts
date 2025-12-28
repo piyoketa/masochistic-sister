@@ -87,6 +87,7 @@ export interface BattleSnapshot {
   enemies: Array<{
     id: number
     name: string
+    level?: number
     image: string
     currentHp: number
     maxHp: number
@@ -515,6 +516,7 @@ export class Battle {
         return {
           id,
           name: enemy.name,
+          level: enemy.level,
           image: enemy.image,
           currentHp: enemy.currentHp,
           maxHp: enemy.maxHp,

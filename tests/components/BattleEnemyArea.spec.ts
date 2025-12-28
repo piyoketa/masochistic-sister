@@ -24,7 +24,7 @@ const enemyCardStub = defineComponent({
   `,
 })
 
-function createSnapshot(withEnemy = false): BattleSnapshot | undefined {
+function createSnapshot(withEnemy = false, enemyLevel?: number): BattleSnapshot | undefined {
   if (!withEnemy) {
     return undefined
   }
@@ -44,6 +44,7 @@ function createSnapshot(withEnemy = false): BattleSnapshot | undefined {
       {
         id: 1,
         name: 'オーク',
+        level: enemyLevel,
         image: '/dummy/orc.png',
         currentHp: 10,
         maxHp: 10,
@@ -186,5 +187,28 @@ describe('BattleEnemyArea コンポーネント', () => {
     await flushPromises()
     expect(wrapper.get('.enemy-card-stub').attributes('data-acting')).toBe('false')
     vi.useRealTimers()
+  })
+
+  it('レベル情報があれば名前にLv表記を付けて渡す', () => {
+    const wrapper = mount(BattleEnemyArea, {
+      props: {
+        snapshot: createSnapshot(true, 2),
+        battle: createBattleStub(),
+        isInitializing: false,
+        errorMessage: null,
+        isSelectingEnemy: false,
+        hoveredEnemyId: null,
+        stageEvent: null,
+      },
+      global: {
+        stubs: {
+          EnemyCard: enemyCardStub,
+          TransitionGroup: false,
+        },
+        plugins: [createActivatedTestingPinia(), createTestingVuetify()],
+      },
+    })
+
+    expect(wrapper.text()).toContain('オーク Lv2')
   })
 })

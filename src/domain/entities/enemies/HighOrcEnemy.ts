@@ -12,13 +12,13 @@ HighOrcEnemy.ts の責務:
 - `BuildUpAction`: 打点上昇(10)を得る自己バフ。行動リストに登録する。
 - `HardShellState` / `CaringAllyTrait`: 初期Traitとして所持。被ダメ軽減と味方撃破時の打点上昇付与を提供する。
 */
-import { Enemy } from '../Enemy'
+import { Enemy, type EnemyProps } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { BuildUpAction } from '../actions/BuildUpAction'
 import { Damages } from '../Damages'
 import { HardShellState } from '../states/HardShellState'
 import { CaringAllyTrait } from '../states/CaringAllyTrait'
-import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+import { buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 export type HighOrcEnemyOptions = EnemyLevelOption
 
@@ -42,7 +42,23 @@ export class HighOrcEnemy extends Enemy {
       allyBuffWeights: { tailwind: 100, cheer: 100 },
       image: '/assets/enemies/high-orc.png',
     }
-    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+    const levelConfigs = [
+      {
+        level: 2,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          maxHp: 70,
+          currentHp: 70,
+        }),
+      },
+      {
+        level: 3,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          states: [new HardShellState(15), new CaringAllyTrait()],
+        }),
+      },
+    ]
 
     super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }

@@ -15,7 +15,7 @@ export class FuryAwakeningState extends TraitState {
   }
 
   override description(): string {
-    return 'ダメージを受ける度に打点上昇 10点を得る'
+    return 'ダメージを受ける度に打点上昇5点獲得\n（連続攻撃は攻撃回数分カウントされる）'
   }
 
   override isPostHitModifier(): boolean {
@@ -41,7 +41,7 @@ export class FuryAwakeningState extends TraitState {
     const stacks = this.pendingStacks
     this.pendingStacks = 0
 
-    const strength = new StrengthState(10 * stacks)
+    const strength = new StrengthState(5 * stacks)
     owner.addState(strength, { battle: context.battle })
   }
 }

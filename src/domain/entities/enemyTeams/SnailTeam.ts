@@ -26,7 +26,7 @@ export class SnailTeam extends EnemyTeam {
 
     super({
       id: 'snail-team',
-      name: 'かたつむりチーム',
+      name: 'かたつむり',
       members,
     })
   }

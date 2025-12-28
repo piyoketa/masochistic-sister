@@ -1,11 +1,12 @@
-import { Enemy } from '../Enemy'
+import { Enemy, type EnemyProps } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { FattenAction } from '../actions/FattenAction'
 import { Damages } from '../Damages'
 import { HeavyweightState } from '../states/HeavyweightState'
 import { BattleDanceAction } from '../actions/BattleDanceAction'
 import { ConditionalOrcSumoQueue } from '../enemy/actionQueues/ConditionalOrcSumoQueue'
-import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+import { AccelerationState } from '../states/AccelerationState'
+import { buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 export type OrcSumoEnemyOptions = EnemyLevelOption
 
@@ -34,7 +35,23 @@ export class OrcSumoEnemy extends Enemy {
       image: '/assets/enemies/orc-sumo.png',
       actionQueueFactory: () => new ConditionalOrcSumoQueue(),
     }
-    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+    const levelConfigs = [
+      {
+        level: 2,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          maxHp: 50,
+          currentHp: 50,
+        }),
+      },
+      {
+        level: 3,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          states: [...(props.states ?? []), new AccelerationState(1)],
+        }),
+      },
+    ]
 
     super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }

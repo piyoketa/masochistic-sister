@@ -12,14 +12,15 @@ OrcTrainerEnemy.ts の責務:
 - `FlurryAction`/`ShapeUpAction`: 所持アクションとしてダメージ/状態付与を実行する。Flurry は `cloneWithDamages` で 15×2 (type: 'multi') に調整。
 - `LightweightState`: 初期状態として付与し、攻撃補正を持ったまま戦闘に参加する。
 */
-import { Enemy } from '../Enemy'
+import { Enemy, type EnemyProps } from '../Enemy'
 import { FlurryAction } from '../actions/FlurryAction'
 import { ShapeUpAction } from '../actions/ShapeUpAction'
 import { Damages } from '../Damages'
 import { LightweightState } from '../states/LightweightState'
 import { BuildUpAction } from '../actions/BuildUpAction'
 import { ConditionalOrcTrainerQueue } from '../enemy/actionQueues/ConditionalOrcTrainerQueue'
-import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+import { buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+import { StrengthState } from '../states/StrengthState'
 
 export type OrcTrainerEnemyOptions = EnemyLevelOption
 
@@ -46,7 +47,24 @@ export class OrcTrainerEnemy extends Enemy {
       image: '/assets/enemies/orc-trainer.png',
       actionQueueFactory: () => new ConditionalOrcTrainerQueue(),
     }
-    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp)
+    const levelConfigs = [
+      {
+        level: 2,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          maxHp: 50,
+          currentHp: 50,
+        }),
+      },
+      {
+        level: 3,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          // 打点上昇5点を初期所持。Lightweightと併存させる。
+          states: [...(props.states ?? []), new StrengthState(5)],
+        }),
+      },
+    ]
 
     super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }

@@ -1,8 +1,8 @@
-import { Enemy } from '../Enemy'
+import { Enemy, type EnemyProps } from '../Enemy'
 import { MucusShotAction } from '../actions/MucusShotAction'
 import { FlurryAction } from '../actions/FlurryAction'
 import { Damages } from '../Damages'
-import { buildDefaultLevelConfigs, buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
+import { buildEnemyPropsWithLevel, type EnemyLevelOption } from './levelUtils'
 
 export type TentacleEnemyOptions = EnemyLevelOption
 
@@ -19,7 +19,28 @@ export class TentacleEnemy extends Enemy {
       actions: [tentacleFlurry, new MucusShotAction()],
       image: '/assets/enemies/tentacle.png',
     }
-    const levelConfigs = buildDefaultLevelConfigs(baseProps.maxHp, 5)
+    const levelConfigs = [
+      {
+        level: 2,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          maxHp: 40,
+          currentHp: 40,
+        }),
+      },
+      {
+        level: 3,
+        apply: (props: EnemyProps) => ({
+          ...props,
+          actions: [
+            tentacleFlurry,
+            new MucusShotAction().cloneWithDamages(
+              new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'mucus-shot' }),
+            ),
+          ],
+        }),
+      },
+    ]
 
     super(buildEnemyPropsWithLevel(baseProps, levelConfigs, options))
   }
