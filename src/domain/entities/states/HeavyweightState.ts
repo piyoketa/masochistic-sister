@@ -74,7 +74,7 @@ export class HeavyweightState extends BadState {
     const stacks = Math.max(0, this.magnitude ?? 0)
     const multiplier = (2 + stacks) / 2
     const isMultiAttack = params.type === 'multi'
-    const nextCount = isMultiAttack ? Math.max(1, params.count - stacks) : params.count
+    const nextCount = isMultiAttack ? Math.max(0, params.count - stacks) : params.count
 
     return {
       ...params,

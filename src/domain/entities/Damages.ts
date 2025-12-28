@@ -128,7 +128,7 @@ export class Damages {
       }
     }
 
-    const finalCount = Math.max(1, Math.floor(currentCount))
+    const finalCount = Math.max(0, Math.floor(currentCount))
     const finalAmount = Math.max(0, Math.floor(currentAmount))
 
     this.amount = finalAmount

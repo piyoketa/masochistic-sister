@@ -42,6 +42,19 @@ describe('重量化Stateの挙動', () => {
     expect(damages.amount).toBe(20)
     expect(damages.count).toBe(1)
   })
+  
+  it('スタックによって連撃回数が0まで減少する', () => {
+    const damages = new Damages({
+      baseAmount: 10,
+      baseCount: 2,
+      type: 'multi',
+      cardId: 'test-card',
+      attackerStates: [new HeavyweightState(5)],
+    })
+
+    expect(damages.amount).toBe(35)
+    expect(damages.count).toBe(0)
+  })
 })
 
 describe('軽量化Stateの挙動', () => {
