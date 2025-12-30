@@ -246,6 +246,7 @@ export class Enemy {
             owner: this,
           }),
         )
+        options.battle.recordAchievementCowardDefeated(this)
         // 味方側の仲間想い系Traitへ通知する。Team全体でイベントを共有するため、敗北した本人以外のEnemyに伝播する。
         if ('enemyTeam' in options.battle && options.battle.enemyTeam?.members) {
           for (const ally of options.battle.enemyTeam.members) {
@@ -300,6 +301,7 @@ export class Enemy {
       message: `${this.name}は恐怖に駆られて逃走した。`,
       metadata: { enemyId: this.id, reason: 'flee' },
     })
+    battle.recordAchievementCowardDefeated(this)
     battle.recordStateEvent({
       subject: 'enemy',
       subjectId: this.id,

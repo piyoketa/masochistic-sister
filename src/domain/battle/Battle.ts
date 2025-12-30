@@ -27,6 +27,8 @@ import { ActiveRelic } from '../entities/relics/ActiveRelic'
 import type { RelicId } from '../entities/relics/relicTypes'
 import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 import { isPredictionDisabled } from '../utils/predictionToggle'
+import { AchievementProgressManager } from '../achievements/AchievementProgressManager'
+import { ORC_HERO_TEAM_ID } from '../achievements/constants'
 const DEBUG_RELIC_USABLE_LOG =
   (typeof process !== 'undefined' && process.env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true') ||
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true')
@@ -55,6 +57,7 @@ export interface BattleConfig {
   turn?: TurnManager
   cardRepository?: CardRepository
   relicClassNames?: string[]
+  achievementProgressManager?: AchievementProgressManager
 }
 
 export interface BattleSnapshotRelic {
@@ -261,6 +264,8 @@ export class Battle {
   private interruptEnemyActionQueue: QueuedInterruptEnemyAction[] = []
   private lastPlayCardAnimationContext?: PlayCardAnimationContext
   private pendingEntrySnapshotOverride?: BattleSnapshot
+  /** 実績進行度をバトル単位で集計するマネージャ。 */
+  readonly achievementProgressManager?: AchievementProgressManager
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -274,6 +279,7 @@ export class Battle {
     this.logValue = config.log ?? new BattleLog()
     this.turnValue = config.turn ?? new TurnManager()
     this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
+    this.achievementProgressManager = config.achievementProgressManager
     this.relicClassNames = [...(config.relicClassNames ?? [])]
     this.relicInstances = this.buildRelicInstances(this.relicClassNames, [])
     this.playerValue.bindHand(this.handValue)
@@ -311,6 +317,36 @@ export class Battle {
 
   get exilePile(): ExilePile {
     return this.exilePileValue
+  }
+
+  /** 実績進行度: rememberState で状態異常カードを獲得したイベントを記録する。 */
+  recordAchievementStatusCardMemory(): void {
+    this.achievementProgressManager?.recordStatusCardMemory()
+  }
+
+  /** 実績進行度: State付与を通知し、Manager側で必要に応じてルーティングさせる。 */
+  recordAchievementStateApplied(state: unknown): void {
+    this.achievementProgressManager?.recordStateApplied(state)
+  }
+
+  /** 実績進行度: カードプレイを通知し、カード種別に応じて Manager がカウントする。 */
+  recordAchievementCardPlayed(card: import('@/domain/entities/Card').Card): void {
+    this.achievementProgressManager?.recordCardPlayed(card)
+  }
+
+  /** 実績進行度: 連撃カード生成を通知し、Manager が multi(>=5) を判定する。 */
+  recordAchievementMultiAttackGenerated(card: import('@/domain/entities/Card').Card): void {
+    this.achievementProgressManager?.recordMultiAttackGenerated(card)
+  }
+
+  /** 実績進行度: 臆病 trait 持ち敵の撃破/逃走を通知する。 */
+  recordAchievementCowardDefeated(enemy: import('@/domain/entities/Enemy').Enemy | null | undefined): void {
+    this.achievementProgressManager?.recordCowardDefeated(enemy)
+  }
+
+  /** 実績進行度: オークヒーロー撃破（チーム単位）を通知する。 */
+  recordAchievementOrcHeroDefeated(): void {
+    this.achievementProgressManager?.recordOrcHeroDefeated()
   }
 
   /** ViewManager が入力ロック/解除を伝えるための API。Snapshot 時の予測計算に利用。 */
@@ -857,6 +893,7 @@ export class Battle {
     if (!card) {
       throw new Error(`Card ${cardId} not found in hand`)
     }
+    this.recordAchievementCardPlayed(card)
     card.play(this, operations)
   }
 
@@ -1722,6 +1759,9 @@ export class Battle {
     }
 
     this.statusValue = outcome
+    if (outcome === 'victory' && this.enemyTeamValue.id === ORC_HERO_TEAM_ID) {
+      this.recordAchievementOrcHeroDefeated()
+    }
   }
 
   private checkPlayerDefeat(): void {

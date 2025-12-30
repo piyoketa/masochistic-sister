@@ -6,6 +6,23 @@
  */
 import { defineStore } from 'pinia'
 import { usePlayerStore } from './playerStore'
+import {
+  STATUS_COLLECT_ACHIEVEMENT_ID,
+  STATUS_COLLECT_TARGET,
+  CORROSION_ACHIEVEMENT_ID,
+  CORROSION_TARGET,
+  STATUS_USE_ACHIEVEMENT_ID,
+  STATUS_USE_TARGET,
+  MEMORY_USE_ACHIEVEMENT_ID,
+  MEMORY_USE_TARGET,
+  MULTI_ATTACK_ACHIEVEMENT_ID,
+  MULTI_ATTACK_TARGET,
+  COWARD_ACHIEVEMENT_ID,
+  COWARD_TARGET,
+  ORC_HERO_ACHIEVEMENT_ID,
+  ORC_HERO_TARGET,
+} from '@/domain/achievements/constants'
+import type { AchievementProgress } from '@/domain/achievements/types'
 
 export type AchievementStatus = 'not-achieved' | 'just-achieved' | 'owned' | 'reacquirable'
 
@@ -66,27 +83,27 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     title: '汚れを抱きしめて',
     description: '状態異常カードを累計8枚獲得する',
     reward: { type: 'relic', relicClassName: 'AdversityExcitementRelic', label: 'レリック: 逆境' },
-    initialStatus: 'just-achieved',
-    progressLabel: '8 / 8',
-    progressRatio: 1,
+    initialStatus: 'not-achieved',
+    progressLabel: '0 / 8',
+    progressRatio: 0,
   },
   {
     id: 'memory-use',
     title: '痛みの余韻',
     description: '被虐の記憶カードを累計5回使用する',
     reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
-    initialStatus: 'owned',
-    progressLabel: '5 / 5',
-    progressRatio: 1,
+    initialStatus: 'not-achieved',
+    progressLabel: '0 / 5',
+    progressRatio: 0,
   },
   {
     id: 'multi-attack',
     title: '手数の暴力',
     description: '攻撃回数5回以上の連続攻撃を獲得する',
     reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
-    initialStatus: 'reacquirable',
-    progressLabel: '1 / 1',
-    progressRatio: 1,
+    initialStatus: 'not-achieved',
+    progressLabel: '0 / 1',
+    progressRatio: 0,
   },
   {
     id: 'coward',
@@ -111,9 +128,9 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     title: '汚れの操り手',
     description: '状態異常カードを累計4回使用する',
     reward: { type: 'relic', relicClassName: 'PureBodyRelic', label: 'レリック: 清廉' },
-    initialStatus: 'just-achieved',
-    progressLabel: '4 / 4',
-    progressRatio: 1,
+    initialStatus: 'not-achieved',
+    progressLabel: '0 / 4',
+    progressRatio: 0,
   },
   {
     id: 'memory-repeat-1',
@@ -376,6 +393,37 @@ export const useAchievementStore = defineStore('achievement', {
         this.history = buildDefaultHistory()
       }
       this.initialized = true
+    },
+    applyProgress(progress: AchievementProgress): void {
+      this.ensureInitialized()
+      const maybeUpdate = (
+        achievementId: string,
+        condition: boolean,
+      ) => {
+        if (!condition) return
+        const current = this.historyMap.get(achievementId)
+        if (!current || current.status !== 'not-achieved') {
+          return
+        }
+        const updated: AchievementHistoryEntry = {
+          ...current,
+          status: 'just-achieved',
+          lastClaimedAt: null,
+        }
+        this.history = this.history.map((entry) =>
+          entry.id === achievementId ? updated : entry,
+        )
+      }
+
+      maybeUpdate(CORROSION_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_TARGET)
+      maybeUpdate(STATUS_COLLECT_ACHIEVEMENT_ID, progress.statusCardMemories >= STATUS_COLLECT_TARGET)
+      maybeUpdate(STATUS_USE_ACHIEVEMENT_ID, progress.statusCardUsed >= STATUS_USE_TARGET)
+      maybeUpdate(MEMORY_USE_ACHIEVEMENT_ID, progress.memoryCardUsed >= MEMORY_USE_TARGET)
+      maybeUpdate(MULTI_ATTACK_ACHIEVEMENT_ID, progress.multiAttackAcquired >= MULTI_ATTACK_TARGET)
+      maybeUpdate(COWARD_ACHIEVEMENT_ID, progress.cowardDefeatedIds.length >= COWARD_TARGET)
+      maybeUpdate(ORC_HERO_ACHIEVEMENT_ID, progress.orcHeroDefeated === true)
+
+      this.persist()
     },
     addMemoryPoints(amount: number): void {
       const gain = Math.max(0, Math.floor(amount))

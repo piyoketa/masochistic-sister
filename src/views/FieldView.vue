@@ -10,6 +10,8 @@ import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { useAudioStore } from '@/stores/audioStore'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 import { useAchievementStore } from '@/stores/achievementStore'
+import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
+import { STATUS_COLLECT_ACHIEVEMENT_ID, STATUS_COLLECT_TARGET } from '@/domain/achievements/constants'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { CardInfo } from '@/types/battle'
@@ -30,6 +32,8 @@ const fieldStore = useFieldStore()
 const pileOverlayStore = usePileOverlayStore()
 const achievementStore = useAchievementStore()
 achievementStore.ensureInitialized()
+const achievementProgressStore = useAchievementProgressStore()
+achievementProgressStore.ensureInitialized()
 const imageHub = useImageHub()
 const SISTER_ICON_SRC = '/assets/players/icons/sister_dot.png'
 imageHub.getElement(SISTER_ICON_SRC)
@@ -41,18 +45,28 @@ const debugMenuOpen = ref(false)
 const achievementWindowOpen = ref(false)
 const achievementMemoryPoints = computed(() => achievementStore.memoryPoints)
 const achievementPreviewEntries = computed<AchievementCardView[]>(() =>
-  achievementStore.entriesForView.map((entry) => ({
-    id: entry.id,
-    title: entry.title,
-    description: entry.description,
-    rewardLabel: entry.reward.label,
-    status: entry.status,
-    progressLabel: entry.progressLabel,
-    progressRatio: entry.progressRatio,
-    costLabel: entry.costLabel,
-    // 受取可否はストア側で判定するため、UIでは基本有効化する。
-    actionable: true,
-  })),
+  achievementStore.entriesForView.map((entry) => {
+    const base: AchievementCardView = {
+      id: entry.id,
+      title: entry.title,
+      description: entry.description,
+      rewardLabel: entry.reward.label,
+      status: entry.status,
+      progressLabel: entry.progressLabel,
+      progressRatio: entry.progressRatio,
+      costLabel: entry.costLabel,
+      actionable: true,
+    }
+    if (entry.id === STATUS_COLLECT_ACHIEVEMENT_ID) {
+      const current = achievementProgressStore.statusCardMemories
+      return {
+        ...base,
+        progressLabel: `${current} / ${STATUS_COLLECT_TARGET}`,
+        progressRatio: Math.min(1, current / STATUS_COLLECT_TARGET),
+      }
+    }
+    return base
+  }),
 )
 const hasFreshAchievement = computed(() => achievementStore.hasFreshAchievement)
 

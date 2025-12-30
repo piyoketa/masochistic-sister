@@ -153,6 +153,7 @@ export class Player {
       repository: battle.cardRepository,
       battle,
     })
+    battle.recordAchievementStateApplied(state)
     battle.recordStateCardAnimation({
       stateId: state.id,
       stateName: state.name,

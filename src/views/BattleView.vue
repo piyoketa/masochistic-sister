@@ -46,6 +46,8 @@ import type { DamageOutcome } from '@/domain/entities/Damages'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useRewardStore } from '@/stores/rewardStore'
 import { useFieldStore } from '@/stores/fieldStore'
+import { useAchievementStore } from '@/stores/achievementStore'
+import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import type { RelicDisplayEntry, RelicUiState } from '@/view/relicDisplayMapper'
@@ -103,9 +105,11 @@ const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const rewardStore = useRewardStore()
 const fieldStore = useFieldStore()
+const achievementStore = useAchievementStore()
+const achievementProgressStore = useAchievementProgressStore()
 const pileOverlayStore = usePileOverlayStore()
 
-const battleFactory = resolveBattleFactory(props, playerStore)
+const battleFactory = resolveBattleFactory(props, playerStore, achievementProgressStore)
 const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
 
 const managerState = viewManager.state
@@ -484,6 +488,7 @@ const canUndo = computed(() => {
 // デバッグ用: 即勝利して報酬へ遷移する
 async function handleForceVictory(): Promise<void> {
   if (!viewManager.battle) return
+  syncAchievementProgressAfterBattle(viewManager.battle)
   const reward = new BattleReward(viewManager.battle).compute()
   rewardStore.setReward({
     battleId: viewManager.battle.id,
@@ -736,6 +741,7 @@ async function handleOpenReward(): Promise<void> {
   if (!battle || !snapshot.value) {
     return
   }
+  syncAchievementProgressAfterBattle(battle)
   // バトル終了時点のHPをストアへ反映しておく（褒章処理後の表示用）。
   playerStore.hp = snapshot.value.player.currentHp
   playerStore.maxHp = snapshot.value.player.maxHp
@@ -769,6 +775,15 @@ function handleHandError(message: string): void {
 
 function handleHandHideOverlay(): void {
   hideDescriptionOverlay()
+}
+
+function syncAchievementProgressAfterBattle(battle: Battle | null): void {
+  if (!battle?.achievementProgressManager) {
+    return
+  }
+  // Battle 内で集計された進行度をラン進行度ストアへ反映し、閾値到達を永続ストアへ伝える。
+  achievementProgressStore.updateFromManager(battle.achievementProgressManager)
+  achievementStore.applyProgress(achievementProgressStore.progress)
 }
 
 function handleRelicHover(event: MouseEvent | FocusEvent, relic: RelicDisplayEntry): void {
@@ -997,6 +1012,7 @@ function createDefaultViewManager(createBattle: () => Battle): ViewManager {
 function resolveBattleFactory(
   props: BattleViewProps,
   playerStore: ReturnType<typeof usePlayerStore>,
+  achievementProgressStore: ReturnType<typeof useAchievementProgressStore>,
 ): () => Battle {
   switch (props.preset) {
     case 'testcase1':
@@ -1016,13 +1032,20 @@ function resolveBattleFactory(
     case 'stage1':
     case 'default':
     default:
-      return () => createBattleFromPlayerStore(props.teamId ?? 'snail', playerStore, props.bonusLevels)
+      return () =>
+        createBattleFromPlayerStore(
+          props.teamId ?? 'snail',
+          playerStore,
+          achievementProgressStore,
+          props.bonusLevels,
+        )
   }
 }
 
 function createBattleFromPlayerStore(
   teamId: string,
   playerStore: ReturnType<typeof usePlayerStore>,
+  achievementProgressStore: ReturnType<typeof useAchievementProgressStore>,
   bonusLevels?: number,
 ): Battle {
   const enemyTeam = resolveEnemyTeam(teamId, { bonusLevels })
@@ -1047,6 +1070,8 @@ function createBattleFromPlayerStore(
     log: new BattleLog(),
     turn: new TurnManager(),
     relicClassNames: [...playerStore.relics],
+    // ラン進行度をBattleへ注入し、バトル内で rememberState などから実績をカウントできるようにする。
+    achievementProgressManager: achievementProgressStore.buildManager(),
   })
 }
 
