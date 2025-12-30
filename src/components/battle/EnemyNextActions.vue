@@ -49,10 +49,16 @@ const formattedActions = computed<EnemyActionChipViewModel[]>(() =>
 
 <style scoped>
 .enemy-next-actions {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   height: 80px;
   align-items: center;
   justify-content: center;
+  padding: 2px 4px; /* 以前のラップ要素のパディングを移動し、表示位置を変えずに重ねる */
+  z-index: 2; /* 敵カードより前面で操作可能にする */
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 

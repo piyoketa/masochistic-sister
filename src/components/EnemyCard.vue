@@ -250,11 +250,12 @@ defineExpose({ playDamage, playEnemySound })
 <style scoped>
 .enemy-card {
   position: relative;
+  top: -30px; /* 背景を上方向に広げつつ、下端の表示位置を据え置くために相殺用のオフセットを与える */
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 220px;
-  margin-bottom: 30px;
+  min-height: 250px; /* 背景画像の上側が欠けないように高さを拡張する */
+  margin-bottom: 0; /* スロット全体の縦寸を変えずに上方向への拡張量を吸収する */
   padding: 12px;
   border-radius: 16px;
   background-image: var(--enemy-bg-image);

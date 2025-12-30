@@ -476,10 +476,12 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
 }
 
 .enemy-slot {
+  position: relative;
   min-height: 200px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-top: 90px; /* 行動チップを絶対配置にしても従来の位置に見えるよう、従来の高さ分を余白として確保する */
 }
 
 .enemy-slot--defeated {
@@ -495,7 +497,11 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
 }
 
 .enemy-slot__actions {
-  padding: 2px 4px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2; /* 行動チップをカード背景より前面に載せる */
 }
 
 :deep(.enemy-card-enter-active),
