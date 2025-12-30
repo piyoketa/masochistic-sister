@@ -8,6 +8,7 @@ import { SlipperyTouchRelic } from './SlipperyTouchRelic'
 import { DevoutBelieverRelic } from './DevoutBelieverRelic'
 import { ArcaneAdaptationRelic } from './ArcaneAdaptationRelic'
 import { DailyRoutineRelic } from './DailyRoutineRelic'
+import { RedrawRelic } from './RedrawRelic'
 import { HolyProtectionRelic } from './HolyProtectionRelic'
 import { MemorySaintRelic } from './MemorySaintRelic'
 import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
@@ -37,6 +38,7 @@ const RELIC_FACTORIES: Record<string, () => Relic> = {
   SlipperyTouchRelic: () => new SlipperyTouchRelic(),
   DevoutBelieverRelic: () => new DevoutBelieverRelic(),
   ArcaneAdaptationRelic: () => new ArcaneAdaptationRelic(),
+  RedrawRelic: () => new RedrawRelic(),
   ThoroughPreparationRelic: () => new ThoroughPreparationRelic(),
   RepulsionRelic: () => new RepulsionRelic(),
   DeathMatchRelic: () => new DeathMatchRelic(),

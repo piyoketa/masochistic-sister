@@ -23,6 +23,7 @@ export type RelicId =
   | 'memory-saint-relic'
   | 'no-violence'
   | 'pure-body'
+  | 'redraw-relic'
   | 'repulsion'
   | 'sacrificial-awareness'
   | 'slippery-touch'

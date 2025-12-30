@@ -15,6 +15,7 @@ import { MemorySaintRelic } from './MemorySaintRelic'
 import { RepulsionRelic } from './RepulsionRelic'
 import { DeathMatchRelic } from './DeathMatchRelic'
 import { DailyRoutineRelic } from './DailyRoutineRelic'
+import { RedrawRelic } from './RedrawRelic'
 
 export type { Relic } from './Relic'
 export { ActiveRelic } from './ActiveRelic'
@@ -35,6 +36,7 @@ export {
   RepulsionRelic,
   DeathMatchRelic,
   DailyRoutineRelic,
+  RedrawRelic,
 }
 
 export const DEFAULT_PLAYER_RELICS: Relic[] = [
@@ -54,4 +56,5 @@ export const DEFAULT_PLAYER_RELICS: Relic[] = [
   new RepulsionRelic(),
   new DeathMatchRelic(),
   new DailyRoutineRelic(),
+  new RedrawRelic(),
 ]
