@@ -68,6 +68,16 @@ const router = createRouter({
       component: () => import('@/views/CutInDemoView.vue'),
     },
     {
+      path: '/demo/enemy-turn',
+      name: 'enemy-turn-demo',
+      component: () => import('@/views/EnemyTurnDemoView.vue'),
+    },
+    {
+      path: '/demo/player-turn',
+      name: 'player-turn-demo',
+      component: () => import('@/views/PlayerTurnDemoView.vue'),
+    },
+    {
       path: '/deck',
       name: 'deck-view',
       component: () => import('@/views/DeckView.vue'),

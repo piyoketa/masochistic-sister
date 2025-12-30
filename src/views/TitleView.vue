@@ -123,6 +123,16 @@ const demoLinks: LinkEntry[] = [
     to: '/demo/cut-in',
   },
   {
+    label: 'Enemy Turn Demo',
+    description: 'ターン切替の「Enemy Turn」0.6s 表示デモ',
+    to: '/demo/enemy-turn',
+  },
+  {
+    label: 'Player Turn Demo',
+    description: 'ターン開始の「Player Turn」0.6s 表示デモ',
+    to: '/demo/player-turn',
+  },
+  {
     label: 'Audio Hub Demo',
     description: '音声プリロード/再生の挙動を確認',
     to: '/demo/audio',

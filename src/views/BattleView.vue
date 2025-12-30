@@ -64,10 +64,16 @@ import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
 import { createCardFromBlueprint, type CardBlueprint } from '@/domain/library/Library'
 import { safeClearTimeout, safeSetTimeout, type SafeTimeoutHandle } from '@/utils/safeTimeout'
+import TurnIndicatorModal from '@/components/battle/TurnIndicatorModal.vue'
 
 declare global {
   interface Window {
     __MASO_ANIMATION_DEBUG__?: boolean
+    __MASO_TURN_INDICATOR__?: {
+      play: (variant: 'player' | 'enemy') => void
+      player: () => void
+      enemy: () => void
+    }
   }
 }
 
@@ -151,6 +157,7 @@ const pileChoiceState = reactive<{
 })
 const playerDamageEffectsRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 const cutInRef = ref<InstanceType<typeof CutInOverlay> | null>(null)
+const turnIndicatorRef = ref<InstanceType<typeof TurnIndicatorModal> | null>(null)
 const playerDamageOutcomes = ref<DamageOutcome[]>([])
 const currentCutInSrc = ref<string>(BATTLE_CUTIN_ASSETS[0] ?? '/assets/cut_ins/MasochisticAuraAction.png')
 const manaPulseKey = ref(0)
@@ -235,6 +242,27 @@ function showTransientError(message: string): void {
   }, ERROR_OVERLAY_DURATION_MS)
 }
 
+function playTurnIndicatorOverlay(variant: 'player' | 'enemy'): void {
+  // BattleView からの直接呼び出しやデバッグコンソールからの注入に備えた薄い委譲レイヤー
+  turnIndicatorRef.value?.play(variant)
+}
+
+function registerTurnIndicatorDebugHooks(): void {
+  if (typeof window === 'undefined') return
+  window.__MASO_TURN_INDICATOR__ = {
+    play: (variant: 'player' | 'enemy') => playTurnIndicatorOverlay(variant),
+    player: () => playTurnIndicatorOverlay('player'),
+    enemy: () => playTurnIndicatorOverlay('enemy'),
+  }
+}
+
+function unregisterTurnIndicatorDebugHooks(): void {
+  if (typeof window === 'undefined') return
+  if (window.__MASO_TURN_INDICATOR__) {
+    window.__MASO_TURN_INDICATOR__ = undefined
+  }
+}
+
 function getPlayerOriginRect(): DOMRect | null {
   return mainLayoutRef.value?.getPlayerCardRect() ?? null
 }
@@ -267,6 +295,7 @@ function handleManagerEvent(event: ViewManagerEvent) {
 subscriptions.push(viewManager.subscribe(handleManagerEvent))
 
 onMounted(() => {
+  registerTurnIndicatorDebugHooks()
   preloadBattleAssets().catch((error) => {
     if (import.meta.env.DEV) {
       console.warn('[BattleView] preloadBattleAssets failed', error)
@@ -285,6 +314,7 @@ onUnmounted(() => {
   subscriptions.forEach((dispose) => dispose())
   clearErrorOverlayTimer()
   audioStore.stopBgm()
+  unregisterTurnIndicatorDebugHooks()
 })
 
 const playerMana = computed(() => ({
@@ -854,6 +884,7 @@ async function executeCommand(command: AnimationCommand): Promise<void> {
         issuedAt: performance.now(),
         resolvedEntry: command.resolvedEntry,
       }
+      maybePlayTurnIndicatorForStage(command.metadata)
       logAnimationStageEvent(command)
       break
     case 'wait': {
@@ -902,6 +933,17 @@ function logAnimationStageEvent(command: Extract<AnimationCommand, { type: 'stag
     stage,
     batchId: command.batchId,
   })
+}
+
+function maybePlayTurnIndicatorForStage(metadata?: StageEventMetadata): void {
+  const stage = metadata?.stage
+  // ターン開始/終了の stage が流れてきたタイミングで、対応するフラッシュ演出を発火させる。
+  // OperationRunner 側の stage メタデータに依存し、戦闘ロジックと描画ロジックの責務分離を保つ。
+  if (stage === 'turn-start') {
+    playTurnIndicatorOverlay('player')
+  } else if (stage === 'turn-end') {
+    playTurnIndicatorOverlay('enemy')
+  }
 }
 
 function resetUiStateAfterTimelineChange(): void {
@@ -1056,6 +1098,7 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
         class="battle-cutin-overlay"
         :src="currentCutInSrc"
       />
+      <TurnIndicatorModal ref="turnIndicatorRef" />
     </template>
     <template #actions>
       <button

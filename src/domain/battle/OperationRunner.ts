@@ -91,7 +91,7 @@ const ENEMY_ACTION_AUDIO_MAP = new Map<string, EnemyActionAudioConfig>([
 
 export class OperationRunner {
   private static readonly CARD_CREATE_ANIMATION_DURATION_MS = 1500
-  private static readonly CARD_TRASH_ANIMATION_DURATION_MS = 400
+  private static readonly CARD_TRASH_ANIMATION_DURATION_MS = 600
   private static readonly CARD_ELIMINATE_ANIMATION_DURATION_MS = 720
   private static readonly STATE_CARD_ANIMATION_DURATION_MS = 500
   private static readonly MEMORY_CARD_ANIMATION_DURATION_MS = 1500
