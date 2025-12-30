@@ -18,6 +18,11 @@ export class TailwindAction extends AllyBuffSkill {
         cost: 0,
         subtitle: '',
       },
+      audioCue: {
+        soundId: 'skills/kurage-kosho_status03.mp3',
+        waitMs: 0, // ステータス反映を待たせないために0msに設定
+        durationMs: 0, 
+      },
       targetTags: ['acceleratable', 'multi-attack'],
       affinityKey: 'tailwind',
       inflictStates: [() => new AccelerationState(magnitude)],

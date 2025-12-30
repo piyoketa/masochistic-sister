@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
 
+import fs from 'node:fs'
+import path from 'node:path'
+import { inspect } from 'node:util'
+
 import { Battle } from '@/domain/battle/Battle'
 import { Deck } from '@/domain/battle/Deck'
 import { Hand } from '@/domain/battle/Hand'
@@ -16,8 +20,8 @@ import { KamaitachiEnemy } from '@/domain/entities/enemies/KamaitachiEnemy'
 import { HummingbirdEnemy } from '@/domain/entities/enemies/HummingbirdEnemy'
 import { SlugEnemy } from '@/domain/entities/enemies/SlugEnemy'
 import { ProtagonistPlayer } from '@/domain/entities/players'
-import { buildOperationLog, type OperationLogEntryConfig } from './utils/battleLogTestUtils'
-import { requireEnemyId } from './utils/scenarioEntityUtils'
+import { buildOperationLog, type OperationLogEntryConfig } from '../utils/battleLogTestUtils'
+import { requireEnemyId } from '../utils/scenarioEntityUtils'
 
 /**
  * 行動順に合わせて決まった乱数を返すジェネレーター。
@@ -56,7 +60,7 @@ const battleFactory = () => {
   })
 
   return new Battle({
-    id: 'battle-scenario-4',
+    id: 'battle-tailwind-animation',
     cardRepository: new CardRepository(),
     player: new ProtagonistPlayer(),
     enemyTeam,
@@ -71,15 +75,15 @@ const battleFactory = () => {
   })
 }
 
-// 操作キュー: プレイヤー操作は行わず即ターン終了→敵ターンのアニメーションを再生させる。
+// 操作キュー: プレイヤー操作は行わず即ターン終了し、敵ターンの追い風アニメーションを再生させる指示。
 const operationEntries: OperationLogEntryConfig[] = [
   {
     type: 'end-player-turn',
   },
 ]
 
-describe('シナリオ4: ハチドリの追い風でオーク力士を加速', () => {
-  it('ハチドリが追い風を発動した直後にオーク力士へ加速(1)が付与される', () => {
+describe('アニメーション: ハチドリの追い風', () => {
+  it('追い風直後のスナップショットでオーク力士に加速(1)が付与され、actionLogをダンプする', () => {
     const operationLog = buildOperationLog(operationEntries, operationEntries.length - 1)
     const replayer = new OperationLogReplayer({
       createBattle: battleFactory,
@@ -87,11 +91,23 @@ describe('シナリオ4: ハチドリの追い風でオーク力士を加速', (
     })
     const { actionLog, initialSnapshot, finalSnapshot } = replayer.buildActionLog()
 
+    // デバッグ確認のため、追い風を含む actionLog 全体を __outputs__ に出力する。
+    const outputDir = path.resolve(process.cwd(), 'tests', 'integration', '__outputs__')
+    fs.mkdirSync(outputDir, { recursive: true })
+    const logDumpPath = path.join(outputDir, 'TailwindAnimation-actionLog.log')
+    const expandedActionLog = inspect(actionLog.toArray(), {
+      depth: null,
+      maxArrayLength: null,
+      sorted: true,
+      compact: false,
+    })
+    fs.writeFileSync(logDumpPath, expandedActionLog, 'utf-8')
+
     const initialEnemies = initialSnapshot.snapshot.enemies
     const orcSumoId = requireEnemyId(initialEnemies, 'オーク力士')
     const hummingbirdId = requireEnemyId(initialEnemies, 'ハチドリ')
 
-    // 追い風演出（enemy-act）を特定し、そのバッチ直後のスナップショットを検証する。
+    // アニメーション指示の中で「enemy-act 追い風」を拾う。演出開始（音再生）直後に加速が乗るかを見る。
     const tailwindEntry = actionLog
       .toArray()
       .find(

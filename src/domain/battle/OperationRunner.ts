@@ -18,7 +18,7 @@ import type {
 } from './ActionLog'
 import { ActionLog } from './ActionLog'
 import type { Card } from '../entities/Card'
-import type { ActionAudioCue, ActionCutInCue } from '../entities/Action'
+import type { Action, ActionAudioCue, ActionCutInCue } from '../entities/Action'
 import type { DamageOutcome } from '../entities/Damages'
 import type { RelicId } from '../entities/relics/relicTypes'
 import { isPredictionDisabled } from '../utils/predictionToggle'
@@ -776,15 +776,34 @@ export class OperationRunner {
   }
 
   private cloneFullSnapshot(source: FullBattleSnapshot): FullBattleSnapshot {
+    // HP予測のシミュレーション再生で元の Action インスタンスを汚染しないため、Action は都度クローンを生成して使い回す。
+    // （追い風の planned target がシミュレーション側で clear され、本番キューから消える事象への対策）
+    // 非列挙プロパティ（inflictStateFactories など）も含めてコピーするために、PropertyDescriptor ベースで複製する。
+    const actionCache = new Map<Action, Action>()
+    const cloneAction = (action: Action): Action => {
+      const cached = actionCache.get(action)
+      if (cached) {
+        return cached
+      }
+      // プロトタイプを維持しつつ、自前フィールドを descriptor ごと shallow copy する。
+      const cloned = Object.create(Object.getPrototypeOf(action)) as Action
+      Object.defineProperties(cloned, Object.getOwnPropertyDescriptors(action))
+      actionCache.set(action, cloned)
+      return cloned
+    }
+
+    const cloneActionList = (actions: Action[]): Action[] => actions.map((action) => cloneAction(action))
+
     return {
       snapshot: this.cloneBattleSnapshot(source.snapshot),
       enemyQueues: source.enemyQueues.map((entry) => ({
         enemyId: entry.enemyId,
         queue: {
           queueState: {
-            actions: [...entry.queue.queueState.actions],
+            actions: cloneActionList(entry.queue.queueState.actions),
             turnActions: entry.queue.queueState.turnActions.map((turnAction) => ({
               ...turnAction,
+              action: cloneAction(turnAction.action),
               plan: turnAction.plan ? { ...turnAction.plan } : undefined,
             })),
             metadata: entry.queue.queueState.metadata
@@ -792,7 +811,7 @@ export class OperationRunner {
               : undefined,
             seed: entry.queue.queueState.seed,
           },
-          actionHistory: [...entry.queue.actionHistory],
+          actionHistory: entry.queue.actionHistory.map((action) => cloneAction(action)),
         },
       })),
       relicStates: source.relicStates
