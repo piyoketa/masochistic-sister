@@ -38,6 +38,8 @@ export function createAudioHub(soundIds: readonly string[]): AudioHub {
   let preloadPromise: Promise<void> | null = null
   const howls = new Map<string, Howl>()
   let bgm: { id: string; howl: Howl } | null = null
+  // BGM がまだ生成されていない状態でも希望音量を覚えておき、再生直後に適用するためのキャッシュ
+  let bgmVolume = 1
 
   async function preloadAll(): Promise<void> {
     if (preloadPromise) return preloadPromise
@@ -109,6 +111,8 @@ export function createAudioHub(soundIds: readonly string[]): AudioHub {
     }
     bgm = { id: key, howl }
     howl.play()
+    // setBgmVolume が先行して呼ばれていた場合でも反映されるよう、再生後にキャッシュ音量を適用する
+    bgm.howl.volume(bgmVolume)
   }
 
   function stopBgm(): void {
@@ -119,8 +123,9 @@ export function createAudioHub(soundIds: readonly string[]): AudioHub {
   }
 
   function setBgmVolume(volume: number): void {
+    bgmVolume = Math.min(1, Math.max(0, volume))
     if (bgm) {
-      bgm.howl.volume(Math.min(1, Math.max(0, volume)))
+      bgm.howl.volume(bgmVolume)
     }
   }
 
