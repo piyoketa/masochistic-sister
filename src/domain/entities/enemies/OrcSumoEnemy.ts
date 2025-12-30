@@ -25,8 +25,8 @@ export class OrcSumoEnemy extends Enemy {
     )
     const baseProps = {
       name: 'オーク力士',
-      maxHp: 40,
-      currentHp: 40,
+      maxHp: 45,
+      currentHp: 45,
       actions: [flurry, new FattenAction(), new BattleDanceAction()],
       states: [new HeavyweightState()],
       // 追い風の対象になれるよう、加速向き・多段攻撃タグを付与する。
@@ -40,8 +40,8 @@ export class OrcSumoEnemy extends Enemy {
         level: 2,
         apply: (props: EnemyProps) => ({
           ...props,
-          maxHp: 50,
-          currentHp: 50,
+          maxHp: 60,
+          currentHp: 60,
         }),
       },
       {
