@@ -89,9 +89,11 @@ function buildHandEntry(
   const definition = card.definition
   const identifier = card.id !== undefined ? `card-${card.id}` : `card-${index}`
   const operations = definition.operations ?? []
-  const affordable = card.cost <= currentMana
+  // runtimeCost がプレーンなスナップショットにも残るように Battle 側で enumerables を付けているため、表示コストもこれを最優先に使う。
+  const resolvedCost = resolveCardCostForDisplay(card)
+  const affordable = resolvedCost <= currentMana
 
-  const presentation = buildCardPresentation(options, card, index)
+  const presentation = buildCardPresentation(options, card, index, resolvedCost)
 
   return {
     key: identifier,
@@ -104,7 +106,12 @@ function buildHandEntry(
   }
 }
 
-function buildCardPresentation(options: UseHandPresentationOptions, card: Card, index: number): CardInfo {
+function buildCardPresentation(
+  options: UseHandPresentationOptions,
+  card: Card,
+  index: number,
+  resolvedCost: number,
+): CardInfo {
   const definition = card.definition
   const primaryTags: CardTagInfo[] = []
   const effectTags: CardTagInfo[] = []
@@ -251,7 +258,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     id: card.id !== undefined ? `card-${card.id}` : `card-${index}`,
     title: statusAwareTitle,
     subtitle,
-    cost: card.cost,
+    cost: resolvedCost,
     primaryTags,
     categoryTags,
     descriptionSegments,
@@ -260,7 +267,7 @@ function buildCardPresentation(options: UseHandPresentationOptions, card: Card, 
     damageAmountBoosted,
     damageCountBoosted,
     disabled: !active,
-    affordable: card.cost <= (options.props.snapshot?.player.currentMana ?? card.cost),
+    affordable: resolvedCost <= (options.props.snapshot?.player.currentMana ?? resolvedCost),
   }
 
   if (card.type === 'attack') {
@@ -414,4 +421,12 @@ function normalizeSubtitle(value?: string): string | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
+}
+
+function resolveCardCostForDisplay(card: Card): number {
+  const runtimeCost = (card as any).runtimeCost
+  if (typeof runtimeCost === 'number') {
+    return runtimeCost
+  }
+  return card.cost
 }
