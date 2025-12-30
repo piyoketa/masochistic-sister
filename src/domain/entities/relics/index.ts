@@ -9,6 +9,7 @@ import { NoViolenceRelic } from './NoViolenceRelic'
 import { SlipperyTouchRelic } from './SlipperyTouchRelic'
 import { DevoutBelieverRelic } from './DevoutBelieverRelic'
 import { ArcaneAdaptationRelic } from './ArcaneAdaptationRelic'
+import { HolyProtectionRelic } from './HolyProtectionRelic'
 import { ThoroughPreparationRelic } from './ThoroughPreparationRelic'
 import { MemorySaintRelic } from './MemorySaintRelic'
 import { RepulsionRelic } from './RepulsionRelic'
@@ -28,6 +29,7 @@ export {
   SlipperyTouchRelic,
   DevoutBelieverRelic,
   ArcaneAdaptationRelic,
+  HolyProtectionRelic,
   ThoroughPreparationRelic,
   MemorySaintRelic,
   RepulsionRelic,
@@ -47,6 +49,7 @@ export const DEFAULT_PLAYER_RELICS: Relic[] = [
   new SlipperyTouchRelic(),
   new DevoutBelieverRelic(),
   new ArcaneAdaptationRelic(),
+  new HolyProtectionRelic(),
   new ThoroughPreparationRelic(),
   new RepulsionRelic(),
   new DeathMatchRelic(),

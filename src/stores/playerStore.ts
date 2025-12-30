@@ -4,6 +4,7 @@ import { buildDefaultDeck, buildMagicDeck } from '@/domain/entities/decks'
 import { listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
 import { MemorySaintRelic } from '@/domain/entities/relics/MemorySaintRelic'
 import { DevilsKissRelic } from '@/domain/entities/relics/DevilsKissRelic'
+import { HolyProtectionRelic } from '@/domain/entities/relics/HolyProtectionRelic'
 import { createCardFromBlueprint, buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
 import { Card } from '@/domain/entities/Card'
 import { deleteSlot, listSlots, loadSlot, saveSlot, type PlayerSaveData, type SaveSlotSummary } from '@/utils/saveStorage'
@@ -14,7 +15,7 @@ export type DeckPreset = 'holy' | 'magic'
 
 // デッキプリセットごとの初期所持レリックを明示しておく。プリセット切替時に不要なレリックが残らないようにする。
 const INITIAL_RELICS_BY_PRESET: Record<DeckPreset, string[]> = {
-  holy: [MemorySaintRelic.name],
+  holy: [MemorySaintRelic.name, HolyProtectionRelic.name],
   magic: [DevilsKissRelic.name],
 }
 

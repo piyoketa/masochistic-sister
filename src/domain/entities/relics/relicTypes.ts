@@ -18,6 +18,7 @@ export type RelicId =
   | 'devils-kiss'
   | 'devout-believer'
   | 'daily-routine-relic'
+  | 'holy-protection'
   | 'lightweight-combat'
   | 'memory-saint-relic'
   | 'no-violence'
