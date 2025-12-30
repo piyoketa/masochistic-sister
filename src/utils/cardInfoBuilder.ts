@@ -246,16 +246,44 @@ export function resolveIsActive(card: Card, context?: CardActiveContext): boolea
   if (!action || typeof (action as any).isActive !== 'function') {
     return true
   }
-  const runtimeProp = (card as any).runtimeActive
-  if (runtimeProp !== undefined) {
-    return Boolean(runtimeProp)
-  }
-  const runtime = card.getRuntimeActive?.()
-  if (runtime !== undefined) {
-    return runtime
-  }
+  const debug =
+    (typeof process !== 'undefined' && process.env?.VITE_DEBUG_HAND_ACTIVE === 'true') ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_HAND_ACTIVE === 'true')
+  // Battle コンテキストがある場合は、古い runtimeActive を信用せず毎回 isActive を評価する。
   if (!context?.battle) {
+    const runtimeProp = (card as any).runtimeActive
+    if (runtimeProp !== undefined) {
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.info('[resolveIsActive] runtimeActive(prop)', {
+          cardId: card.id,
+          title: card.title,
+          runtimeActive: runtimeProp,
+        })
+      }
+      return Boolean(runtimeProp)
+    }
+    const runtime = card.getRuntimeActive?.()
+    if (runtime !== undefined) {
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.info('[resolveIsActive] runtimeActive(getter)', {
+          cardId: card.id,
+          title: card.title,
+          runtimeActive: runtime,
+        })
+      }
+      return runtime
+    }
     return true
+  }
+  if (debug) {
+    // eslint-disable-next-line no-console
+    console.info('[resolveIsActive] calling action.isActive', {
+      cardId: card.id,
+      title: card.title,
+      hasBattle: Boolean(context?.battle),
+    })
   }
   return (action as any).isActive({
     battle: context.battle,

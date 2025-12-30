@@ -341,6 +341,8 @@ export class OperationRunner {
     }
     for (const action of immediateActions) {
       const summary = action.summary
+      // 即時敵行動は Battle.applyActionLogEntry を経由しないため、この場で最新スナップショットを境界として明示する
+      this.battle.markEntrySnapshotBoundary(summary.snapshotAfter)
       this.pendingEnemyActSummaries.push(summary)
       const metadataPayload = this.createEnemyActEntryMetadata(summary)
       if (action.trigger) {

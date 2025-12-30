@@ -41,11 +41,35 @@ export class FlashbackAction extends Skill {
     if (!battle) {
       return true
     }
+    const debug =
+      (typeof process !== 'undefined' && process.env?.VITE_DEBUG_FLASHBACK_ACTIVE === 'true') ||
+      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_FLASHBACK_ACTIVE === 'true')
+
     // 手札が満杯なら発動させても効果がないため無効扱いとする
     if (battle.hand.isAtLimit()) {
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.info('[FlashbackAction][isActive] hand is at limit', {
+          handSize: battle.hand.list().length,
+          handLimit: battle.hand.maxSize(),
+        })
+      }
       return false
     }
-    return this.findCandidate(battle) !== undefined
+
+    const candidate = this.findCandidate(battle)
+    if (debug) {
+      // eslint-disable-next-line no-console
+      console.info('[FlashbackAction][isActive] evaluated', {
+        discardSize: battle.discardPile.list().length,
+        discardAttacks: battle.discardPile
+          .list()
+          .filter((card) => card.definition.cardType === 'attack')
+          .map((card) => ({ id: card.id, title: card.title })),
+        active: Boolean(candidate),
+      })
+    }
+    return candidate !== undefined
   }
 
   protected override perform(context: ActionContext): void {
