@@ -1,0 +1,447 @@
+/**
+ * 実績達成履歴を保持するストア。
+ * - 目的: 実績の状態（未達成/達成直後/獲得済み/再取得可能）と取得履歴・記憶ポイント残高を localStorage に保存し、UI とレリック/記憶ポイント付与処理に供給する。
+ * - 設計方針: 進捗判定ロジックは未実装のため、現状はデモ用の初期ステータスを定義し、報酬受取処理のみを扱う。
+ *   今後、ActionLog 監視などで実際の達成判定を行う際は、このストアの update API を拡張していく。
+ */
+import { defineStore } from 'pinia'
+import { usePlayerStore } from './playerStore'
+
+export type AchievementStatus = 'not-achieved' | 'just-achieved' | 'owned' | 'reacquirable'
+
+type AchievementReward =
+  | {
+      type: 'relic'
+      relicClassName: string
+      label: string
+    }
+  | {
+      type: 'memory-point'
+      amount: number
+      label: string
+    }
+
+type AchievementDefinition = {
+  id: string
+  title: string
+  description: string
+  reward: AchievementReward
+  initialStatus?: AchievementStatus
+  progressLabel?: string
+  progressRatio?: number
+  costLabel?: string
+  // 再取得時に消費する記憶ポイント。未指定の場合は0扱い（要件が固まったら増減可能）。
+  reacquireCost?: number
+}
+
+type AchievementHistoryEntry = {
+  id: string
+  status: AchievementStatus
+  claimedCount: number
+  lastClaimedAt: number | null
+}
+
+type AchievementPersistedPayload = {
+  version: typeof STORAGE_VERSION
+  memoryPoints: number
+  entries: AchievementHistoryEntry[]
+}
+
+const STORAGE_VERSION = 'v1'
+const STORAGE_KEY = `ms-achievement/${STORAGE_VERSION}/history`
+
+// UIデモとして20件の定義を持たせ、実績ウィンドウのスクロール検証も兼ねる。
+const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
+  {
+    id: 'corrosion-30',
+    title: '腐食に慣れた身体',
+    description: 'プレイヤーが受けた腐食スタックを累計30点まで溜める',
+    reward: { type: 'relic', relicClassName: 'LightweightCombatRelic', label: 'レリック: 軽装戦闘' },
+    initialStatus: 'not-achieved',
+    progressLabel: '12 / 30',
+    progressRatio: 0.4,
+  },
+  {
+    id: 'status-collect',
+    title: '汚れを抱きしめて',
+    description: '状態異常カードを累計8枚獲得する',
+    reward: { type: 'relic', relicClassName: 'AdversityExcitementRelic', label: 'レリック: 逆境' },
+    initialStatus: 'just-achieved',
+    progressLabel: '8 / 8',
+    progressRatio: 1,
+  },
+  {
+    id: 'memory-use',
+    title: '痛みの余韻',
+    description: '被虐の記憶カードを累計5回使用する',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'owned',
+    progressLabel: '5 / 5',
+    progressRatio: 1,
+  },
+  {
+    id: 'multi-attack',
+    title: '手数の暴力',
+    description: '攻撃回数5回以上の連続攻撃を獲得する',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'reacquirable',
+    progressLabel: '1 / 1',
+    progressRatio: 1,
+  },
+  {
+    id: 'coward',
+    title: '臆病への勝利',
+    description: '臆病 trait を持つ敵を撃破する',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'not-achieved',
+    progressLabel: '0 / 1',
+    progressRatio: 0,
+  },
+  {
+    id: 'orc-hero',
+    title: '英雄討伐者',
+    description: 'オークヒーローを撃破する',
+    reward: { type: 'memory-point', amount: 10, label: '記憶ポイント +10' },
+    initialStatus: 'not-achieved',
+    progressLabel: '0 / 1',
+    progressRatio: 0,
+  },
+  {
+    id: 'status-use',
+    title: '汚れの操り手',
+    description: '状態異常カードを累計4回使用する',
+    reward: { type: 'relic', relicClassName: 'PureBodyRelic', label: 'レリック: 清廉' },
+    initialStatus: 'just-achieved',
+    progressLabel: '4 / 4',
+    progressRatio: 1,
+  },
+  {
+    id: 'memory-repeat-1',
+    title: '痛みの余韻・再取得',
+    description: '被虐の記憶カードを累計5回使用する（再取得枠）',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'reacquirable',
+    progressLabel: '5 / 5',
+    progressRatio: 1,
+    costLabel: '再取得コスト: 2pt',
+    reacquireCost: 2,
+  },
+  {
+    id: 'memory-repeat-2',
+    title: '痛みの余韻・再取得2',
+    description: '被虐の記憶カードを累計5回使用する（2周目）',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'reacquirable',
+    progressLabel: '5 / 5',
+    progressRatio: 1,
+    costLabel: '再取得コスト: 3pt',
+    reacquireCost: 3,
+  },
+  {
+    id: 'multi-attack-repeat',
+    title: '手数の暴力・再取得',
+    description: '攻撃回数5回以上の連続攻撃を獲得する（再取得）',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'reacquirable',
+    progressLabel: '2 / 1',
+    progressRatio: 1,
+    costLabel: '再取得コスト: 4pt',
+    reacquireCost: 4,
+  },
+  {
+    id: 'corrosion-60',
+    title: '腐食との共存',
+    description: '腐食スタック累計60点',
+    reward: { type: 'memory-point', amount: 3, label: '記憶ポイント +3' },
+    initialStatus: 'not-achieved',
+    progressLabel: '12 / 60',
+    progressRatio: 0.2,
+  },
+  {
+    id: 'status-collect-2',
+    title: '汚れを抱きしめて・続編',
+    description: '状態異常カードを累計12枚獲得する',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'not-achieved',
+    progressLabel: '8 / 12',
+    progressRatio: 0.66,
+  },
+  {
+    id: 'memory-use-extended',
+    title: '痛みの余韻・深度',
+    description: '被虐の記憶カードを累計10回使用する',
+    reward: { type: 'memory-point', amount: 3, label: '記憶ポイント +3' },
+    initialStatus: 'not-achieved',
+    progressLabel: '5 / 10',
+    progressRatio: 0.5,
+  },
+  {
+    id: 'multi-attack-7',
+    title: '乱打の極み',
+    description: '攻撃回数7回以上の連続攻撃を獲得する',
+    reward: { type: 'relic', relicClassName: 'ActionForceRelic', label: 'レリック: 極手数の証' },
+    initialStatus: 'owned',
+    progressLabel: '1 / 1',
+    progressRatio: 1,
+  },
+  {
+    id: 'coward-repeat',
+    title: '臆病への勝利・再取得',
+    description: '臆病 trait を持つ敵を撃破（再取得）',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'reacquirable',
+    progressLabel: '1 / 1',
+    progressRatio: 1,
+    costLabel: '再取得コスト: 1pt',
+    reacquireCost: 1,
+  },
+  {
+    id: 'status-chain',
+    title: '汚れの連鎖',
+    description: '状態異常カードを3ターン連続で使用する',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'not-achieved',
+    progressLabel: '1 / 3',
+    progressRatio: 0.33,
+  },
+  {
+    id: 'memory-chain',
+    title: '痛覚連打',
+    description: '被虐の記憶カードを2ターン連続で使用する',
+    reward: { type: 'memory-point', amount: 1, label: '記憶ポイント +1' },
+    initialStatus: 'just-achieved',
+    progressLabel: '2 / 2',
+    progressRatio: 1,
+  },
+  {
+    id: 'boss-series',
+    title: '精鋭征伐',
+    description: 'エリート以上の敵を3回撃破する',
+    reward: { type: 'memory-point', amount: 4, label: '記憶ポイント +4' },
+    initialStatus: 'owned',
+    progressLabel: '3 / 3',
+    progressRatio: 1,
+  },
+  {
+    id: 'status-hold',
+    title: '汚れのコレクター',
+    description: '状態異常カードを手札に5枚保持したままターン終了',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'not-achieved',
+    progressLabel: '0 / 1',
+    progressRatio: 0,
+  },
+  {
+    id: 'memory-highroll',
+    title: '痛みの一撃',
+    description: '被虐の記憶カードで20ダメージ以上を与える',
+    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
+    initialStatus: 'reacquirable',
+    progressLabel: '1 / 1',
+    progressRatio: 1,
+    costLabel: '再取得コスト: 2pt',
+    reacquireCost: 2,
+  },
+]
+
+function buildDefaultHistory(): AchievementHistoryEntry[] {
+  return ACHIEVEMENT_DEFINITIONS.map((def) => ({
+    id: def.id,
+    status: def.initialStatus ?? 'not-achieved',
+    claimedCount: def.initialStatus === 'owned' ? 1 : 0,
+    lastClaimedAt: null,
+  }))
+}
+
+function hasStorage(): boolean {
+  try {
+    const key = '__ms_achievement_test__'
+    localStorage.setItem(key, '1')
+    localStorage.removeItem(key)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function validatePayload(raw: unknown): AchievementPersistedPayload | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Partial<AchievementPersistedPayload>
+  if (obj.version !== STORAGE_VERSION) return null
+  if (!Array.isArray(obj.entries)) return null
+  if (typeof obj.memoryPoints !== 'number' || Number.isNaN(obj.memoryPoints)) return null
+  const entries = obj.entries
+    .map((entry) => ({
+      id: entry?.id,
+      status: entry?.status,
+      claimedCount: entry?.claimedCount,
+      lastClaimedAt: entry?.lastClaimedAt ?? null,
+    }))
+    .filter(
+      (entry): entry is AchievementHistoryEntry =>
+        typeof entry.id === 'string' &&
+        isValidStatus(entry.status) &&
+        typeof entry.claimedCount === 'number' &&
+        entry.claimedCount >= 0 &&
+        (entry.lastClaimedAt === null || typeof entry.lastClaimedAt === 'number'),
+    )
+  if (entries.length === 0) return null
+  return {
+    version: STORAGE_VERSION,
+    memoryPoints: obj.memoryPoints,
+    entries,
+  }
+}
+
+function isValidStatus(status: unknown): status is AchievementStatus {
+  return (
+    status === 'not-achieved' ||
+    status === 'just-achieved' ||
+    status === 'owned' ||
+    status === 'reacquirable'
+  )
+}
+
+function loadPersisted(): AchievementPersistedPayload | null {
+  if (!hasStorage()) return null
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return validatePayload(parsed)
+  } catch {
+    return null
+  }
+}
+
+function savePersisted(payload: AchievementPersistedPayload): void {
+  if (!hasStorage()) return
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+  } catch {
+    // ブラウザ制約で失敗した場合は黙って諦める。実績はリロード時に初期化される。
+  }
+}
+
+function mergeHistoryWithDefinitions(history: AchievementHistoryEntry[]): AchievementHistoryEntry[] {
+  const map = new Map(history.map((entry) => [entry.id, entry]))
+  return ACHIEVEMENT_DEFINITIONS.map((def) => {
+    const existing = map.get(def.id)
+    if (existing && isValidStatus(existing.status)) {
+      return { ...existing }
+    }
+    return {
+      id: def.id,
+      status: def.initialStatus ?? 'not-achieved',
+      claimedCount: def.initialStatus === 'owned' ? 1 : 0,
+      lastClaimedAt: null,
+    }
+  })
+}
+
+export const useAchievementStore = defineStore('achievement', {
+  state: () => ({
+    initialized: false,
+    memoryPoints: 0,
+    history: buildDefaultHistory(),
+  }),
+  getters: {
+    historyMap: (state) => {
+      const map = new Map<string, AchievementHistoryEntry>()
+      for (const entry of state.history) {
+        map.set(entry.id, entry)
+      }
+      return map
+    },
+    entriesForView(): Array<AchievementDefinition & { status: AchievementStatus }> {
+      const map = this.historyMap as Map<string, AchievementHistoryEntry>
+      return ACHIEVEMENT_DEFINITIONS.map((def) => ({
+        ...def,
+        status: map.get(def.id)?.status ?? def.initialStatus ?? 'not-achieved',
+      }))
+    },
+    hasFreshAchievement(state): boolean {
+      return state.history.some((entry) => entry.status === 'just-achieved')
+    },
+  },
+  actions: {
+    ensureInitialized(): void {
+      if (this.initialized) return
+      const loaded = loadPersisted()
+      if (loaded) {
+        this.memoryPoints = loaded.memoryPoints
+        this.history = mergeHistoryWithDefinitions(loaded.entries)
+      } else {
+        this.memoryPoints = 0
+        this.history = buildDefaultHistory()
+      }
+      this.initialized = true
+    },
+    addMemoryPoints(amount: number): void {
+      const gain = Math.max(0, Math.floor(amount))
+      if (gain <= 0) return
+      this.memoryPoints += gain
+    },
+    spendMemoryPoints(amount: number): boolean {
+      const cost = Math.max(0, Math.floor(amount))
+      if (cost <= 0) return true
+      if (this.memoryPoints < cost) {
+        return false
+      }
+      this.memoryPoints -= cost
+      return true
+    },
+    claimAchievement(id: string): { success: boolean; message: string } {
+      this.ensureInitialized()
+      const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id)
+      if (!def) {
+        return { success: false, message: '不明な実績です' }
+      }
+      const historyEntry = this.historyMap.get(id)
+      if (!historyEntry) {
+        return { success: false, message: '履歴の同期に失敗しました' }
+      }
+      if (historyEntry.status !== 'just-achieved' && historyEntry.status !== 'reacquirable') {
+        return { success: false, message: '受け取れる状態ではありません' }
+      }
+
+      // 設計メモ: 再取得は記憶ポイントを消費して「所持中」状態を再付与する想定。
+      const reacquireCost = historyEntry.status === 'reacquirable' ? def.reacquireCost ?? 0 : 0
+      if (reacquireCost > 0 && !this.spendMemoryPoints(reacquireCost)) {
+        return { success: false, message: '記憶ポイントが不足しています' }
+      }
+
+      if (def.reward.type === 'relic') {
+        const playerStore = usePlayerStore()
+        playerStore.ensureInitialized()
+        playerStore.addRelic(def.reward.relicClassName)
+      } else if (def.reward.type === 'memory-point') {
+        this.addMemoryPoints(def.reward.amount)
+      }
+
+      const updated: AchievementHistoryEntry = {
+        ...historyEntry,
+        status: 'owned',
+        claimedCount: historyEntry.claimedCount + 1,
+        lastClaimedAt: Date.now(),
+      }
+      this.history = this.history.map((entry) => (entry.id === id ? updated : entry))
+      this.persist()
+      return { success: true, message: '報酬を受け取りました' }
+    },
+    resetHistory(): void {
+      // デッキ編集画面などから呼び出して履歴を初期化する用途。メモリーポイントも一緒にリセット。
+      this.memoryPoints = 0
+      this.history = buildDefaultHistory()
+      this.persist()
+    },
+    persist(): void {
+      const payload: AchievementPersistedPayload = {
+        version: STORAGE_VERSION,
+        memoryPoints: this.memoryPoints,
+        entries: this.history.map((entry) => ({ ...entry })),
+      }
+      savePersisted(payload)
+    },
+  },
+})

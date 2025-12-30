@@ -20,6 +20,7 @@ import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
 import { useAudioStore } from '@/stores/audioStore'
 import { createCardFromBlueprint, listCardIdOptions } from '@/domain/library/Library'
 import type { SaveSlotSummary } from '@/utils/saveStorage'
+import { useAchievementStore } from '@/stores/achievementStore'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -27,6 +28,8 @@ playerStore.ensureInitialized()
 const audioStore = useAudioStore()
 const actionOverlay = useActionCardOverlay()
 const relicOverlay = useRelicCardOverlay()
+const achievementStore = useAchievementStore()
+achievementStore.ensureInitialized()
 // デッキ編集画面に入るタイミングでショップ品揃えを最低限保証しておく
 shopManager.ensureOffers(playerStore.relics)
 
@@ -313,6 +316,13 @@ function formatSavedAt(timestamp: number): string {
   return new Date(timestamp).toLocaleString()
 }
 
+function resetAchievementHistory(): void {
+  if (!window.confirm('実績達成履歴を初期化し、保存済みデータも消去しますか？')) {
+    return
+  }
+  achievementStore.resetHistory()
+}
+
 onMounted(() => {
   refreshSaveSlots()
 })
@@ -416,6 +426,19 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
         <button type="button" class="deck-button" @click="applyPlayerStatus">
           ステータスを更新
         </button>
+      </div>
+      <div class="achievement-row">
+        <div class="achievement-row__body">
+          <div class="achievement-row__text">
+            <div class="achievement-row__title">実績達成履歴</div>
+            <p class="achievement-row__description">
+              実績ウィンドウの表示状態と localStorage の履歴を初期化します。レリック付与履歴も忘れた扱いになります。
+            </p>
+          </div>
+          <button type="button" class="deck-button deck-button--danger" @click="resetAchievementHistory">
+            実績履歴をリセット
+          </button>
+        </div>
       </div>
     </div>
     <CardList
@@ -646,6 +669,39 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
   border-radius: 8px;
   padding: 6px 10px;
   min-width: 120px;
+}
+
+.achievement-row {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(20, 18, 30, 0.7);
+}
+
+.achievement-row__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.achievement-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: rgba(244, 241, 255, 0.82);
+}
+
+.achievement-row__title {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.achievement-row__description {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(244, 241, 255, 0.72);
 }
 
 .deck-button {

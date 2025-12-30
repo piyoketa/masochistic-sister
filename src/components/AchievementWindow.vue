@@ -1,12 +1,12 @@
 <!--
-Componentの責務: 実績一覧をモーダルで提示し、ステータスごとに見た目を変えたカードと報酬ボタン（UIのみのダミー）を表示する。記憶ポイント残高の表示と、閉じる操作も提供する。
-責務ではないこと: 実績の進行計算や報酬受取の処理。クリック時の状態遷移・バリデーションは親で実装する前提で、ここでは純粋に見た目だけを担う。
-主な通信相手: 親コンポーネント（FieldView など）。props で visible/achievements/memoryPoints を受け取り、close イベントでモーダルを閉じる要求を返す。報酬ボタンは現状ノーオペで、今後親からハンドラやストアを受け取る想定。
+Componentの責務: 実績一覧をモーダルで提示し、ステータスごとに見た目を変えたカードと報酬ボタン（クリックイベントを親へ通知）を表示する。記憶ポイント残高の表示と、閉じる操作も提供する。
+責務ではないこと: 実績の進行計算や報酬受取の処理。クリック時の状態遷移・バリデーションは親側のストアで担う前提で、ここでは純粋に見た目とイベント通知だけを担う。
+主な通信相手: 親コンポーネント（FieldView など）。props で visible/achievements/memoryPoints を受け取り、close/claim イベントでモーダル閉じ要求と「報酬を受け取る」操作を返す。AchievementStore などの状態管理は親で扱う。
 -->
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { AchievementStatus } from '@/stores/achievementStore'
 
-export type AchievementStatus = 'not-achieved' | 'just-achieved' | 'owned' | 'reacquirable'
 export type AchievementCardView = {
   id: string
   title: string
@@ -16,6 +16,7 @@ export type AchievementCardView = {
   progressLabel?: string
   progressRatio?: number
   costLabel?: string
+  actionable?: boolean
 }
 
 const props = defineProps<{
@@ -26,6 +27,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (event: 'close'): void
+  (event: 'claim', payload: { id: string }): void
 }>()
 
 // UI レイヤーでだけ使う表示用ラベル。進行ロジックはまだ無いことを明示する。
@@ -63,9 +65,23 @@ function isActionDisabled(status: AchievementStatus): boolean {
   return !actionableStatuses.value.has(status)
 }
 
+function isEntryActionDisabled(entry: AchievementCardView): boolean {
+  if (entry.actionable === false) {
+    return true
+  }
+  return isActionDisabled(entry.status)
+}
+
 function progressWidth(ratio?: number): string {
   const safe = Math.min(Math.max(ratio ?? 0, 0), 1)
   return `${safe * 100}%`
+}
+
+function handleAction(entry: AchievementCardView): void {
+  if (isEntryActionDisabled(entry)) {
+    return
+  }
+  emit('claim', { id: entry.id })
 }
 </script>
 
@@ -139,7 +155,8 @@ function progressWidth(ratio?: number): string {
                 <button
                   type="button"
                   class="achievement-card__action"
-                  :disabled="isActionDisabled(entry.status)"
+                  :disabled="isEntryActionDisabled(entry)"
+                  @click="handleAction(entry)"
                 >
                   {{ actionLabel(entry.status) }}
                 </button>

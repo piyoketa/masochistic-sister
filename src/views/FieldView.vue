@@ -9,6 +9,7 @@ import AchievementWindow, { type AchievementCardView } from '@/components/Achiev
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { useAudioStore } from '@/stores/audioStore'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
+import { useAchievementStore } from '@/stores/achievementStore'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { CardInfo } from '@/types/battle'
@@ -27,6 +28,8 @@ const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
 const pileOverlayStore = usePileOverlayStore()
+const achievementStore = useAchievementStore()
+achievementStore.ensureInitialized()
 const imageHub = useImageHub()
 const SISTER_ICON_SRC = '/assets/players/icons/sister_dot.png'
 imageHub.getElement(SISTER_ICON_SRC)
@@ -36,199 +39,22 @@ const router = useRouter()
 const debugMode = ref(false)
 const debugMenuOpen = ref(false)
 const achievementWindowOpen = ref(false)
-// 実績ロジックは未実装のため、UIプレビュー用のダミーデータをここで保持する。
-const achievementMemoryPoints = ref(3)
-const achievementPreviewEntries = ref<AchievementCardView[]>([
-  {
-    id: 'corrosion-30',
-    title: '腐食に慣れた身体',
-    description: 'プレイヤーが受けた腐食スタックを累計30点まで溜める',
-    rewardLabel: 'レリック: 軽装戦闘',
-    status: 'not-achieved',
-    progressLabel: '12 / 30',
-    progressRatio: 0.4,
-  },
-  {
-    id: 'status-collect',
-    title: '汚れを抱きしめて',
-    description: '状態異常カードを累計8枚獲得する',
-    rewardLabel: 'レリック: 逆境',
-    status: 'just-achieved',
-    progressLabel: '8 / 8',
-    progressRatio: 1,
-  },
-  {
-    id: 'memory-use',
-    title: '痛みの余韻',
-    description: '被虐の記憶カードを累計5回使用する',
-    rewardLabel: '記憶ポイント +2',
-    status: 'owned',
-    progressLabel: '5 / 5',
-    progressRatio: 1,
-  },
-  {
-    id: 'multi-attack',
-    title: '手数の暴力',
-    description: '攻撃回数5回以上の連続攻撃を獲得する',
-    rewardLabel: '記憶ポイント +2',
-    status: 'reacquirable',
-    progressLabel: '1 / 1',
-    progressRatio: 1,
-    costLabel: '再取得コスト: 2pt',
-  },
-  {
-    id: 'coward',
-    title: '臆病への勝利',
-    description: '臆病 trait を持つ敵を撃破する',
-    rewardLabel: '記憶ポイント +2',
-    status: 'not-achieved',
-    progressLabel: '0 / 1',
-    progressRatio: 0,
-  },
-  {
-    id: 'orc-hero',
-    title: '英雄討伐者',
-    description: 'オークヒーローを撃破する',
-    rewardLabel: '記憶ポイント +10',
-    status: 'not-achieved',
-    progressLabel: '0 / 1',
-    progressRatio: 0,
-  },
-  {
-    id: 'status-use',
-    title: '汚れの操り手',
-    description: '状態異常カードを累計4回使用する',
-    rewardLabel: 'レリック: 清廉',
-    status: 'just-achieved',
-    progressLabel: '4 / 4',
-    progressRatio: 1,
-  },
-  {
-    id: 'memory-repeat-1',
-    title: '痛みの余韻・再取得',
-    description: '被虐の記憶カードを累計5回使用する（再取得枠）',
-    rewardLabel: '記憶ポイント +2',
-    status: 'reacquirable',
-    progressLabel: '5 / 5',
-    progressRatio: 1,
-    costLabel: '再取得コスト: 2pt',
-  },
-  {
-    id: 'memory-repeat-2',
-    title: '痛みの余韻・再取得2',
-    description: '被虐の記憶カードを累計5回使用する（2周目）',
-    rewardLabel: '記憶ポイント +2',
-    status: 'reacquirable',
-    progressLabel: '5 / 5',
-    progressRatio: 1,
-    costLabel: '再取得コスト: 3pt',
-  },
-  {
-    id: 'multi-attack-repeat',
-    title: '手数の暴力・再取得',
-    description: '攻撃回数5回以上の連続攻撃を獲得する（再取得）',
-    rewardLabel: '記憶ポイント +2',
-    status: 'reacquirable',
-    progressLabel: '2 / 1',
-    progressRatio: 1,
-    costLabel: '再取得コスト: 4pt',
-  },
-  {
-    id: 'corrosion-60',
-    title: '腐食との共存',
-    description: '腐食スタック累計60点',
-    rewardLabel: '記憶ポイント +3',
-    status: 'not-achieved',
-    progressLabel: '12 / 60',
-    progressRatio: 0.2,
-  },
-  {
-    id: 'status-collect-2',
-    title: '汚れを抱きしめて・続編',
-    description: '状態異常カードを累計12枚獲得する',
-    rewardLabel: '記憶ポイント +2',
-    status: 'not-achieved',
-    progressLabel: '8 / 12',
-    progressRatio: 0.66,
-  },
-  {
-    id: 'memory-use-extended',
-    title: '痛みの余韻・深度',
-    description: '被虐の記憶カードを累計10回使用する',
-    rewardLabel: '記憶ポイント +3',
-    status: 'not-achieved',
-    progressLabel: '5 / 10',
-    progressRatio: 0.5,
-  },
-  {
-    id: 'multi-attack-7',
-    title: '乱打の極み',
-    description: '攻撃回数7回以上の連続攻撃を獲得する',
-    rewardLabel: 'レリック: 極手数の証',
-    status: 'owned',
-    progressLabel: '1 / 1',
-    progressRatio: 1,
-  },
-  {
-    id: 'coward-repeat',
-    title: '臆病への勝利・再取得',
-    description: '臆病 trait を持つ敵を撃破（再取得）',
-    rewardLabel: '記憶ポイント +2',
-    status: 'reacquirable',
-    progressLabel: '1 / 1',
-    progressRatio: 1,
-    costLabel: '再取得コスト: 1pt',
-  },
-  {
-    id: 'status-chain',
-    title: '汚れの連鎖',
-    description: '状態異常カードを3ターン連続で使用する',
-    rewardLabel: '記憶ポイント +2',
-    status: 'not-achieved',
-    progressLabel: '1 / 3',
-    progressRatio: 0.33,
-  },
-  {
-    id: 'memory-chain',
-    title: '痛覚連打',
-    description: '被虐の記憶カードを2ターン連続で使用する',
-    rewardLabel: '記憶ポイント +1',
-    status: 'just-achieved',
-    progressLabel: '2 / 2',
-    progressRatio: 1,
-  },
-  {
-    id: 'boss-series',
-    title: '精鋭征伐',
-    description: 'エリート以上の敵を3回撃破する',
-    rewardLabel: '記憶ポイント +4',
-    status: 'owned',
-    progressLabel: '3 / 3',
-    progressRatio: 1,
-  },
-  {
-    id: 'status-hold',
-    title: '汚れのコレクター',
-    description: '状態異常カードを手札に5枚保持したままターン終了',
-    rewardLabel: '記憶ポイント +2',
-    status: 'not-achieved',
-    progressLabel: '0 / 1',
-    progressRatio: 0,
-  },
-  {
-    id: 'memory-highroll',
-    title: '痛みの一撃',
-    description: '被虐の記憶カードで20ダメージ以上を与える',
-    rewardLabel: '記憶ポイント +2',
-    status: 'reacquirable',
-    progressLabel: '1 / 1',
-    progressRatio: 1,
-    costLabel: '再取得コスト: 2pt',
-  },
-])
-const hasFreshAchievement = computed(() =>
-  achievementPreviewEntries.value.some((entry) => entry.status === 'just-achieved'),
+const achievementMemoryPoints = computed(() => achievementStore.memoryPoints)
+const achievementPreviewEntries = computed<AchievementCardView[]>(() =>
+  achievementStore.entriesForView.map((entry) => ({
+    id: entry.id,
+    title: entry.title,
+    description: entry.description,
+    rewardLabel: entry.reward.label,
+    status: entry.status,
+    progressLabel: entry.progressLabel,
+    progressRatio: entry.progressRatio,
+    costLabel: entry.costLabel,
+    // 受取可否はストア側で判定するため、UIでは基本有効化する。
+    actionable: true,
+  })),
 )
+const hasFreshAchievement = computed(() => achievementStore.hasFreshAchievement)
 
 const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
 const audioStore = useAudioStore()
@@ -326,6 +152,15 @@ function openDeckOverlay(): void {
   pileOverlayStore.openDeck(deckCardInfos.value, [])
 }
 
+function handleClaimAchievement(payload: { id: string }): void {
+  const result = achievementStore.claimAchievement(payload.id)
+  if (!result.success) {
+    window.alert(result.message)
+    return
+  }
+  // レリックは playerStore 側で付与される。今後メモリーポイント対応時はここでポイント表示を更新する想定。
+}
+
 async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: number): Promise<void> {
   const reachable = isReachable(levelIndex, nodeIndex)
   const alreadyCleared = fieldStore.isNodeCleared(node.id)
@@ -388,6 +223,7 @@ onMounted(() => {
       :achievements="achievementPreviewEntries"
       :memory-points="achievementMemoryPoints"
       @close="achievementWindowOpen = false"
+      @claim="handleClaimAchievement"
     />
     <PlayerStatusHeader
       class="field-header"
