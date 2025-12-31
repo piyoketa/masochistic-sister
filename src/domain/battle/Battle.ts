@@ -215,6 +215,11 @@ export interface PlayCardAnimationContext {
   cardTags?: string[]
 }
 
+export interface PlayRelicAnimationContext {
+  relicId?: RelicId
+  cutin?: ActionCutInCue
+}
+
 export class Battle {
   private readonly idValue: string
   private readonly playerValue: Player
@@ -263,6 +268,7 @@ export class Battle {
   private pendingMemoryCardAnimationEvents: MemoryCardAnimationEvent[] = []
   private interruptEnemyActionQueue: QueuedInterruptEnemyAction[] = []
   private lastPlayCardAnimationContext?: PlayCardAnimationContext
+  private lastPlayRelicAnimationContext?: PlayRelicAnimationContext
   private pendingEntrySnapshotOverride?: BattleSnapshot
   /** 実績進行度をバトル単位で集計するマネージャ。 */
   readonly achievementProgressManager?: AchievementProgressManager
@@ -1157,6 +1163,28 @@ export class Battle {
       audio: context.audio,
       cutin: context.cutin,
       cardTags: context.cardTags ? [...context.cardTags] : undefined,
+    }
+  }
+
+  consumeLastPlayRelicAnimationContext(): PlayRelicAnimationContext | undefined {
+    const context = this.lastPlayRelicAnimationContext
+    this.lastPlayRelicAnimationContext = undefined
+    return context
+  }
+
+  recordPlayRelicAnimationContext(context: PlayRelicAnimationContext): void {
+    const cutin = context.cutin
+    this.lastPlayRelicAnimationContext = {
+      relicId: context.relicId,
+      // カットインは src が空のときは無視し、必要最低限の情報だけをコピーしておく
+      cutin:
+        cutin && typeof cutin.src === 'string' && cutin.src.length > 0
+          ? {
+              src: cutin.src,
+              waitMs: typeof cutin.waitMs === 'number' ? cutin.waitMs : undefined,
+              durationMs: typeof cutin.durationMs === 'number' ? cutin.durationMs : undefined,
+            }
+          : undefined,
     }
   }
 

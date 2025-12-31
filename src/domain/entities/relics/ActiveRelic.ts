@@ -14,7 +14,7 @@ ActiveRelic.ts の責務:
 import type { Battle } from '@/domain/battle/Battle'
 import type { CardOperation } from '../operations'
 import type { Player } from '../Player'
-import type { Action } from '../Action'
+import type { Action, ActionCutInCue } from '../Action'
 import { Relic } from './Relic'
 import type { RelicId } from './relicTypes'
 
@@ -104,6 +104,11 @@ export abstract class ActiveRelic extends Relic {
     }
 
     action.execute(actionContext)
+    // レリック起動時の演出情報も Battle に預け、OperationRunner が play-relic バッチで再生できるようにする
+    context.battle.recordPlayRelicAnimationContext({
+      relicId: this.id,
+      cutin: extractCutInCue(actionContext.metadata),
+    })
     if (this.usageLimitPerBattle !== null) {
       this.usesConsumed += 1
     }
@@ -134,4 +139,19 @@ export abstract class ActiveRelic extends Relic {
    * 派生クラスが実際に実行する Action を生成するフック。
    */
   protected abstract createAction(context: ActiveRelicContext): Action
+}
+
+function extractCutInCue(metadata: unknown): ActionCutInCue | undefined {
+  if (!metadata || typeof metadata !== 'object') {
+    return undefined
+  }
+  const candidate = (metadata as { cutin?: ActionCutInCue | undefined }).cutin
+  if (!candidate || typeof candidate.src !== 'string' || candidate.src.length === 0) {
+    return undefined
+  }
+  return {
+    src: candidate.src,
+    waitMs: typeof candidate.waitMs === 'number' ? candidate.waitMs : undefined,
+    durationMs: typeof candidate.durationMs === 'number' ? candidate.durationMs : undefined,
+  }
 }

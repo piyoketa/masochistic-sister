@@ -884,7 +884,11 @@ export class OperationRunner {
   ): void {
     let metadata: AnimationStageMetadata | undefined
     let waitMs = 0
+    let batchOptions: { skipSnapshotUpdate?: boolean; omitPatch?: boolean } | undefined
     const batches: AnimationBatch[] = []
+    const relicAnimationContext =
+      entry.type === 'play-relic' ? this.battle.consumeLastPlayRelicAnimationContext() : undefined
+
     switch (entry.type) {
       case 'battle-start':
         metadata = { stage: 'battle-start' }
@@ -951,7 +955,7 @@ export class OperationRunner {
 
     if (metadata) {
       const shouldSkipSnapshot = metadata.stage === 'turn-end'
-      const batchOptions = shouldSkipSnapshot
+      batchOptions = shouldSkipSnapshot
         ? {
             skipSnapshotUpdate: true,
             omitPatch: true,
@@ -961,17 +965,20 @@ export class OperationRunner {
             omitPatch: true,
           }
         : undefined
-      const batch = this.createBatch(
-        snapshot,
-        [
-          {
-            waitMs,
-            metadata,
-          },
-        ],
-        undefined,
-        batchOptions,
-      )
+
+      const instructions: AnimationInstruction[] = [
+        {
+          waitMs,
+          metadata,
+        },
+      ]
+
+      if (metadata.stage === 'relic-activate' && relicAnimationContext?.cutin) {
+        // レリック起動時のカットインをカードと同じ経路で再生する
+        instructions.push(this.buildCutInInstruction(relicAnimationContext.cutin))
+      }
+
+      const batch = this.createBatch(snapshot, instructions, undefined, batchOptions)
       if (metadata.stage === 'relic-activate') {
         // 手札差分ウォッチャが前のスナップショットを参照できるよう、レリック起動バッチはレリック領域だけを更新するパッチに絞る
         batch.patch = this.createRelicOnlySnapshotPatch(snapshot)
