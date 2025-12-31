@@ -36,6 +36,11 @@ export class BloodSuckAction extends Attack {
         categoryTags: [new OralTechniqueCardTag()],
         effectTags: [new DrainCardTag()],
       },
+      audioCue: {
+        soundId: 'skills/Onoma-Flash02.mp3',
+        waitMs: 500,
+        durationMs: 500,
+      },
       cutInCue: {
         src: '/assets/cut_ins/kiss.png',
         waitMs: 800,
