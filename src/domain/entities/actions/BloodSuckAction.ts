@@ -36,6 +36,11 @@ export class BloodSuckAction extends Attack {
         categoryTags: [new OralTechniqueCardTag()],
         effectTags: [new DrainCardTag()],
       },
+      cutInCue: {
+        src: '/assets/cut_ins/kiss.png',
+        waitMs: 800,
+        durationMs: 800,
+      },   
     })
   }
 

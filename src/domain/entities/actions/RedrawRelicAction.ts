@@ -30,6 +30,12 @@ export class RedrawRelicAction extends Skill {
         cost: 0,
         subtitle: '起動効果',
       },
+      // HeavenChainAction と同じテンポで起動演出のカットインを走らせ、レリック発動開始を視覚的に強調する
+      cutInCue: {
+        src: '/assets/cut_ins/RedrawRelicAction.png',
+        waitMs: 800,
+        durationMs: 800,
+      },
     })
   }
 
