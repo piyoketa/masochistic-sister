@@ -38,9 +38,9 @@ env.VITE_DEBUG_ENEMY_HINT_LOG='false'
 // レリック usable 判定のデバッグログ。/battle/testcase3 での入力ロック解除後のスナップショット確認用。
 env.VITE_DEBUG_RELIC_USABLE_LOG='false'
 // 蘇る記憶の isActive 判定をトレースする場合に true にする。
-env.VITE_DEBUG_FLASHBACK_ACTIVE='true'
+env.VITE_DEBUG_FLASHBACK_ACTIVE='false'
 // 手札表示時の isActive 判定をトレースする場合に true にする。
-env.VITE_DEBUG_HAND_ACTIVE='true'
+env.VITE_DEBUG_HAND_ACTIVE='false'
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {
