@@ -84,6 +84,30 @@ describe('軽量化Stateの挙動', () => {
     expect(damages.count).toBe(5)
   })
 
+  it('打点上昇(10)と軽量化(1)が重なると(5+10)*2/3で10ダメージになる', () => {
+    // 優先度10の打点上昇で加算した後、優先度15の軽量化で倍率を掛ける順番になっているかを検証する。
+    const damages = new Damages({
+      baseAmount: 5,
+      baseCount: 1,
+      type: 'single',
+      cardId: 'test-card',
+      attackerStates: [new LightweightState(1), new StrengthState(10)],
+    })
+
+    expect(damages.amount).toBe(10)
+    expect(damages.count).toBe(1)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof StrengthState && (state.magnitude ?? 0) === 10,
+      ),
+    ).toBe(true)
+    expect(
+      damages.attackerStates.some(
+        (state) => state instanceof LightweightState && (state.magnitude ?? 0) === 1,
+      ),
+    ).toBe(true)
+  })
+
   it('重量化(攻撃側)と粘液(防御側)で回数補正が相殺される', () => {
     const damages = new Damages({
       baseAmount: 10,
@@ -189,7 +213,7 @@ describe('毒Stateの挙動', () => {
 })
 
 describe('怒りの覚醒Stateの挙動', () => {
-  it('3ヒット受けると打点上昇(30)を得る', () => {
+  it('3ヒット受けると打点上昇(15)を得る', () => {
     const enemy = new Enemy({
       name: '怒りの兵士',
       maxHp: 40,
@@ -231,6 +255,6 @@ describe('怒りの覚醒Stateの挙動', () => {
     })
 
     const strength = enemy.states.find((state) => state.id === 'state-strength') as StrengthState | undefined
-    expect(strength?.magnitude).toBe(30)
+    expect(strength?.magnitude).toBe(15)
   })
 })
