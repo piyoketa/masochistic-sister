@@ -4,6 +4,7 @@ import type { CardType, AttackStyle, CardTagInfo, DescriptionSegment } from '@/t
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
+import DebuffText from './DebuffText.vue'
 
 const CARD_TYPE_THEMES: Record<
   CardType,
@@ -392,7 +393,7 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
                   <v-icon class="debuff-icon" size="14">
                     <img :src="DEBUFF_ICON_SRC" alt="デバフ" />
                   </v-icon>
-                  <span class="debuff-text" v-html="renderRichText(stripDebuffEmoji(segment.text))" />
+                  <DebuffText :text="stripDebuffEmoji(segment.text)" />
                 </span>
                 <span
                   v-else
@@ -698,6 +699,9 @@ function handleSegmentLeave(key: string, tooltip?: string): void {
   padding-right: 8px;
 }
 .text-magnitude {
+  /* スタック点数は読みやすさ優先で一段階だけ小さくし、改行を防ぐ */
+  font-size: 0.9em;
+  white-space: nowrap;
   color: #31d39e;
   font-weight: 700;
 }
