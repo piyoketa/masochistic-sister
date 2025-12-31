@@ -57,8 +57,10 @@ export class StunCountState extends BuffState {
       | FiveLegsState
       | undefined
     fiveLegs?.increaseRequirement(5)
-    owner.discardNextScheduledAction()
-    owner.queueImmediateAction(new SkipTurnAction(`${owner.name}はスタンして動けない！`))
+    const message = `${owner.name}はスタンして動けない！`
+    const currentTurn = battle.turnPosition.turn
+    // 次行動が既に確定していても、このターンの予定を足止め用アクションに強制上書きする
+    owner.replaceActionForTurn(currentTurn, new SkipTurnAction(message))
     battle.addLogEntry({
       message: `${owner.name}はスタンして行動不能になった。`,
       metadata: { enemyId: owner.id, action: 'stun-count' },
