@@ -1,11 +1,14 @@
 /**
  * EnemyCard
  * =========
- * 敵ステータスを表示し、付与ステートの詳細を description overlay に流すコンポーネント。
- * このカードは親ビュー(BattleView)から敵情報を受け取り、hoverイベントで description overlay を更新する。
- * - props.enemy: 表示する敵情報 (EnemyInfo)
- * - emits hover-start/hover-end: 親に現在の hover 状態を伝搬
- * - useDescriptionOverlay: ツールチップ用のグローバルオーバーレイと連携
+ * 責務: 敵のHP/ステート/被ダメージ演出を描画し、付与ステートの説明を description overlay に伝えるUI層。UIの選択状態やハイライト状態を受け取り、見た目のみを制御する。
+ * 非責務: 戦闘ロジックの変更・敵AI・プレイヤー入力処理。戦闘状態の更新は行わず、ViewModelから渡されたスナップショットを表示するだけ。
+ * 主な通信相手とインターフェース:
+ * - 親ビュー(BattleViewなど)からの props: enemy(EnemyInfo) と selectable/selected/hovered/acting/highlighted/blockedReason/selectionTheme で表示状態を受け取る。
+ * - useDescriptionOverlay: EnemyStateChip の enter/move/leave に合わせて show/hide/updatePosition を呼び出し、StateSnapshot の description 文字列を提示する。activeTooltip で { key: string; text: string } を管理する。
+ * - DamageEffects 子コンポーネント: playDamage を経由して DamageOutcome[] を渡し、受けたダメージの視覚効果のみを担当させる。
+ * - AudioStore: playEnemySound から defeat/escape 時の効果音再生を委譲する。音源は ENEMY_AUDIO_CUES に限定。
+ * 類似型との差異: EnemyInfo.states は StateSnapshot[] で、stackable=true の場合はラベルで「名称(点数)」を必ず表示し、category==='trait' の場合だけ isImportant を尊重する。
  */
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
@@ -25,6 +28,7 @@ const props = defineProps<{
   selected?: boolean
   hovered?: boolean
   acting?: boolean
+  highlighted?: boolean
   blockedReason?: string
   selectionTheme?: EnemySelectionTheme
 }>()
@@ -70,6 +74,7 @@ const classes = computed(() => ({
   'enemy-card--selected': props.selected ?? false,
   'enemy-card--hovered': props.hovered ?? false,
   'enemy-card--acting': props.acting ?? false,
+  'enemy-card--highlighted': props.highlighted ?? false,
   // escape でも defeat と同等の消失演出を適用する
   'enemy-card--defeated': props.enemy.status === 'defeated' || props.enemy.status === 'escaped',
 }))
@@ -249,6 +254,8 @@ defineExpose({ playDamage, playEnemySound })
 
 <style scoped>
 .enemy-card {
+  --enemy-card-scale: 1;
+  --enemy-card-translate-y: 0;
   position: relative;
   top: -30px; /* 背景を上方向に広げつつ、下端の表示位置を据え置くために相殺用のオフセットを与える */
   display: flex;
@@ -263,8 +270,9 @@ defineExpose({ playDamage, playEnemySound })
   background-position: center;
   background-repeat: no-repeat;
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+  transform: translateY(var(--enemy-card-translate-y)) scale(var(--enemy-card-scale));
   transition:
-    transform 140ms ease,
+    transform 200ms ease,
     box-shadow 140ms ease,
     border-color 140ms ease,
     opacity 400ms ease,
@@ -283,12 +291,23 @@ defineExpose({ playDamage, playEnemySound })
 }
 
 .enemy-card--hovered.enemy-card--selectable {
-  transform: translateY(-6px);
+  --enemy-card-translate-y: -6px;
   box-shadow: 0 24px 48px var(--enemy-selection-shadow);
 }
 
 .enemy-card--selected {
   box-shadow: 0 20px 42px var(--enemy-selection-shadow-strong);
+}
+
+.enemy-card--highlighted {
+  /* scale を transform のみで行い、translate との競合を避けるため CSS 変数経由で合成する */
+  --enemy-card-scale: 1.035;
+  transition:
+    transform 200ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    opacity 400ms ease,
+    filter 400ms ease;
 }
 
 .enemy-card--defeated {

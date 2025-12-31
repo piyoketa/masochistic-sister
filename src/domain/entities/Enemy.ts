@@ -1,8 +1,8 @@
 import type { Action } from './Action/ActionBase'
 import type { State } from './State'
 import type { Battle, DamageEvent } from '../battle/Battle'
-import type { EnemyActionQueue, EnemyActionQueueStateSnapshot } from './enemy/actionQueues'
-import { DefaultEnemyActionQueue } from './enemy/actionQueues'
+import type { EnemyActionQueue, EnemyActionQueueStateSnapshot } from './enemy/actionQueues/EnemyActionQueue'
+import { DefaultEnemyActionQueue } from './enemy/actionQueues/DefaultEnemyActionQueue'
 import type { Player } from './Player'
 
 // 敵の acted 状態調査用のデバッグログ出力を環境変数で制御する。
