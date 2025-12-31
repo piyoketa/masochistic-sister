@@ -10,7 +10,7 @@ export class MucusShotAction extends Attack {
   constructor() {
     super({
       name: '体液をかける',
-      baseDamage: new Damages({ baseAmount: 5, baseCount: 1, type: 'single', cardId: 'mucus-shot' }),
+      baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'mucus-shot' }),
       effectType: 'spit',
       inflictStates: [() => new StickyState(1)],
       cardDefinition: {
