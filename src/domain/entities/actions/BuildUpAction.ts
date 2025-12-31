@@ -17,8 +17,8 @@ export class BuildUpAction extends Skill {
       gainStates: [() => new StrengthState(10)],
       audioCue: {
         soundId: 'skills/kurage-kosho_status03.mp3',
-        waitMs: 500,
-        durationMs: 500,
+        waitMs: 0,
+        durationMs: 0,
       },
     })
   }

@@ -20,6 +20,11 @@ export class PowerChargeAction extends Skill {
         subtitle: '',
       },
       gainStates: [() => new ChargeState(magnitude)],
+      audioCue: {
+        soundId: 'skills/kurage-kosho_status03.mp3',
+        waitMs: 0,
+        durationMs: 0,
+      },
     })
   }
 
