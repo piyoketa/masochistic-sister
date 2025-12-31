@@ -15,7 +15,6 @@ Library.ts の責務:
 import { Card } from '@/domain/entities/Card'
 import type { CardInfo, CardType } from '@/types/battle'
 import type { Action } from '@/domain/entities/Action'
-import { Attack } from '@/domain/entities/Action'
 import { BadState, State } from '@/domain/entities/State'
 import type { State as StateType } from '@/domain/entities/State'
 import * as actionModules from '@/domain/entities/actions'
@@ -161,6 +160,7 @@ const STANDARD_SAMPLE_ACTION_CLASSES: ActionConstructor[] = [
   MasochisticAuraAction,
   AcidSpitAction,
   BloodSuckAction,
+  FattenAction,
   FlurryAction,
   TackleAction,
 ]
@@ -194,7 +194,7 @@ export function createCardFromBlueprint(blueprint: CardBlueprint, repository?: C
   }
   const baseCard = factory()
   const action = baseCard.action
-  if (action instanceof Attack) {
+  if (isAttackLike(action)) {
     const base = action.baseDamages
     const amount = blueprint.overrideAmount ?? base.baseAmount
     const count = blueprint.overrideCount ?? base.baseCount
@@ -216,6 +216,34 @@ export function buildCardInfoFromBlueprint(blueprint: CardBlueprint, idPrefix = 
     affordable: true,
     disabled: false,
   })
+}
+
+type AttackLike = Action & {
+  baseDamages?: {
+    baseAmount: number
+    baseCount: number
+    type: Damages['type']
+    cardId: CardId
+  }
+  cloneWithDamages?: (damages: Damages, overrides?: Partial<unknown>) => Action
+}
+
+function isAttackLike(action: Action | undefined): action is AttackLike {
+  if (!action) {
+    return false
+  }
+  const candidate = action as AttackLike
+  const base = candidate.baseDamages
+  // Attack クラスを値 import すると循環依存で初期化順が崩れるため、
+  // アクションが攻撃かどうかは構造的に判定する。
+  return Boolean(
+    base &&
+      typeof base.baseAmount === 'number' &&
+      typeof base.baseCount === 'number' &&
+      typeof base.type === 'string' &&
+      typeof base.cardId === 'string' &&
+      typeof candidate.cloneWithDamages === 'function',
+  )
 }
 
 export function mapActionToCardId(action: Action): CardId | null {
@@ -349,7 +377,7 @@ export class Library {
     try {
       // eslint-disable-next-line new-cap
       const action = new (candidate as ActionConstructor)()
-      if (action instanceof Attack || this.isActionInstance(action)) {
+      if (isAttackLike(action) || this.isActionInstance(action)) {
         return action
       }
     } catch {
@@ -476,10 +504,10 @@ function buildBlueprintFromAction(action: Action): CardBlueprint | null {
     return null
   }
   const blueprint: CardBlueprint = { type: cardId }
-  if (action instanceof Attack) {
+  if (isAttackLike(action)) {
     const base = action.baseDamages
     const defaultAction = instantiateActionForComparison(action.constructor as ActionConstructor)
-    const defaultProfile = defaultAction instanceof Attack ? defaultAction.baseDamages : undefined
+    const defaultProfile = isAttackLike(defaultAction) ? defaultAction.baseDamages : undefined
     const defaultAmount = defaultProfile?.baseAmount
     const defaultCount = defaultProfile?.baseCount
     if (defaultAmount === undefined || base.baseAmount !== defaultAmount) {

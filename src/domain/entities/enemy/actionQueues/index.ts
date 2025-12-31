@@ -1,4 +1,5 @@
 export { EnemyActionQueue } from './EnemyActionQueue'
 export { DefaultEnemyActionQueue } from './DefaultEnemyActionQueue'
 export { ConditionalEnemyActionQueue } from './ConditionalEnemyActionQueue'
+export { ConditionalOrcHeroQueue } from './ConditionalOrcHeroQueue'
 export type { EnemyActionQueueStateSnapshot, EnemyTurnActionEntry } from './EnemyActionQueue'
