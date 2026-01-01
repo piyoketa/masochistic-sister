@@ -20,6 +20,8 @@ const slashSounds = [
 
 const spitSound = asset('spit/on-jin_nukarumu01.mp3')
 const poisonSound = asset('poison/kurage-kosho_poison3.mp3')
+// kiss 系の攻撃はダメージ量に関係なく単一音で処理する
+const kissSound = asset('kiss/kiss.mp3')
 
 export interface ResolvedSound {
   id: string
@@ -31,6 +33,7 @@ export const damageSoundAssets: ResolvedSound[] = [
   ...slashSounds.map((entry) => ({ id: `slash-${entry.threshold}`, src: entry.src })),
   { id: 'spit', src: spitSound },
   { id: 'poison', src: poisonSound },
+  { id: 'kiss', src: kissSound },
 ]
 
 export function resolveDamageSound(outcome: DamageOutcome): ResolvedSound {
@@ -44,6 +47,8 @@ export function resolveDamageSound(outcome: DamageOutcome): ResolvedSound {
       return { id: 'spit', src: spitSound }
     case 'poison':
       return { id: 'poison', src: poisonSound }
+    case 'kiss':
+      return { id: 'kiss', src: kissSound }
     default: {
       const fallbackType = outcome.damage > 1 ? 'slash' : 'slam'
       const bands = fallbackType === 'slash' ? slashSounds : slamSounds

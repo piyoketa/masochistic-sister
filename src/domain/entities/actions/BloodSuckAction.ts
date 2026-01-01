@@ -26,7 +26,7 @@ export class BloodSuckAction extends Attack {
     super({
       name: '口づけ',
       baseDamage: new Damages({ baseAmount: 10, baseCount: 1, type: 'single', cardId: 'blood-suck' }),
-      // effectType: 'bite',
+      effectType: 'kiss',
       cardDefinition: {
         title: '口づけ',
         cardType: 'attack',
@@ -35,11 +35,6 @@ export class BloodSuckAction extends Attack {
         cost: 1,
         categoryTags: [new OralTechniqueCardTag()],
         effectTags: [new DrainCardTag()],
-      },
-      audioCue: {
-        soundId: 'skills/Onoma-Flash02.mp3',
-        waitMs: 500,
-        durationMs: 500,
       },
       cutInCue: {
         src: '/assets/cut_ins/kiss.png',

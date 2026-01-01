@@ -22,6 +22,7 @@ effectTypeが指定されていない、もしくは音声ファイルが存在�
 | slam | 30以上 | public/sounds/slam/kurage-kosho_gun-fire02.mp3 |
 | spit | 全て | public/sounds/spit/on-jin_nukarumu01.mp3 |
 | poison | 全て | public/sounds/poison/kurage-kosho_poison3.mp3 |
+| kiss | 全て | public/sounds/kiss/kiss.mp3 |
 
 ### effectType: slash
 現状では、「突き刺す」などの連続攻撃は全て effectType: slash である。
@@ -94,3 +95,5 @@ materials/sounds/poison より
 - [DOVA-SYNDROME](https://dova-s.jp/_contents/license/)
   - 著作権表示・提供等の表示は不要
   - public/sounds/bgm/battle.mp3[タクティカルエンカウンター](https://dova-s.jp/bgm/play18089.html)
+- ニコニコ
+  - kiss.mp3 https://commons.nicovideo.jp/works/nc17974
