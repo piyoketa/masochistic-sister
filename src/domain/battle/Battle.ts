@@ -217,6 +217,7 @@ export interface PlayCardAnimationContext {
 
 export interface PlayRelicAnimationContext {
   relicId?: RelicId
+  audio?: ActionAudioCue
   cutin?: ActionCutInCue
 }
 
@@ -1176,6 +1177,15 @@ export class Battle {
     const cutin = context.cutin
     this.lastPlayRelicAnimationContext = {
       relicId: context.relicId,
+      audio:
+        context.audio && typeof context.audio.soundId === 'string' && context.audio.soundId.length > 0
+          ? {
+              soundId: context.audio.soundId,
+              waitMs: typeof context.audio.waitMs === 'number' ? context.audio.waitMs : undefined,
+              durationMs:
+                typeof context.audio.durationMs === 'number' ? context.audio.durationMs : context.audio.waitMs,
+            }
+          : undefined,
       // カットインは src が空のときは無視し、必要最低限の情報だけをコピーしておく
       cutin:
         cutin && typeof cutin.src === 'string' && cutin.src.length > 0

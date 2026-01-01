@@ -30,9 +30,13 @@ export class RedrawRelicAction extends Skill {
         cost: 0,
         subtitle: '起動効果',
       },
-      // HeavenChainAction と同じテンポで起動演出のカットインを走らせ、レリック発動開始を視覚的に強調する
+      audioCue: {
+        soundId: 'skills/Onoma-Flash02.mp3',
+        waitMs: 500,
+        durationMs: 500,
+      },
       cutInCue: {
-        src: '/assets/cut_ins/HeavenChainAction.png',
+        src: 'assets/cut_ins/pray2.png',
         waitMs: 800,
         durationMs: 800,
       },

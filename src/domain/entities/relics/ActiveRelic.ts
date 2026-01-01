@@ -14,7 +14,7 @@ ActiveRelic.ts の責務:
 import type { Battle } from '@/domain/battle/Battle'
 import type { CardOperation } from '../operations'
 import type { Player } from '../Player'
-import type { Action, ActionCutInCue } from '../Action'
+import type { Action, ActionAudioCue, ActionCutInCue } from '../Action'
 import { Relic } from './Relic'
 import type { RelicId } from './relicTypes'
 
@@ -107,6 +107,7 @@ export abstract class ActiveRelic extends Relic {
     // レリック起動時の演出情報も Battle に預け、OperationRunner が play-relic バッチで再生できるようにする
     context.battle.recordPlayRelicAnimationContext({
       relicId: this.id,
+      audio: extractAudioCue(actionContext.metadata),
       cutin: extractCutInCue(actionContext.metadata),
     })
     if (this.usageLimitPerBattle !== null) {
@@ -151,6 +152,21 @@ function extractCutInCue(metadata: unknown): ActionCutInCue | undefined {
   }
   return {
     src: candidate.src,
+    waitMs: typeof candidate.waitMs === 'number' ? candidate.waitMs : undefined,
+    durationMs: typeof candidate.durationMs === 'number' ? candidate.durationMs : undefined,
+  }
+}
+
+function extractAudioCue(metadata: unknown): ActionAudioCue | undefined {
+  if (!metadata || typeof metadata !== 'object') {
+    return undefined
+  }
+  const candidate = (metadata as { audio?: ActionAudioCue | undefined }).audio
+  if (!candidate || typeof candidate.soundId !== 'string' || candidate.soundId.length === 0) {
+    return undefined
+  }
+  return {
+    soundId: candidate.soundId,
     waitMs: typeof candidate.waitMs === 'number' ? candidate.waitMs : undefined,
     durationMs: typeof candidate.durationMs === 'number' ? candidate.durationMs : undefined,
   }

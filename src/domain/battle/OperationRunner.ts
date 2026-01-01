@@ -973,9 +973,14 @@ export class OperationRunner {
         },
       ]
 
-      if (metadata.stage === 'relic-activate' && relicAnimationContext?.cutin) {
-        // レリック起動時のカットインをカードと同じ経路で再生する
-        instructions.push(this.buildCutInInstruction(relicAnimationContext.cutin))
+      if (metadata.stage === 'relic-activate') {
+        // レリック起動時のSE/カットインをカードと同じ経路で再生する
+        if (relicAnimationContext?.audio) {
+          instructions.push(this.buildAudioInstruction(relicAnimationContext.audio))
+        }
+        if (relicAnimationContext?.cutin) {
+          instructions.push(this.buildCutInInstruction(relicAnimationContext.cutin))
+        }
       }
 
       const batch = this.createBatch(snapshot, instructions, undefined, batchOptions)
