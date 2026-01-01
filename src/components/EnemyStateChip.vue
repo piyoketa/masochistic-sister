@@ -11,6 +11,7 @@ const props = defineProps<{
     label: string
     description: string
     isImportant?: boolean
+    icon?: string
   }
 }>()
 
@@ -19,6 +20,14 @@ const emit = defineEmits<{
   (event: 'move', ev: MouseEvent): void
   (event: 'leave'): void
 }>()
+
+// Vuetifyのデフォルトアイコンセットで解決できるよう、mdi-プレフィックスの有無を吸収する。
+const resolveIconName = (icon?: string): string | undefined => {
+  if (!icon) {
+    return undefined
+  }
+  return icon.startsWith('mdi-') ? icon : `mdi-${icon}`
+}
 </script>
 
 <template>
@@ -29,6 +38,12 @@ const emit = defineEmits<{
     @mousemove="(ev) => emit('move', ev)"
     @mouseleave="() => emit('leave')"
   >
+    <v-icon
+      v-if="props.chip.icon"
+      class="enemy-card__chip-icon"
+      size="16"
+      :icon="resolveIconName(props.chip.icon)"
+    />
     {{ props.chip.label }}
   </li>
 </template>
@@ -50,5 +65,9 @@ const emit = defineEmits<{
 
 .enemy-card__chip--plain {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.enemy-card__chip-icon {
+  color: #cbd6ff;
 }
 </style>

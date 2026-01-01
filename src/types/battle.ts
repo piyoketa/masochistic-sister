@@ -13,6 +13,7 @@ export type BaseStateSnapshot = {
   description?: string
   category: StateCategory
   isImportant?: boolean
+  icon?: string
   stackable: boolean
 }
 

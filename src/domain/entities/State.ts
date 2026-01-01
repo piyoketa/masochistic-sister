@@ -15,6 +15,10 @@ type StackableStateProps = {
   cardDefinition?: CardDefinition
   isImportant?: boolean
   /**
+   * Vuetify で解決されるアイコン名。mdi- 省略形でも指定可。
+   */
+  icon?: string
+  /**
    * 状態を表すアイコンパス。デフォルトは未指定。派生クラスで上書き可能。
    */
   iconPath?: string
@@ -27,6 +31,10 @@ type NonStackableStateProps = {
   magnitude?: undefined
   cardDefinition?: CardDefinition
   isImportant?: boolean
+  /**
+   * Vuetify で解決されるアイコン名。mdi- 省略形でも指定可。
+   */
+  icon?: string
   /**
    * 状態を表すアイコンパス。デフォルトは未指定。派生クラスで上書き可能。
    */
@@ -61,6 +69,13 @@ export class State {
 
   get cardDefinitionBase(): CardDefinition | undefined {
     return this.props.cardDefinition
+  }
+
+  /**
+   * UI用の状態アイコン。存在しない場合は undefined を返す。
+   */
+  get icon(): string | undefined {
+    return this.props.icon
   }
 
   /**

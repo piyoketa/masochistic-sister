@@ -164,6 +164,7 @@ function formatStateChip(
   label: string
   description: string
   isImportant?: boolean
+  icon?: string
 } {
   const label = state.stackable ? `${state.name}(${state.magnitude ?? 0}点)` : state.name
   const description = state.description ?? state.name
@@ -172,6 +173,7 @@ function formatStateChip(
     label,
     description,
     isImportant: state.category === 'trait' ? state.isImportant : undefined,
+    icon: state.icon,
   }
 }
 

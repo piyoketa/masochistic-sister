@@ -8,6 +8,7 @@ export class HardShellState extends TraitState {
       name: '鉄壁',
       stackable: true,
       magnitude,
+      icon: 'shield',
     })
   }
 

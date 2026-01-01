@@ -653,6 +653,7 @@ export class Battle {
         isImportant,
         stackable: true,
         magnitude: state.magnitude ?? 0,
+        icon: state.icon,
       }
     }
 
@@ -664,6 +665,7 @@ export class Battle {
       isImportant,
       stackable: false,
       magnitude: undefined,
+      icon: state.icon,
     }
   }
 

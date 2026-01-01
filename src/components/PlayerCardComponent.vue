@@ -57,12 +57,13 @@ const displayHp = reactive<{ current: number; max: number }>({ current: 0, max: 
 const isTakingDamage = ref(false)
 const stateChips = computed(() =>
   (props.stateSnapshots ?? []).map((state) => {
-    const label = state.stackable ? `${state.name} ${(state.magnitude ?? 0)}点` : state.name
+    const label = state.stackable ? `${state.name}(${state.magnitude ?? 0}点)` : state.name
     return {
       key: state.id,
       label,
       description: state.description ?? state.name,
       isImportant: state.isImportant,
+      icon: state.icon,
     }
   }),
 )
