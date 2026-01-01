@@ -187,6 +187,10 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
     return
   }
   fieldStore.selectNextNode(nodeIndex)
+
+  // 0.5sの遅延を入れて、画面遷移が急すぎないようにする。
+  await new Promise((resolve) => setTimeout(resolve, 500))
+
   if (fieldStore.field.isEnemyNode(node)) {
     const query = node.bonusLevels ? { bonusLevels: node.bonusLevels } : undefined
     await router.push({ path: `/battle/${node.enemyTeamId}`, query })
