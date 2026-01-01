@@ -2,12 +2,14 @@
 import { computed } from 'vue'
 import EnemyActionChip from '@/components/EnemyActionChip.vue'
 import type { EnemyActionChipViewModel } from '@/types/enemyActionChip'
+import type { EnemyStatus } from '@/types/battle'
 import { formatEnemyActionChipsForView } from '@/view/enemyActionHintsForView'
 
 const props = defineProps<{
   enemyId: number
   actions: import('@/view/enemyActionHintsForView').EssentialEnemyActionHint[]
   highlighted?: boolean
+  status: EnemyStatus
 }>()
 
 const emit = defineEmits<{
@@ -23,11 +25,16 @@ const formattedActions = computed<EnemyActionChipViewModel[]>(() =>
         .filter((vm): vm is EnemyActionChipViewModel => Boolean(vm))
     : [],
 )
+
+// 撃破・逃走中の敵に行動予測が出ないよう、ステータスと内容の両方を判定して表示を抑止する。
+const shouldDisplayActions = computed<boolean>(
+  () => props.status === 'active' && formattedActions.value.length > 0,
+)
 </script>
 
 <template>
   <section
-    v-if="formattedActions.length"
+    v-if="shouldDisplayActions"
     class="enemy-next-actions"
     :class="{ 'enemy-next-actions--highlighted': highlighted }"
   >

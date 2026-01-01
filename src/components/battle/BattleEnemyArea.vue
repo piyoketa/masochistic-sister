@@ -429,10 +429,11 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
         }"
       >
         <EnemyNextActions
-          v-if="slot.nextActions.length"
+          v-if="slot.nextActions.length && slot.status === 'active'"
           class="enemy-slot__actions"
           :enemy-id="slot.id"
           :actions="slot.nextActions"
+          :status="slot.status"
           :highlighted="slot.enemy ? slot.enemy.id === actingEnemyId : false"
           @tooltip-enter="(payload) => emit('action-tooltip-enter', payload)"
           @tooltip-move="(payload) => emit('action-tooltip-move', payload)"
