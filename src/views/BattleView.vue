@@ -37,6 +37,7 @@ import {
   type EnemyTeamFactoryOptions,
   SnailTeam,
 } from '@/domain/entities/enemyTeams'
+import { createBonusLevelRng } from '@/domain/entities/enemyTeams/bonusLevelUtils'
 import { useEnemyActionHints } from '@/components/battle/useEnemyActionHints'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { StageEventPayload, StageEventMetadata } from '@/types/animation'
@@ -1032,12 +1033,16 @@ function resolveBattleFactory(
     case 'stage1':
     case 'default':
     default:
+      // Undo/Retry で OperationRunner が再生成されても bonusLevels の配分が変わらないよう、
+      // seed をここで一度決め、createBattle 実行ごとに同じシードで RNG を作り直す。
+      const bonusLevelSeed = Math.random()
       return () =>
         createBattleFromPlayerStore(
           props.teamId ?? 'snail',
           playerStore,
           achievementProgressStore,
           props.bonusLevels,
+          bonusLevelSeed,
         )
   }
 }
@@ -1047,8 +1052,14 @@ function createBattleFromPlayerStore(
   playerStore: ReturnType<typeof usePlayerStore>,
   achievementProgressStore: ReturnType<typeof useAchievementProgressStore>,
   bonusLevels?: number,
+  bonusLevelSeed?: number | string,
 ): Battle {
-  const enemyTeam = resolveEnemyTeam(teamId, { bonusLevels })
+  const bonusLevelRng = bonusLevelSeed !== undefined ? createBonusLevelRng(bonusLevelSeed) : undefined
+  const enemyTeamOptions: EnemyTeamFactoryOptions = {
+    bonusLevels,
+    rng: bonusLevelRng,
+  }
+  const enemyTeam = resolveEnemyTeam(teamId, enemyTeamOptions)
   playerStore.ensureInitialized()
   const cardRepository = new CardRepository()
   const deckCards = playerStore.buildDeck(cardRepository)

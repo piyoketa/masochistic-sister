@@ -30,8 +30,40 @@ export function buildMemberLevels(count: number, bonusLevels: number, rng: () =>
 export function createMembersWithLevels(
   factories: EnemyFactoryWithLevel[],
   bonusLevels = 0,
-  rng: () => number = Math.random,
+  rng: () => number = createBonusLevelRng(),
 ): Enemy[] {
   const levels = buildMemberLevels(factories.length, bonusLevels, rng)
   return factories.map((factory, idx) => factory(levels[idx] ?? 1))
+}
+
+/**
+ * bonusLevels を同一バトル内で deterministic にするための RNG を生成する。
+ * - Undo / Retry 時に再生成されても同じ配分になるよう seed 付き PRNG を使用する。
+ * - seed 未指定時は既存挙動を維持するため Math.random を返す。
+ */
+export function createBonusLevelRng(seed?: number | string, fallback: () => number = Math.random): () => number {
+  if (seed === undefined) {
+    return fallback
+  }
+  return createMulberry32(seed)
+}
+
+function createMulberry32(seed: number | string): () => number {
+  let t = typeof seed === 'number' ? seed : hashString(seed)
+  return function () {
+    t += 0x6d2b79f5
+    let r = t
+    r = Math.imul(r ^ (r >>> 15), r | 1)
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61)
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function hashString(input: string): number {
+  let h = 1779033703 ^ input.length
+  for (let i = 0; i < input.length; i += 1) {
+    h = Math.imul(h ^ input.charCodeAt(i), 3432918353)
+    h = (h << 13) | (h >>> 19)
+  }
+  return (h >>> 0) || 1
 }
