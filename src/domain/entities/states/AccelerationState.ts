@@ -8,6 +8,7 @@ export class AccelerationState extends BuffState {
       name: '加速',
       stackable: true,
       magnitude,
+      icon: 'stairs-up',
     })
   }
 

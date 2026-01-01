@@ -8,6 +8,7 @@ export class StrengthState extends BuffState {
       name: '打点上昇',
       stackable: true,
       magnitude,
+      icon: 'sword',
     })
   }
 

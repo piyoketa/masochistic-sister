@@ -12,6 +12,7 @@ export class FiveLegsState extends TraitState {
       stackable: true,
       magnitude,
       isImportant: true,
+      icon: 'update',
     })
   }
 

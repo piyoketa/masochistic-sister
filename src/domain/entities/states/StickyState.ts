@@ -23,6 +23,7 @@ export class StickyState extends BadState {
       name: '粘液',
       stackable: true,
       magnitude,
+      icon: 'share-all-outline',
       cardDefinition: {
         title: '粘液',
         cardType: 'status',

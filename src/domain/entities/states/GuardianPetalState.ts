@@ -25,6 +25,7 @@ export class GuardianPetalState extends TraitState {
       name: 'バリア回復',
       stackable: true,
       magnitude,
+      icon: 'update',
     })
   }
 

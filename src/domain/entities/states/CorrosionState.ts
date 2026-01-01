@@ -23,6 +23,7 @@ export class CorrosionState extends BadState {
       name: '腐食',
       stackable: true,
       magnitude,
+      icon: 'shield-remove-outline', // 他候補: trending-down, TransferDow
       cardDefinition: {
         title: '腐食',
         cardType: 'status',

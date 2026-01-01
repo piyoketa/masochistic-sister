@@ -24,6 +24,6 @@ export class StatusImmunityTrait extends TraitState {
   }
 
   override description(): string {
-    return '状態異常を一切付与されない'
+    return '状態異常を受けない\n（天の鎖は有効）'
   }
 }

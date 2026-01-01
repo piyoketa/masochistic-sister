@@ -17,6 +17,7 @@ export class CowardTrait extends TraitState {
       id: 'trait-coward',
       name: '臆病',
       stackable: false,
+      icon: 'walk',
     })
   }
 

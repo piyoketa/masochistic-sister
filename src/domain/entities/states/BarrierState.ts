@@ -23,6 +23,7 @@ export class BarrierState extends BuffState {
       name: 'バリア',
       stackable: true,
       magnitude,
+      icon: 'circle-multiple-outline',
     })
   }
 

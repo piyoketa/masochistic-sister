@@ -17,8 +17,8 @@ export class BattleDanceAction extends Skill {
       gainStates: [() => new AccelerationState(1)],
       audioCue: {
         soundId: 'skills/kurage-kosho_status03.mp3',
-        waitMs: 500,
-        durationMs: 500,
+        waitMs: 0,
+        durationMs: 0,
       },
     })
   }
