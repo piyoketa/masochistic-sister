@@ -2,7 +2,9 @@ import { BadState } from '../State'
 import { StateAction } from '../Action/StateAction'
 import type { CardTag } from '../CardTag'
 import type { DamageCalculationParams } from '../Damages'
-import { StatusTypeCardTag } from '../cardTags'
+import { StatusTypeCardTag, StrikeCardTag } from '../cardTags'
+
+const STRIKE_CATEGORY_ID = new StrikeCardTag().id
 
 class JointDamageStateAction extends StateAction {
   constructor(state: JointDamageState, tags?: CardTag[]) {
@@ -16,7 +18,7 @@ class JointDamageStateAction extends StateAction {
   }
 }
 
-// 関節損傷: 「殴打（TackleAction）」の被ダメージをスタックごとに+1する
+// 関節損傷: 「打撃」カテゴリの被ダメージをスタックごとに+1する
 export class JointDamageState extends BadState {
   constructor(magnitude = 1) {
     super({
@@ -41,7 +43,7 @@ export class JointDamageState extends BadState {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `殴打による被ダメージ+<magnitude>${bonus}</magnitude>\n（累積可）`
+    return `打撃による被ダメージ+<magnitude>${bonus}</magnitude>点\n（累積可）`
   }
 
   override affectsDefender(): boolean {
@@ -54,10 +56,15 @@ export class JointDamageState extends BadState {
 
   override modifyPreHit(params: DamageCalculationParams): DamageCalculationParams {
     if (params.role !== 'defender') return params
-    if (params.cardId !== 'tackle') {
+
+    const bonus = this.magnitude ?? 0
+    if (bonus === 0) {
       return params
     }
-    const bonus = this.magnitude ?? 0
+
+    if (!this.hasStrikeCategory(params)) {
+      return params
+    }
     return {
       ...params,
       // 1ヒットあたりに固定値を加算する（countが変動しても1回ごとに加算）
@@ -67,5 +74,16 @@ export class JointDamageState extends BadState {
 
   override action(tags?: CardTag[]): StateAction {
     return new JointDamageStateAction(this, tags)
+  }
+
+  private hasStrikeCategory(params: DamageCalculationParams): boolean {
+    const attack = params.context?.attack
+    if (!attack) {
+      return false
+    }
+    const definition = attack.createCardDefinition()
+    const categoryTags = definition.categoryTags ?? []
+    // CardCategoryTag を参照し、カードID依存を避けて「打撃」指定の漏れを防ぐ
+    return categoryTags.some((tag) => tag.id === STRIKE_CATEGORY_ID)
   }
 }

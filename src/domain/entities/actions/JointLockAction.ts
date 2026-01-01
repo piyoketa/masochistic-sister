@@ -1,6 +1,6 @@
 import { Attack } from '../Action'
 import { Damages } from '../Damages'
-import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
+import { EnemySingleTargetCardTag, SingleAttackCardTag, StrikeCardTag } from '../cardTags'
 import { JointDamageState } from '../states/JointDamageState'
 
 export class JointLockAction extends Attack {
@@ -17,6 +17,7 @@ export class JointLockAction extends Attack {
         type: new SingleAttackCardTag(),
         target: new EnemySingleTargetCardTag(),
         cost: 1,
+        categoryTags: [new StrikeCardTag()],
       },
     })
   }

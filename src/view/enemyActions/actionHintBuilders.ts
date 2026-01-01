@@ -83,6 +83,10 @@ function buildAttackActionHint({
     cardId: cardId ?? action.getCardId(),
     attackerStates: enemyStates,
     defenderStates: playerStates,
+    context: {
+      // 打撃カテゴリなどState判定で攻撃側のCardDefinitionを参照できるよう、攻撃インスタンスを渡す
+      attack: action,
+    },
   })
 
   const calculatedPattern = {
