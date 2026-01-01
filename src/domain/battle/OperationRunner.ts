@@ -837,14 +837,24 @@ export class OperationRunner {
       return undefined
     }
     try {
+      // 直近の盤面から敵ターンを疑似的に進行させる。
+      // ActionLogを最初からリプレイすると即時敵行動（被虐のオーラなど）が再実行されず、
+      // 記憶カードが存在しない状態になってしまうため、現在の盤面スナップショットをそのまま複製する。
+      const currentSnapshot = this.cloneFullSnapshot({
+        snapshot: this.battle.getSnapshot({ includePrediction: false }),
+        enemyQueues: this.battle.enemyTeam.members.map((enemy) => ({
+          enemyId: enemy.id ?? -1,
+          queue: enemy.serializeQueueSnapshot(),
+        })),
+        relicStates: this.battle
+          .getRelicInstances()
+          .map((relic) => ({ className: relic.constructor.name, state: relic.saveState() })),
+      })
       const simBattle = this.createBattle()
-      // 初期スナップショットを適用してからログを再生する
-      simBattle.restoreFullSnapshot(this.cloneFullSnapshot(this.initialSnapshot))
-      const simLog = new ActionLog(this.actionLog.toArray())
-      simLog.push({ type: 'end-player-turn' })
+      simBattle.restoreFullSnapshot(currentSnapshot)
+      const simLog = new ActionLog([{ type: 'end-player-turn' }])
       simBattle.executeActionLog(simLog, simLog.length - 1)
-      const result = simBattle.player.currentHp
-      return result
+      return simBattle.player.currentHp
     } catch (error) {
       return undefined
     }

@@ -47,6 +47,8 @@ export class OperationLogReplayer {
       actionLog,
       initialSnapshot,
       onEntryAppended: this.onEntryAppended,
+      // 予測系のシミュレーション（predictedPlayerHpAfterEndTurn）を有効にするため、Battle複製用のファクトリを渡す
+      createBattle: () => this.createBattle(),
     })
 
     runner.initializeIfNeeded()
