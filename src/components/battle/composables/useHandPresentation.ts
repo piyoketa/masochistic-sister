@@ -205,6 +205,11 @@ function buildCardPresentation(
         cardId,
         attackerStates: playerStates,
         defenderStates: [],
+        // 攻撃カテゴリ依存のState判定（例: 関節損傷）が働くよう攻撃インスタンスを渡す
+        context: {
+          attack: action,
+          attacker: battle.player,
+        },
       })
       formatted = action.describeForPlayerCard({
         baseDamages: damages,
@@ -227,6 +232,12 @@ function buildCardPresentation(
             cardId,
             attackerStates: playerStates,
             defenderStates: enemy.getStates(),
+            // 防御側Stateが攻撃カテゴリを見るためのコンテキスト
+            context: {
+              attack: action,
+              attacker: battle.player,
+              defender: enemy,
+            },
           })
           formatted = action.describeForPlayerCard({
             baseDamages: damages,

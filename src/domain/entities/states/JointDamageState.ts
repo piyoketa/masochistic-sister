@@ -43,7 +43,7 @@ export class JointDamageState extends BadState {
 
   override description(): string {
     const bonus = this.magnitude ?? 0
-    return `打撃による被ダメージ+<magnitude>${bonus}</magnitude>点\n（累積可）`
+    return `打撃による\n被ダメージ+<magnitude>${bonus}</magnitude>点\n（累積可）`
   }
 
   override affectsDefender(): boolean {
