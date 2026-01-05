@@ -9,6 +9,8 @@ interface DescriptionOverlayState extends OverlayPosition {
   visible: boolean
   text: string
   pinned: boolean
+  /** 先頭行をタイトルとして強調表示するかどうか */
+  emphasizeFirstLine: boolean
 }
 
 const overlayState = reactive<DescriptionOverlayState>({
@@ -17,24 +19,40 @@ const overlayState = reactive<DescriptionOverlayState>({
   x: 0,
   y: 0,
   pinned: false,
+  emphasizeFirstLine: false,
 })
 
 export function useDescriptionOverlay() {
-  const show = (text: string, position: OverlayPosition) => {
+  const show = (
+    text: string,
+    position: OverlayPosition,
+    options?: {
+      emphasizeFirstLine?: boolean
+    },
+  ) => {
+    // emphasizeFirstLine は表示時にのみ指定し、非指定の場合は強調を無効化する
     overlayState.text = text
     overlayState.x = position.x
     overlayState.y = position.y
     overlayState.visible = true
     overlayState.pinned = false
+    overlayState.emphasizeFirstLine = Boolean(options?.emphasizeFirstLine)
   }
 
-  const pin = (text: string, position: OverlayPosition) => {
+  const pin = (
+    text: string,
+    position: OverlayPosition,
+    options?: {
+      emphasizeFirstLine?: boolean
+    },
+  ) => {
     // ツールチップを固定表示するための専用API。hover解除でも消えない。
     overlayState.text = text
     overlayState.x = position.x
     overlayState.y = position.y
     overlayState.visible = true
     overlayState.pinned = true
+    overlayState.emphasizeFirstLine = Boolean(options?.emphasizeFirstLine)
   }
 
   const hide = (force = false) => {
@@ -44,6 +62,7 @@ export function useDescriptionOverlay() {
     overlayState.visible = false
     overlayState.text = ''
     overlayState.pinned = false
+    overlayState.emphasizeFirstLine = false
   }
 
   const updatePosition = (position: OverlayPosition) => {

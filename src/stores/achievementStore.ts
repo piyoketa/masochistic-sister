@@ -37,6 +37,12 @@ type AchievementReward =
       amount: number
       label: string
     }
+  | {
+      type: 'max-hp'
+      maxHpGain: number
+      healAmount: number
+      label: string
+    }
 
 type AchievementDefinition = {
   id: string
@@ -127,7 +133,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'orc-hero',
     title: 'BOSS「オークヒーロー」討伐',
     description: 'オークヒーローを撃破する',
-    reward: { type: 'memory-point', amount: 10, label: '記憶ポイント +10' },
+    reward: { type: 'max-hp', maxHpGain: 30, healAmount: 30, label: '最大HP+30' },
     initialStatus: 'not-achieved',
     progressLabel: '0 / 1',
     progressRatio: 0,
@@ -338,6 +344,18 @@ export const useAchievementStore = defineStore('achievement', {
         playerStore.addRelic(def.reward.relicClassName)
       } else if (def.reward.type === 'memory-point') {
         this.addMemoryPoints(def.reward.amount)
+      } else if (def.reward.type === 'max-hp') {
+        const playerStore = usePlayerStore()
+        playerStore.ensureInitialized()
+        const maxHpGain = Math.max(0, Math.floor(def.reward.maxHpGain))
+        const healAmount = Math.max(0, Math.floor(def.reward.healAmount))
+        if (maxHpGain > 0) {
+          // 最大HP上昇と同時に、増加分を即時回復して達成のご褒美感を出す。
+          playerStore.setMaxHp(playerStore.maxHp + maxHpGain)
+        }
+        if (healAmount > 0) {
+          playerStore.healHp(healAmount)
+        }
       }
 
       const updated: AchievementHistoryEntry = {

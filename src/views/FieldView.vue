@@ -19,6 +19,7 @@ import { createCardFromBlueprint } from '@/domain/library/Library'
 import { useImageHub } from '@/composables/imageHub'
 import { buildEnemyTeamFactoryMap } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
+import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
 
 type FieldViewProps = {
   fieldId?: string
@@ -109,6 +110,25 @@ const ENEMY_EFFECTIVE_HINTS: Record<string, string> = {
   'high-orc-squad': 'なし',
   'beam-cannon-elite': '攻撃回数',
   'orc-hero-elite': 'なし',
+}
+
+function showRelicTooltip(relic: RelicDisplayEntry, event: MouseEvent | FocusEvent): void {
+  // レリックツールチップは名称と説明をまとめて表示し、アイコン単体でも何の効果か判断できるようにする
+  let x = 0
+  let y = 0
+  if ('clientX' in event) {
+    x = event.clientX
+    y = event.clientY
+  } else if (event.target instanceof HTMLElement) {
+    const rect = event.target.getBoundingClientRect()
+    x = rect.left + rect.width / 2
+    y = rect.top
+  }
+  showDescription(
+    `${relic.name}\n${relic.description}`,
+    { x, y },
+    { emphasizeFirstLine: true },
+  )
 }
 
 function nodeLabel(node: FieldNode): string {
@@ -246,7 +266,7 @@ onMounted(() => {
     <PlayerStatusHeader
       class="field-header"
       :enable-glow="false"
-      @relic-hover="(relic, e) => showDescription(relic.description, { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY })"
+      @relic-hover="(relic, e) => showRelicTooltip(relic, e)"
       @relic-leave="hideDescription"
       @relic-click="() => undefined"
       @deck-click="openDeckOverlay"

@@ -798,7 +798,11 @@ function handleRelicHover(event: MouseEvent | FocusEvent, relic: RelicDisplayEnt
     x = rect.left + rect.width / 2
     y = rect.top
   }
-  showDescriptionOverlay(`${relic.name}\n${relic.description}`, { x, y })
+  showDescriptionOverlay(
+    `${relic.name}\n${relic.description}`,
+    { x, y },
+    { emphasizeFirstLine: true },
+  )
 }
 
 function handleRelicLeave(): void {

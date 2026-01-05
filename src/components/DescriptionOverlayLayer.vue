@@ -11,6 +11,15 @@ const overlayStyle = computed(() => ({
   left: `${(state.x ?? 0) + 12}px`,
   top: `${(state.y ?? 0) + 12}px`,
 }))
+
+const overlayContent = computed(() => {
+  if (!state.emphasizeFirstLine) {
+    return { emphasize: false as const, title: '', body: state.text }
+  }
+  // 先頭行をタイトルとして扱い、残りを本文にまとめる
+  const [title, ...rest] = state.text.split('\n')
+  return { emphasize: true as const, title: title ?? '', body: rest.join('\n') }
+})
 </script>
 
 <template>
@@ -19,8 +28,14 @@ const overlayStyle = computed(() => ({
       v-if="state.visible"
       class="description-overlay"
       :style="overlayStyle"
-      v-html="renderHtml(state.text)"
     >
+      <template v-if="overlayContent.emphasize">
+        <div class="description-overlay__title" v-html="renderHtml(overlayContent.title)"></div>
+        <div class="description-overlay__body" v-html="renderHtml(overlayContent.body)"></div>
+      </template>
+      <template v-else>
+        <div class="description-overlay__body" v-html="renderHtml(overlayContent.body)"></div>
+      </template>
     </div>
   </teleport>
 </template>
@@ -44,6 +59,18 @@ const overlayStyle = computed(() => ({
   z-index: 1500;
   backdrop-filter: blur(6px);
   white-space: pre-line;
+}
+
+.description-overlay__title {
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: #ffd680;
+  margin-bottom: 6px;
+}
+
+.description-overlay__body {
+  margin: 0;
 }
 
 .text-magnitude {
