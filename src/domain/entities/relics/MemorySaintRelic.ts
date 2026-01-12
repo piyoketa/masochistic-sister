@@ -18,6 +18,6 @@ export class MemorySaintRelic extends Relic {
     // 最大HPが取得できる場合は 1/3 を即時計算し、ツールチップでも現在値を反映する。
     const maxHp = context?.player?.maxHp ?? context?.playerSnapshot?.maxHp
     const healAmount = maxHp !== undefined ? Math.floor(maxHp / 3) : 50
-    return `戦闘終了時、HPを<variable>${healAmount}</variable>回復する\n\n（最大HPの1/3回復する）`
+    return `戦闘終了時、HPを<variable>${healAmount}</variable>回復する\n（最大HPの1/3回復する）`
   }
 }

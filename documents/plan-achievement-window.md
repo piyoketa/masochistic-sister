@@ -18,7 +18,7 @@
   - 被虐の記憶カード累計5回使用 → 記憶ポイント+2
   - 攻撃回数5回以上の連続攻撃を獲得 → 記憶ポイント+2
   - 「臆病」な敵を撃破 → 記憶ポイント+2
-  - BOSS「オークヒーロー」を撃破 → 記憶ポイント+10
+  - BOSS「オークヒーロー」を撃破 → 最大HP+30（現在HPも+30回復）
 - ステータス表現
   - 未達成: 達成履歴なし。進行度を持つものは現在値表示。
   - 達成直後: 今プレイで条件を満たした状態。無償で報酬受取可。
@@ -122,7 +122,6 @@
   - 生成するカードの詳細をManagerに送り、Manager側でcardDefinition.cardType === 'attack' かつ DamagePattern.type === 'multi' かつ基礎 count >= 5 の場合にカウント。
 - 「臆病」な敵を撃破
   - フック: 敵撃破処理 Battle.onEnemyDefeatedで、倒した敵の詳細を詳細をManagerに送り、Enemy に CowardTrait がある場合に recordCowardDefeated(enemyId)。
-- BOSS「オークヒーロー」撃破（敵チーム単位） → 記憶ポイント+10
+- BOSS「オークヒーロー」撃破（敵チーム単位） → 最大HP+30（現在HPも+30回復）
   - フック: Victory 確定処理
   - Battle.resolveVictory 相当（Victory ステージイベントを出す直前）で、倒したの詳細をenemyTeamManagerに送り、idがorc-hero-eliteなら recordOrcHeroDefeated()。
-
