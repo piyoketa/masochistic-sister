@@ -143,6 +143,11 @@ const demoLinks: LinkEntry[] = [
     to: '/demo/overlays',
   },
   {
+    label: 'Scenario Text Demo',
+    description: 'クリックで進むテキストウィンドウのデモ',
+    to: '/demo/scenario',
+  },
+  {
     label: 'Relic Icon Demo',
     description: 'レリックアイコンの状態表示を確認',
     to: '/demo/relic-icons',

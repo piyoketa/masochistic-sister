@@ -8,8 +8,10 @@ import DescriptionOverlayLayer from '@/components/DescriptionOverlayLayer.vue'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
 import ActionCardOverlayLayer from '@/components/ActionCardOverlayLayer.vue'
 import RelicCardOverlayLayer from '@/components/RelicCardOverlayLayer.vue'
+import TextWindowOverlayLayer from '@/components/TextWindowOverlayLayer.vue'
 import { useAudioStore } from '@/stores/audioStore'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
+import { useScenarioStore } from '@/stores/scenarioStore'
 
 // アプリ全体で使い回す Hub を生成し、画面遷移でも破棄されないよう最上位で provide する。
 const appAudioHub = createAudioHub(SOUND_ASSETS)
@@ -18,8 +20,11 @@ provideAudioHub(appAudioHub)
 provideImageHub(appImageHub)
 const audioStore = useAudioStore()
 const pileOverlayStore = usePileOverlayStore()
+const scenarioStore = useScenarioStore()
 audioStore.setHub(appAudioHub)
 const isVolumePanelOpen = ref(false)
+// シナリオが残っている間だけテキストオーバーレイを表示する。
+const hasScenario = computed(() => scenarioStore.hasRemaining)
 const bgmVolume = computed({
   get: () => audioStore.bgmVolume,
   set: (v: number) => audioStore.setBgmVolume(v),
@@ -49,7 +54,7 @@ function toggleVolumePanel(): void {
 
 <template>
   <div class="app-frame">
-    <RouterLink class="back-to-title" to="/">← タイトルへ戻る</RouterLink>
+    <RouterLink class="back-to-title" to="/title">← デバッグページへ</RouterLink>
     <button class="volume-toggle" type="button" @click="toggleVolumePanel" aria-label="音量設定">
       <v-icon icon="mdi-volume-high" size="20" color="white" />
     </button>
@@ -87,6 +92,7 @@ function toggleVolumePanel(): void {
     <DescriptionOverlayLayer />
     <ActionCardOverlayLayer />
     <RelicCardOverlayLayer />
+    <TextWindowOverlayLayer v-if="hasScenario" />
     <PileOverlay
       :active-pile="pileOverlayStore.activePile"
       :deck-cards="pileOverlayStore.deckCards"

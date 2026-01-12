@@ -145,6 +145,11 @@ const router = createRouter({
       component: () => import('@/views/OverlayDemoView.vue'),
     },
     {
+      path: '/demo/scenario',
+      name: 'scenario-demo',
+      component: () => import('@/views/ScenarioDemoView.vue'),
+    },
+    {
       path: '/field/card-reward',
       name: 'card-reward',
       component: () => import('@/views/CardRewardView.vue'),
