@@ -148,6 +148,11 @@ const demoLinks: LinkEntry[] = [
     to: '/demo/scenario',
   },
   {
+    label: 'セーブデータ編集デモ',
+    description: '進行セーブデータの保存/削除/クリア編集を確認',
+    to: '/demo/save-data',
+  },
+  {
     label: 'Relic Icon Demo',
     description: 'レリックアイコンの状態表示を確認',
     to: '/demo/relic-icons',

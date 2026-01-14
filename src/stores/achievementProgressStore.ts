@@ -33,6 +33,19 @@ export const useAchievementProgressStore = defineStore('achievementProgress', {
       this.ensureInitialized()
       this.progress = createDefaultAchievementProgress()
     },
+    replaceProgress(progress: AchievementProgress): void {
+      // セーブデータからの復元専用。バリデーション済みデータを前提に丸ごと差し替える。
+      this.ensureInitialized()
+      this.progress = {
+        statusCardMemories: progress.statusCardMemories,
+        corrosionAccumulated: progress.corrosionAccumulated,
+        statusCardUsed: progress.statusCardUsed,
+        memoryCardUsed: progress.memoryCardUsed,
+        multiAttackAcquired: progress.multiAttackAcquired,
+        cowardDefeatedIds: [...progress.cowardDefeatedIds],
+        orcHeroDefeated: progress.orcHeroDefeated,
+      }
+    },
     /** 現在の進行度から Manager を生成し、Battle へ注入する */
     buildManager(): AchievementProgressManager {
       this.ensureInitialized()

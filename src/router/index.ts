@@ -5,6 +5,11 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'top',
+      component: () => import('@/views/TopView.vue'),
+    },
+    {
+      path: '/title',
       name: 'title',
       component: () => import('@/views/TitleView.vue'),
     },
@@ -148,6 +153,11 @@ const router = createRouter({
       path: '/demo/scenario',
       name: 'scenario-demo',
       component: () => import('@/views/ScenarioDemoView.vue'),
+    },
+    {
+      path: '/demo/save-data',
+      name: 'save-data-demo',
+      component: () => import('@/views/SaveDataDemoView.vue'),
     },
     {
       path: '/field/card-reward',

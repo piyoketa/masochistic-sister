@@ -124,13 +124,13 @@ onBeforeUnmount(() => {
   <teleport to="body">
     <div v-if="scenarioStore.hasRemaining" class="text-window-overlay" :style="overlayStyle" @click="handleAdvance">
       <div class="text-window-overlay__scrim"></div>
-      <div class="text-window-overlay__block" @click.stop>
+      <div class="text-window-overlay__block">
         <div v-if="isSpeech" class="text-window-overlay__speaker">{{ speakerName }}</div>
         <div class="text-window-overlay__window">
           <div class="text-window-overlay__body" :class="bodyClass" v-html="bodyHtml"></div>
-          <div class="text-window-overlay__hint">クリックで次へ</div>
         </div>
       </div>
+      <div class="text-window-overlay__hint">クリックで次へ</div>
     </div>
   </teleport>
 </template>
@@ -150,10 +150,7 @@ onBeforeUnmount(() => {
 .text-window-overlay__scrim {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(88, 68, 140, 0.25), transparent 45%),
-    radial-gradient(circle at 80% 10%, rgba(180, 92, 92, 0.2), transparent 40%),
-    rgba(6, 6, 12, 0.65);
+  background: transparent;
   pointer-events: none;
 }
 
@@ -217,11 +214,14 @@ onBeforeUnmount(() => {
 }
 
 .text-window-overlay__hint {
-  margin-top: 8px;
-  font-size: 12px;
+  position: absolute;
+  right: 16px;
+  bottom: 8px;
+  font-size: 11px;
   letter-spacing: 0.12em;
-  color: rgba(230, 226, 255, 0.6);
+  color: rgba(230, 226, 255, 0.55);
   text-align: right;
+  pointer-events: none;
 }
 
 @media (max-width: 960px) {
