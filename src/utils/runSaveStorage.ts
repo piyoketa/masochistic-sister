@@ -4,7 +4,7 @@
 import type { AchievementProgress } from '@/domain/achievements/types'
 import { normalizeFieldIds } from '@/constants/fieldProgress'
 
-const STORAGE_VERSION = 'v1'
+const STORAGE_VERSION = 'v2'
 const STORAGE_KEY = `ms-run-save/${STORAGE_VERSION}`
 
 export type RunSaveData = {
@@ -107,20 +107,26 @@ function validateAchievementProgress(raw: unknown): AchievementProgress | null {
   const record = raw as Partial<AchievementProgress>
   if (!isValidNumber(record.statusCardMemories, 0)) return null
   if (!isValidNumber(record.corrosionAccumulated, 0)) return null
-  if (!isValidNumber(record.statusCardUsed, 0)) return null
-  if (!isValidNumber(record.memoryCardUsed, 0)) return null
-  if (!isValidNumber(record.multiAttackAcquired, 0)) return null
-  if (!Array.isArray(record.cowardDefeatedIds) || !record.cowardDefeatedIds.every((id) => isValidNumber(id, 0))) {
-    return null
-  }
+  if (!isValidNumber(record.stickyAccumulated, 0)) return null
+  if (!isValidNumber(record.damageTakenCount, 0)) return null
+  if (!isValidNumber(record.maxDamageTaken, 0)) return null
+  if (!isValidNumber(record.maxMultiHitReceived, 0)) return null
+  if (!isValidNumber(record.kissReceivedCount, 0)) return null
+  if (!isValidNumber(record.kissUsedCount, 0)) return null
+  if (!isValidNumber(record.masochisticAuraUsedCount, 0)) return null
+  if (!isValidNumber(record.defeatCount, 0)) return null
   if (typeof record.orcHeroDefeated !== 'boolean') return null
   return {
     statusCardMemories: record.statusCardMemories,
     corrosionAccumulated: record.corrosionAccumulated,
-    statusCardUsed: record.statusCardUsed,
-    memoryCardUsed: record.memoryCardUsed,
-    multiAttackAcquired: record.multiAttackAcquired,
-    cowardDefeatedIds: [...record.cowardDefeatedIds],
+    stickyAccumulated: record.stickyAccumulated,
+    damageTakenCount: record.damageTakenCount,
+    maxDamageTaken: record.maxDamageTaken,
+    maxMultiHitReceived: record.maxMultiHitReceived,
+    kissReceivedCount: record.kissReceivedCount,
+    kissUsedCount: record.kissUsedCount,
+    masochisticAuraUsedCount: record.masochisticAuraUsedCount,
+    defeatCount: record.defeatCount,
     orcHeroDefeated: record.orcHeroDefeated,
   }
 }
@@ -129,10 +135,14 @@ function cloneAchievementProgress(progress: AchievementProgress): AchievementPro
   return {
     statusCardMemories: progress.statusCardMemories,
     corrosionAccumulated: progress.corrosionAccumulated,
-    statusCardUsed: progress.statusCardUsed,
-    memoryCardUsed: progress.memoryCardUsed,
-    multiAttackAcquired: progress.multiAttackAcquired,
-    cowardDefeatedIds: [...progress.cowardDefeatedIds],
+    stickyAccumulated: progress.stickyAccumulated,
+    damageTakenCount: progress.damageTakenCount,
+    maxDamageTaken: progress.maxDamageTaken,
+    maxMultiHitReceived: progress.maxMultiHitReceived,
+    kissReceivedCount: progress.kissReceivedCount,
+    kissUsedCount: progress.kissUsedCount,
+    masochisticAuraUsedCount: progress.masochisticAuraUsedCount,
+    defeatCount: progress.defeatCount,
     orcHeroDefeated: progress.orcHeroDefeated,
   }
 }

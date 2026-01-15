@@ -18,7 +18,7 @@ import { TurnManager, type TurnState } from './TurnManager'
 import { CardRepository } from '../repository/CardRepository'
 import { ActionLog, type BattleActionLogEntry } from './ActionLog'
 import type { ActionType } from '../entities/Action'
-import type { DamageEffectType, DamageOutcome } from '../entities/Damages'
+import type { DamageEffectType, DamageOutcome, DamagePattern } from '../entities/Damages'
 import type { CardId } from '../library/Library'
 import type { EnemySkill, StateSnapshot, StateCategory } from '@/types/battle'
 import { instantiateRelic } from '../entities/relics/relicLibrary'
@@ -206,6 +206,8 @@ export interface DamageEvent {
   defender: Actor
   outcomes: DamageOutcome[]
   effectType?: DamageEffectType
+  damagePattern?: DamagePattern
+  baseCount?: number
 }
 
 export interface PlayCardAnimationContext {
@@ -331,7 +333,7 @@ export class Battle {
     this.achievementProgressManager?.recordStatusCardMemory()
   }
 
-  /** 実績進行度: State付与を通知し、Manager側で必要に応じてルーティングさせる。 */
+  /** 実績進行度: State付与を通知し、腐食や粘液の累計として集計する。 */
   recordAchievementStateApplied(state: unknown): void {
     this.achievementProgressManager?.recordStateApplied(state)
   }
@@ -341,14 +343,23 @@ export class Battle {
     this.achievementProgressManager?.recordCardPlayed(card)
   }
 
-  /** 実績進行度: 連撃カード生成を通知し、Manager が multi(>=5) を判定する。 */
-  recordAchievementMultiAttackGenerated(card: import('@/domain/entities/Card').Card): void {
-    this.achievementProgressManager?.recordMultiAttackGenerated(card)
+  /** 実績進行度: プレイヤーがダメージを受けた際の情報を通知する。 */
+  recordAchievementDamageTaken(event: DamageEvent): void {
+    const totalDamage = event.outcomes.reduce(
+      (sum, outcome) => sum + Math.max(0, Math.floor(outcome.damage)),
+      0,
+    )
+    this.achievementProgressManager?.recordDamageTaken({
+      totalDamage,
+      damagePattern: event.damagePattern,
+      baseCount: event.baseCount,
+      effectType: event.effectType,
+    })
   }
 
-  /** 実績進行度: 臆病 trait 持ち敵の撃破/逃走を通知する。 */
-  recordAchievementCowardDefeated(enemy: import('@/domain/entities/Enemy').Enemy | null | undefined): void {
-    this.achievementProgressManager?.recordCowardDefeated(enemy)
+  /** 実績進行度: 敗北を通知する。 */
+  recordAchievementDefeat(): void {
+    this.achievementProgressManager?.recordDefeat()
   }
 
   /** 実績進行度: オークヒーロー撃破（チーム単位）を通知する。 */
@@ -1801,6 +1812,9 @@ export class Battle {
     this.statusValue = outcome
     if (outcome === 'victory' && this.enemyTeamValue.id === ORC_HERO_TEAM_ID) {
       this.recordAchievementOrcHeroDefeated()
+    }
+    if (outcome === 'gameover') {
+      this.recordAchievementDefeat()
     }
   }
 

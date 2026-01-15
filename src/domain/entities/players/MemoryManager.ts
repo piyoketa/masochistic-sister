@@ -35,8 +35,6 @@ export class MemoryManager {
     const action = baseAttack.cloneWithDamages(damages, overrides)
     const card = repository.create(() => new Card({ action }))
     battle.addCardToPlayerHand(card)
-    // 実績進行度: 連撃カード獲得判定を Manager へ通知する。
-    battle.recordAchievementMultiAttackGenerated(card)
     return card
   }
 

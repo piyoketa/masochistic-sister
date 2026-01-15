@@ -47,10 +47,14 @@ const savedFieldStates = computed(() =>
 const progressSummary = computed(() => ({
   statusCardMemories: achievementProgressStore.progress.statusCardMemories,
   corrosionAccumulated: achievementProgressStore.progress.corrosionAccumulated,
-  statusCardUsed: achievementProgressStore.progress.statusCardUsed,
-  memoryCardUsed: achievementProgressStore.progress.memoryCardUsed,
-  multiAttackAcquired: achievementProgressStore.progress.multiAttackAcquired,
-  cowardDefeatedCount: achievementProgressStore.progress.cowardDefeatedIds.length,
+  stickyAccumulated: achievementProgressStore.progress.stickyAccumulated,
+  damageTakenCount: achievementProgressStore.progress.damageTakenCount,
+  maxDamageTaken: achievementProgressStore.progress.maxDamageTaken,
+  maxMultiHitReceived: achievementProgressStore.progress.maxMultiHitReceived,
+  kissReceivedCount: achievementProgressStore.progress.kissReceivedCount,
+  kissUsedCount: achievementProgressStore.progress.kissUsedCount,
+  masochisticAuraUsedCount: achievementProgressStore.progress.masochisticAuraUsedCount,
+  defeatCount: achievementProgressStore.progress.defeatCount,
   orcHeroDefeated: achievementProgressStore.progress.orcHeroDefeated,
 }))
 
@@ -132,10 +136,14 @@ function formatSavedAt(timestamp: number): string {
             <ul>
               <li>状態異常カード獲得: {{ progressSummary.statusCardMemories }}</li>
               <li>腐食累計: {{ progressSummary.corrosionAccumulated }}</li>
-              <li>状態異常カード使用: {{ progressSummary.statusCardUsed }}</li>
-              <li>記憶カード使用: {{ progressSummary.memoryCardUsed }}</li>
-              <li>連続攻撃獲得: {{ progressSummary.multiAttackAcquired }}</li>
-              <li>臆病撃破数: {{ progressSummary.cowardDefeatedCount }}</li>
+              <li>粘液累計: {{ progressSummary.stickyAccumulated }}</li>
+              <li>被ダメージ回数: {{ progressSummary.damageTakenCount }}</li>
+              <li>最大被ダメージ: {{ progressSummary.maxDamageTaken }}</li>
+              <li>最大連続攻撃回数: {{ progressSummary.maxMultiHitReceived }}</li>
+              <li>口づけ被弾: {{ progressSummary.kissReceivedCount }}</li>
+              <li>口づけ使用: {{ progressSummary.kissUsedCount }}</li>
+              <li>被虐のオーラ使用: {{ progressSummary.masochisticAuraUsedCount }}</li>
+              <li>敗北回数: {{ progressSummary.defeatCount }}</li>
               <li>オークヒーロー撃破: {{ progressSummary.orcHeroDefeated ? '済' : '未' }}</li>
             </ul>
           </div>

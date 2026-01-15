@@ -115,6 +115,8 @@ export abstract class Attack extends Action {
             : { type: 'enemy', enemyId: defender.id ?? -1 },
           outcomes: resolvedOutcomes.map((outcome) => ({ ...outcome })),
           effectType: this.effectType,
+          damagePattern: damages.type,
+          baseCount: damages.baseCount,
         }
       : undefined
 

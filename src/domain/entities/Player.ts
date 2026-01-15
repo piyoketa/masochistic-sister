@@ -68,6 +68,10 @@ export class Player {
       return
     }
     this.currentHpValue = Math.max(0, this.currentHpValue - total)
+    if (options?.battle) {
+      // 実績進行度: 被ダメージ情報を集計する。
+      options.battle.recordAchievementDamageTaken(event)
+    }
     const animation = options?.animation ?? event
     if (options?.battle && animation) {
       options.battle.recordDamageAnimation(animation)
@@ -81,6 +85,7 @@ export class Player {
       return
     }
     this.currentHpValue = Math.max(0, this.currentHpValue - damage)
+    // 設計上の決定: 特殊ダメージはDamageEventを発生させず、実績進行の対象外とする。
     // 特殊ダメージでは現状演出なし。必要に応じてbattle.recordDamageAnimationを追加する。
   }
 

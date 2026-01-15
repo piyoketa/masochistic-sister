@@ -2,7 +2,7 @@
  * AchievementProgress ストア
  * - ラン中の実績進行度（バトル累計）を保持し、Battle 開始時に Manager を生成する。
  * - Victory 時に Manager の最新進行度を取り込み、次のバトルへ持ち越す。
- * - 現段階では「状態異常カード累計8枚獲得」のみを扱い、他条件は後続対応。
+ * - 各達成条件の累計値を保持し、画面表示と達成判定に供給する。
  */
 import { defineStore } from 'pinia'
 import {
@@ -19,9 +19,15 @@ export const useAchievementProgressStore = defineStore('achievementProgress', {
   getters: {
     statusCardMemories: (state) => state.progress.statusCardMemories,
     corrosionAccumulated: (state) => state.progress.corrosionAccumulated,
-    statusCardUsed: (state) => state.progress.statusCardUsed,
-    memoryCardUsed: (state) => state.progress.memoryCardUsed,
-    multiAttackAcquired: (state) => state.progress.multiAttackAcquired,
+    stickyAccumulated: (state) => state.progress.stickyAccumulated,
+    damageTakenCount: (state) => state.progress.damageTakenCount,
+    maxDamageTaken: (state) => state.progress.maxDamageTaken,
+    maxMultiHitReceived: (state) => state.progress.maxMultiHitReceived,
+    kissReceivedCount: (state) => state.progress.kissReceivedCount,
+    kissUsedCount: (state) => state.progress.kissUsedCount,
+    masochisticAuraUsedCount: (state) => state.progress.masochisticAuraUsedCount,
+    defeatCount: (state) => state.progress.defeatCount,
+    orcHeroDefeated: (state) => state.progress.orcHeroDefeated,
   },
   actions: {
     ensureInitialized(): void {
@@ -39,10 +45,14 @@ export const useAchievementProgressStore = defineStore('achievementProgress', {
       this.progress = {
         statusCardMemories: progress.statusCardMemories,
         corrosionAccumulated: progress.corrosionAccumulated,
-        statusCardUsed: progress.statusCardUsed,
-        memoryCardUsed: progress.memoryCardUsed,
-        multiAttackAcquired: progress.multiAttackAcquired,
-        cowardDefeatedIds: [...progress.cowardDefeatedIds],
+        stickyAccumulated: progress.stickyAccumulated,
+        damageTakenCount: progress.damageTakenCount,
+        maxDamageTaken: progress.maxDamageTaken,
+        maxMultiHitReceived: progress.maxMultiHitReceived,
+        kissReceivedCount: progress.kissReceivedCount,
+        kissUsedCount: progress.kissUsedCount,
+        masochisticAuraUsedCount: progress.masochisticAuraUsedCount,
+        defeatCount: progress.defeatCount,
         orcHeroDefeated: progress.orcHeroDefeated,
       }
     },

@@ -136,36 +136,6 @@ function formatSavedAt(timestamp: number): string {
               <span v-if="nextFieldLabel" class="continue-chip">次のフィールド: {{ nextFieldLabel }}</span>
             </header>
 
-            <!-- <div v-if="saveData" class="continue-body">
-              <div class="continue-section">
-                <h3>フィールド進行</h3>
-                <ul class="field-status-list">
-                  <li v-for="field in savedFieldStates" :key="field.fieldId" class="field-status">
-                    <span class="field-name">{{ field.label }}</span>
-                    <span class="field-state" :class="{ cleared: field.cleared }">
-                      {{ field.cleared ? 'クリア済み' : '未クリア' }}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              <div class="continue-section">
-                <h3>実績進行サマリ</h3>
-                <ul class="progress-grid">
-                  <li>状態異常カード獲得: {{ saveData.achievementProgress.statusCardMemories }}</li>
-                  <li>腐食累計: {{ saveData.achievementProgress.corrosionAccumulated }}</li>
-                  <li>状態異常カード使用: {{ saveData.achievementProgress.statusCardUsed }}</li>
-                  <li>記憶カード使用: {{ saveData.achievementProgress.memoryCardUsed }}</li>
-                  <li>連続攻撃獲得: {{ saveData.achievementProgress.multiAttackAcquired }}</li>
-                  <li>臆病撃破数: {{ saveData.achievementProgress.cowardDefeatedIds.length }}</li>
-                </ul>
-              </div>
-            </div>
-
-            <div v-else class="continue-empty">
-              セーブデータがありません。
-            </div> -->
-
             <div class="continue-actions">
               <button
                 type="button"

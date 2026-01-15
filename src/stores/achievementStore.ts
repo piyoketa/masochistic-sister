@@ -1,40 +1,60 @@
 /**
  * 実績達成履歴を保持するストア。
- * - 目的: 実績の状態（未達成/達成直後/獲得済み/再取得可能）と取得履歴・記憶ポイント残高を localStorage に保存し、UI とレリック/記憶ポイント付与処理に供給する。
- * - 設計方針: 進捗判定ロジックは未実装のため、現状はデモ用の初期ステータスを定義し、報酬受取処理のみを扱う。
- *   今後、ActionLog 監視などで実際の達成判定を行う際は、このストアの update API を拡張していく。
+ * - 目的: 実績の状態を localStorage に保存し、UI と報酬取得処理に供給する。
+ * - 設計上の重要な決定: 記憶ポイントは履歴から集計するため state では保持しない。
+ *   仕様変更に伴い STORAGE_VERSION を更新して全リセットする。
  */
 import { defineStore } from 'pinia'
 import { usePlayerStore } from './playerStore'
 import {
   STATUS_COLLECT_ACHIEVEMENT_ID,
   STATUS_COLLECT_TARGET,
-  CORROSION_ACHIEVEMENT_ID,
-  CORROSION_TARGET,
-  STATUS_USE_ACHIEVEMENT_ID,
-  STATUS_USE_TARGET,
-  MEMORY_USE_ACHIEVEMENT_ID,
-  MEMORY_USE_TARGET,
-  MULTI_ATTACK_ACHIEVEMENT_ID,
-  MULTI_ATTACK_TARGET,
-  COWARD_ACHIEVEMENT_ID,
-  COWARD_TARGET,
   ORC_HERO_ACHIEVEMENT_ID,
-  ORC_HERO_TARGET,
+  FIRST_DAMAGE_ACHIEVEMENT_ID,
+  FIRST_DAMAGE_TARGET,
+  DEFEAT_ACHIEVEMENT_ID,
+  DEFEAT_TARGET,
+  CORROSION_FIRST_ACHIEVEMENT_ID,
+  CORROSION_FIRST_TARGET,
+  CORROSION_30_ACHIEVEMENT_ID,
+  CORROSION_30_TARGET,
+  CORROSION_100_ACHIEVEMENT_ID,
+  CORROSION_100_TARGET,
+  SLIME_FIRST_ACHIEVEMENT_ID,
+  SLIME_FIRST_TARGET,
+  SLIME_3_ACHIEVEMENT_ID,
+  SLIME_3_TARGET,
+  SLIME_10_ACHIEVEMENT_ID,
+  SLIME_10_TARGET,
+  MULTI_HIT_4_RECEIVED_ACHIEVEMENT_ID,
+  MULTI_HIT_4_TARGET,
+  MULTI_HIT_5_RECEIVED_ACHIEVEMENT_ID,
+  MULTI_HIT_5_TARGET,
+  MULTI_HIT_6_RECEIVED_ACHIEVEMENT_ID,
+  MULTI_HIT_6_TARGET,
+  DAMAGE_30_ACHIEVEMENT_ID,
+  DAMAGE_30_TARGET,
+  DAMAGE_40_ACHIEVEMENT_ID,
+  DAMAGE_40_TARGET,
+  DAMAGE_50_ACHIEVEMENT_ID,
+  DAMAGE_50_TARGET,
+  KISS_RECEIVED_ACHIEVEMENT_ID,
+  KISS_RECEIVED_TARGET,
+  KISS_USED_ACHIEVEMENT_ID,
+  KISS_USED_TARGET,
+  AURA_FIRST_ACHIEVEMENT_ID,
+  AURA_FIRST_TARGET,
+  AURA_5_ACHIEVEMENT_ID,
+  AURA_5_TARGET,
 } from '@/domain/achievements/constants'
 import type { AchievementProgress } from '@/domain/achievements/types'
 
-export type AchievementStatus = 'not-achieved' | 'just-achieved' | 'owned' | 'reacquirable'
+export type AchievementStatus = 'not-achieved' | 'achieved' | 'owned'
 
 type AchievementReward =
   | {
       type: 'relic'
       relicClassName: string
-      label: string
-    }
-  | {
-      type: 'memory-point'
-      amount: number
       label: string
     }
   | {
@@ -44,108 +64,227 @@ type AchievementReward =
       label: string
     }
 
-type AchievementDefinition = {
+type RewardAchievementDefinition = {
+  category: 'reward'
   id: string
   title: string
   description: string
   reward: AchievementReward
+  memoryPointCost: number
   initialStatus?: AchievementStatus
   progressLabel?: string
   progressRatio?: number
-  costLabel?: string
-  // 再取得時に消費する記憶ポイント。未指定の場合は0扱い（要件が固まったら増減可能）。
-  reacquireCost?: number
 }
+
+type TitleAchievementDefinition = {
+  category: 'title'
+  id: string
+  title: string
+  description: string
+  memoryPointGain: number
+  initialStatus?: Exclude<AchievementStatus, 'owned'>
+  progressLabel?: string
+  progressRatio?: number
+}
+
+type AchievementDefinition = RewardAchievementDefinition | TitleAchievementDefinition
 
 type AchievementHistoryEntry = {
   id: string
   status: AchievementStatus
-  claimedCount: number
-  lastClaimedAt: number | null
 }
 
 type AchievementPersistedPayload = {
   version: typeof STORAGE_VERSION
-  memoryPoints: number
   entries: AchievementHistoryEntry[]
 }
 
-const STORAGE_VERSION = 'v1'
+const STORAGE_VERSION = 'v3'
 const STORAGE_KEY = `ms-achievement/${STORAGE_VERSION}/history`
 
-// 実装済みの7件のみ定義する。
+// 報酬2件 + 称号18件を定義する。
 const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
-    id: 'corrosion-30',
-    title: '衣を蝕む',
-    description: '腐食を累計30点受ける',
-    reward: { type: 'relic', relicClassName: 'LightweightCombatRelic', label: 'レリック: 軽装戦闘' },
-    initialStatus: 'not-achieved',
-    progressLabel: '0 / 30',
-    progressRatio: 0,
-  },
-  {
-    id: 'status-collect',
+    id: STATUS_COLLECT_ACHIEVEMENT_ID,
+    category: 'reward',
     title: '穢れを纏う',
     description: '状態異常カードを累計8枚獲得する',
     reward: { type: 'relic', relicClassName: 'AdversityExcitementRelic', label: 'レリック: 逆境' },
+    memoryPointCost: 2,
     initialStatus: 'not-achieved',
-    progressLabel: '0 / 8',
-    progressRatio: 0,
-  },
-  // {
-  //   id: 'status-use',
-  //   title: '清廉',
-  //   description: '状態異常カードを累計4回使用する',
-  //   reward: { type: 'relic', relicClassName: 'PureBodyRelic', label: 'レリック: 清廉' },
-  //   initialStatus: 'not-achieved',
-  //   progressLabel: '0 / 4',
-  //   progressRatio: 0,
-  // },
-  {
-    id: 'memory-use',
-    title: '傷を刻む',
-    description: '被虐の記憶カードを累計5回使用する',
-    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
-    initialStatus: 'not-achieved',
-    progressLabel: '0 / 5',
-    progressRatio: 0,
   },
   {
-    id: 'multi-attack',
-    title: '手数',
-    description: '攻撃回数5回以上の連続攻撃を獲得する',
-    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
-    initialStatus: 'not-achieved',
-    progressLabel: '0 / 1',
-    progressRatio: 0,
-  },
-  {
-    id: 'coward',
-    title: '残虐',
-    description: '臆病 trait を持つ敵を撃破する',
-    reward: { type: 'memory-point', amount: 2, label: '記憶ポイント +2' },
-    initialStatus: 'not-achieved',
-    progressLabel: '0 / 1',
-    progressRatio: 0,
-  },
-  {
-    id: 'orc-hero',
+    id: ORC_HERO_ACHIEVEMENT_ID,
+    category: 'reward',
     title: 'BOSS「オークヒーロー」討伐',
     description: 'オークヒーローを撃破する',
     reward: { type: 'max-hp', maxHpGain: 30, healAmount: 30, label: '最大HP+30' },
+    memoryPointCost: 2,
     initialStatus: 'not-achieved',
-    progressLabel: '0 / 1',
-    progressRatio: 0,
+  },
+  {
+    id: FIRST_DAMAGE_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '初めての傷',
+    description: 'はじめてダメージを受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: DEFEAT_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '輪廻経験者',
+    description: '敗北する',
+    memoryPointGain: 3,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: CORROSION_FIRST_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '衣服破損１',
+    description: 'はじめて腐食を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: CORROSION_30_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '衣服破損２',
+    description: '腐食を累計30点受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: CORROSION_100_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '衣服破損３',
+    description: '腐食を累計100点受ける',
+    memoryPointGain: 3,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: SLIME_FIRST_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '汚濁１',
+    description: 'はじめて粘液を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: SLIME_3_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '汚濁２',
+    description: '粘液を累計3点受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: SLIME_10_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '汚濁３',
+    description: '粘液を累計10点受ける',
+    memoryPointGain: 3,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: MULTI_HIT_4_RECEIVED_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '連打１',
+    description: '4回以上の連続攻撃を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: MULTI_HIT_5_RECEIVED_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '連打２',
+    description: '5回以上の連続攻撃を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: MULTI_HIT_6_RECEIVED_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '連打３',
+    description: '6回以上の連続攻撃を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: DAMAGE_30_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '打点１',
+    description: '30ダメージ以上の打点を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: DAMAGE_40_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '打点２',
+    description: '40ダメージ以上の打点を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: DAMAGE_50_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '打点３',
+    description: '50ダメージ以上の打点を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: KISS_RECEIVED_ACHIEVEMENT_ID,
+    category: 'title',
+    title: 'ファーストキス',
+    description: 'はじめて「口づけ」を受ける',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: KISS_USED_ACHIEVEMENT_ID,
+    category: 'title',
+    title: 'たどたどしい接吻',
+    description: '口づけを3回使用する',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: AURA_FIRST_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '被虐心の',
+    description: 'はじめて「被虐のオーラ」を発動する',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: AURA_5_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '被虐心の芽生え',
+    description: '「被虐のオーラ」を5回発動する',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
   },
 ]
+
+function normalizeStatus(def: AchievementDefinition, status: AchievementStatus): AchievementStatus {
+  if (def.category === 'title' && status === 'owned') {
+    // 称号は「所持中」を持たないため、誤った状態は達成扱いに寄せる。
+    return 'achieved'
+  }
+  return status
+}
+
+function resolveInitialStatus(def: AchievementDefinition): AchievementStatus {
+  const initial = def.initialStatus ?? 'not-achieved'
+  return normalizeStatus(def, initial)
+}
 
 function buildDefaultHistory(): AchievementHistoryEntry[] {
   return ACHIEVEMENT_DEFINITIONS.map((def) => ({
     id: def.id,
-    status: def.initialStatus ?? 'not-achieved',
-    claimedCount: def.initialStatus === 'owned' ? 1 : 0,
-    lastClaimedAt: null,
+    status: resolveInitialStatus(def),
   }))
 }
 
@@ -165,37 +304,24 @@ function validatePayload(raw: unknown): AchievementPersistedPayload | null {
   const obj = raw as Partial<AchievementPersistedPayload>
   if (obj.version !== STORAGE_VERSION) return null
   if (!Array.isArray(obj.entries)) return null
-  if (typeof obj.memoryPoints !== 'number' || Number.isNaN(obj.memoryPoints)) return null
   const entries = obj.entries
     .map((entry) => ({
       id: entry?.id,
       status: entry?.status,
-      claimedCount: entry?.claimedCount,
-      lastClaimedAt: entry?.lastClaimedAt ?? null,
     }))
     .filter(
       (entry): entry is AchievementHistoryEntry =>
-        typeof entry.id === 'string' &&
-        isValidStatus(entry.status) &&
-        typeof entry.claimedCount === 'number' &&
-        entry.claimedCount >= 0 &&
-        (entry.lastClaimedAt === null || typeof entry.lastClaimedAt === 'number'),
+        typeof entry.id === 'string' && isValidStatus(entry.status),
     )
   if (entries.length === 0) return null
   return {
     version: STORAGE_VERSION,
-    memoryPoints: obj.memoryPoints,
     entries,
   }
 }
 
 function isValidStatus(status: unknown): status is AchievementStatus {
-  return (
-    status === 'not-achieved' ||
-    status === 'just-achieved' ||
-    status === 'owned' ||
-    status === 'reacquirable'
-  )
+  return status === 'not-achieved' || status === 'achieved' || status === 'owned'
 }
 
 function loadPersisted(): AchievementPersistedPayload | null {
@@ -224,13 +350,11 @@ function mergeHistoryWithDefinitions(history: AchievementHistoryEntry[]): Achiev
   return ACHIEVEMENT_DEFINITIONS.map((def) => {
     const existing = map.get(def.id)
     if (existing && isValidStatus(existing.status)) {
-      return { ...existing }
+      return { id: def.id, status: normalizeStatus(def, existing.status) }
     }
     return {
       id: def.id,
-      status: def.initialStatus ?? 'not-achieved',
-      claimedCount: def.initialStatus === 'owned' ? 1 : 0,
-      lastClaimedAt: null,
+      status: resolveInitialStatus(def),
     }
   })
 }
@@ -238,7 +362,6 @@ function mergeHistoryWithDefinitions(history: AchievementHistoryEntry[]): Achiev
 export const useAchievementStore = defineStore('achievement', {
   state: () => ({
     initialized: false,
-    memoryPoints: 0,
     history: buildDefaultHistory(),
   }),
   getters: {
@@ -249,15 +372,50 @@ export const useAchievementStore = defineStore('achievement', {
       }
       return map
     },
-    entriesForView(): Array<AchievementDefinition & { status: AchievementStatus }> {
+    rewardEntriesForView(): Array<RewardAchievementDefinition & { status: AchievementStatus }> {
       const map = this.historyMap as Map<string, AchievementHistoryEntry>
-      return ACHIEVEMENT_DEFINITIONS.map((def) => ({
-        ...def,
-        status: map.get(def.id)?.status ?? def.initialStatus ?? 'not-achieved',
-      }))
+      return ACHIEVEMENT_DEFINITIONS.filter((def): def is RewardAchievementDefinition => def.category === 'reward')
+        .map((def) => ({
+          ...def,
+          status: normalizeStatus(def, map.get(def.id)?.status ?? resolveInitialStatus(def)),
+        }))
     },
-    hasFreshAchievement(state): boolean {
-      return state.history.some((entry) => entry.status === 'just-achieved')
+    titleEntriesForView(): Array<TitleAchievementDefinition & { status: Exclude<AchievementStatus, 'owned'> }> {
+      const map = this.historyMap as Map<string, AchievementHistoryEntry>
+      return ACHIEVEMENT_DEFINITIONS.filter((def): def is TitleAchievementDefinition => def.category === 'title')
+        .map((def) => ({
+          ...def,
+          status: normalizeStatus(def, map.get(def.id)?.status ?? resolveInitialStatus(def)) as Exclude<
+            AchievementStatus,
+            'owned'
+          >,
+        }))
+    },
+    earnedMemoryPointsTotal(): number {
+      const map = this.historyMap as Map<string, AchievementHistoryEntry>
+      return ACHIEVEMENT_DEFINITIONS.filter((def): def is TitleAchievementDefinition => def.category === 'title')
+        .reduce((sum, def) => {
+          const status = normalizeStatus(def, map.get(def.id)?.status ?? resolveInitialStatus(def))
+          if (status === 'achieved') {
+            return sum + def.memoryPointGain
+          }
+          return sum
+        }, 0)
+    },
+    usedMemoryPointsTotal(): number {
+      const map = this.historyMap as Map<string, AchievementHistoryEntry>
+      return ACHIEVEMENT_DEFINITIONS.filter((def): def is RewardAchievementDefinition => def.category === 'reward')
+        .reduce((sum, def) => {
+          const status = normalizeStatus(def, map.get(def.id)?.status ?? resolveInitialStatus(def))
+          if (status === 'owned') {
+            return sum + def.memoryPointCost
+          }
+          return sum
+        }, 0)
+    },
+    availableMemoryPoints(): number {
+      // 記憶ポイントは「獲得済み称号 - 所持中報酬」から算出する。
+      return Math.max(0, this.earnedMemoryPointsTotal - this.usedMemoryPointsTotal)
     },
   },
   actions: {
@@ -265,20 +423,15 @@ export const useAchievementStore = defineStore('achievement', {
       if (this.initialized) return
       const loaded = loadPersisted()
       if (loaded) {
-        this.memoryPoints = loaded.memoryPoints
         this.history = mergeHistoryWithDefinitions(loaded.entries)
       } else {
-        this.memoryPoints = 0
         this.history = buildDefaultHistory()
       }
       this.initialized = true
     },
     applyProgress(progress: AchievementProgress): void {
       this.ensureInitialized()
-      const maybeUpdate = (
-        achievementId: string,
-        condition: boolean,
-      ) => {
+      const maybeUpdate = (achievementId: string, condition: boolean) => {
         if (!condition) return
         const current = this.historyMap.get(achievementId)
         if (!current || current.status !== 'not-achieved') {
@@ -286,37 +439,44 @@ export const useAchievementStore = defineStore('achievement', {
         }
         const updated: AchievementHistoryEntry = {
           ...current,
-          status: 'just-achieved',
-          lastClaimedAt: null,
+          status: 'achieved',
         }
         this.history = this.history.map((entry) =>
           entry.id === achievementId ? updated : entry,
         )
       }
 
-      maybeUpdate(CORROSION_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_TARGET)
       maybeUpdate(STATUS_COLLECT_ACHIEVEMENT_ID, progress.statusCardMemories >= STATUS_COLLECT_TARGET)
-      maybeUpdate(STATUS_USE_ACHIEVEMENT_ID, progress.statusCardUsed >= STATUS_USE_TARGET)
-      maybeUpdate(MEMORY_USE_ACHIEVEMENT_ID, progress.memoryCardUsed >= MEMORY_USE_TARGET)
-      maybeUpdate(MULTI_ATTACK_ACHIEVEMENT_ID, progress.multiAttackAcquired >= MULTI_ATTACK_TARGET)
-      maybeUpdate(COWARD_ACHIEVEMENT_ID, progress.cowardDefeatedIds.length >= COWARD_TARGET)
       maybeUpdate(ORC_HERO_ACHIEVEMENT_ID, progress.orcHeroDefeated === true)
+      maybeUpdate(FIRST_DAMAGE_ACHIEVEMENT_ID, progress.damageTakenCount >= FIRST_DAMAGE_TARGET)
+      maybeUpdate(DEFEAT_ACHIEVEMENT_ID, progress.defeatCount >= DEFEAT_TARGET)
+      maybeUpdate(CORROSION_FIRST_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_FIRST_TARGET)
+      maybeUpdate(CORROSION_30_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_30_TARGET)
+      maybeUpdate(CORROSION_100_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_100_TARGET)
+      maybeUpdate(SLIME_FIRST_ACHIEVEMENT_ID, progress.stickyAccumulated >= SLIME_FIRST_TARGET)
+      maybeUpdate(SLIME_3_ACHIEVEMENT_ID, progress.stickyAccumulated >= SLIME_3_TARGET)
+      maybeUpdate(SLIME_10_ACHIEVEMENT_ID, progress.stickyAccumulated >= SLIME_10_TARGET)
+      maybeUpdate(
+        MULTI_HIT_4_RECEIVED_ACHIEVEMENT_ID,
+        progress.maxMultiHitReceived >= MULTI_HIT_4_TARGET,
+      )
+      maybeUpdate(
+        MULTI_HIT_5_RECEIVED_ACHIEVEMENT_ID,
+        progress.maxMultiHitReceived >= MULTI_HIT_5_TARGET,
+      )
+      maybeUpdate(
+        MULTI_HIT_6_RECEIVED_ACHIEVEMENT_ID,
+        progress.maxMultiHitReceived >= MULTI_HIT_6_TARGET,
+      )
+      maybeUpdate(DAMAGE_30_ACHIEVEMENT_ID, progress.maxDamageTaken >= DAMAGE_30_TARGET)
+      maybeUpdate(DAMAGE_40_ACHIEVEMENT_ID, progress.maxDamageTaken >= DAMAGE_40_TARGET)
+      maybeUpdate(DAMAGE_50_ACHIEVEMENT_ID, progress.maxDamageTaken >= DAMAGE_50_TARGET)
+      maybeUpdate(KISS_RECEIVED_ACHIEVEMENT_ID, progress.kissReceivedCount >= KISS_RECEIVED_TARGET)
+      maybeUpdate(KISS_USED_ACHIEVEMENT_ID, progress.kissUsedCount >= KISS_USED_TARGET)
+      maybeUpdate(AURA_FIRST_ACHIEVEMENT_ID, progress.masochisticAuraUsedCount >= AURA_FIRST_TARGET)
+      maybeUpdate(AURA_5_ACHIEVEMENT_ID, progress.masochisticAuraUsedCount >= AURA_5_TARGET)
 
       this.persist()
-    },
-    addMemoryPoints(amount: number): void {
-      const gain = Math.max(0, Math.floor(amount))
-      if (gain <= 0) return
-      this.memoryPoints += gain
-    },
-    spendMemoryPoints(amount: number): boolean {
-      const cost = Math.max(0, Math.floor(amount))
-      if (cost <= 0) return true
-      if (this.memoryPoints < cost) {
-        return false
-      }
-      this.memoryPoints -= cost
-      return true
     },
     claimAchievement(id: string): { success: boolean; message: string } {
       this.ensureInitialized()
@@ -324,17 +484,17 @@ export const useAchievementStore = defineStore('achievement', {
       if (!def) {
         return { success: false, message: '不明な実績です' }
       }
+      if (def.category !== 'reward') {
+        return { success: false, message: '称号は報酬として獲得できません' }
+      }
       const historyEntry = this.historyMap.get(id)
       if (!historyEntry) {
         return { success: false, message: '履歴の同期に失敗しました' }
       }
-      if (historyEntry.status !== 'just-achieved' && historyEntry.status !== 'reacquirable') {
-        return { success: false, message: '受け取れる状態ではありません' }
+      if (historyEntry.status !== 'achieved') {
+        return { success: false, message: '獲得できる状態ではありません' }
       }
-
-      // 設計メモ: 再取得は記憶ポイントを消費して「所持中」状態を再付与する想定。
-      const reacquireCost = historyEntry.status === 'reacquirable' ? def.reacquireCost ?? 0 : 0
-      if (reacquireCost > 0 && !this.spendMemoryPoints(reacquireCost)) {
+      if (this.availableMemoryPoints < def.memoryPointCost) {
         return { success: false, message: '記憶ポイントが不足しています' }
       }
 
@@ -342,8 +502,6 @@ export const useAchievementStore = defineStore('achievement', {
         const playerStore = usePlayerStore()
         playerStore.ensureInitialized()
         playerStore.addRelic(def.reward.relicClassName)
-      } else if (def.reward.type === 'memory-point') {
-        this.addMemoryPoints(def.reward.amount)
       } else if (def.reward.type === 'max-hp') {
         const playerStore = usePlayerStore()
         playerStore.ensureInitialized()
@@ -361,23 +519,19 @@ export const useAchievementStore = defineStore('achievement', {
       const updated: AchievementHistoryEntry = {
         ...historyEntry,
         status: 'owned',
-        claimedCount: historyEntry.claimedCount + 1,
-        lastClaimedAt: Date.now(),
       }
       this.history = this.history.map((entry) => (entry.id === id ? updated : entry))
       this.persist()
-      return { success: true, message: '報酬を受け取りました' }
+      return { success: true, message: '報酬を獲得しました' }
     },
     resetHistory(): void {
-      // デッキ編集画面などから呼び出して履歴を初期化する用途。メモリーポイントも一緒にリセット。
-      this.memoryPoints = 0
+      // デッキ編集画面などから呼び出して履歴を初期化する用途。
       this.history = buildDefaultHistory()
       this.persist()
     },
     persist(): void {
       const payload: AchievementPersistedPayload = {
         version: STORAGE_VERSION,
-        memoryPoints: this.memoryPoints,
         entries: this.history.map((entry) => ({ ...entry })),
       }
       savePersisted(payload)

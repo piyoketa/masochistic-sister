@@ -5,20 +5,17 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import type { FieldNode } from '@/fields/domains/FieldNode'
 import PlayerStatusHeader from '@/components/battle/PlayerStatusHeader.vue'
-import AchievementWindow, { type AchievementCardView } from '@/components/AchievementWindow.vue'
+import AchievementWindow from '@/components/AchievementWindow.vue'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
+import { useAchievementWindow } from '@/composables/useAchievementWindow'
 import { useAudioStore } from '@/stores/audioStore'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
-import { useAchievementStore } from '@/stores/achievementStore'
-import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
-import { STATUS_COLLECT_ACHIEVEMENT_ID, STATUS_COLLECT_TARGET } from '@/domain/achievements/constants'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { CardInfo } from '@/types/battle'
 import { createCardFromBlueprint } from '@/domain/library/Library'
 import { useImageHub } from '@/composables/imageHub'
 import { buildEnemyTeamFactoryMap } from '@/domain/entities/enemyTeams'
-import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
 
 type FieldViewProps = {
@@ -31,10 +28,13 @@ const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
 const pileOverlayStore = usePileOverlayStore()
-const achievementStore = useAchievementStore()
-achievementStore.ensureInitialized()
-const achievementProgressStore = useAchievementProgressStore()
-achievementProgressStore.ensureInitialized()
+// 実績ウィンドウ用の表示データと獲得処理を composable に集約する。
+const {
+  memoryPointSummary: achievementMemoryPointSummary,
+  rewardEntries: rewardAchievementEntries,
+  titleEntries: titleAchievementEntries,
+  claimAchievement,
+} = useAchievementWindow()
 const imageHub = useImageHub()
 const SISTER_ICON_SRC = '/assets/players/icons/sister_dot.png'
 imageHub.getElement(SISTER_ICON_SRC)
@@ -44,32 +44,6 @@ const router = useRouter()
 const debugMode = ref(false)
 const debugMenuOpen = ref(false)
 const achievementWindowOpen = ref(false)
-const achievementMemoryPoints = computed(() => achievementStore.memoryPoints)
-const achievementPreviewEntries = computed<AchievementCardView[]>(() =>
-  achievementStore.entriesForView.map((entry) => {
-    const base: AchievementCardView = {
-      id: entry.id,
-      title: entry.title,
-      description: entry.description,
-      rewardLabel: entry.reward.label,
-      status: entry.status,
-      progressLabel: entry.progressLabel,
-      progressRatio: entry.progressRatio,
-      costLabel: entry.costLabel,
-      actionable: true,
-    }
-    if (entry.id === STATUS_COLLECT_ACHIEVEMENT_ID) {
-      const current = achievementProgressStore.statusCardMemories
-      return {
-        ...base,
-        progressLabel: `${current} / ${STATUS_COLLECT_TARGET}`,
-        progressRatio: Math.min(1, current / STATUS_COLLECT_TARGET),
-      }
-    }
-    return base
-  }),
-)
-const hasFreshAchievement = computed(() => achievementStore.hasFreshAchievement)
 
 const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
 const audioStore = useAudioStore()
@@ -187,12 +161,12 @@ function openDeckOverlay(): void {
 }
 
 function handleClaimAchievement(payload: { id: string }): void {
-  const result = achievementStore.claimAchievement(payload.id)
+  const result = claimAchievement(payload.id)
   if (!result.success) {
     window.alert(result.message)
     return
   }
-  // レリックは playerStore 側で付与される。今後メモリーポイント対応時はここでポイント表示を更新する想定。
+  // 報酬の付与はストア内で完結するため、ここでは UI 側の再計算に任せる。
 }
 
 async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: number): Promise<void> {
@@ -258,8 +232,9 @@ onMounted(() => {
   <div class="field-view">
     <AchievementWindow
       :visible="achievementWindowOpen"
-      :achievements="achievementPreviewEntries"
-      :memory-points="achievementMemoryPoints"
+      :reward-entries="rewardAchievementEntries"
+      :title-entries="titleAchievementEntries"
+      :memory-point-summary="achievementMemoryPointSummary"
       @close="achievementWindowOpen = false"
       @claim="handleClaimAchievement"
     />
@@ -283,7 +258,6 @@ onMounted(() => {
               </svg>
             </span>
             <span class="achievement-button__label">実績</span>
-            <span v-if="hasFreshAchievement" class="achievement-button__badge">!</span>
           </button>
           <span class="field-header__item">HP: {{ playerHp.current }} / {{ playerHp.max }}</span>
           <span class="field-header__item">現在Lv: {{ currentLevel }}</span>
@@ -437,19 +411,6 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.achievement-button__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ff8c8c, #ff3b3b);
-  color: #fff;
-  font-weight: 900;
-  font-size: 12px;
-  box-shadow: 0 8px 18px rgba(255, 70, 70, 0.35);
-}
 
 .debug-panel {
   margin-bottom: 16px;

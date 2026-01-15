@@ -1,13 +1,27 @@
 <!--
-Componentの責務: 実績一覧をモーダルで提示し、ステータスごとに見た目を変えたカードと報酬ボタン（クリックイベントを親へ通知）を表示する。記憶ポイント残高の表示と、閉じる操作も提供する。
-責務ではないこと: 実績の進行計算や報酬受取の処理。クリック時の状態遷移・バリデーションは親側のストアで担う前提で、ここでは純粋に見た目とイベント通知だけを担う。
-主な通信相手: 親コンポーネント（FieldView など）。props で visible/achievements/memoryPoints を受け取り、close/claim イベントでモーダル閉じ要求と「報酬を受け取る」操作を返す。AchievementStore などの状態管理は親で扱う。
+Componentの責務:
+- 実績ウィンドウをモーダルとして表示し、「報酬」「称号」タブの切り替えと一覧描画を担当する。
+- 「獲得」ボタン押下をイベントとして親へ通知し、表示だけに専念する。
+
+責務ではないこと:
+- 実績達成判定、記憶ポイント集計、報酬の付与や永続化。これらはストア/親コンポーネントで完結させる。
+
+主な通信相手とインターフェース:
+- 親コンポーネント（FieldView など）。
+  - props:
+    - visible: モーダルの表示/非表示。
+    - rewardEntries: RewardAchievementCardView[]。報酬実績の表示カードで、status は not-achieved/achieved/owned を持つ。
+    - titleEntries: TitleAchievementRowView[]。称号実績の行表示で、status は not-achieved/achieved のみ（報酬と違い owned を持たない）。
+    - memoryPointSummary: MemoryPointSummary（used/total/available の集計結果）。
+  - events:
+    - close: モーダルを閉じる要求。
+    - claim: { id: string } を通知し、報酬獲得処理は親に委譲する。
 -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref } from 'vue'
 import type { AchievementStatus } from '@/stores/achievementStore'
 
-export type AchievementCardView = {
+export type RewardAchievementCardView = {
   id: string
   title: string
   description: string
@@ -15,14 +29,33 @@ export type AchievementCardView = {
   status: AchievementStatus
   progressLabel?: string
   progressRatio?: number
-  costLabel?: string
-  actionable?: boolean
+  costLabel: string
+  canClaim: boolean
 }
 
-const props = defineProps<{
+export type TitleAchievementStatus = 'not-achieved' | 'achieved'
+
+export type TitleAchievementRowView = {
+  id: string
+  title: string
+  description: string
+  status: TitleAchievementStatus
+  progressLabel?: string
+  progressRatio?: number
+  pointLabel: string
+}
+
+export type MemoryPointSummary = {
+  used: number
+  total: number
+  available: number
+}
+
+defineProps<{
   visible: boolean
-  achievements: AchievementCardView[]
-  memoryPoints: number
+  rewardEntries: RewardAchievementCardView[]
+  titleEntries: TitleAchievementRowView[]
+  memoryPointSummary: MemoryPointSummary
 }>()
 
 const emit = defineEmits<{
@@ -30,46 +63,23 @@ const emit = defineEmits<{
   (event: 'claim', payload: { id: string }): void
 }>()
 
-// UI レイヤーでだけ使う表示用ラベル。進行ロジックはまだ無いことを明示する。
-const statusLabels: Record<AchievementStatus, string> = {
+const activeTab = ref<'reward' | 'title'>('reward')
+
+const rewardStatusLabels: Record<AchievementStatus, string> = {
   'not-achieved': '未達成',
-  'just-achieved': '達成直後',
-  owned: '獲得済み',
-  reacquirable: '再取得可能',
+  achieved: '達成',
+  owned: '所持中',
 }
 
-const statusVariants: Record<AchievementStatus, string> = {
+const rewardStatusVariants: Record<AchievementStatus, string> = {
   'not-achieved': 'achievement-card--not-achieved',
-  'just-achieved': 'achievement-card--just-achieved',
+  achieved: 'achievement-card--achieved',
   owned: 'achievement-card--owned',
-  reacquirable: 'achievement-card--reacquirable',
 }
 
-const actionableStatuses = computed(() => new Set<AchievementStatus>(['just-achieved', 'reacquirable']))
-
-function actionLabel(status: AchievementStatus): string {
-  if (status === 'just-achieved') {
-    return '報酬を受け取る'
-  }
-  if (status === 'reacquirable') {
-    return '再取得する'
-  }
-  if (status === 'owned') {
-    return '所持中'
-  }
-  return '未達成'
-}
-
-function isActionDisabled(status: AchievementStatus): boolean {
-  // まだロジックを持たないため、未達成/所持中はクリック不可にして誤操作を防ぐ。
-  return !actionableStatuses.value.has(status)
-}
-
-function isEntryActionDisabled(entry: AchievementCardView): boolean {
-  if (entry.actionable === false) {
-    return true
-  }
-  return isActionDisabled(entry.status)
+const titleStatusLabels: Record<TitleAchievementStatus, string> = {
+  'not-achieved': '未達成',
+  achieved: '達成',
 }
 
 function progressWidth(ratio?: number): string {
@@ -77,8 +87,9 @@ function progressWidth(ratio?: number): string {
   return `${safe * 100}%`
 }
 
-function handleAction(entry: AchievementCardView): void {
-  if (isEntryActionDisabled(entry)) {
+function handleClaim(entry: RewardAchievementCardView): void {
+  // ボタン表示条件は親で判定済みだが、誤操作防止のためここでもガードする。
+  if (!entry.canClaim) {
     return
   }
   emit('claim', { id: entry.id })
@@ -109,59 +120,115 @@ function handleAction(entry: AchievementCardView): void {
             </div>
             <div>
               <div class="achievement-window__title-text">実績</div>
-              <div class="achievement-window__subtitle">今は見た目のみ。ロジック実装前のプレビューです。</div>
+              <div class="achievement-window__subtitle">報酬と称号を切り替えて確認できます。</div>
             </div>
           </div>
           <div class="achievement-window__controls">
-            <div class="achievement-window__balance" aria-label="記憶ポイント残高">
-              記憶ポイント {{ memoryPoints }} pt
-            </div>
             <button type="button" class="achievement-window__close" aria-label="閉じる" @click="emit('close')">
               ×
             </button>
           </div>
         </header>
 
+        <div class="achievement-window__tabs">
+          <button
+            type="button"
+            class="achievement-window__tab"
+            :class="{ 'achievement-window__tab--active': activeTab === 'reward' }"
+            @click="activeTab = 'reward'"
+          >
+            報酬
+          </button>
+          <button
+            type="button"
+            class="achievement-window__tab"
+            :class="{ 'achievement-window__tab--active': activeTab === 'title' }"
+            @click="activeTab = 'title'"
+          >
+            称号
+          </button>
+        </div>
+
         <div class="achievement-window__body">
-          <div class="achievement-grid">
-            <article
-              v-for="entry in achievements"
-              :key="entry.id"
-              class="achievement-card"
-              :class="statusVariants[entry.status]"
-            >
-              <div class="achievement-card__status">
-                <span class="achievement-card__status-dot" />
-                {{ statusLabels[entry.status] }}
-              </div>
-              <div class="achievement-card__title">{{ entry.title }}</div>
-              <p class="achievement-card__description">{{ entry.description }}</p>
-
-              <div v-if="entry.progressLabel" class="achievement-card__progress">
-                <div class="achievement-card__progress-label">進行: {{ entry.progressLabel }}</div>
-                <div class="achievement-card__progress-bar">
-                  <span class="achievement-card__progress-fill" :style="{ width: progressWidth(entry.progressRatio) }" />
+          <div v-if="activeTab === 'reward'" class="achievement-section">
+            <div class="achievement-summary">
+              <span class="achievement-summary__label">記憶ポイント使用量</span>
+              <span class="achievement-summary__value">
+                {{ memoryPointSummary.used }} / {{ memoryPointSummary.total }} pt
+              </span>
+            </div>
+            <div class="achievement-grid">
+              <article
+                v-for="entry in rewardEntries"
+                :key="entry.id"
+                class="achievement-card"
+                :class="rewardStatusVariants[entry.status]"
+              >
+                <div class="achievement-card__status">
+                  <span class="achievement-card__status-dot" />
+                  {{ rewardStatusLabels[entry.status] }}
                 </div>
-              </div>
+                <div class="achievement-card__title">{{ entry.title }}</div>
+                <p class="achievement-card__description">{{ entry.description }}</p>
 
-              <div class="achievement-card__reward">
-                <span class="achievement-card__reward-chip">報酬</span>
-                <span class="achievement-card__reward-text">{{ entry.rewardLabel }}</span>
-                <span v-if="entry.costLabel" class="achievement-card__cost">{{ entry.costLabel }}</span>
-              </div>
+                <div v-if="entry.status === 'not-achieved' && entry.progressLabel" class="achievement-card__progress">
+                  <div class="achievement-card__progress-label">進行: {{ entry.progressLabel }}</div>
+                  <div class="achievement-card__progress-bar">
+                    <span class="achievement-card__progress-fill" :style="{ width: progressWidth(entry.progressRatio) }" />
+                  </div>
+                </div>
 
-              <div class="achievement-card__footer">
-                <span class="achievement-card__status-label">{{ statusLabels[entry.status] }}</span>
-                <button
-                  type="button"
-                  class="achievement-card__action"
-                  :disabled="isEntryActionDisabled(entry)"
-                  @click="handleAction(entry)"
-                >
-                  {{ actionLabel(entry.status) }}
-                </button>
-              </div>
-            </article>
+                <div class="achievement-card__reward">
+                  <span class="achievement-card__reward-chip">報酬</span>
+                  <span class="achievement-card__reward-text">{{ entry.rewardLabel }}</span>
+                  <span class="achievement-card__cost">{{ entry.costLabel }}</span>
+                </div>
+
+                <div class="achievement-card__footer">
+                  <span class="achievement-card__status-label">{{ rewardStatusLabels[entry.status] }}</span>
+                  <button
+                    v-if="entry.canClaim"
+                    type="button"
+                    class="achievement-card__action"
+                    @click="handleClaim(entry)"
+                  >
+                    獲得
+                  </button>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div v-else class="achievement-section">
+            <div class="achievement-summary">
+              <span class="achievement-summary__label">獲得記憶ポイント</span>
+              <span class="achievement-summary__value">{{ memoryPointSummary.total }} pt</span>
+            </div>
+            <div class="title-list">
+              <article
+                v-for="entry in titleEntries"
+                :key="entry.id"
+                class="title-row"
+                :class="{ 'title-row--achieved': entry.status === 'achieved' }"
+              >
+                <div class="title-row__status">{{ titleStatusLabels[entry.status] }}</div>
+                <div class="title-row__body">
+                  <div v-if="entry.status === 'achieved'" class="title-row__title">
+                    {{ entry.title }}
+                  </div>
+                  <div v-else class="title-row__condition">
+                    {{ entry.description }}
+                  </div>
+                  <div v-if="entry.status === 'not-achieved' && entry.progressLabel" class="title-row__progress">
+                    <div class="title-row__progress-label">{{ entry.progressLabel }}</div>
+                    <div class="title-row__progress-bar">
+                      <span class="title-row__progress-fill" :style="{ width: progressWidth(entry.progressRatio) }" />
+                    </div>
+                  </div>
+                </div>
+                <div class="title-row__point">{{ entry.pointLabel }}</div>
+              </article>
+            </div>
           </div>
         </div>
       </div>
@@ -243,15 +310,6 @@ function handleAction(entry: AchievementCardView): void {
   gap: 10px;
 }
 
-.achievement-window__balance {
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, rgba(138, 196, 255, 0.2), rgba(90, 138, 255, 0.15));
-  color: #dceaff;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
 .achievement-window__close {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -270,9 +328,63 @@ function handleAction(entry: AchievementCardView): void {
   transform: translateY(-1px);
 }
 
+.achievement-window__tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 0;
+}
+
+.achievement-window__tab {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 12px 12px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: none;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(242, 236, 255, 0.7);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.achievement-window__tab--active {
+  background: linear-gradient(90deg, rgba(255, 227, 115, 0.22), rgba(255, 150, 92, 0.16));
+  color: #fff4c4;
+  border-color: rgba(255, 216, 102, 0.5);
+}
+
 .achievement-window__body {
   padding: 16px 16px 18px;
   overflow-y: auto; /* カード数が20枚以上でもスクロールで全件確認できるようにする */
+}
+
+.achievement-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.achievement-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(120, 170, 255, 0.14);
+  border: 1px solid rgba(120, 170, 255, 0.25);
+  color: #e6f0ff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.achievement-summary__label {
+  font-size: 12px;
+  color: rgba(230, 238, 255, 0.78);
+}
+
+.achievement-summary__value {
+  font-size: 14px;
 }
 
 .achievement-grid {
@@ -411,17 +523,12 @@ function handleAction(entry: AchievementCardView): void {
   transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
 }
 
-.achievement-card__action:hover:not(:disabled),
-.achievement-card__action:focus-visible:not(:disabled) {
+.achievement-card__action:hover,
+.achievement-card__action:focus-visible {
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
   background: rgba(255, 227, 115, 0.28);
   border-color: rgba(255, 227, 115, 0.7);
-}
-
-.achievement-card__action:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 
 .achievement-card--not-achieved {
@@ -432,13 +539,13 @@ function handleAction(entry: AchievementCardView): void {
   background: #7a7f92;
 }
 
-.achievement-card--just-achieved {
+.achievement-card--achieved {
   border-color: rgba(255, 216, 102, 0.8);
   box-shadow: 0 14px 30px rgba(255, 216, 102, 0.24);
   background: radial-gradient(circle at 30% 0%, rgba(255, 216, 102, 0.25), rgba(35, 26, 16, 0.92));
 }
 
-.achievement-card--just-achieved .achievement-card__status-dot {
+.achievement-card--achieved .achievement-card__status-dot {
   background: linear-gradient(180deg, #ffd166, #ff9f1c);
 }
 
@@ -451,20 +558,93 @@ function handleAction(entry: AchievementCardView): void {
   background: linear-gradient(180deg, #8af7b0, #2dd373);
 }
 
-.achievement-card--owned .achievement-card__action {
-  background: rgba(138, 247, 176, 0.12);
-  border-color: rgba(138, 247, 176, 0.45);
-  color: #cbffd8;
+.title-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.achievement-card--reacquirable {
-  border-color: rgba(122, 186, 255, 0.7);
-  background: linear-gradient(180deg, rgba(38, 50, 68, 0.72), rgba(18, 20, 26, 0.92));
-  box-shadow: 0 14px 28px rgba(122, 186, 255, 0.18);
+.title-row {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(18, 18, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(242, 236, 255, 0.88);
 }
 
-.achievement-card--reacquirable .achievement-card__status-dot {
-  background: linear-gradient(180deg, #7abaff, #4d7fc1);
+.title-row--achieved {
+  border-color: rgba(255, 216, 102, 0.5);
+  background: rgba(32, 26, 18, 0.8);
+}
+
+.title-row__status {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.title-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.title-row__title {
+  font-weight: 800;
+  font-size: 13px;
+  color: #ffeec0;
+}
+
+.title-row__condition {
+  font-size: 12px;
+  color: rgba(230, 227, 240, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title-row__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title-row__progress-label {
+  font-size: 11px;
+  color: rgba(200, 196, 214, 0.8);
+}
+
+.title-row__progress-bar {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.title-row__progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7abaff, #a1c4ff);
+  transition: width 200ms ease;
+}
+
+.title-row__point {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(214, 232, 255, 0.9);
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 186, 255, 0.4);
+  background: rgba(122, 186, 255, 0.12);
 }
 
 .achievement-overlay-enter-active,
@@ -475,5 +655,29 @@ function handleAction(entry: AchievementCardView): void {
 .achievement-overlay-enter-from,
 .achievement-overlay-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .achievement-window__tabs {
+    padding: 10px 12px 0;
+  }
+
+  .achievement-window__body {
+    padding: 12px;
+  }
+
+  .achievement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .title-row {
+    grid-template-columns: 72px 1fr;
+    gap: 8px;
+  }
+
+  .title-row__point {
+    grid-column: 2 / 3;
+    justify-self: end;
+  }
 }
 </style>
