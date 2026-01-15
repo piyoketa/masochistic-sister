@@ -21,6 +21,7 @@ export type RelicId =
   | 'holy-protection'
   | 'lightweight-combat'
   | 'memory-saint-relic'
+  | 'mucus-orb'
   | 'no-violence'
   | 'pure-body'
   | 'redraw-relic'

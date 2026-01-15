@@ -1,4 +1,5 @@
 import { SacrificialAwarenessRelic } from './SacrificialAwarenessRelic'
+import { MucusOrbRelic } from './MucusOrbRelic'
 import { AdversityExcitementRelic } from './AdversityExcitementRelic'
 import { LightweightCombatRelic } from './LightweightCombatRelic'
 import { ActionForceRelic } from './ActionForceRelic'
@@ -30,6 +31,7 @@ export type RelicInfo = {
 const RELIC_FACTORIES: Record<string, () => Relic> = {
   MemorySaintRelic: () => new MemorySaintRelic(),
   SacrificialAwarenessRelic: () => new SacrificialAwarenessRelic(),
+  MucusOrbRelic: () => new MucusOrbRelic(),
   AdversityExcitementRelic: () => new AdversityExcitementRelic(),
   LightweightCombatRelic: () => new LightweightCombatRelic(),
   ActionForceRelic: () => new ActionForceRelic(),
