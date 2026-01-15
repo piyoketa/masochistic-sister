@@ -46,6 +46,7 @@ const drawCount = computed(() => {
 const drawnRelics = ref<RelicInfo[]>([])
 const claimed = ref(false)
 const claimError = ref<string | null>(null)
+const relicLimitReached = computed(() => playerStore.relicLimitReached)
 
 const playerStatus = computed(() => ({
   hp: playerStore.hp,
@@ -54,7 +55,21 @@ const playerStatus = computed(() => ({
 }))
 
 const firstRelic = computed(() => drawnRelics.value[0] ?? null)
-const canClaim = computed(() => Boolean(firstRelic.value) && !claimed.value)
+const canClaim = computed(
+  () => Boolean(firstRelic.value) && !claimed.value && !relicLimitReached.value,
+)
+const canProceed = computed(
+  () => !claimed.value && (canClaim.value || !firstRelic.value || relicLimitReached.value),
+)
+const actionLabel = computed(() =>
+  canClaim.value ? '獲得してフィールドに戻る' : 'フィールドに戻る',
+)
+const noteText = computed(() => {
+  if (relicLimitReached.value) {
+    return 'レリック上限に達しているため獲得できません。フィールドに戻ります。'
+  }
+  return firstRelic.value ? 'このレリックを獲得し、フィールドへ戻ります。' : '獲得できるレリックがありません。'
+})
 
 onMounted(() => {
   drawnRelics.value = drawRelics(candidateRelics.value, drawCount.value)
@@ -81,10 +96,22 @@ function drawRelics(classNames: string[], count: number): RelicInfo[] {
 }
 
 async function handleClaim(): Promise<void> {
+  if (claimed.value) return
+  claimError.value = null
   const relic = firstRelic.value
-  if (!relic || claimed.value) return
+  if (!relic || relicLimitReached.value) {
+    // レリックが無い/上限到達のときは獲得せずに進行だけ進める。
+    claimed.value = true
+    fieldStore.markCurrentCleared()
+    await router.push('/field')
+    return
+  }
+  const result = playerStore.addRelic(relic.className)
+  if (!result.success) {
+    claimError.value = result.message
+    return
+  }
   claimed.value = true
-  playerStore.addRelic(relic.className)
   fieldStore.markCurrentCleared()
   await router.push('/field')
 }
@@ -126,20 +153,16 @@ const relicCardInfos = computed<CardInfo[]>(() =>
             <RelicCard :icon="firstRelic.icon" :name="firstRelic.name" :description="firstRelic.description" />
           </div>
           <p class="card-note">
-            {{
-              firstRelic
-                ? 'このレリックを獲得し、フィールドへ戻ります。'
-                : '獲得できるレリックがありません。'
-            }}
+            {{ noteText }}
           </p>
           <div class="actions">
             <button
               type="button"
               class="action-button"
-              :disabled="!canClaim"
+              :disabled="!canProceed"
               @click="handleClaim"
             >
-              獲得してフィールドに戻る
+              {{ actionLabel }}
             </button>
             <p v-if="claimError" class="action-error">{{ claimError }}</p>
           </div>

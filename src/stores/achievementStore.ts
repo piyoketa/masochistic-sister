@@ -7,9 +7,22 @@
 import { defineStore } from 'pinia'
 import { usePlayerStore } from './playerStore'
 import {
-  STATUS_COLLECT_ACHIEVEMENT_ID,
-  STATUS_COLLECT_TARGET,
   ORC_HERO_ACHIEVEMENT_ID,
+  BEAM_CANNON_ACHIEVEMENT_ID,
+  RELIC_LIMIT_4_ACHIEVEMENT_ID,
+  RELIC_LIMIT_4_TARGET,
+  RELIC_LIMIT_5_ACHIEVEMENT_ID,
+  RELIC_LIMIT_5_TARGET,
+  HEAVEN_CHAIN_ACHIEVEMENT_ID,
+  HEAVEN_CHAIN_TARGET,
+  COWARD_FLEE_ACHIEVEMENT_ID,
+  COWARD_FLEE_TARGET,
+  COWARD_DEFEAT_ACHIEVEMENT_ID,
+  COWARD_DEFEAT_TARGET,
+  TENTACLE_DEFEAT_ACHIEVEMENT_ID,
+  TENTACLE_DEFEAT_TARGET,
+  RESULT_HP_30_ACHIEVEMENT_ID,
+  RESULT_HP_30_TARGET,
   FIRST_DAMAGE_ACHIEVEMENT_ID,
   FIRST_DAMAGE_TARGET,
   DEFEAT_ACHIEVEMENT_ID,
@@ -58,6 +71,11 @@ type AchievementReward =
       label: string
     }
   | {
+      type: 'relic-limit'
+      limitIncrease: number
+      label: string
+    }
+  | {
       type: 'max-hp'
       maxHpGain: number
       healAmount: number
@@ -99,27 +117,90 @@ type AchievementPersistedPayload = {
   entries: AchievementHistoryEntry[]
 }
 
-const STORAGE_VERSION = 'v3'
+const STORAGE_VERSION = 'v4'
 const STORAGE_KEY = `ms-achievement/${STORAGE_VERSION}/history`
 
-// 報酬2件 + 称号18件を定義する。
+// 報酬9件 + 称号18件を定義する。
 const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
-  {
-    id: STATUS_COLLECT_ACHIEVEMENT_ID,
-    category: 'reward',
-    title: '穢れを纏う',
-    description: '状態異常カードを累計8枚獲得する',
-    reward: { type: 'relic', relicClassName: 'AdversityExcitementRelic', label: 'レリック: 逆境' },
-    memoryPointCost: 2,
-    initialStatus: 'not-achieved',
-  },
   {
     id: ORC_HERO_ACHIEVEMENT_ID,
     category: 'reward',
-    title: 'BOSS「オークヒーロー」討伐',
-    description: 'オークヒーローを撃破する',
+    title: '最大HP+30',
+    description: '「オークヒーロー」を倒す',
     reward: { type: 'max-hp', maxHpGain: 30, healAmount: 30, label: '最大HP+30' },
-    memoryPointCost: 2,
+    memoryPointCost: 5,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: BEAM_CANNON_ACHIEVEMENT_ID,
+    category: 'reward',
+    title: '最大HP+30',
+    description: 'LV2のボスを倒す',
+    reward: { type: 'max-hp', maxHpGain: 30, healAmount: 30, label: '最大HP+30' },
+    memoryPointCost: 10,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: RELIC_LIMIT_4_ACHIEVEMENT_ID,
+    category: 'reward',
+    title: 'レリック上限+1 (3->4)',
+    description: '３つ目のレリックを獲得する',
+    reward: { type: 'relic-limit', limitIncrease: 1, label: 'レリック上限+1' },
+    memoryPointCost: 5,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: RELIC_LIMIT_5_ACHIEVEMENT_ID,
+    category: 'reward',
+    title: 'レリック上限+1 (4->5)',
+    description: '４つ目のレリックを獲得する',
+    reward: { type: 'relic-limit', limitIncrease: 1, label: 'レリック上限+1' },
+    memoryPointCost: 10,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: HEAVEN_CHAIN_ACHIEVEMENT_ID,
+    category: 'reward',
+    title: 'レリック「メモ」',
+    description: 'アクティブレリック 戦闘中１度だけ、手札のカード１枚を保留する / 条件: 「天の鎖」を10回使用する',
+    reward: { type: 'relic', relicClassName: 'MemoRelic', label: 'レリック: メモ' },
+    memoryPointCost: 3,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: COWARD_FLEE_ACHIEVEMENT_ID,
+    category: 'reward',
+    title: 'レリック「リドロー」',
+    description: 'アクティブレリック 戦闘中１度だけ、手札を引き直す / 条件: 「臆病」な敵に逃走される',
+    reward: { type: 'relic', relicClassName: 'RedrawRelic', label: 'レリック: リドロー' },
+    memoryPointCost: 3,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: COWARD_DEFEAT_ACHIEVEMENT_ID,
+    category: 'reward',
+    title: 'レリック「日課」',
+    description: 'アクティブレリック 戦闘中１度だけ、２枚ドローできる / 条件: 「臆病」な敵を倒す',
+    reward: { type: 'relic', relicClassName: 'DailyRoutineRelic', label: 'レリック: 日課' },
+    memoryPointCost: 3,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: TENTACLE_DEFEAT_ACHIEVEMENT_ID,
+    category: 'reward',
+    title: 'レリック「粘液玉」',
+    description: 'アクティブレリック 戦闘中１度だけ、手札に「粘液1点」を加える / 条件: 敵「触手」を倒す',
+    reward: { type: 'relic', relicClassName: 'MucusOrbRelic', label: 'レリック: 粘液玉' },
+    memoryPointCost: 3,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: RESULT_HP_30_ACHIEVEMENT_ID,
+    category: 'reward',
+    title: 'レリック「軽装戦闘」',
+    description: 'パッシブレリック 「腐食」が手札にあると加速する / 条件: HPが30以下になる',
+    reward: { type: 'relic', relicClassName: 'LightweightCombatRelic', label: 'レリック: 軽装戦闘' },
+    memoryPointCost: 3,
     initialStatus: 'not-achieved',
   },
   {
@@ -446,8 +527,30 @@ export const useAchievementStore = defineStore('achievement', {
         )
       }
 
-      maybeUpdate(STATUS_COLLECT_ACHIEVEMENT_ID, progress.statusCardMemories >= STATUS_COLLECT_TARGET)
       maybeUpdate(ORC_HERO_ACHIEVEMENT_ID, progress.orcHeroDefeated === true)
+      maybeUpdate(BEAM_CANNON_ACHIEVEMENT_ID, progress.beamCannonDefeated === true)
+      maybeUpdate(
+        RELIC_LIMIT_4_ACHIEVEMENT_ID,
+        progress.maxRelicOwnedCount >= RELIC_LIMIT_4_TARGET,
+      )
+      maybeUpdate(
+        RELIC_LIMIT_5_ACHIEVEMENT_ID,
+        progress.maxRelicOwnedCount >= RELIC_LIMIT_5_TARGET,
+      )
+      maybeUpdate(HEAVEN_CHAIN_ACHIEVEMENT_ID, progress.heavenChainUsedCount >= HEAVEN_CHAIN_TARGET)
+      maybeUpdate(COWARD_FLEE_ACHIEVEMENT_ID, progress.cowardFleeCount >= COWARD_FLEE_TARGET)
+      maybeUpdate(
+        COWARD_DEFEAT_ACHIEVEMENT_ID,
+        progress.cowardDefeatCount >= COWARD_DEFEAT_TARGET,
+      )
+      maybeUpdate(
+        TENTACLE_DEFEAT_ACHIEVEMENT_ID,
+        progress.tentacleDefeatCount >= TENTACLE_DEFEAT_TARGET,
+      )
+      maybeUpdate(
+        RESULT_HP_30_ACHIEVEMENT_ID,
+        progress.resultHpAtMost30Count >= RESULT_HP_30_TARGET,
+      )
       maybeUpdate(FIRST_DAMAGE_ACHIEVEMENT_ID, progress.damageTakenCount >= FIRST_DAMAGE_TARGET)
       maybeUpdate(DEFEAT_ACHIEVEMENT_ID, progress.defeatCount >= DEFEAT_TARGET)
       maybeUpdate(CORROSION_FIRST_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_FIRST_TARGET)
@@ -498,13 +601,20 @@ export const useAchievementStore = defineStore('achievement', {
         return { success: false, message: '記憶ポイントが不足しています' }
       }
 
+      const playerStore = usePlayerStore()
+      playerStore.ensureInitialized()
       if (def.reward.type === 'relic') {
-        const playerStore = usePlayerStore()
-        playerStore.ensureInitialized()
-        playerStore.addRelic(def.reward.relicClassName)
+        const result = playerStore.addRelic(def.reward.relicClassName)
+        if (!result.success) {
+          return { success: false, message: result.message }
+        }
+      } else if (def.reward.type === 'relic-limit') {
+        const increase = Math.max(0, Math.floor(def.reward.limitIncrease))
+        if (increase > 0) {
+          // 上限解放はレリック獲得前提の報酬なので、減らさず加算のみ許可する。
+          playerStore.setRelicLimit(playerStore.relicLimit + increase)
+        }
       } else if (def.reward.type === 'max-hp') {
-        const playerStore = usePlayerStore()
-        playerStore.ensureInitialized()
         const maxHpGain = Math.max(0, Math.floor(def.reward.maxHpGain))
         const healAmount = Math.max(0, Math.floor(def.reward.healAmount))
         if (maxHpGain > 0) {

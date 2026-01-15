@@ -38,11 +38,23 @@ const addableRelics = computed(() =>
 
 const selectedAddClass = ref<string | null>(addableRelics.value[0]?.className ?? null)
 const hoverDescription = ref<string | null>(null)
+const addError = ref<string | null>(null)
+const relicLimitReached = computed(() => playerStore.relicLimitReached)
 
 function handleAdd(): void {
   const className = selectedAddClass.value
   if (!className) return
-  playerStore.addRelic(className)
+  addError.value = null
+  // 上限到達時は追加できないため、理由を表示して終了する。
+  if (relicLimitReached.value) {
+    addError.value = 'レリック上限に達しているため追加できません'
+    return
+  }
+  const result = playerStore.addRelic(className)
+  if (!result.success) {
+    addError.value = result.message
+    return
+  }
   const next = addableRelics.value[0]
   selectedAddClass.value = next?.className ?? null
 }
@@ -66,7 +78,7 @@ const renderDescription = (text: string): string => renderRichText(text)
           <div class="header-status">
             <span>HP: {{ playerStore.hp }} / {{ playerStore.maxHp }}</span>
             <span>所持金: {{ playerStore.gold }}</span>
-            <span>所持レリック: {{ ownedRelics.length }} 個</span>
+            <span>所持レリック: {{ ownedRelics.length }} / {{ playerStore.relicLimit }} 個</span>
           </div>
         </header>
 
@@ -103,10 +115,16 @@ const renderDescription = (text: string): string => renderRichText(text)
                 {{ relic.name }}
               </option>
             </select>
-            <button type="button" class="btn btn-primary" :disabled="!selectedAddClass" @click="handleAdd">
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="!selectedAddClass || relicLimitReached"
+              @click="handleAdd"
+            >
               追加
             </button>
           </div>
+          <p v-if="addError" class="add-error">{{ addError }}</p>
           <div v-if="selectedAddClass" class="preview">
             <h3>プレビュー</h3>
             <RelicList
@@ -219,6 +237,12 @@ const renderDescription = (text: string): string => renderRichText(text)
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+.add-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #ffb3b3;
 }
 
 .add-row select {

@@ -240,6 +240,8 @@ export class Enemy {
     if (this.currentHpValue <= 0 && previousHp > 0) {
       this.statusValue = 'defeated'
       if (options?.battle) {
+        // 実績進行度: 敵撃破時の特性/種別判定に利用する。
+        options.battle.recordAchievementEnemyDefeated(this)
         this.forEachState((state) =>
           state.onOwnerDefeated({
             battle: options.battle!,
@@ -295,6 +297,8 @@ export class Enemy {
       return
     }
     this.statusValue = 'escaped'
+    // 実績進行度: 臆病Traitの逃走をカウントする。
+    battle.recordAchievementEnemyFled(this)
     this.actionQueue.clearScheduledActions()
     battle.addLogEntry({
       message: `${this.name}は恐怖に駆られて逃走した。`,

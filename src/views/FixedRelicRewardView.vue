@@ -42,14 +42,20 @@ const playerHp = computed(() => ({
 const alreadyOwned = computed(() =>
   relicInfo.value ? playerStore.relics.includes(relicInfo.value.className) : false,
 )
+const relicLimitReached = computed(() => playerStore.relicLimitReached)
 
-const canClaim = computed(() => Boolean(relicInfo.value) && !claimed.value && !alreadyOwned.value)
+const canClaim = computed(
+  () => Boolean(relicInfo.value) && !claimed.value && !alreadyOwned.value && !relicLimitReached.value,
+)
 
 const renderDescription = (text: string): string => renderRichText(text)
 
 function handleClaim(): void {
-  if (!relicInfo.value || claimed.value || alreadyOwned.value) return
-  playerStore.addRelic(relicInfo.value.className)
+  if (!relicInfo.value || claimed.value || alreadyOwned.value || relicLimitReached.value) return
+  const result = playerStore.addRelic(relicInfo.value.className)
+  if (!result.success) {
+    return
+  }
   claimed.value = true
 }
 
@@ -92,6 +98,7 @@ async function handleProceed(): Promise<void> {
                 <div class="relic-card__type">種別: {{ relicInfo.usageType }}</div>
                 <p class="relic-card__description" v-html="renderDescription(relicInfo.description)"></p>
                 <p v-if="alreadyOwned" class="relic-card__owned">すでに所持しています</p>
+                <p v-if="relicLimitReached" class="relic-card__limit">レリック上限に達しています</p>
               </div>
             </div>
             <div v-else class="relic-card relic-card--empty">獲得可能なレリックがありません</div>
@@ -197,6 +204,11 @@ async function handleProceed(): Promise<void> {
 .relic-card__owned {
   margin-top: 6px;
   color: #ffb3b3;
+}
+
+.relic-card__limit {
+  margin-top: 6px;
+  color: #ffcf7a;
 }
 
 .actions {

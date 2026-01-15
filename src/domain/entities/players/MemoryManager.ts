@@ -45,8 +45,6 @@ export class MemoryManager {
     const stateAction = createStateActionFromState(state)
     const card = repository.create(() => new Card({ action: stateAction, cardTags: [newTag] }))
     battle.addCardToPlayerHand(card)
-    // 実績進行度: 状態異常カードを1枚獲得した扱いとして Manager に通知する。
-    battle.recordAchievementStatusCardMemory()
     return card
   }
 

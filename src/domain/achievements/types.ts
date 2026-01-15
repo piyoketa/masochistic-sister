@@ -6,8 +6,6 @@
  * - 記憶ポイント系の称号はこの進行度から達成判定を行う。
  */
 export type AchievementProgress = {
-  /** 状態異常カードの記憶（rememberState）で生成したカードの累計獲得数 */
-  statusCardMemories: number
   /** 腐食スタックの累計獲得量 */
   corrosionAccumulated: number
   /** 粘液スタックの累計獲得量 */
@@ -18,6 +16,18 @@ export type AchievementProgress = {
   maxDamageTaken: number
   /** 連続攻撃カテゴリで受けた最大ヒット数（元の baseCount を保持） */
   maxMultiHitReceived: number
+  /** 所持したレリック数の最高値（上限解放実績の達成判定に使う） */
+  maxRelicOwnedCount: number
+  /** 天の鎖を使用した回数（カードIDで判定） */
+  heavenChainUsedCount: number
+  /** 臆病Traitを持つ敵が逃走した回数 */
+  cowardFleeCount: number
+  /** 臆病Traitを持つ敵を倒した回数 */
+  cowardDefeatCount: number
+  /** 触手の撃破回数 */
+  tentacleDefeatCount: number
+  /** リザルト時点でHPが30以下になった回数 */
+  resultHpAtMost30Count: number
   /** 口づけを受けた回数 */
   kissReceivedCount: number
   /** 口づけを使用した回数 */
@@ -28,20 +38,28 @@ export type AchievementProgress = {
   defeatCount: number
   /** オークヒーロー撃破フラグ（敵チーム単位で判定） */
   orcHeroDefeated: boolean
+  /** ビーム砲ボス撃破フラグ（敵チーム単位で判定） */
+  beamCannonDefeated: boolean
 }
 
 export function createDefaultAchievementProgress(): AchievementProgress {
   return {
-    statusCardMemories: 0,
     corrosionAccumulated: 0,
     stickyAccumulated: 0,
     damageTakenCount: 0,
     maxDamageTaken: 0,
     maxMultiHitReceived: 0,
+    maxRelicOwnedCount: 0,
+    heavenChainUsedCount: 0,
+    cowardFleeCount: 0,
+    cowardDefeatCount: 0,
+    tentacleDefeatCount: 0,
+    resultHpAtMost30Count: 0,
     kissReceivedCount: 0,
     kissUsedCount: 0,
     masochisticAuraUsedCount: 0,
     defeatCount: 0,
     orcHeroDefeated: false,
+    beamCannonDefeated: false,
   }
 }

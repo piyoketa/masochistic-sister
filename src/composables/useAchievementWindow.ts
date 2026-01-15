@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import type {
   MemoryPointSummary,
   RewardAchievementCardView,
@@ -6,11 +6,26 @@ import type {
 } from '@/components/AchievementWindow.vue'
 import { useAchievementStore } from '@/stores/achievementStore'
 import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import {
-  STATUS_COLLECT_ACHIEVEMENT_ID,
-  STATUS_COLLECT_TARGET,
   ORC_HERO_ACHIEVEMENT_ID,
   ORC_HERO_TARGET,
+  BEAM_CANNON_ACHIEVEMENT_ID,
+  BEAM_CANNON_TARGET,
+  RELIC_LIMIT_4_ACHIEVEMENT_ID,
+  RELIC_LIMIT_4_TARGET,
+  RELIC_LIMIT_5_ACHIEVEMENT_ID,
+  RELIC_LIMIT_5_TARGET,
+  HEAVEN_CHAIN_ACHIEVEMENT_ID,
+  HEAVEN_CHAIN_TARGET,
+  COWARD_FLEE_ACHIEVEMENT_ID,
+  COWARD_FLEE_TARGET,
+  COWARD_DEFEAT_ACHIEVEMENT_ID,
+  COWARD_DEFEAT_TARGET,
+  TENTACLE_DEFEAT_ACHIEVEMENT_ID,
+  TENTACLE_DEFEAT_TARGET,
+  RESULT_HP_30_ACHIEVEMENT_ID,
+  RESULT_HP_30_TARGET,
   FIRST_DAMAGE_ACHIEVEMENT_ID,
   FIRST_DAMAGE_TARGET,
   DEFEAT_ACHIEVEMENT_ID,
@@ -66,8 +81,19 @@ function resolveProgressLabel(entry: ProgressEntry): { label: string; ratio: num
 export function useAchievementWindow() {
   const achievementStore = useAchievementStore()
   const achievementProgressStore = useAchievementProgressStore()
+  const playerStore = usePlayerStore()
   achievementStore.ensureInitialized()
   achievementProgressStore.ensureInitialized()
+  playerStore.ensureInitialized()
+
+  watch(
+    () => achievementProgressStore.progress,
+    () => {
+      // フィールド滞在中に進行度が変化しても達成状態を反映できるよう同期する。
+      achievementStore.applyProgress(achievementProgressStore.progress)
+    },
+    { immediate: true, deep: true },
+  )
 
   const memoryPointSummary = computed<MemoryPointSummary>(() => ({
     used: achievementStore.usedMemoryPointsTotal,
@@ -78,13 +104,41 @@ export function useAchievementWindow() {
   // 実績IDと進捗の紐付けをここで一元管理し、UI側は統一した形式で扱う。
   const achievementProgressMap = computed(() => {
     const map = new Map<string, ProgressEntry>()
-    map.set(STATUS_COLLECT_ACHIEVEMENT_ID, {
-      current: achievementProgressStore.statusCardMemories,
-      target: STATUS_COLLECT_TARGET,
-    })
     map.set(ORC_HERO_ACHIEVEMENT_ID, {
       current: achievementProgressStore.orcHeroDefeated ? 1 : 0,
       target: ORC_HERO_TARGET,
+    })
+    map.set(BEAM_CANNON_ACHIEVEMENT_ID, {
+      current: achievementProgressStore.beamCannonDefeated ? 1 : 0,
+      target: BEAM_CANNON_TARGET,
+    })
+    map.set(RELIC_LIMIT_4_ACHIEVEMENT_ID, {
+      current: achievementProgressStore.maxRelicOwnedCount,
+      target: RELIC_LIMIT_4_TARGET,
+    })
+    map.set(RELIC_LIMIT_5_ACHIEVEMENT_ID, {
+      current: achievementProgressStore.maxRelicOwnedCount,
+      target: RELIC_LIMIT_5_TARGET,
+    })
+    map.set(HEAVEN_CHAIN_ACHIEVEMENT_ID, {
+      current: achievementProgressStore.heavenChainUsedCount,
+      target: HEAVEN_CHAIN_TARGET,
+    })
+    map.set(COWARD_FLEE_ACHIEVEMENT_ID, {
+      current: achievementProgressStore.cowardFleeCount,
+      target: COWARD_FLEE_TARGET,
+    })
+    map.set(COWARD_DEFEAT_ACHIEVEMENT_ID, {
+      current: achievementProgressStore.cowardDefeatCount,
+      target: COWARD_DEFEAT_TARGET,
+    })
+    map.set(TENTACLE_DEFEAT_ACHIEVEMENT_ID, {
+      current: achievementProgressStore.tentacleDefeatCount,
+      target: TENTACLE_DEFEAT_TARGET,
+    })
+    map.set(RESULT_HP_30_ACHIEVEMENT_ID, {
+      current: achievementProgressStore.resultHpAtMost30Count,
+      target: RESULT_HP_30_TARGET,
     })
     map.set(FIRST_DAMAGE_ACHIEVEMENT_ID, {
       current: achievementProgressStore.damageTakenCount,
@@ -163,10 +217,12 @@ export function useAchievementWindow() {
 
   const rewardEntries = computed<RewardAchievementCardView[]>(() => {
     const available = memoryPointSummary.value.available
+    const relicLimitReached = playerStore.relicLimitReached
     return achievementStore.rewardEntriesForView.map((entry) => {
       const progress = achievementProgressMap.value.get(entry.id)
       const showProgress = entry.status === 'not-achieved'
       const progressLabel = progress ? resolveProgressLabel(progress) : null
+      const relicBlocked = entry.reward.type === 'relic' && relicLimitReached
       return {
         id: entry.id,
         title: entry.title,
@@ -177,7 +233,7 @@ export function useAchievementWindow() {
         progressRatio: showProgress ? progressLabel?.ratio ?? entry.progressRatio : undefined,
         costLabel: `必要 ${entry.memoryPointCost} pt`,
         // 記憶ポイント残量で獲得可能かを判断し、ボタンの表示制御に使う。
-        canClaim: entry.status === 'achieved' && available >= entry.memoryPointCost,
+        canClaim: entry.status === 'achieved' && available >= entry.memoryPointCost && !relicBlocked,
       }
     })
   })

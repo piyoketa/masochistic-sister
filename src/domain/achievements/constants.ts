@@ -1,12 +1,31 @@
 /**
  * Achievement 定義で参照する ID や閾値の定数。
  */
-export const STATUS_COLLECT_ACHIEVEMENT_ID = 'status-collect'
-export const STATUS_COLLECT_TARGET = 8
-
-export const ORC_HERO_ACHIEVEMENT_ID = 'orc-hero'
+export const ORC_HERO_ACHIEVEMENT_ID = 'reward-orc-hero'
 export const ORC_HERO_TARGET = 1
 export const ORC_HERO_TEAM_ID = 'orc-hero-elite'
+export const BEAM_CANNON_ACHIEVEMENT_ID = 'reward-beam-cannon'
+export const BEAM_CANNON_TARGET = 1
+export const BEAM_CANNON_TEAM_ID = 'beam-cannon-elite'
+
+export const RELIC_LIMIT_4_ACHIEVEMENT_ID = 'relic-limit-4'
+export const RELIC_LIMIT_4_TARGET = 3
+export const RELIC_LIMIT_5_ACHIEVEMENT_ID = 'relic-limit-5'
+export const RELIC_LIMIT_5_TARGET = 4
+
+export const HEAVEN_CHAIN_ACHIEVEMENT_ID = 'heaven-chain-10'
+export const HEAVEN_CHAIN_TARGET = 10
+
+export const COWARD_FLEE_ACHIEVEMENT_ID = 'coward-flee'
+export const COWARD_FLEE_TARGET = 1
+export const COWARD_DEFEAT_ACHIEVEMENT_ID = 'coward-defeat'
+export const COWARD_DEFEAT_TARGET = 1
+
+export const TENTACLE_DEFEAT_ACHIEVEMENT_ID = 'tentacle-defeat'
+export const TENTACLE_DEFEAT_TARGET = 1
+
+export const RESULT_HP_30_ACHIEVEMENT_ID = 'result-hp-30'
+export const RESULT_HP_30_TARGET = 1
 
 export const FIRST_DAMAGE_ACHIEVEMENT_ID = 'first-damage'
 export const FIRST_DAMAGE_TARGET = 1

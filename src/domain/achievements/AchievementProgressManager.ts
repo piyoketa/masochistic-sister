@@ -6,26 +6,36 @@
  * - OperationRunner の巻き戻しに備えて、簡易な履歴スタックで undo を提供する。
  */
 import { CorrosionState, StickyState } from '../entities/states'
+import { CowardTrait } from '../entities/states/CowardTrait'
 import type { Card } from '../entities/Card'
+import type { Enemy } from '../entities/Enemy'
+import { TentacleEnemy } from '../entities/enemies/TentacleEnemy'
 import type { DamageEffectType, DamagePattern } from '../entities/Damages'
+import { mapActionToCardId, type CardId } from '../library/Library'
 import { createDefaultAchievementProgress, type AchievementProgress } from './types'
 
 const KISS_EFFECT_TYPE: DamageEffectType = 'kiss'
 const KISS_CARD_TITLE = '口づけ'
 const MASOCHISTIC_AURA_TITLE = '被虐のオーラ'
+const HEAVEN_CHAIN_CARD_ID: CardId = 'heaven-chain'
 
 type HistoryEntry =
-  | { type: 'status-card-memory'; prevValue: number }
   | { type: 'corrosion'; prevValue: number }
   | { type: 'sticky'; prevValue: number }
   | { type: 'damage-taken'; prevValue: number }
   | { type: 'max-damage'; prevValue: number }
   | { type: 'max-multi-hit'; prevValue: number }
+  | { type: 'heaven-chain-used'; prevValue: number }
+  | { type: 'coward-flee'; prevValue: number }
+  | { type: 'coward-defeat'; prevValue: number }
+  | { type: 'tentacle-defeat'; prevValue: number }
+  | { type: 'result-hp-low'; prevValue: number }
   | { type: 'kiss-received'; prevValue: number }
   | { type: 'kiss-used'; prevValue: number }
   | { type: 'aura-used'; prevValue: number }
   | { type: 'defeat'; prevValue: number }
   | { type: 'orc-hero-defeated'; prevValue: boolean }
+  | { type: 'beam-cannon-defeated'; prevValue: boolean }
 
 export class AchievementProgressManager {
   private progress: AchievementProgress
@@ -33,15 +43,6 @@ export class AchievementProgressManager {
 
   constructor(initial?: AchievementProgress) {
     this.progress = initial ? { ...initial } : createDefaultAchievementProgress()
-  }
-
-  /** rememberState で状態異常カードを生成した際に呼び出し、進行度を1増やす */
-  recordStatusCardMemory(): void {
-    this.history.push({ type: 'status-card-memory', prevValue: this.progress.statusCardMemories })
-    this.progress = {
-      ...this.progress,
-      statusCardMemories: this.progress.statusCardMemories + 1,
-    }
   }
 
   recordStateApplied(state: unknown): void {
@@ -66,7 +67,12 @@ export class AchievementProgressManager {
   }
 
   recordCardPlayed(card: Card): void {
-    // 設計上の決定: カードIDが固定で無いので、表示名で対象カードを判定する。
+    // 設計上の決定: 天の鎖はカードIDで厳密判定し、それ以外は表示名で判定する。
+    const cardId = card.action ? mapActionToCardId(card.action) : null
+    if (cardId === HEAVEN_CHAIN_CARD_ID) {
+      this.history.push({ type: 'heaven-chain-used', prevValue: this.progress.heavenChainUsedCount })
+      this.progress = { ...this.progress, heavenChainUsedCount: this.progress.heavenChainUsedCount + 1 }
+    }
     if (card.definition.title === KISS_CARD_TITLE) {
       this.history.push({ type: 'kiss-used', prevValue: this.progress.kissUsedCount })
       this.progress = { ...this.progress, kissUsedCount: this.progress.kissUsedCount + 1 }
@@ -111,6 +117,37 @@ export class AchievementProgressManager {
     }
   }
 
+  recordEnemyDefeated(enemy: Enemy): void {
+    // 設計上の決定: 臆病判定は CowardTrait の有無で行い、敵の種類は TentacleEnemy で厳密判定する。
+    const isCoward = enemy.getStates().some((state) => state instanceof CowardTrait)
+    if (isCoward) {
+      this.history.push({ type: 'coward-defeat', prevValue: this.progress.cowardDefeatCount })
+      this.progress = { ...this.progress, cowardDefeatCount: this.progress.cowardDefeatCount + 1 }
+    }
+    if (enemy instanceof TentacleEnemy) {
+      this.history.push({ type: 'tentacle-defeat', prevValue: this.progress.tentacleDefeatCount })
+      this.progress = { ...this.progress, tentacleDefeatCount: this.progress.tentacleDefeatCount + 1 }
+    }
+  }
+
+  recordEnemyFled(enemy: Enemy): void {
+    const isCoward = enemy.getStates().some((state) => state instanceof CowardTrait)
+    if (!isCoward) {
+      return
+    }
+    this.history.push({ type: 'coward-flee', prevValue: this.progress.cowardFleeCount })
+    this.progress = { ...this.progress, cowardFleeCount: this.progress.cowardFleeCount + 1 }
+  }
+
+  recordResultHpAtMost30(currentHp: number): void {
+    const hp = Math.floor(currentHp)
+    if (hp > 30) {
+      return
+    }
+    this.history.push({ type: 'result-hp-low', prevValue: this.progress.resultHpAtMost30Count })
+    this.progress = { ...this.progress, resultHpAtMost30Count: this.progress.resultHpAtMost30Count + 1 }
+  }
+
   recordDefeat(): void {
     this.history.push({ type: 'defeat', prevValue: this.progress.defeatCount })
     this.progress = { ...this.progress, defeatCount: this.progress.defeatCount + 1 }
@@ -124,13 +161,19 @@ export class AchievementProgressManager {
     this.progress = { ...this.progress, orcHeroDefeated: true }
   }
 
+  recordBeamCannonDefeated(): void {
+    if (this.progress.beamCannonDefeated) {
+      return
+    }
+    this.history.push({ type: 'beam-cannon-defeated', prevValue: this.progress.beamCannonDefeated })
+    this.progress = { ...this.progress, beamCannonDefeated: true }
+  }
+
   /** OperationRunner の「一手戻す」相当で直前の進行度を復元する */
   undoLast(): void {
     const last = this.history.pop()
     if (!last) return
-    if (last.type === 'status-card-memory') {
-      this.progress = { ...this.progress, statusCardMemories: last.prevValue }
-    } else if (last.type === 'corrosion') {
+    if (last.type === 'corrosion') {
       this.progress = { ...this.progress, corrosionAccumulated: last.prevValue }
     } else if (last.type === 'sticky') {
       this.progress = { ...this.progress, stickyAccumulated: last.prevValue }
@@ -140,6 +183,16 @@ export class AchievementProgressManager {
       this.progress = { ...this.progress, maxDamageTaken: last.prevValue }
     } else if (last.type === 'max-multi-hit') {
       this.progress = { ...this.progress, maxMultiHitReceived: last.prevValue }
+    } else if (last.type === 'heaven-chain-used') {
+      this.progress = { ...this.progress, heavenChainUsedCount: last.prevValue }
+    } else if (last.type === 'coward-flee') {
+      this.progress = { ...this.progress, cowardFleeCount: last.prevValue }
+    } else if (last.type === 'coward-defeat') {
+      this.progress = { ...this.progress, cowardDefeatCount: last.prevValue }
+    } else if (last.type === 'tentacle-defeat') {
+      this.progress = { ...this.progress, tentacleDefeatCount: last.prevValue }
+    } else if (last.type === 'result-hp-low') {
+      this.progress = { ...this.progress, resultHpAtMost30Count: last.prevValue }
     } else if (last.type === 'kiss-received') {
       this.progress = { ...this.progress, kissReceivedCount: last.prevValue }
     } else if (last.type === 'kiss-used') {
@@ -150,6 +203,8 @@ export class AchievementProgressManager {
       this.progress = { ...this.progress, defeatCount: last.prevValue }
     } else if (last.type === 'orc-hero-defeated') {
       this.progress = { ...this.progress, orcHeroDefeated: last.prevValue }
+    } else if (last.type === 'beam-cannon-defeated') {
+      this.progress = { ...this.progress, beamCannonDefeated: last.prevValue }
     }
   }
 

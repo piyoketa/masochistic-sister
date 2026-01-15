@@ -45,17 +45,23 @@ const savedFieldStates = computed(() =>
 )
 
 const progressSummary = computed(() => ({
-  statusCardMemories: achievementProgressStore.progress.statusCardMemories,
   corrosionAccumulated: achievementProgressStore.progress.corrosionAccumulated,
   stickyAccumulated: achievementProgressStore.progress.stickyAccumulated,
   damageTakenCount: achievementProgressStore.progress.damageTakenCount,
   maxDamageTaken: achievementProgressStore.progress.maxDamageTaken,
   maxMultiHitReceived: achievementProgressStore.progress.maxMultiHitReceived,
+  maxRelicOwnedCount: achievementProgressStore.progress.maxRelicOwnedCount,
+  heavenChainUsedCount: achievementProgressStore.progress.heavenChainUsedCount,
+  cowardFleeCount: achievementProgressStore.progress.cowardFleeCount,
+  cowardDefeatCount: achievementProgressStore.progress.cowardDefeatCount,
+  tentacleDefeatCount: achievementProgressStore.progress.tentacleDefeatCount,
+  resultHpAtMost30Count: achievementProgressStore.progress.resultHpAtMost30Count,
   kissReceivedCount: achievementProgressStore.progress.kissReceivedCount,
   kissUsedCount: achievementProgressStore.progress.kissUsedCount,
   masochisticAuraUsedCount: achievementProgressStore.progress.masochisticAuraUsedCount,
   defeatCount: achievementProgressStore.progress.defeatCount,
   orcHeroDefeated: achievementProgressStore.progress.orcHeroDefeated,
+  beamCannonDefeated: achievementProgressStore.progress.beamCannonDefeated,
 }))
 
 function refreshSavedData(): void {
@@ -134,17 +140,23 @@ function formatSavedAt(timestamp: number): string {
           <div class="save-demo__progress">
             <h3>実績進行サマリ</h3>
             <ul>
-              <li>状態異常カード獲得: {{ progressSummary.statusCardMemories }}</li>
               <li>腐食累計: {{ progressSummary.corrosionAccumulated }}</li>
               <li>粘液累計: {{ progressSummary.stickyAccumulated }}</li>
               <li>被ダメージ回数: {{ progressSummary.damageTakenCount }}</li>
               <li>最大被ダメージ: {{ progressSummary.maxDamageTaken }}</li>
               <li>最大連続攻撃回数: {{ progressSummary.maxMultiHitReceived }}</li>
+              <li>最大レリック所持数: {{ progressSummary.maxRelicOwnedCount }}</li>
+              <li>天の鎖使用: {{ progressSummary.heavenChainUsedCount }}</li>
+              <li>臆病逃走: {{ progressSummary.cowardFleeCount }}</li>
+              <li>臆病撃破: {{ progressSummary.cowardDefeatCount }}</li>
+              <li>触手撃破: {{ progressSummary.tentacleDefeatCount }}</li>
+              <li>リザルトHP30以下: {{ progressSummary.resultHpAtMost30Count }}</li>
               <li>口づけ被弾: {{ progressSummary.kissReceivedCount }}</li>
               <li>口づけ使用: {{ progressSummary.kissUsedCount }}</li>
               <li>被虐のオーラ使用: {{ progressSummary.masochisticAuraUsedCount }}</li>
               <li>敗北回数: {{ progressSummary.defeatCount }}</li>
               <li>オークヒーロー撃破: {{ progressSummary.orcHeroDefeated ? '済' : '未' }}</li>
+              <li>ビーム砲撃破: {{ progressSummary.beamCannonDefeated ? '済' : '未' }}</li>
             </ul>
           </div>
 

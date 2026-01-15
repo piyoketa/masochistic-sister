@@ -3,7 +3,7 @@
 // - バリデーションで壊れたデータを除外し、UI側でメッセージ表示できるようにする
 import type { CardBlueprint } from '@/domain/library/Library'
 
-const SAVE_VERSION = 'v1'
+const SAVE_VERSION = 'v2'
 const STORAGE_PREFIX = `ms-save/${SAVE_VERSION}/`
 const SLOT_LIMIT = 5
 
@@ -15,6 +15,7 @@ export interface PlayerSaveData {
   gold: number
   deck: CardBlueprint[]
   relics: string[]
+  relicLimit: number
 }
 
 export interface SaveSlotSummary {
@@ -150,6 +151,8 @@ function validateSaveData(data: unknown): PlayerSaveData | null {
   if (!isValidNumber(record.gold, 0)) return null
   if (!Array.isArray(record.deck) || !record.deck.every(isValidBlueprint)) return null
   if (!Array.isArray(record.relics) || !record.relics.every((v) => typeof v === 'string')) return null
+  if (!isValidNumber(record.relicLimit, 1)) return null
+  const relicLimit = record.relicLimit
   return {
     version: SAVE_VERSION,
     savedAt: record.savedAt,
@@ -158,6 +161,7 @@ function validateSaveData(data: unknown): PlayerSaveData | null {
     gold: record.gold,
     deck: record.deck.map((b) => ({ ...b })),
     relics: [...record.relics],
+    relicLimit,
   }
 }
 

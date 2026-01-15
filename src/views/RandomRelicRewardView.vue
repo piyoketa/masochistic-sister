@@ -9,7 +9,7 @@ RandomRelicRewardView の責務:
 
 主な通信相手とインターフェース:
 - useFieldStore: `currentNode` から RandomRelicRewardNode を取得し、`markCurrentCleared()` で進行を記録。
-- usePlayerStore: `relics` を参照して所持済みを除外し、`addRelic(className)` で新規レリックを獲得。
+- usePlayerStore: `relics` を参照して所持済みを除外し、`addRelic(className)` で新規レリックを獲得する（上限到達時は獲得せず進行のみ）。
 - vue-router: `router.push('/field')` でフィールド画面へ復帰する。
 - relicLibrary: `getRelicInfo(className)` で表示用の名称・説明を取得し、RelicCard へ受け渡す。
 -->
@@ -47,6 +47,7 @@ const drawnRelics = ref<RelicInfo[]>([])
 const selectedRelicId = ref<string | null>(null)
 const isProcessing = ref(false)
 const claimError = ref<string | null>(null)
+const relicLimitReached = computed(() => playerStore.relicLimitReached)
 
 const playerStatus = computed(() => ({
   hp: playerStore.hp,
@@ -58,8 +59,25 @@ const canClaim = computed(
   () =>
     Boolean(selectedRelicId.value) &&
     !isProcessing.value &&
-    drawnRelics.value.length > 0,
+    drawnRelics.value.length > 0 &&
+    !relicLimitReached.value,
 )
+const canProceed = computed(
+  () =>
+    !isProcessing.value &&
+    (canClaim.value || drawnRelics.value.length === 0 || relicLimitReached.value),
+)
+const actionLabel = computed(() =>
+  canClaim.value ? '獲得してフィールドに戻る' : 'フィールドに戻る',
+)
+const noteText = computed(() => {
+  if (relicLimitReached.value) {
+    return 'レリック上限に達しているため獲得できません。フィールドに戻ります。'
+  }
+  return drawnRelics.value.length
+    ? '提示されたレリックから１つ選んで獲得します。'
+    : '候補すべてを所持しているため、獲得できるレリックがありません。'
+})
 
 onMounted(() => {
   drawnRelics.value = drawRelicOptions(candidateRelics.value, playerStore.relics, offerCount.value)
@@ -102,9 +120,15 @@ function handleSelectRelic(className: string): void {
 }
 
 async function handleClaim(): Promise<void> {
-  if (!canClaim.value || isProcessing.value) return
+  if (!canProceed.value || isProcessing.value) return
   isProcessing.value = true
   claimError.value = null
+  if (!canClaim.value) {
+    // 上限到達/候補無しのときは獲得せずに進行だけ進める。
+    fieldStore.markCurrentCleared()
+    await router.push('/field')
+    return
+  }
   const relic = drawnRelics.value.find((info) => info.className === selectedRelicId.value)
   if (!relic) {
     claimError.value = '選択したレリックを特定できませんでした'
@@ -119,7 +143,12 @@ async function handleClaim(): Promise<void> {
   }
 
   try {
-    playerStore.addRelic(relic.className)
+    const result = playerStore.addRelic(relic.className)
+    if (!result.success) {
+      claimError.value = result.message
+      isProcessing.value = false
+      return
+    }
     fieldStore.markCurrentCleared()
     await router.push('/field')
   } catch (error) {
@@ -155,17 +184,13 @@ async function handleClaim(): Promise<void> {
         </div>
         <div v-else class="relic-empty">獲得できるレリックがありません。</div>
         <p class="relic-note">
-          {{
-            drawnRelics.length
-              ? '提示されたレリックから１つ選んで獲得します。'
-              : '候補すべてを所持しているため、獲得できるレリックがありません。'
-          }}
+          {{ noteText }}
         </p>
       </section>
 
       <footer class="actions">
-        <button type="button" class="action-button" :disabled="!canClaim" @click="handleClaim">
-          獲得してフィールドに戻る
+        <button type="button" class="action-button" :disabled="!canProceed" @click="handleClaim">
+          {{ actionLabel }}
         </button>
         <p v-if="claimError" class="action-error">{{ claimError }}</p>
       </footer>

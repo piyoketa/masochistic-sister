@@ -28,7 +28,7 @@ import type { RelicId } from '../entities/relics/relicTypes'
 import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 import { isPredictionDisabled } from '../utils/predictionToggle'
 import { AchievementProgressManager } from '../achievements/AchievementProgressManager'
-import { ORC_HERO_TEAM_ID } from '../achievements/constants'
+import { BEAM_CANNON_TEAM_ID, ORC_HERO_TEAM_ID } from '../achievements/constants'
 // ターン終了時の手札保持ルールは「保留」タグで一元管理する。
 const RETAIN_CARD_TAG_ID = 'tag-retain'
 const DEBUG_RELIC_USABLE_LOG =
@@ -330,11 +330,6 @@ export class Battle {
     return this.exilePileValue
   }
 
-  /** 実績進行度: rememberState で状態異常カードを獲得したイベントを記録する。 */
-  recordAchievementStatusCardMemory(): void {
-    this.achievementProgressManager?.recordStatusCardMemory()
-  }
-
   /** 実績進行度: State付与を通知し、腐食や粘液の累計として集計する。 */
   recordAchievementStateApplied(state: unknown): void {
     this.achievementProgressManager?.recordStateApplied(state)
@@ -343,6 +338,16 @@ export class Battle {
   /** 実績進行度: カードプレイを通知し、カード種別に応じて Manager がカウントする。 */
   recordAchievementCardPlayed(card: import('@/domain/entities/Card').Card): void {
     this.achievementProgressManager?.recordCardPlayed(card)
+  }
+
+  /** 実績進行度: 敵撃破を通知し、特定敵/特性の達成判定に使う。 */
+  recordAchievementEnemyDefeated(enemy: Enemy): void {
+    this.achievementProgressManager?.recordEnemyDefeated(enemy)
+  }
+
+  /** 実績進行度: 敵逃走を通知し、臆病系の達成判定に使う。 */
+  recordAchievementEnemyFled(enemy: Enemy): void {
+    this.achievementProgressManager?.recordEnemyFled(enemy)
   }
 
   /** 実績進行度: プレイヤーがダメージを受けた際の情報を通知する。 */
@@ -367,6 +372,16 @@ export class Battle {
   /** 実績進行度: オークヒーロー撃破（チーム単位）を通知する。 */
   recordAchievementOrcHeroDefeated(): void {
     this.achievementProgressManager?.recordOrcHeroDefeated()
+  }
+
+  /** 実績進行度: LV2ボス（ビーム砲）撃破を通知する。 */
+  recordAchievementBeamCannonDefeated(): void {
+    this.achievementProgressManager?.recordBeamCannonDefeated()
+  }
+
+  /** 実績進行度: リザルト時HPが閾値以下かを通知する。 */
+  recordAchievementResultHpAtMost30(): void {
+    this.achievementProgressManager?.recordResultHpAtMost30(this.playerValue.currentHp)
   }
 
   /** ViewManager が入力ロック/解除を伝えるための API。Snapshot 時の予測計算に利用。 */
@@ -1815,8 +1830,15 @@ export class Battle {
     if (outcome === 'victory' && this.enemyTeamValue.id === ORC_HERO_TEAM_ID) {
       this.recordAchievementOrcHeroDefeated()
     }
+    if (outcome === 'victory' && this.enemyTeamValue.id === BEAM_CANNON_TEAM_ID) {
+      this.recordAchievementBeamCannonDefeated()
+    }
     if (outcome === 'gameover') {
       this.recordAchievementDefeat()
+    }
+    if (outcome === 'victory' || outcome === 'gameover') {
+      // リザルト時点のHPで判定する実績のため、結果確定のタイミングで記録する。
+      this.recordAchievementResultHpAtMost30()
     }
   }
 

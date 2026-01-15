@@ -76,6 +76,7 @@ const playerHp = computed(() => ({
 }))
 
 const playerGold = computed(() => playerStore.gold)
+const relicLimitReached = computed(() => playerStore.relicLimitReached)
 const editHp = ref<number>(playerStore.hp)
 const editMaxHp = ref<number>(playerStore.maxHp)
 const editGold = ref<number>(playerStore.gold)
@@ -201,8 +202,14 @@ function buyRelic(offer: (typeof shopState.value.relics)[number]): void {
   if (playerStore.relics.includes(offer.relicClassName)) {
     return
   }
+  if (relicLimitReached.value) {
+    return
+  }
+  const result = playerStore.addRelic(offer.relicClassName)
+  if (!result.success) {
+    return
+  }
   playerStore.spendGold(offer.price)
-  playerStore.addRelic(offer.relicClassName)
   syncStatusEditors()
   shopManager.markRelicSold(offer.relicClassName)
   refreshShopState()
@@ -527,7 +534,7 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
                 <button
                   type="button"
                   class="deck-button"
-                  :disabled="playerGold < offer.price || playerStore.relics.includes(offer.relicClassName)"
+                  :disabled="playerGold < offer.price || playerStore.relics.includes(offer.relicClassName) || relicLimitReached"
                   @click="buyRelic(offer)"
                 >
                   購入
