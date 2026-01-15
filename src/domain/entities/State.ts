@@ -2,6 +2,7 @@ import type { CardDefinition } from './CardDefinition'
 import type { DamageCalculationParams, DamageOutcome, Damages } from './Damages'
 import { StateAction } from './Action/StateAction'
 import type { CardTag } from './CardTag'
+import { ExhaustCardTag, RetainCardTag } from './cardTags'
 import type { Battle } from '../battle/Battle'
 import type { Player } from './Player'
 import type { Enemy } from './Enemy'
@@ -127,7 +128,19 @@ export class State {
       throw new Error('State does not provide a card definition')
     }
 
-    return { ...base }
+    const effectTags = base.effectTags ? [...base.effectTags] : []
+    // 状態カードは「保留」と「消滅」を必ず持たせ、ターン終了処理と使用後の挙動を明示する。
+    const destinationTags = [new RetainCardTag(), new ExhaustCardTag()]
+    destinationTags.forEach((tag) => {
+      if (effectTags.every((entry) => entry.id !== tag.id)) {
+        effectTags.push(tag)
+      }
+    })
+
+    return {
+      ...base,
+      effectTags: effectTags.length > 0 ? effectTags : undefined,
+    }
   }
 
   stackWith(state: State): void {

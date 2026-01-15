@@ -1,6 +1,6 @@
 /*
 RedrawRelicAction.ts の責務:
-- 起動レリック「リドロー」の効果として、手札の状態異常以外を全て捨ててから固定枚数ドローする処理を実行する。
+- 起動レリック「リドロー」の効果として、手札の保留以外を全て捨ててから固定枚数ドローする処理を実行する。
 - 捨て札演出用のログを積み、ドローは Battle.drawForPlayer に委譲して他システムと挙動を揃える。
 
 非責務:
@@ -8,7 +8,7 @@ RedrawRelicAction.ts の責務:
 - ドロー枚数の可変管理（本アクションでは常に4枚で固定とし、外部パラメータは受け取らない）。
 
 主な通信相手:
-- `Battle.hand` / `Battle.discardPile`: 状態異常以外のカード移動を行う。
+- `Battle.hand` / `Battle.discardPile`: 保留以外のカード移動を行う。
 - `Battle.recordCardTrashAnimation`: 捨て札アニメーションの発火。
 - `Battle.drawForPlayer`: 4枚ドローの本処理を委譲。
 */
@@ -17,6 +17,8 @@ import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 
 // ターン終了時と同じ4枚ドローを明示的に定数化しておき、将来のルール変更時に一元管理しやすくする
 const REDRAW_RELIC_DRAW_COUNT = 4
+// ターン終了時に捨てないカード判定は「保留」タグで統一する。
+const RETAIN_CARD_TAG_ID = 'tag-retain'
 
 export class RedrawRelicAction extends Skill {
   constructor() {
@@ -44,13 +46,13 @@ export class RedrawRelicAction extends Skill {
   }
 
   protected override description(): string {
-    return '手札の状態異常以外を全て捨て、カードを4枚引く'
+    return '手札の保留以外を全て捨て、カードを4枚引く'
   }
 
   protected override perform(context: ActionContext): void {
     const hand = context.battle.hand
-    // ターン終了時と同じルールを再現するため、状態異常以外のカードのみを一括で対象とする
-    const discardTargets = hand.list().filter((card) => card.definition.cardType !== 'status')
+    // ターン終了時と同じルールを再現するため、「保留」タグを持たないカードのみを対象とする
+    const discardTargets = hand.list().filter((card) => !card.hasTag(RETAIN_CARD_TAG_ID))
 
     if (discardTargets.length > 0) {
       discardTargets.forEach((card) => {

@@ -29,6 +29,8 @@ import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 import { isPredictionDisabled } from '../utils/predictionToggle'
 import { AchievementProgressManager } from '../achievements/AchievementProgressManager'
 import { ORC_HERO_TEAM_ID } from '../achievements/constants'
+// ターン終了時の手札保持ルールは「保留」タグで一元管理する。
+const RETAIN_CARD_TAG_ID = 'tag-retain'
 const DEBUG_RELIC_USABLE_LOG =
   (typeof process !== 'undefined' && process.env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true') ||
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true')
@@ -952,8 +954,8 @@ export class Battle {
       // eslint-disable-next-line no-console
       console.log('[Battle] endPlayerTurn')
     }
-    // 手札ルールはexperimentalをデフォルトとし、ターン終了時に状態異常以外を必ず捨て札へ送る
-    this.discardNonStatusHandCards()
+    // 手札ルールはexperimentalをデフォルトとし、ターン終了時は「保留」以外を捨て札へ送る
+    this.discardNonRetainHandCards()
     this.turn.moveToPhase('player-end')
   }
 
@@ -1518,8 +1520,8 @@ export class Battle {
     this.discardPileValue.add(card)
   }
 
-  private discardNonStatusHandCards(): void {
-    const targets = this.handValue.list().filter((card) => card.definition.cardType !== 'status')
+  private discardNonRetainHandCards(): void {
+    const targets = this.handValue.list().filter((card) => !card.hasTag(RETAIN_CARD_TAG_ID))
     if (targets.length === 0) {
       return
     }

@@ -1180,7 +1180,7 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
           <p class="battle-instructions__tutorial-note">オークの20×2のダメージを受けたくないので、オークの攻撃を止めましょう。</p>
 
           <p class="battle-instructions__tutorial-step">指示４：「戦いの準備」を使い、ターン終了してください。</p>
-          <p class="battle-instructions__tutorial-note">ターンを終了すると、状態異常以外の手札が捨て札に送られます。</p>
+          <p class="battle-instructions__tutorial-note">ターンを終了すると、保留以外の手札が捨て札に送られます。</p>
 
           <p class="battle-instructions__tutorial-enemy">敵のターン<br>かたつむりが行動し、30ダメージ(元の打点20ダメージ+腐食10点)の殴打が手札に追加されました。</p>
 

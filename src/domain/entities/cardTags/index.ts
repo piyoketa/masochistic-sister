@@ -1,6 +1,7 @@
 export { ArcaneCardTag } from './ArcaneCardTag'
 export { EnemySingleTargetCardTag } from './EnemySingleTargetCardTag'
 export { ExhaustCardTag } from './ExhaustCardTag'
+export { RetainCardTag } from './RetainCardTag'
 export { MemoryCardTag } from './MemoryCardTag'
 export { MultiAttackCardTag } from './MultiAttackCardTag'
 export { SacredCardTag } from './SacredCardTag'

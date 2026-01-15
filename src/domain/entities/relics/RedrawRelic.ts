@@ -1,6 +1,6 @@
 /*
 RedrawRelic の責務:
-- 戦闘中1回だけ起動できる「リドロー」効果を提供し、手札の状態異常以外を全て捨ててから4枚引くアクションを実行する。
+- 戦闘中1回だけ起動できる「リドロー」効果を提供し、手札の保留以外を全て捨ててから4枚引くアクションを実行する。
 - ActiveRelic 基盤を利用してマナコストや使用回数の管理、実行時コンテキストの引き回しを行う。
 
 非責務:
@@ -27,7 +27,7 @@ export class RedrawRelic extends ActiveRelic {
   }
 
   description(): string {
-    return '起動：手札の状態異常以外を全て捨て、カードを4枚引く（戦闘中1回まで）'
+    return '起動：手札の保留以外を全て捨て、カードを4枚引く（戦闘中1回まで）'
   }
 
   protected createAction(_context: ActiveRelicContext) {
