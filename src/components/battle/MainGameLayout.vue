@@ -130,7 +130,6 @@ defineExpose({ getPlayerCardRect })
   flex-direction: column;
   align-items: stretch;
   padding: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
   box-sizing: border-box;
   min-height: 0;
   overflow: visible;
@@ -142,7 +141,6 @@ defineExpose({ getPlayerCardRect })
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  padding: 12px 0 0 0;
   position: relative;
   overflow: visible;
 }

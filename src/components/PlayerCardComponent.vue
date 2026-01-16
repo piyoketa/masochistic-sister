@@ -213,6 +213,7 @@ onMounted(() => {
 .player-card__image {
   position: relative;
   display: flex;
+  top: 60px;
 }
 
 .player-card__hp {

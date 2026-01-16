@@ -218,7 +218,7 @@ function draw(): void {
 .player-image {
   position: relative;
   width: 255px;
-  height: 630px;
+  height: 590px;
   border-radius: 0;
   overflow: visible;
   /* background: linear-gradient(180deg, rgba(12, 12, 22, 0.95), rgba(8, 8, 18, 0.88)); */
@@ -240,7 +240,7 @@ function draw(): void {
   position: absolute;
   inset: 0;
   width: 265px;
-  height: 630px;
+  height: 590px;
   z-index: 1;
 }
 

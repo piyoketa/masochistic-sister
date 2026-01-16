@@ -465,16 +465,14 @@ function mapStatesToEntries(states?: Array<State | StateSnapshot>): StateSnapsho
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 320px;
-  padding: 20px;
+  min-height: 270px;
 }
 
 .enemy-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 16px;
-  margin-top: 15px;
-  margin-bottom: 45px;
+  margin-top: 45px;
 }
 
 .enemy-slot {

@@ -326,6 +326,11 @@ const playerMana = computed(() => ({
   current: snapshot.value?.player.currentMana ?? 0,
   max: snapshot.value?.player.maxMana ?? 0,
 }))
+const battleLogEntries = computed(() => snapshot.value?.log ?? [])
+const battleLogEntriesForDisplay = computed(() => {
+  // ログエリアでは最新の出来事を最上段に集め、視線移動を抑える。
+  return [...battleLogEntries.value].reverse()
+})
 const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
   max: snapshot.value?.player.maxHp ?? 0,
@@ -1231,6 +1236,23 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
     </template>
 
     <main class="battle-main">
+      <!-- 上からログ / 敵エリア / 手札+操作エリアの三段構成にする -->
+      <section class="battle-text-log">
+        <div class="battle-text-log__list" role="log" aria-live="polite">
+          <p v-if="battleLogEntriesForDisplay.length === 0" class="battle-text-log__empty">
+            ログはまだありません。
+          </p>
+          <p
+            v-for="entry in battleLogEntriesForDisplay"
+            :key="entry.id"
+            class="battle-text-log__item"
+          >
+            <span class="battle-text-log__turn">T{{ entry.turn }}</span>
+            <span class="battle-text-log__message">{{ entry.message }}</span>
+          </p>
+        </div>
+      </section>
+
       <BattleEnemyArea
         :key="`enemy-area-${viewResetToken}`"
         :battle="viewManager.battle"
@@ -1248,50 +1270,51 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
         @cancel-selection="handleEnemySelectionCanceled"
       />
 
-      <div class="battle-main__overlay">
-        <div class="battle-main__overlay-inner">
-          <div class="battle-main__overlay-left">
-            <div class="mana-pop" :key="manaPulseKey" aria-label="現在のマナ">
-              <span class="mana-pop__current">{{ playerMana.current }}</span>
-              <span class="mana-pop__slash" aria-hidden="true"></span>
-              <span class="mana-pop__max">{{ playerMana.max }}</span>
+      <div class="battle-main__lower">
+        <BattleHandArea
+          :key="`hand-area-${viewResetToken}`"
+          ref="handAreaRef"
+          :snapshot="snapshot"
+          :hovered-enemy-id="hoveredEnemyId"
+          :is-initializing="isInitializing"
+          :stage-event="latestStageEvent"
+          :is-player-turn="isPlayerTurn"
+          :is-input-locked="isInputLocked"
+          :view-manager="viewManager"
+          :request-enemy-target="requestEnemyTarget"
+          :cancel-enemy-selection="cancelEnemySelectionInternal"
+          :player-origin-rect="getPlayerOriginRect"
+          @play-card="handleHandPlayCard"
+          @error="handleHandError"
+          @hide-overlay="handleHandHideOverlay"
+          @show-enemy-selection-hints="handleEnemySelectionHints"
+          @clear-enemy-selection-hints="handleClearEnemySelectionHints"
+          @open-deck-overlay="openBattleDeckOverlay"
+          @open-discard-overlay="openDiscardOverlay"
+          @open-pile-choice="handleOpenPileChoice"
+        />
+        <div class="battle-main__overlay">
+          <div class="battle-main__overlay-inner">
+            <div class="battle-main__overlay-left">
+              <div class="mana-pop" :key="manaPulseKey" aria-label="現在のマナ">
+                <span class="mana-pop__current">{{ playerMana.current }}</span>
+                <span class="mana-pop__slash" aria-hidden="true"></span>
+                <span class="mana-pop__max">{{ playerMana.max }}</span>
+              </div>
             </div>
-          </div>
-          <div class="battle-main__overlay-right">
-            <button
-              class="end-turn-button"
-              type="button"
-              :disabled="isInputLocked"
-              @click="handleEndTurnClick"
-            >
-              ターン終了
-            </button>
+            <div class="battle-main__overlay-right">
+              <button
+                class="end-turn-button"
+                type="button"
+                :disabled="isInputLocked"
+                @click="handleEndTurnClick"
+              >
+                ターン終了
+              </button>
+            </div>
           </div>
         </div>
       </div>
-
-  <BattleHandArea
-    :key="`hand-area-${viewResetToken}`"
-    ref="handAreaRef"
-        :snapshot="snapshot"
-        :hovered-enemy-id="hoveredEnemyId"
-        :is-initializing="isInitializing"
-        :stage-event="latestStageEvent"
-        :is-player-turn="isPlayerTurn"
-        :is-input-locked="isInputLocked"
-        :view-manager="viewManager"
-        :request-enemy-target="requestEnemyTarget"
-        :cancel-enemy-selection="cancelEnemySelectionInternal"
-        :player-origin-rect="getPlayerOriginRect"
-        @play-card="handleHandPlayCard"
-        @error="handleHandError"
-        @hide-overlay="handleHandHideOverlay"
-        @show-enemy-selection-hints="handleEnemySelectionHints"
-        @clear-enemy-selection-hints="handleClearEnemySelectionHints"
-    @open-deck-overlay="openBattleDeckOverlay"
-        @open-discard-overlay="openDiscardOverlay"
-        @open-pile-choice="handleOpenPileChoice"
-      />
     </main>
     <PileChoiceOverlay
       :visible="pileChoiceState.visible"
@@ -1591,14 +1614,78 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
 
 .battle-main {
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* ログ・敵エリア・手札+操作を縦に分ける */
+  grid-template-rows: auto var(--enemy-zone-height) minmax(0, 1fr);
   background: linear-gradient(180deg, rgba(28, 28, 48, 0.75), rgba(18, 18, 24, 0.85));
   gap: 0;
   flex: 1;
   min-height: 0;
-  --enemy-zone-height: 370px;
+  --battle-zone-bg: rgba(255, 255, 255, 0.05);
+  --enemy-zone-height: 320px;
   --enemy-zone-offset: 0px; /* 敵ゾーンを画面上部に寄せてヘッダーとの距離を詰める視覚オフセット */
+}
+
+.battle-text-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 18px;
+  background: var(--battle-zone-bg);
+  color: rgba(242, 242, 255, 0.9);
+}
+
+.battle-text-log__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.battle-text-log__title {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.battle-text-log__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.battle-text-log__item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.battle-text-log__turn {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.55);
+  min-width: 36px;
+}
+
+.battle-text-log__message {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.battle-text-log__empty {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.battle-main__lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 150px);
+  min-height: 0;
+  align-items: stretch;
 }
 
 .enemy-area-wrapper {
@@ -1610,9 +1697,7 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.05);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  background: var(--battle-zone-bg);
   box-sizing: border-box;
   min-height: 0;
 }
@@ -1627,7 +1712,6 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
 
 :deep(.hand-zone) {
   flex: 1 1 auto;
-  background: rgba(245, 245, 250, 0.18);
   padding: 0;
 }
 
@@ -1652,7 +1736,6 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
   align-content: start;
   overflow-y: auto;
   padding: 30px;
-  background: rgba(255, 255, 255, 0.18);
   border-radius: 16px;
 }
 
@@ -1713,7 +1796,6 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
   align-items: stretch;
   padding: 0;
   /* background: #0e0e18; */
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
   box-sizing: border-box;
   min-height: 0;
   overflow: visible;
@@ -1725,7 +1807,6 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  padding: 12px 0 0 0;
   position: relative;
   overflow: visible;
 }
@@ -1979,26 +2060,26 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
 }
 
 .battle-main__overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(var(--enemy-zone-height) + var(--enemy-zone-offset)); /* 敵ゾーンの視覚位置に合わせてオーバーレイのアンカーも移動 */
-  transform: translateY(-50%);
-  pointer-events: none;
-  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 16px;
+  background: var(--battle-zone-bg);
 }
 
 .battle-main__overlay-inner {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  gap: 16px;
+  justify-content: center;
+  gap: 18px;
 }
 
 .battle-main__overlay-left,
 .battle-main__overlay-right {
-  pointer-events: auto;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 </style>
