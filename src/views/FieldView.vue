@@ -214,6 +214,10 @@ async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: numbe
     await router.push({ path: '/field/devil-statue-reward' })
     return
   }
+  if (node.type === 'goal') {
+    await router.push({ path: '/field/goal', query: { fieldId: fieldStore.field.id } })
+    return
+  }
 }
 
 audioStore.playBgm('/sounds/bgm/field.mp3')

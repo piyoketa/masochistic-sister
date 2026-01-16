@@ -4,6 +4,7 @@ export type FieldNodeType =
   | 'start'
   | 'enemy'
   | 'boss-enemy'
+  | 'goal'
   | 'card-reward'
   | 'relic-reward'
   | 'random-card-reward'
@@ -76,4 +77,9 @@ export interface BossEnemyNode extends FieldNode {
   type: 'boss-enemy'
   enemyTeamId: string
   label: string
+}
+
+export interface GoalNode extends FieldNode {
+  type: 'goal'
+  label?: string
 }

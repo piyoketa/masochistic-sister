@@ -8,6 +8,7 @@ import type {
   RandomRelicRewardNode,
   FixedRelicRewardNode,
   BossEnemyNode,
+  GoalNode,
 } from './FieldNode'
 
 export type FieldLevel = {
@@ -62,5 +63,9 @@ export abstract class Field {
 
   isBossEnemyNode(node: FieldNode): node is BossEnemyNode {
     return node.type === 'boss-enemy'
+  }
+
+  isGoalNode(node: FieldNode): node is GoalNode {
+    return node.type === 'goal'
   }
 }

@@ -1,13 +1,13 @@
 /*
 FirstFieldの責務:
-- 第一フィールドの一本道構成（スタート → テスト編成 → ハチドリ支援 → ハイオーク小隊 → オーク英雄ボス）を定義し、FieldStore/FieldViewへ提供する。
+- 第一フィールドの一本道構成（スタート → テスト編成 → ハチドリ支援 → ハイオーク小隊 → オーク英雄ボス → ゴール）を定義し、FieldStore/FieldViewへ提供する。
 - ノード同士の遷移設定と表示ラベルの付与のみを扱い、報酬生成や難易度スケーリングの責務は持たない。
 主な通信相手とインターフェース:
 - FieldStore/FieldView: levels配列と各FieldNodeを通じて進行情報を渡す。enemyTeamIdはBattleViewのbuildEnemyTeamFactoryMapで解決されるキー。
-- BattleView: enemyTeamIdを受け取るだけで直接参照はしない。start/enemy/boss-enemyノードのみを扱い、報酬系ノード型との混在は行わない。
+- BattleView: enemyTeamIdを受け取るだけで直接参照はしない。start/enemy/boss-enemy/goalノードのみを扱い、報酬系ノード型との混在は行わない。
 */
 import { Field, type FieldLevel } from './Field'
-import type { BossEnemyNode, EnemyNode, FieldNode, StartNode } from './FieldNode'
+import type { BossEnemyNode, EnemyNode, FieldNode, GoalNode, StartNode } from './FieldNode'
 import { HummingbirdAlliesTeam, HighOrcSquad, OrcHeroEliteTeam, TestEnemyTeam } from '@/domain/entities/enemyTeams'
 import type { EnemyTeam } from '@/domain/entities/EnemyTeam'
 
@@ -36,6 +36,7 @@ function buildLevels(): FieldLevel[] {
     [createEnemyNode('hummingbird-allies', 3, 0)],
     [createEnemyNode('high-orc-squad', 4, 0)],
     [createBossEnemyNode('orc-hero-elite', 5, 0)],
+    [createGoalNode(6, 0)],
   ]
 
   return nodesByLevel.map((nodes, levelIdx, arr) => {
@@ -83,6 +84,16 @@ function createBossEnemyNode(teamId: string, level: number, idx: number): BossEn
     level,
     label: `ボス「${labelName}」`,
     enemyTeamId: teamId,
+    nextNodeIndices: [],
+  }
+}
+
+function createGoalNode(level: number, idx: number): GoalNode {
+  return {
+    id: `goal-${level}-${idx}`,
+    type: 'goal',
+    level,
+    label: 'ゴール',
     nextNodeIndices: [],
   }
 }
