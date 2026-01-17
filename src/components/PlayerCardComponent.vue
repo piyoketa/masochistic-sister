@@ -176,6 +176,10 @@ onMounted(() => {
 <template>
   <div class="player-card" v-if="props.show">
     <div class="player-card__image">
+      <!-- プレイヤーの頭上に固定テキストを重ねる -->
+      <p class="player-card__caption">
+        私がやらなきゃ...
+      </p>
       <PlayerImageComponent
         :current-hp="displayHp.current"
         :max-hp="displayHp.max"
@@ -232,6 +236,28 @@ onMounted(() => {
   position: relative;
   display: flex;
   top: 60px;
+}
+
+.player-card__caption {
+    position: absolute;
+    left: 70px;
+    top: -40px;
+    z-index: 3;
+    margin: 0;
+    width: 200px;
+    height: 40px;
+    display: flex;
+    font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    color: #f7f1e7;
+    text-shadow: 1px 1px 2px black, 0 0 1em pink, 0 0 0.1em pink;
+    pointer-events: none;
+    white-space: pre-line;
+    align-items: center;
+    justify-content: center;
 }
 
 .player-card__hp {
