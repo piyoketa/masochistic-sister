@@ -16,10 +16,17 @@ import { reviveStatesOrThrow } from './enemyActions/stateReviver'
 const DEBUG_ENEMY_HINT =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_ENEMY_HINT_LOG === 'true') ||
   (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ENEMY_HINT_LOG === 'true')
+const DEBUG_ENEMY_PREDICTION =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_ENEMY_PREDICTION === 'true') ||
+  (typeof process !== 'undefined' && process.env?.VITE_DEBUG_ENEMY_PREDICTION === 'true')
 
 export interface EnemyActionHintBuildParams {
   battle: Battle
   snapshot: BattleSnapshot
+  // 敵行動中の例外表示: 行動開始時のプレイヤー状態異常を固定したい場合に指定する。
+  // UI都合の補正であり、Modelの状態遷移やスナップショットの整合性には影響させない設計判断。
+  actingEnemyId?: number | null
+  playerStatesAtActionStart?: BattleSnapshot['player']['states']
 }
 
 export type EssentialEnemyActionHint = {
@@ -33,7 +40,7 @@ export type EssentialEnemyActionHint = {
 }
 
 export function buildEnemyActionHintsForView(params: EnemyActionHintBuildParams): Map<number, EssentialEnemyActionHint[]> {
-  const { battle, snapshot } = params
+  const { battle, snapshot, actingEnemyId, playerStatesAtActionStart } = params
   const turnPosition: BattleTurn = snapshot.turnPosition ?? battle.turnPosition
   const result = new Map<number, EssentialEnemyActionHint[]>()
 
@@ -43,6 +50,8 @@ export function buildEnemyActionHintsForView(params: EnemyActionHintBuildParams)
       enemySnapshot,
       playerSnapshot: snapshot.player,
       turnPosition,
+      actingEnemyId,
+      playerStatesAtActionStart,
     })
     if (essentials.length === 0) {
       return
@@ -61,10 +70,12 @@ type BuildEssentialParams = {
   enemySnapshot: EnemySnapshot
   playerSnapshot: BattleSnapshot['player']
   turnPosition: BattleTurn
+  actingEnemyId?: number | null
+  playerStatesAtActionStart?: BattleSnapshot['player']['states']
 }
 
 function buildEssentialsForEnemy(params: BuildEssentialParams): EssentialEnemyActionHint[] {
-  const { battle, enemySnapshot, playerSnapshot, turnPosition } = params
+  const { battle, enemySnapshot, playerSnapshot, turnPosition, actingEnemyId, playerStatesAtActionStart } = params
   const enemy = battle.enemyTeam.findEnemy(enemySnapshot.id)
   if (!enemy) {
     return []
@@ -78,7 +89,19 @@ function buildEssentialsForEnemy(params: BuildEssentialParams): EssentialEnemyAc
   // ターン側に関わらず「今ターン既に行動した」状態を表示側へ伝える。
   const actedThisTurn = enemySnapshot.hasActedThisTurn
   const attackerStates = reviveStatesOrThrow(enemySnapshot.states, `enemy:${enemy.id ?? enemy.name}`)
-  const defenderStates = reviveStatesOrThrow(playerSnapshot?.states, 'player')
+  // 例外規定: 行動中の敵だけ、行動開始時の状態異常で予測する。
+  const shouldUseActionStartStates =
+    actingEnemyId !== null && actingEnemyId !== undefined && actingEnemyId === enemySnapshot.id
+  const defenderStateSnapshots =
+    shouldUseActionStartStates && playerStatesAtActionStart
+      ? playerStatesAtActionStart
+      : playerSnapshot?.states
+  logPredictionOverride({
+    enemyId: enemySnapshot.id,
+    shouldUseActionStartStates,
+    defenderStateSnapshots,
+  })
+  const defenderStates = reviveStatesOrThrow(defenderStateSnapshots, 'player')
   const hint = summarizeEnemyAction({
     battle,
     enemy,
@@ -99,6 +122,23 @@ function buildEssentialsForEnemy(params: BuildEssentialParams): EssentialEnemyAc
       hint,
     },
   ]
+}
+
+function logPredictionOverride(params: {
+  enemyId: number
+  shouldUseActionStartStates: boolean
+  defenderStateSnapshots: BattleSnapshot['player']['states'] | undefined
+}): void {
+  if (!DEBUG_ENEMY_PREDICTION || !params.shouldUseActionStartStates) {
+    return
+  }
+  const stateSummary =
+    params.defenderStateSnapshots?.map((state) => ({ id: state.id, magnitude: state.magnitude })) ?? []
+  // eslint-disable-next-line no-console
+  console.info('[EnemyActionHintsForView] override player states', {
+    enemyId: params.enemyId,
+    states: stateSummary,
+  })
 }
 
 function logBuiltEnemyHints(

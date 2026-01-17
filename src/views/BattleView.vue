@@ -13,6 +13,7 @@ import type { CardOperation } from '@/domain/entities/operations'
 import type { TargetEnemyAvailabilityEntry } from '@/domain/entities/operations'
 import { OperationLog } from '@/domain/battle/OperationLog'
 import { Battle } from '@/domain/battle/Battle'
+import type { BattleSnapshot } from '@/domain/battle/Battle'
 import {
   createDefaultSnailBattle,
   createTestCaseBattle,
@@ -116,6 +117,9 @@ const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
 const managerState = viewManager.state
 const errorMessage = ref<string | null>(null)
 const currentAnimationId = ref<string | null>(null)
+// 設計判断: 敵行動中の予測だけは「行動開始時のプレイヤー状態異常」で固定して算出する。
+const actingEnemyIdForPrediction = ref<number | null>(null)
+const playerStatesAtEnemyActionStart = ref<BattleSnapshot['player']['states'] | null>(null)
 let errorOverlayTimer: SafeTimeoutHandle = null
 // チュートリアル専用UIの制御用フラグ。preset に依存するため単純な computed で十分。
 const isTutorialBattle = computed(() => props.preset === 'tutorial')
@@ -142,6 +146,8 @@ const hoveredEnemyId = ref<number | null>(null)
 const { enemyActionHintsById } = useEnemyActionHints({
   battleGetter: () => viewManager.battle,
   snapshot,
+  actingEnemyId: actingEnemyIdForPrediction,
+  playerStatesAtActionStart: playerStatesAtEnemyActionStart,
 })
 const handAreaRef = ref<InstanceType<typeof BattleHandArea> | null>(null)
 const latestStageEvent = ref<StageEventPayload | null>(null)
@@ -212,6 +218,8 @@ const animationDebugLoggingEnabled =
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'
 // HP周りの調査ログは騒がしいため、環境変数で明示的に有効化した場合のみ出力する
 const playerHpDebugLoggingEnabled = import.meta.env.VITE_DEBUG_PLAYER_HP_LOG === 'true'
+// 敵行動中の予測固定を追跡するための最小ログ。
+const enemyPredictionDebugEnabled = import.meta.env.VITE_DEBUG_ENEMY_PREDICTION === 'true'
 
 
 let battleAssetPreloadPromise: Promise<void> | null = null
@@ -290,6 +298,16 @@ function handleManagerEvent(event: ViewManagerEvent) {
     case 'animation-complete':
       if (currentAnimationId.value === event.script.id) {
         currentAnimationId.value = null
+      }
+      if (event.script.metadata?.entryType === 'enemy-act') {
+        if (enemyPredictionDebugEnabled && actingEnemyIdForPrediction.value !== null) {
+          // eslint-disable-next-line no-console
+          console.info('[BattleView] clear enemy prediction lock', {
+            enemyId: actingEnemyIdForPrediction.value,
+          })
+        }
+        actingEnemyIdForPrediction.value = null
+        playerStatesAtEnemyActionStart.value = null
       }
       break
     default:
@@ -908,6 +926,28 @@ async function executeCommand(command: AnimationCommand): Promise<void> {
         metadata: command.metadata,
         issuedAt: performance.now(),
         resolvedEntry: command.resolvedEntry,
+      }
+      if (command.entryType === 'enemy-act') {
+        const stage = (command.metadata as { stage?: string; enemyId?: number } | undefined)?.stage
+        if (stage === 'enemy-highlight') {
+          const enemyId = (command.metadata as { enemyId?: number } | undefined)?.enemyId
+          if (typeof enemyId === 'number') {
+            actingEnemyIdForPrediction.value = enemyId
+            playerStatesAtEnemyActionStart.value = snapshot.value?.player.states
+              ? snapshot.value.player.states.map((state) => ({ ...state }))
+              : null
+            if (enemyPredictionDebugEnabled) {
+              const stateSummary =
+                playerStatesAtEnemyActionStart.value?.map((state) => ({ id: state.id, magnitude: state.magnitude })) ??
+                []
+              // eslint-disable-next-line no-console
+              console.info('[BattleView] lock enemy prediction', {
+                enemyId,
+                states: stateSummary,
+              })
+            }
+          }
+        }
       }
       maybePlayTurnIndicatorForStage(command.metadata)
       logAnimationStageEvent(command)
@@ -1631,6 +1671,7 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
   flex-direction: column;
   gap: 6px;
   padding: 12px 18px;
+  height: 80px;
   background: var(--battle-zone-bg);
   color: rgba(242, 242, 255, 0.9);
 }

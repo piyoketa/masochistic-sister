@@ -14,7 +14,7 @@ env.WATCHPACK_POLLING = 'true'
 // env.VITE_DEBUG_CARD_ELIMINATE = 'true'
 // env.VITE_DEBUG_HAND_ANIMATION = 'true'
 // 
-env.VITE_DEBUG_ANIMATION_LOG = 'false'
+env.VITE_DEBUG_ANIMATION_LOG = 'true'
 //
 env.VITE_DEBUG_HAND_STAGE_EVENTS='false'
 //
@@ -35,6 +35,8 @@ env.VITE_DEBUG_ALLY_BUFF_PLAN='false'
 env.VITE_DEBUG_ALLY_BUFF_APPLY='false'
 // 敵行動ヒント生成の入力/出力ログを追跡したい場合に true にする。
 env.VITE_DEBUG_ENEMY_HINT_LOG='false'
+// 敵行動中の予測固定が効いているかを追跡したい場合に true にする。
+env.VITE_DEBUG_ENEMY_PREDICTION='true'
 // レリック usable 判定のデバッグログ。/battle/testcase3 での入力ロック解除後のスナップショット確認用。
 env.VITE_DEBUG_RELIC_USABLE_LOG='false'
 // 蘇る記憶の isActive 判定をトレースする場合に true にする。
