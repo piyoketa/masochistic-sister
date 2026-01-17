@@ -1368,7 +1368,7 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
     </template>
 
     <main class="battle-main">
-      <!-- 上からログ / 敵エリア / 手札+操作エリアの三段構成にする -->
+      <!-- 上からログ / 敵エリア / 手札+操作エリアの三段構成にする
       <section class="battle-text-log">
         <div class="battle-text-log__list" role="log" aria-live="polite">
           <p v-if="battleLogEntriesForDisplay.length === 0" class="battle-text-log__empty">
@@ -1384,7 +1384,7 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
             </p>
           </TransitionGroup>
         </div>
-      </section>
+      </section> -->
 
       <BattleEnemyArea
         :key="`enemy-area-${viewResetToken}`"

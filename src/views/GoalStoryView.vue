@@ -48,19 +48,13 @@ const goalScenario: ScenarioNode[] = [
   {
     type: 'text',
     kind: 'narration',
-    text: '深部へと辿り着いた記憶は、静かに胸へ沈んでいく。',
+    text: '最深部には、聖女をかたどった像があった。',
   },
   {
     type: 'text',
     kind: 'narration',
-    text: '傷の重みも、戦いの余韻も、すべてが次の旅路の糧となる。',
-  },
-  {
-    type: 'text',
-    kind: 'speech',
-    speaker: '記憶の聖女',
-    text: '……また、同じ扉を開く時まで。',
-  },
+    text: '像に触れた瞬間、あなたの意識と記憶は像に吸い込まれていった。',
+  }
 ]
 
 async function finalizeGoal(): Promise<void> {
