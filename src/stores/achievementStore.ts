@@ -51,6 +51,14 @@ import {
   DAMAGE_40_TARGET,
   DAMAGE_50_ACHIEVEMENT_ID,
   DAMAGE_50_TARGET,
+  STATE_PROGRESS_2_ACHIEVEMENT_ID,
+  STATE_PROGRESS_2_TARGET,
+  STATE_PROGRESS_5_ACHIEVEMENT_ID,
+  STATE_PROGRESS_5_TARGET,
+  STATE_PROGRESS_8_ACHIEVEMENT_ID,
+  STATE_PROGRESS_8_TARGET,
+  STATE_PROGRESS_10_ACHIEVEMENT_ID,
+  STATE_PROGRESS_10_TARGET,
   KISS_RECEIVED_ACHIEVEMENT_ID,
   KISS_RECEIVED_TARGET,
   KISS_USED_ACHIEVEMENT_ID,
@@ -120,7 +128,7 @@ type AchievementPersistedPayload = {
 const STORAGE_VERSION = 'v4'
 const STORAGE_KEY = `ms-achievement/${STORAGE_VERSION}/history`
 
-// 報酬9件 + 称号18件を定義する。
+// 報酬9件 + 称号22件を定義する。
 const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     id: ORC_HERO_ACHIEVEMENT_ID,
@@ -222,7 +230,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     id: CORROSION_FIRST_ACHIEVEMENT_ID,
     category: 'title',
-    title: '衣服破損１',
+    title: '腐食１',
     description: 'はじめて腐食を受ける',
     memoryPointGain: 1,
     initialStatus: 'not-achieved',
@@ -230,7 +238,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     id: CORROSION_30_ACHIEVEMENT_ID,
     category: 'title',
-    title: '衣服破損２',
+    title: '腐食２',
     description: '腐食を累計30点受ける',
     memoryPointGain: 1,
     initialStatus: 'not-achieved',
@@ -238,9 +246,41 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     id: CORROSION_100_ACHIEVEMENT_ID,
     category: 'title',
-    title: '衣服破損３',
+    title: '腐食３',
     description: '腐食を累計100点受ける',
     memoryPointGain: 3,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: STATE_PROGRESS_2_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '衣服破損１',
+    description: '衣服破損度が2段階目に到達する',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: STATE_PROGRESS_5_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '衣服破損２',
+    description: '衣服破損度が5段階目に到達する',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: STATE_PROGRESS_8_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '衣服破損３',
+    description: '衣服破損度が8段階目に到達する',
+    memoryPointGain: 1,
+    initialStatus: 'not-achieved',
+  },
+  {
+    id: STATE_PROGRESS_10_ACHIEVEMENT_ID,
+    category: 'title',
+    title: '衣服破損４',
+    description: '衣服破損度が10段階目に到達する',
+    memoryPointGain: 1,
     initialStatus: 'not-achieved',
   },
   {
@@ -334,7 +374,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     id: AURA_FIRST_ACHIEVEMENT_ID,
     category: 'title',
-    title: '被虐心の',
+    title: '被虐心の芽生え',
     description: 'はじめて「被虐のオーラ」を発動する',
     memoryPointGain: 1,
     initialStatus: 'not-achieved',
@@ -342,7 +382,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
   {
     id: AURA_5_ACHIEVEMENT_ID,
     category: 'title',
-    title: '被虐心の芽生え',
+    title: '被虐心の深化',
     description: '「被虐のオーラ」を5回発動する',
     memoryPointGain: 1,
     initialStatus: 'not-achieved',
@@ -556,6 +596,10 @@ export const useAchievementStore = defineStore('achievement', {
       maybeUpdate(CORROSION_FIRST_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_FIRST_TARGET)
       maybeUpdate(CORROSION_30_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_30_TARGET)
       maybeUpdate(CORROSION_100_ACHIEVEMENT_ID, progress.corrosionAccumulated >= CORROSION_100_TARGET)
+      maybeUpdate(STATE_PROGRESS_2_ACHIEVEMENT_ID, progress.stateProgressCount >= STATE_PROGRESS_2_TARGET)
+      maybeUpdate(STATE_PROGRESS_5_ACHIEVEMENT_ID, progress.stateProgressCount >= STATE_PROGRESS_5_TARGET)
+      maybeUpdate(STATE_PROGRESS_8_ACHIEVEMENT_ID, progress.stateProgressCount >= STATE_PROGRESS_8_TARGET)
+      maybeUpdate(STATE_PROGRESS_10_ACHIEVEMENT_ID, progress.stateProgressCount >= STATE_PROGRESS_10_TARGET)
       maybeUpdate(SLIME_FIRST_ACHIEVEMENT_ID, progress.stickyAccumulated >= SLIME_FIRST_TARGET)
       maybeUpdate(SLIME_3_ACHIEVEMENT_ID, progress.stickyAccumulated >= SLIME_3_TARGET)
       maybeUpdate(SLIME_10_ACHIEVEMENT_ID, progress.stickyAccumulated >= SLIME_10_TARGET)

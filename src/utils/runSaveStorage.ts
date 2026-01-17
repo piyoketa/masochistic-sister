@@ -110,6 +110,7 @@ function validateAchievementProgress(raw: unknown): AchievementProgress | null {
   if (!isValidNumber(record.damageTakenCount, 0)) return null
   if (!isValidNumber(record.maxDamageTaken, 0)) return null
   if (!isValidNumber(record.maxMultiHitReceived, 0)) return null
+  const stateProgressCount = normalizeStateProgressCount(record.stateProgressCount)
   if (!isValidNumber(record.maxRelicOwnedCount, 0)) return null
   if (!isValidNumber(record.heavenChainUsedCount, 0)) return null
   if (!isValidNumber(record.cowardFleeCount, 0)) return null
@@ -128,6 +129,7 @@ function validateAchievementProgress(raw: unknown): AchievementProgress | null {
     damageTakenCount: record.damageTakenCount,
     maxDamageTaken: record.maxDamageTaken,
     maxMultiHitReceived: record.maxMultiHitReceived,
+    stateProgressCount,
     maxRelicOwnedCount: record.maxRelicOwnedCount,
     heavenChainUsedCount: record.heavenChainUsedCount,
     cowardFleeCount: record.cowardFleeCount,
@@ -150,6 +152,7 @@ function cloneAchievementProgress(progress: AchievementProgress): AchievementPro
     damageTakenCount: progress.damageTakenCount,
     maxDamageTaken: progress.maxDamageTaken,
     maxMultiHitReceived: progress.maxMultiHitReceived,
+    stateProgressCount: progress.stateProgressCount,
     maxRelicOwnedCount: progress.maxRelicOwnedCount,
     heavenChainUsedCount: progress.heavenChainUsedCount,
     cowardFleeCount: progress.cowardFleeCount,
@@ -167,4 +170,12 @@ function cloneAchievementProgress(progress: AchievementProgress): AchievementPro
 
 function isValidNumber(value: unknown, min: number): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= min
+}
+
+function normalizeStateProgressCount(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 1
+  }
+  const rounded = Math.floor(value)
+  return Math.min(10, Math.max(1, rounded))
 }

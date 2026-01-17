@@ -29,6 +29,7 @@ import { instantiateStateFromSnapshot, MiasmaState } from '../entities/states'
 import { isPredictionDisabled } from '../utils/predictionToggle'
 import { AchievementProgressManager } from '../achievements/AchievementProgressManager'
 import { BEAM_CANNON_TEAM_ID, ORC_HERO_TEAM_ID } from '../achievements/constants'
+import { PlayerStateProgressManager } from '../progress/PlayerStateProgressManager'
 // ターン終了時の手札保持ルールは「保留」タグで一元管理する。
 const RETAIN_CARD_TAG_ID = 'tag-retain'
 const DEBUG_RELIC_USABLE_LOG =
@@ -60,6 +61,7 @@ export interface BattleConfig {
   cardRepository?: CardRepository
   relicClassNames?: string[]
   achievementProgressManager?: AchievementProgressManager
+  playerStateProgressManager?: PlayerStateProgressManager
 }
 
 export interface BattleSnapshotRelic {
@@ -88,6 +90,8 @@ export interface BattleSnapshot {
     maxMana: number
     relics: BattleSnapshotRelic[]
     states?: StateSnapshot[]
+    /** 立ち絵の状態進行度（1〜10固定）。 */
+    stateProgressCount: number
   }
   enemies: Array<{
     id: number
@@ -277,6 +281,8 @@ export class Battle {
   private pendingEntrySnapshotOverride?: BattleSnapshot
   /** 実績進行度をバトル単位で集計するマネージャ。 */
   readonly achievementProgressManager?: AchievementProgressManager
+  /** プレイヤー状態進行の集計を担当するマネージャ。 */
+  readonly playerStateProgressManager: PlayerStateProgressManager
 
   constructor(config: BattleConfig) {
     this.idValue = config.id
@@ -291,6 +297,8 @@ export class Battle {
     this.turnValue = config.turn ?? new TurnManager()
     this.cardRepositoryValue = config.cardRepository ?? new CardRepository()
     this.achievementProgressManager = config.achievementProgressManager
+    // 設計判断: Battle が必ず状態進行を持てるよう、未指定の場合は初期値1で生成する。
+    this.playerStateProgressManager = config.playerStateProgressManager ?? new PlayerStateProgressManager()
     this.relicClassNames = [...(config.relicClassNames ?? [])]
     this.relicInstances = this.buildRelicInstances(this.relicClassNames, [])
     this.playerValue.bindHand(this.handValue)
@@ -335,6 +343,17 @@ export class Battle {
     this.achievementProgressManager?.recordStateApplied(state)
   }
 
+  /** 状態進行: 腐食付与などのイベントを通知する。 */
+  recordPlayerStateProgressStateApplied(state: unknown): void {
+    const advanced = this.playerStateProgressManager.recordStateApplied(state)
+    if (advanced) {
+      // 進行値の更新は実績に反映し、称号解除判定へ伝播させる。
+      this.achievementProgressManager?.recordPlayerStateProgressCount(
+        this.playerStateProgressManager.getCount(),
+      )
+    }
+  }
+
   /** 実績進行度: カードプレイを通知し、カード種別に応じて Manager がカウントする。 */
   recordAchievementCardPlayed(card: import('@/domain/entities/Card').Card): void {
     this.achievementProgressManager?.recordCardPlayed(card)
@@ -362,6 +381,17 @@ export class Battle {
       baseCount: event.baseCount,
       effectType: event.effectType,
     })
+  }
+
+  /** 状態進行: プレイヤーが受けた合計ダメージから進行判定を行う。 */
+  recordPlayerStateProgressDamageTaken(totalDamage: number): void {
+    const advanced = this.playerStateProgressManager.recordDamageTaken(totalDamage)
+    if (advanced) {
+      // 進行値の更新は実績に反映し、称号解除判定へ伝播させる。
+      this.achievementProgressManager?.recordPlayerStateProgressCount(
+        this.playerStateProgressManager.getCount(),
+      )
+    }
   }
 
   /** 実績進行度: 敗北を通知する。 */
@@ -577,6 +607,7 @@ export class Battle {
         maxMana: this.playerValue.maxMana,
         relics: relicSnapshots,
         states: this.playerValue.getStates(this).map((state) => this.buildStateSnapshot(state)),
+        stateProgressCount: this.playerStateProgressManager.getCount(),
       },
       enemies: this.enemyTeamValue.members.map<BattleSnapshot['enemies'][number]>((enemy: Enemy) => {
         const id = enemy.id
@@ -766,6 +797,8 @@ export class Battle {
     this.cachedPredictedPlayerHpAfterEndTurn = base.player.predictedPlayerHpAfterEndTurn
     this.playerValue.setCurrentHp(base.player.currentHp)
     this.playerValue.setCurrentMana(base.player.currentMana)
+    // Snapshot とマネージャの状態進行値を同期し、Undo/リプレイ時に整合を保つ。
+    this.playerStateProgressManager.restoreCount(base.player.stateProgressCount)
     // プレイヤーのステートをスナップショットに合わせて再構築する
     const revivedPlayerStates = this.reviveStatesStrict(base.player.states, 'player')
     this.playerValue.replaceBaseStates(revivedPlayerStates)

@@ -29,6 +29,8 @@ export const usePlayerStore = defineStore('player', {
     deck: [] as CardBlueprint[],
     relics: [] as string[],
     relicLimit: DEFAULT_RELIC_LIMIT,
+    // 立ち絵の状態進行度。戦闘間で持ち越す。
+    stateProgressCount: 1,
     initialized: false,
     initialDeckPreset: 'holy' as DeckPreset,
   }),
@@ -58,6 +60,8 @@ export const usePlayerStore = defineStore('player', {
       this.relics = [...INITIAL_RELICS_BY_PRESET[preset]]
       // レリック数達成系の進行度を更新する。
       useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
+      // 設計上の決定: 新規ラン開始時に状態進行度は初期値へ戻す。
+      this.stateProgressCount = 1
       this.initialDeckPreset = preset
       this.initialized = true
     },
@@ -73,6 +77,8 @@ export const usePlayerStore = defineStore('player', {
       this.relicLimit = DEFAULT_RELIC_LIMIT
       this.relics = [...INITIAL_RELICS_BY_PRESET[preset]]
       useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
+      // つづきから開始時は進行度を初期値へ戻す（ラン内の戦闘進行とは区別する）。
+      this.stateProgressCount = 1
       this.initialized = true
     },
     setDeckPreset(preset: DeckPreset): void {
@@ -207,6 +213,7 @@ export const usePlayerStore = defineStore('player', {
         deck: this.deck.map((b) => ({ ...b })),
         relics: [...this.relics],
         relicLimit: this.relicLimit,
+        stateProgressCount: this.stateProgressCount,
       }
       return saveSlot(slotId, payload)
     },
@@ -226,6 +233,7 @@ export const usePlayerStore = defineStore('player', {
       this.deck = data.deck.map((b) => ({ ...b }))
       this.relics = [...data.relics]
       this.relicLimit = data.relicLimit
+      this.stateProgressCount = data.stateProgressCount
       useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
       this.initialized = true
       return { success: true, message: 'セーブデータを読み込みました' }

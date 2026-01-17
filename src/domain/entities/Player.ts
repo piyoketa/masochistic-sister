@@ -71,6 +71,8 @@ export class Player {
     if (options?.battle) {
       // 実績進行度: 被ダメージ情報を集計する。
       options.battle.recordAchievementDamageTaken(event)
+      // 状態進行: 合計ダメージが閾値以上の場合のみ進行させる。
+      options.battle.recordPlayerStateProgressDamageTaken(total)
     }
     const animation = options?.animation ?? event
     if (options?.battle && animation) {
@@ -147,6 +149,8 @@ export class Player {
       return
     }
 
+    // 状態進行: 腐食付与などの条件を Battle 側へ通知する。
+    battle.recordPlayerStateProgressStateApplied(state)
     // カード化しないStateはベースプールへ直接格納する
     if (!state.cardDefinitionBase) {
       this.baseStatePool.push(state)

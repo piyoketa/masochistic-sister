@@ -33,6 +33,7 @@ import { BattleLog } from '@/domain/battle/BattleLog'
 import { TurnManager } from '@/domain/battle/TurnManager'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { ProtagonistPlayer } from '@/domain/entities/players'
+import { PlayerStateProgressManager } from '@/domain/progress/PlayerStateProgressManager'
 import {
   buildEnemyTeamFactoryMap,
   type EnemyTeamFactoryOptions,
@@ -485,6 +486,7 @@ const projectedPlayerHp = computed(() => {
 const playerStates = computed(() =>
   (snapshot.value?.player.states ?? []).map((state) => state.id),
 )
+const playerStateProgressCount = computed(() => snapshot.value?.player.stateProgressCount ?? 1)
 const playerStateSnapshots = computed(() => {
   const handStateIds = new Set<string>()
   const hand = snapshot.value?.hand ?? []
@@ -891,12 +893,16 @@ function handleHandHideOverlay(): void {
 }
 
 function syncAchievementProgressAfterBattle(battle: Battle | null): void {
-  if (!battle?.achievementProgressManager) {
+  if (!battle) {
     return
   }
-  // Battle 内で集計された進行度をラン進行度ストアへ反映し、閾値到達を永続ストアへ伝える。
-  achievementProgressStore.updateFromManager(battle.achievementProgressManager)
-  achievementStore.applyProgress(achievementProgressStore.progress)
+  if (battle.achievementProgressManager) {
+    // Battle 内で集計された進行度をラン進行度ストアへ反映し、閾値到達を永続ストアへ伝える。
+    achievementProgressStore.updateFromManager(battle.achievementProgressManager)
+    achievementStore.applyProgress(achievementProgressStore.progress)
+  }
+  // 戦闘終了時点の状態進行度をストアへ反映し、次の戦闘へ持ち越す。
+  playerStore.stateProgressCount = battle.playerStateProgressManager.exportProgressCount()
 }
 
 function handleRelicHover(event: MouseEvent | FocusEvent, relic: RelicDisplayEntry): void {
@@ -1222,6 +1228,8 @@ function createBattleFromPlayerStore(
     relicClassNames: [...playerStore.relics],
     // ラン進行度をBattleへ注入し、バトル内で rememberState などから実績をカウントできるようにする。
     achievementProgressManager: achievementProgressStore.buildManager(),
+    // 状態進行度はPlayerStoreから引き継ぎ、バトル中の進行計算に利用する。
+    playerStateProgressManager: new PlayerStateProgressManager(playerStore.stateProgressCount),
   })
 }
 
@@ -1253,6 +1261,7 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
     :player-selection-theme="enemySelectionTheme"
     :player-states="playerStates"
     :player-state-snapshots="playerStateSnapshots"
+    :player-state-progress-count="playerStateProgressCount"
     :player-predicted-hp="projectedPlayerHp ?? undefined"
     :player-speech-text="playerSpeechText"
     :player-speech-key="playerSpeechKey"

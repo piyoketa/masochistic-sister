@@ -16,6 +16,7 @@ export interface PlayerSaveData {
   deck: CardBlueprint[]
   relics: string[]
   relicLimit: number
+  stateProgressCount: number
 }
 
 export interface SaveSlotSummary {
@@ -152,6 +153,7 @@ function validateSaveData(data: unknown): PlayerSaveData | null {
   if (!Array.isArray(record.deck) || !record.deck.every(isValidBlueprint)) return null
   if (!Array.isArray(record.relics) || !record.relics.every((v) => typeof v === 'string')) return null
   if (!isValidNumber(record.relicLimit, 1)) return null
+  const stateProgressCount = normalizeStateProgressCount(record.stateProgressCount)
   const relicLimit = record.relicLimit
   return {
     version: SAVE_VERSION,
@@ -162,6 +164,7 @@ function validateSaveData(data: unknown): PlayerSaveData | null {
     deck: record.deck.map((b) => ({ ...b })),
     relics: [...record.relics],
     relicLimit,
+    stateProgressCount,
   }
 }
 
@@ -176,4 +179,12 @@ function isValidBlueprint(value: unknown): value is CardBlueprint {
   if (v.overrideAmount !== undefined && !isValidNumber(v.overrideAmount, 0)) return false
   if (v.overrideCount !== undefined && !isValidNumber(v.overrideCount, 1)) return false
   return true
+}
+
+function normalizeStateProgressCount(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 1
+  }
+  const rounded = Math.floor(value)
+  return Math.min(10, Math.max(1, rounded))
 }

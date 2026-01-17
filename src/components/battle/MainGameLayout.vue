@@ -22,6 +22,7 @@ const props = defineProps<{
   playerSelectionTheme?: EnemySelectionTheme
   playerStates?: string[]
   playerStateSnapshots?: StateSnapshot[]
+  playerStateProgressCount?: number
   playerPredictedHp?: number | null
   playerSpeechText?: string | null
   playerSpeechKey?: string | number | null
@@ -53,6 +54,7 @@ const resolvedSelectionTheme = computed<EnemySelectionTheme>(() => props.playerS
 const resolvedOutcomes = computed<DamageOutcome[]>(() => props.playerOutcomes ?? [])
 const resolvedStates = computed<string[]>(() => props.playerStates ?? [])
 const resolvedStateSnapshots = computed<StateSnapshot[]>(() => props.playerStateSnapshots ?? [])
+const resolvedStateProgressCount = computed(() => props.playerStateProgressCount ?? 1)
 
 function getPlayerCardRect(): DOMRect | null {
   const el = playerCardRef.value?.$el as HTMLElement | undefined
@@ -91,6 +93,7 @@ defineExpose({ getPlayerCardRect })
                 :selection-theme="resolvedSelectionTheme"
                 :states="resolvedStates"
                 :state-snapshots="resolvedStateSnapshots"
+                :state-progress-count="resolvedStateProgressCount"
                 :predicted-hp="playerPredictedHp ?? undefined"
                 :speech-text="playerSpeechText ?? null"
                 :speech-key="playerSpeechKey ?? null"

@@ -50,6 +50,7 @@ const progressSummary = computed(() => ({
   damageTakenCount: achievementProgressStore.progress.damageTakenCount,
   maxDamageTaken: achievementProgressStore.progress.maxDamageTaken,
   maxMultiHitReceived: achievementProgressStore.progress.maxMultiHitReceived,
+  stateProgressCount: achievementProgressStore.progress.stateProgressCount,
   maxRelicOwnedCount: achievementProgressStore.progress.maxRelicOwnedCount,
   heavenChainUsedCount: achievementProgressStore.progress.heavenChainUsedCount,
   cowardFleeCount: achievementProgressStore.progress.cowardFleeCount,
@@ -145,6 +146,7 @@ function formatSavedAt(timestamp: number): string {
               <li>被ダメージ回数: {{ progressSummary.damageTakenCount }}</li>
               <li>最大被ダメージ: {{ progressSummary.maxDamageTaken }}</li>
               <li>最大連続攻撃回数: {{ progressSummary.maxMultiHitReceived }}</li>
+              <li>状態進行度: {{ progressSummary.stateProgressCount }}</li>
               <li>最大レリック所持数: {{ progressSummary.maxRelicOwnedCount }}</li>
               <li>天の鎖使用: {{ progressSummary.heavenChainUsedCount }}</li>
               <li>臆病逃走: {{ progressSummary.cowardFleeCount }}</li>

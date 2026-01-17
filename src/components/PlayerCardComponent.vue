@@ -4,7 +4,6 @@ PlayerCardComponent の責務:
 - ダメージ演出(DamageEffects)の開始と完了に合わせて displayHp を制御し、HpGauge/PlayerImageComponent の表示を同期させる。
 - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。プレイヤー状態による差分も重ねる。
 - HPバー直下で EnemyStateChip 形式のステート一覧を描画し、手札では表現されないプレイヤー状態を可視化する。
-- 受けたダメージ合計が一定値以上のときに「状態進行イベント」を発火し、立ち絵切替の進行度を更新する。
 - プレイヤーの頭上に表示する発話テキストを受け取り、演出表示と同期する。
 
 非責務:
@@ -18,6 +17,7 @@ PlayerCardComponent の責務:
   - selectionTheme: 表情差分選択用
   - states?: string[] プレイヤーに付与されている状態のID（差分表示用）
   - stateSnapshots?: StateSnapshot[] HPバー直下に EnemyStateChip 形式で表示するステート一覧
+  - stateProgressCount?: number 立ち絵の状態進行度（1〜10想定）
   - speechText?: string | null 頭上に表示する発話テキスト
   - speechKey?: number | string | null 同じ文言でも再生できるようにするためのキー
   - showHpGauge?: HPゲージ表示を切り替えるフラグ（デフォルト true）
@@ -44,6 +44,7 @@ const props = withDefaults(
     selectionTheme?: EnemySelectionTheme
     states?: string[]
     stateSnapshots?: StateSnapshot[]
+    stateProgressCount?: number
     predictedHp?: number | null
     speechText?: string | null
     speechKey?: number | string | null
@@ -62,8 +63,6 @@ const props = withDefaults(
 const damageRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 const displayHp = reactive<{ current: number; max: number }>({ current: 0, max: 0 })
 const isTakingDamage = ref(false)
-// 状態進行イベントの進行度。初期値は1で、新ロジックの立ち絵に渡す。
-const stateProgressCount = ref(1)
 const stateChips = computed(() =>
   (props.stateSnapshots ?? []).map((state) => {
     const label = state.stackable ? `${state.name}(${state.magnitude ?? 0}点)` : state.name
@@ -89,6 +88,7 @@ const baseHpEnd = computed(() => sanitizeHp(props.postHp))
 const speechDisplayText = computed(() => (props.speechText ?? '').trim())
 // 設計判断: 同一文言でも再生できるよう、外部キーがあれば優先して描画キーに使う。
 const speechRenderKey = computed(() => props.speechKey ?? speechDisplayText.value)
+const resolvedStateProgressCount = computed(() => props.stateProgressCount ?? 1)
 
 watch(
   () => props.preHp,
@@ -104,11 +104,6 @@ watch(
       displayHp.current = baseHpEnd.value.current
       displayHp.max = baseHpEnd.value.max
       return
-    }
-    // 設計判断: 「状態進行イベント」はダメージ発生（outcomes更新）単位で1回だけ判定する。
-    // 連続攻撃は outcomes の合計値で評価し、閾値以上で進行度を1だけ進める。
-    if (shouldAdvanceStateProgress(next)) {
-      advanceStateProgress()
     }
     startDamageSequence()
   },
@@ -153,16 +148,6 @@ function startDamageSequence(): void {
   nextTick(() => damageRef.value?.play())
 }
 
-function shouldAdvanceStateProgress(outcomes: DamageOutcome[]): boolean {
-  const total = outcomes.reduce((sum, outcome) => sum + Math.max(0, outcome.damage), 0)
-  return total >= 20
-}
-
-function advanceStateProgress(): void {
-  // 設計判断: 10到達後は固定し、表示の変化を止めて安定させる。
-  stateProgressCount.value = Math.min(10, stateProgressCount.value + 1)
-}
-
 function handleSequenceEnd(): void {
   // 演出完了後、postHp に揃える（段階的なヒット完了イベントは扱わない）
   displayHp.current = baseHpEnd.value.current
@@ -201,7 +186,7 @@ onMounted(() => {
         :selection-theme="selectionTheme"
         :states="states"
         :face-diff-override="faceDiffOverride"
-        :state-progress-count="stateProgressCount"
+        :state-progress-count="resolvedStateProgressCount"
       >
       </PlayerImageComponent>
     </div>
