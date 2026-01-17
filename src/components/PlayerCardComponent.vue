@@ -2,9 +2,9 @@
 PlayerCardComponent の責務:
 - プレイヤー立ち絵・HPバー・ダメージ演出を一体化し、表示用HPの更新を一元管理する。
 - ダメージ演出(DamageEffects)の開始と完了に合わせて displayHp を制御し、HpGauge/PlayerImageComponent の表示を同期させる。
-- 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。
- - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。プレイヤー状態による差分も重ねる。
+- 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。プレイヤー状態による差分も重ねる。
 - HPバー直下で EnemyStateChip 形式のステート一覧を描画し、手札では表現されないプレイヤー状態を可視化する。
+- 受けたダメージ合計が一定値以上のときに「状態進行イベント」を発火し、立ち絵切替の進行度を更新する。
 
 非責務:
 - 戦闘ロジックやダメージ計算は扱わない。pre/post HP は親から渡される値を信頼する。
@@ -55,6 +55,8 @@ const props = withDefaults(
 const damageRef = ref<InstanceType<typeof DamageEffects> | null>(null)
 const displayHp = reactive<{ current: number; max: number }>({ current: 0, max: 0 })
 const isTakingDamage = ref(false)
+// 状態進行イベントの進行度。初期値は1で、新ロジックの立ち絵に渡す。
+const stateProgressCount = ref(1)
 const stateChips = computed(() =>
   (props.stateSnapshots ?? []).map((state) => {
     const label = state.stackable ? `${state.name}(${state.magnitude ?? 0}点)` : state.name
@@ -92,6 +94,11 @@ watch(
       displayHp.current = baseHpEnd.value.current
       displayHp.max = baseHpEnd.value.max
       return
+    }
+    // 設計判断: 「状態進行イベント」はダメージ発生（outcomes更新）単位で1回だけ判定する。
+    // 連続攻撃は outcomes の合計値で評価し、閾値以上で進行度を1だけ進める。
+    if (shouldAdvanceStateProgress(next)) {
+      advanceStateProgress()
     }
     startDamageSequence()
   },
@@ -136,6 +143,16 @@ function startDamageSequence(): void {
   nextTick(() => damageRef.value?.play())
 }
 
+function shouldAdvanceStateProgress(outcomes: DamageOutcome[]): boolean {
+  const total = outcomes.reduce((sum, outcome) => sum + Math.max(0, outcome.damage), 0)
+  return total >= 20
+}
+
+function advanceStateProgress(): void {
+  // 設計判断: 10到達後は固定し、表示の変化を止めて安定させる。
+  stateProgressCount.value = Math.min(10, stateProgressCount.value + 1)
+}
+
 function handleSequenceEnd(): void {
   // 演出完了後、postHp に揃える（段階的なヒット完了イベントは扱わない）
   displayHp.current = baseHpEnd.value.current
@@ -165,6 +182,7 @@ onMounted(() => {
         :selection-theme="selectionTheme"
         :states="states"
         :face-diff-override="faceDiffOverride"
+        :state-progress-count="stateProgressCount"
       >
       </PlayerImageComponent>
     </div>

@@ -44,6 +44,9 @@ env.VITE_DEBUG_FLASHBACK_ACTIVE='false'
 // 手札表示時の isActive 判定をトレースする場合に true にする。
 env.VITE_DEBUG_HAND_ACTIVE='false'
 
+// 新しいプレイヤー立ち絵ロジックを有効にする場合に true にする。
+env.VITE_NEW_PLAYER_IMAGE_LOGIC='true'
+
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const child = spawn(npmCommand, ['exec', 'vite'], {
   stdio: 'inherit',

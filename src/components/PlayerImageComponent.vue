@@ -3,6 +3,7 @@ PlayerImageComponent の責務:
 - プレイヤーの現在HPに応じた立ち絵画像を表示し、TargetEnemyOperation 中は背景色をテーマ色（Arcane/Sacred/Default）で強調する。
 - ImageHub が事前にプリロードした画像を利用し、HP変化・表情差分・状態差分を重ね描画する。
 - プレイヤーの状態（腐食/粘液など）や表情差分を指定数だけ重ね描画する。
+- 環境変数によって、HP依存の立ち絵切替と「状態進行カウント」依存の切替を切り替える。
 
 責務ではないこと:
 - 戦闘ロジックやHP計算の決定は行わない（渡された currentHp/maxHp に従う）。
@@ -10,6 +11,7 @@ PlayerImageComponent の責務:
 
 主な通信相手とインターフェース:
 - BattleView / PlayerCardComponent: props で HP・選択状態・テーマ色・プレイヤー状態を受け取り、背景色と差分表示を同期する。ダメージ演出などは slot を通じて子要素として受ける。
+- PlayerCardComponent: 新ロジック時は stateProgressCount を受け取り、1〜10の画像へ切替する。
 -->
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
@@ -24,11 +26,16 @@ const props = defineProps<{
   selectionTheme?: EnemySelectionTheme
   faceDiffOverride?: 'damaged-arcane' | 'damaged-normal' | null
   states?: string[]
+  stateProgressCount?: number
 }>()
 
-const PLAYER_FRAME_VALUES = [
-  0, 30, 60, 90, 120, 150,
-]
+const newImageLogicEnabled =
+  String(import.meta.env?.VITE_NEW_PLAYER_IMAGE_LOGIC ?? '').toLowerCase() === 'true' ||
+  String(import.meta.env?.VITE_NEW_PLAYER_IMAGE_LOGIC ?? '') === '1'
+const LEGACY_PLAYER_FRAME_VALUES = [0, 30, 60, 90, 120, 150]
+const NEW_PLAYER_FRAME_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+// 設計判断: 切替後も描画処理を共通化できるよう、参照先を PLAYER_FRAME_VALUES に揃える。
+const PLAYER_FRAME_VALUES = newImageLogicEnabled ? NEW_PLAYER_FRAME_VALUES : LEGACY_PLAYER_FRAME_VALUES
 
 const imageHub = useImageHub()
 const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme | 'damaged-arcane' | 'damaged-normal', string>> = {
@@ -58,6 +65,12 @@ const BASE_DRAW = {
 }
 
 const baseImage = computed(() => {
+  if (newImageLogicEnabled) {
+    const progressValue = resolveStateProgressValue(props.stateProgressCount)
+    const frame = resolveFrameValue(progressValue)
+    const src = buildNewImageSrc(frame)
+    return imageHub.getElement(src)
+  }
   const boundedHp = Math.max(0, Math.floor(props.currentHp ?? 0))
   const clampedHp =
     typeof props.maxHp === 'number' && Number.isFinite(props.maxHp)
@@ -114,7 +127,9 @@ const styleVars = computed(() => {
 })
 
 onMounted(() => {
-  const frameSrcs = PLAYER_FRAME_VALUES.map((value) => buildImageSrc(value))
+  const frameSrcs = PLAYER_FRAME_VALUES.map((value) =>
+    newImageLogicEnabled ? buildNewImageSrc(value) : buildImageSrc(value),
+  )
   const faceDiffs = Object.values(FACE_DIFF_SOURCES).filter(Boolean) as string[]
   const statusDiffs = Object.values(STATUS_DIFF_SOURCES).filter(Boolean) as string[]
   void imageHub.preloadAll([...frameSrcs, ...faceDiffs, ...statusDiffs]).catch((error) => {
@@ -129,6 +144,8 @@ watch(
   () => [
     props.currentHp,
     props.maxHp,
+    props.stateProgressCount ?? 1,
+    baseImage.value?.src ?? '',
     faceDiffElement.value?.src ?? '',
     statusDiffElements.value.map((img) => img.src).join('|'),
   ],
@@ -143,9 +160,9 @@ onBeforeUnmount(() => {
   }
 })
 
-function resolveFrameValue(currentHp: number): number {
-  // HP以上で最も近いフレームを選択し、存在しない場合は最大値でフォールバックする。
-  const candidates = PLAYER_FRAME_VALUES.filter((value) => value >= currentHp)
+function resolveFrameValue(value: number): number {
+  // 設計判断: 状態進行とHPの両方で同じ丸めルールを使い、範囲外は最大値に吸収する。
+  const candidates = PLAYER_FRAME_VALUES.filter((candidate) => candidate >= value)
   if (candidates.length > 0) {
     return Math.min(...candidates)
   }
@@ -157,12 +174,23 @@ function buildImageSrc(frameValue: number): string {
   return `/assets/players/${normalized}.png`
 }
 
+function buildNewImageSrc(frameValue: number): string {
+  const normalized = Math.max(1, frameValue)
+  return `/assets/players/new_images/${normalized}.png`
+}
+
 function buildFaceDiffSrc(fileName: string): string {
   return `/assets/players/face_diffs/${fileName}`
 }
 
 function buildStatusDiffSrc(fileName: string): string {
   return `/assets/players/diffs/${fileName}`
+}
+
+function resolveStateProgressValue(raw: number | undefined): number {
+  // 設計判断: 未指定時は初期値1を使い、1〜10の範囲に収める。
+  const base = Number.isFinite(raw) ? Math.floor(raw ?? 1) : 1
+  return Math.min(10, Math.max(1, base))
 }
 
 function draw(): void {
