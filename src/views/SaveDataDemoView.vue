@@ -11,18 +11,28 @@ SaveDataDemoView の責務:
 - runProgressStore: `setFieldCleared` / `exportClearedFieldIds` でフィールド進行を編集・保存する。
 -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import GameLayout from '@/components/GameLayout.vue'
 import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
+import { useAchievementStore } from '@/stores/achievementStore'
 import { useRunProgressStore } from '@/stores/runProgressStore'
 import { deleteRunSaveData, loadRunSaveData, saveRunSaveData, type RunSaveData } from '@/utils/runSaveStorage'
 import { FIELD_LABELS, FIELD_ORDER } from '@/constants/fieldProgress'
+import { useScenarioStore } from '@/stores/scenarioStore'
 
 const achievementProgressStore = useAchievementProgressStore()
+const achievementStore = useAchievementStore()
 const runProgressStore = useRunProgressStore()
+const scenarioStore = useScenarioStore()
 
 achievementProgressStore.ensureInitialized()
+achievementStore.ensureInitialized()
 runProgressStore.ensureInitialized()
+
+onMounted(() => {
+  // デモ画面ではシナリオオーバーレイを閉じ、操作できる状態にする。
+  scenarioStore.clearScenario()
+})
 
 const savedData = ref<RunSaveData | null>(loadRunSaveData())
 const saveMessage = ref<string | null>(null)
@@ -97,6 +107,18 @@ function handleDeleteSave(): void {
   saveError.value = null
 }
 
+function handleResetCurrentProgress(): void {
+  // 設計判断: /demo/save-data のリセットは「現在のストア状態」のみを初期化し、
+  // 保存済みデータも同時に削除して完全初期化する。
+  achievementStore.resetHistory()
+  achievementProgressStore.resetForNewRun()
+  runProgressStore.resetForNewRun()
+  deleteRunSaveData()
+  refreshSavedData()
+  saveMessage.value = '現在の実績状態と保存済みデータをリセットしました'
+  saveError.value = null
+}
+
 function formatSavedAt(timestamp: number): string {
   return new Date(timestamp).toLocaleString('ja-JP', {
     year: 'numeric',
@@ -138,33 +160,12 @@ function formatSavedAt(timestamp: number): string {
             </li>
           </ul>
 
-          <div class="save-demo__progress">
-            <h3>実績進行サマリ</h3>
-            <ul>
-              <li>腐食累計: {{ progressSummary.corrosionAccumulated }}</li>
-              <li>粘液累計: {{ progressSummary.stickyAccumulated }}</li>
-              <li>被ダメージ回数: {{ progressSummary.damageTakenCount }}</li>
-              <li>最大被ダメージ: {{ progressSummary.maxDamageTaken }}</li>
-              <li>最大連続攻撃回数: {{ progressSummary.maxMultiHitReceived }}</li>
-              <li>状態進行度: {{ progressSummary.stateProgressCount }}</li>
-              <li>最大レリック所持数: {{ progressSummary.maxRelicOwnedCount }}</li>
-              <li>天の鎖使用: {{ progressSummary.heavenChainUsedCount }}</li>
-              <li>臆病逃走: {{ progressSummary.cowardFleeCount }}</li>
-              <li>臆病撃破: {{ progressSummary.cowardDefeatCount }}</li>
-              <li>触手撃破: {{ progressSummary.tentacleDefeatCount }}</li>
-              <li>リザルトHP30以下: {{ progressSummary.resultHpAtMost30Count }}</li>
-              <li>口づけ被弾: {{ progressSummary.kissReceivedCount }}</li>
-              <li>口づけ使用: {{ progressSummary.kissUsedCount }}</li>
-              <li>被虐のオーラ使用: {{ progressSummary.masochisticAuraUsedCount }}</li>
-              <li>敗北回数: {{ progressSummary.defeatCount }}</li>
-              <li>オークヒーロー撃破: {{ progressSummary.orcHeroDefeated ? '済' : '未' }}</li>
-              <li>ビーム砲撃破: {{ progressSummary.beamCannonDefeated ? '済' : '未' }}</li>
-            </ul>
-          </div>
-
           <div class="save-demo__actions">
             <button type="button" class="save-demo__button" @click="handleSaveCurrent">
               現在の進行状態を保存
+            </button>
+            <button type="button" class="save-demo__button save-demo__button--ghost" @click="handleResetCurrentProgress">
+              実績と進行状態をリセット
             </button>
             <button type="button" class="save-demo__button save-demo__button--ghost" @click="handleDeleteSave">
               セーブデータを削除
