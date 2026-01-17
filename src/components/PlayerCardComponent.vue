@@ -5,6 +5,7 @@ PlayerCardComponent の責務:
 - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。プレイヤー状態による差分も重ねる。
 - HPバー直下で EnemyStateChip 形式のステート一覧を描画し、手札では表現されないプレイヤー状態を可視化する。
 - 受けたダメージ合計が一定値以上のときに「状態進行イベント」を発火し、立ち絵切替の進行度を更新する。
+- プレイヤーの頭上に表示する発話テキストを受け取り、演出表示と同期する。
 
 非責務:
 - 戦闘ロジックやダメージ計算は扱わない。pre/post HP は親から渡される値を信頼する。
@@ -17,6 +18,8 @@ PlayerCardComponent の責務:
   - selectionTheme: 表情差分選択用
   - states?: string[] プレイヤーに付与されている状態のID（差分表示用）
   - stateSnapshots?: StateSnapshot[] HPバー直下に EnemyStateChip 形式で表示するステート一覧
+  - speechText?: string | null 頭上に表示する発話テキスト
+  - speechKey?: number | string | null 同じ文言でも再生できるようにするためのキー
   - showHpGauge?: HPゲージ表示を切り替えるフラグ（デフォルト true）
   - show: 表示の有無（外部リセット時の切替を許容）
 - emits: なし（内部で完結）
@@ -42,11 +45,15 @@ const props = withDefaults(
     states?: string[]
     stateSnapshots?: StateSnapshot[]
     predictedHp?: number | null
+    speechText?: string | null
+    speechKey?: number | string | null
     showHpGauge?: boolean
     show?: boolean
   }>(),
   {
     predictedHp: null,
+    speechText: null,
+    speechKey: null,
     showHpGauge: true,
     show: true,
   },
@@ -79,6 +86,9 @@ const faceDiffOverride = computed<'damaged-arcane' | 'damaged-normal' | null>(()
 
 const baseHpStart = computed(() => sanitizeHp(props.preHp))
 const baseHpEnd = computed(() => sanitizeHp(props.postHp))
+const speechDisplayText = computed(() => (props.speechText ?? '').trim())
+// 設計判断: 同一文言でも再生できるよう、外部キーがあれば優先して描画キーに使う。
+const speechRenderKey = computed(() => props.speechKey ?? speechDisplayText.value)
 
 watch(
   () => props.preHp,
@@ -176,10 +186,15 @@ onMounted(() => {
 <template>
   <div class="player-card" v-if="props.show">
     <div class="player-card__image">
-      <!-- プレイヤーの頭上に固定テキストを重ねる -->
-      <p class="player-card__caption">
-        私がやらなきゃ...
-      </p>
+      <Transition name="player-caption" mode="out-in">
+        <p
+          v-if="speechDisplayText"
+          class="player-card__caption"
+          :key="speechRenderKey"
+        >
+          {{ speechDisplayText }}
+        </p>
+      </Transition>
       <PlayerImageComponent
         :current-hp="displayHp.current"
         :max-hp="displayHp.max"
@@ -239,25 +254,50 @@ onMounted(() => {
 }
 
 .player-card__caption {
-    position: absolute;
+  position: absolute;
     left: 70px;
     top: -40px;
-    z-index: 3;
-    margin: 0;
+  z-index: 3;
+  margin: 0;
     width: 200px;
     height: 40px;
     display: flex;
-    font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
+  font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
     font-size: 18px;
     font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: 0.02em;
-    color: #f7f1e7;
-    text-shadow: 1px 1px 2px black, 0 0 1em pink, 0 0 0.1em pink;
-    pointer-events: none;
-    white-space: pre-line;
-    align-items: center;
-    justify-content: center;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: #f7f1e7;
+  text-shadow: 1px 1px 2px black, 0 0 1em pink, 0 0 0.1em pink;
+  pointer-events: none;
+  white-space: pre-line;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-caption-enter-active,
+.player-caption-leave-active {
+  transition: transform 260ms ease, opacity 260ms ease;
+}
+
+.player-caption-enter-from {
+  transform: translateY(10px);
+  opacity: 0;
+}
+
+.player-caption-enter-to {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.player-caption-leave-from {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.player-caption-leave-to {
+  transform: translateY(-12px);
+  opacity: 0;
 }
 
 .player-card__hp {

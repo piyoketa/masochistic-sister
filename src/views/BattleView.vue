@@ -50,6 +50,7 @@ import { useRewardStore } from '@/stores/rewardStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { useAchievementStore } from '@/stores/achievementStore'
 import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
+import type { PlayerSpeechEntry, PlayerSpeechReason } from '@/domain/achievements/AchievementProgressManager'
 import { SOUND_ASSETS, IMAGE_ASSETS, BATTLE_CUTIN_ASSETS } from '@/assets/preloadManifest'
 import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import type { RelicDisplayEntry, RelicUiState } from '@/view/relicDisplayMapper'
@@ -100,6 +101,7 @@ type BattleViewProps = {
 }
 
 const ERROR_OVERLAY_DURATION_MS = 2000
+const PLAYER_SPEECH_DISPLAY_MS = 3000
 
 const props = defineProps<BattleViewProps>()
 const router = useRouter()
@@ -172,6 +174,10 @@ const turnIndicatorRef = ref<InstanceType<typeof TurnIndicatorModal> | null>(nul
 const playerDamageOutcomes = ref<DamageOutcome[]>([])
 const currentCutInSrc = ref<string>(BATTLE_CUTIN_ASSETS[0] ?? '/assets/cut_ins/MasochisticAuraAction.png')
 const manaPulseKey = ref(0)
+// 設計判断: プレイヤー頭上の発話は「次の自分の操作開始時」に表示するため、キューとして保持する。
+const playerSpeechQueue = ref<PlayerSpeechEntry[]>([])
+const activePlayerSpeech = ref<PlayerSpeechEntry | null>(null)
+let playerSpeechTimer: SafeTimeoutHandle = null
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
@@ -255,6 +261,70 @@ function showTransientError(message: string): void {
   }, ERROR_OVERLAY_DURATION_MS)
 }
 
+function clearPlayerSpeechTimer(): void {
+  if (!playerSpeechTimer) {
+    return
+  }
+  safeClearTimeout(playerSpeechTimer)
+  playerSpeechTimer = null
+}
+
+function resetPlayerSpeechQueue(): void {
+  clearPlayerSpeechTimer()
+  activePlayerSpeech.value = null
+  playerSpeechQueue.value = []
+  // View側のリセット時に、実績マネージャーの発話キューも空にする。
+  viewManager.battle?.achievementProgressManager?.consumePlayerSpeechQueue()
+}
+
+function hasPlayerSpeechReason(reason: PlayerSpeechReason): boolean {
+  if (activePlayerSpeech.value?.reason === reason) {
+    return true
+  }
+  return playerSpeechQueue.value.some((entry) => entry.reason === reason)
+}
+
+function enqueuePlayerSpeech(text: string, reason: PlayerSpeechReason): void {
+  const trimmed = text.trim()
+  if (!trimmed || hasPlayerSpeechReason(reason)) {
+    return
+  }
+  playerSpeechQueue.value = [
+    ...playerSpeechQueue.value,
+    {
+      id: Date.now() + Math.random(),
+      text: trimmed,
+      reason,
+    },
+  ]
+}
+
+function showNextPlayerSpeechAtActionStart(): void {
+  if (activePlayerSpeech.value || playerSpeechQueue.value.length === 0) {
+    return
+  }
+  const next = playerSpeechQueue.value.shift() ?? null
+  if (!next) {
+    return
+  }
+  activePlayerSpeech.value = next
+  clearPlayerSpeechTimer()
+  // 設計判断: 5秒表示した後に自然に消えるようタイマーで制御する。
+  playerSpeechTimer = safeSetTimeout(() => {
+    activePlayerSpeech.value = null
+    playerSpeechTimer = null
+  }, PLAYER_SPEECH_DISPLAY_MS)
+}
+
+function pullSpeechQueueFromAchievementManager(): void {
+  const entries = viewManager.battle?.achievementProgressManager?.consumePlayerSpeechQueue() ?? []
+  if (entries.length === 0) {
+    return
+  }
+  // 設計判断: 実績側が管理したセリフを、表示用キューに移し替えるだけに留める。
+  entries.forEach((entry) => enqueuePlayerSpeech(entry.text, entry.reason))
+}
+
 function playTurnIndicatorOverlay(variant: 'player' | 'enemy'): void {
   // BattleView からの直接呼び出しやデバッグコンソールからの注入に備えた薄い委譲レイヤー
   turnIndicatorRef.value?.play(variant)
@@ -336,6 +406,7 @@ onMounted(() => {
 onUnmounted(() => {
   subscriptions.forEach((dispose) => dispose())
   clearErrorOverlayTimer()
+  resetPlayerSpeechQueue()
   audioStore.stopBgm()
   unregisterTurnIndicatorDebugHooks()
 })
@@ -344,10 +415,12 @@ const playerMana = computed(() => ({
   current: snapshot.value?.player.currentMana ?? 0,
   max: snapshot.value?.player.maxMana ?? 0,
 }))
+const playerSpeechText = computed(() => activePlayerSpeech.value?.text ?? '')
+const playerSpeechKey = computed(() => activePlayerSpeech.value?.id ?? null)
 const battleLogEntries = computed(() => snapshot.value?.log ?? [])
 const battleLogEntriesForDisplay = computed(() => {
-  // ログエリアでは最新の出来事を最上段に集め、視線移動を抑える。
-  return [...battleLogEntries.value].reverse()
+  // 最新3件のみを時系列で並べ、追加時に上方向へスライドする演出を維持する。
+  return battleLogEntries.value.slice(-3)
 })
 const playerHpGauge = computed(() => ({
   current: snapshot.value?.player.currentHp ?? 0,
@@ -439,6 +512,22 @@ watch(
   (canAct, prev) => {
     if (canAct && !prev && !isSelectingEnemy.value) {
       resetEnemySelectionTheme()
+    }
+  },
+)
+
+watch(
+  () => [isInputLocked.value, isPlayerTurn.value, isSelectingEnemy.value] as const,
+  ([locked, isPlayer, selecting], [prevLocked, _prevIsPlayer, prevSelecting]) => {
+    if (!isPlayer || locked || selecting) {
+      return
+    }
+    const unlockedNow = prevLocked === true && locked === false && isPlayer
+    const selectionEnded = prevSelecting === true && selecting === false && isPlayer && !locked
+    // 設計判断: 操作開始は「入力ロック解除」または「敵選択終了」の瞬間に限定し、静止中の即時再生を避ける。
+    if (unlockedNow || selectionEnded) {
+      pullSpeechQueueFromAchievementManager()
+      showNextPlayerSpeechAtActionStart()
     }
   },
 )
@@ -1021,6 +1110,7 @@ function resetUiStateAfterTimelineChange(): void {
   latestStageEvent.value = null
   playerDamageOutcomes.value = []
   currentAnimationId.value = null
+  resetPlayerSpeechQueue()
   resetErrorMessage()
   previousSnapshot.value = null
   viewResetToken.value += 1
@@ -1164,6 +1254,8 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
     :player-states="playerStates"
     :player-state-snapshots="playerStateSnapshots"
     :player-predicted-hp="projectedPlayerHp ?? undefined"
+    :player-speech-text="playerSpeechText"
+    :player-speech-key="playerSpeechKey"
     :relics="battleRelics"
     @contextmenu="handleContextMenu"
     @relic-hover="(relic, event) => handleRelicHover(event, relic)"
@@ -1282,14 +1374,15 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
           <p v-if="battleLogEntriesForDisplay.length === 0" class="battle-text-log__empty">
             ログはまだありません。
           </p>
-          <p
-            v-for="entry in battleLogEntriesForDisplay"
-            :key="entry.id"
-            class="battle-text-log__item"
-          >
-            <span class="battle-text-log__turn">T{{ entry.turn }}</span>
-            <span class="battle-text-log__message">{{ entry.message }}</span>
-          </p>
+          <TransitionGroup name="battle-log" tag="div" class="battle-text-log__entries">
+            <p
+              v-for="entry in battleLogEntriesForDisplay"
+              :key="entry.id"
+              class="battle-text-log__item"
+            >
+              <span class="battle-text-log__message">{{ entry.message }}</span>
+            </p>
+          </TransitionGroup>
         </div>
       </section>
 
@@ -1670,47 +1763,36 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px 18px;
+  padding: 2px 10px;
   height: 80px;
   background: var(--battle-zone-bg);
   color: rgba(242, 242, 255, 0.9);
 }
 
-.battle-text-log__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.battle-text-log__title {
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.6);
-}
-
 .battle-text-log__list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 120px;
-  overflow-y: auto;
-  padding-right: 6px;
+  align-items: flex-end;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.battle-text-log__entries {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  position: relative;
+  width: 100%;
 }
 
 .battle-text-log__item {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  justify-content: flex-end;
+  width: 100%;
   font-size: 13px;
   line-height: 1.4;
-}
-
-.battle-text-log__turn {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.55);
-  min-width: 36px;
+  text-align: right;
 }
 
 .battle-text-log__message {
@@ -1720,6 +1802,31 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
 .battle-text-log__empty {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.battle-log-enter-active,
+.battle-log-leave-active {
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.battle-log-enter-from {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.battle-log-leave-to {
+  opacity: 0;
+  transform: translateY(-14px);
+}
+
+.battle-log-leave-active {
+  position: absolute;
+  right: 0;
+  left: 0;
+}
+
+.battle-log-move {
+  transition: transform 0.35s ease;
 }
 
 .battle-main__lower {

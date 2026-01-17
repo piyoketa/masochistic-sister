@@ -158,6 +158,11 @@ const demoLinks: LinkEntry[] = [
     to: '/demo/relic-icons',
   },
   {
+    label: 'Player Speech Demo',
+    description: 'プレイヤー頭上の発話テキスト表示デモ',
+    to: '/demo/player-speech',
+  },
+  {
     label: 'HpGauge Demo',
     description: '予測ダメージの黄色点滅を確認',
     to: '/demo/hp-gauge',

@@ -19,6 +19,14 @@ const KISS_CARD_TITLE = '口づけ'
 const MASOCHISTIC_AURA_TITLE = '被虐のオーラ'
 const HEAVEN_CHAIN_CARD_ID: CardId = 'heaven-chain'
 
+export type PlayerSpeechReason = 'achievement-first-damage'
+
+export type PlayerSpeechEntry = {
+  id: number
+  text: string
+  reason: PlayerSpeechReason
+}
+
 type HistoryEntry =
   | { type: 'corrosion'; prevValue: number }
   | { type: 'sticky'; prevValue: number }
@@ -36,10 +44,12 @@ type HistoryEntry =
   | { type: 'defeat'; prevValue: number }
   | { type: 'orc-hero-defeated'; prevValue: boolean }
   | { type: 'beam-cannon-defeated'; prevValue: boolean }
+  | { type: 'speech-queued'; entryId: number }
 
 export class AchievementProgressManager {
   private progress: AchievementProgress
   private history: HistoryEntry[] = []
+  private speechQueue: PlayerSpeechEntry[] = []
 
   constructor(initial?: AchievementProgress) {
     this.progress = initial ? { ...initial } : createDefaultAchievementProgress()
@@ -96,6 +106,10 @@ export class AchievementProgressManager {
 
     this.history.push({ type: 'damage-taken', prevValue: this.progress.damageTakenCount })
     this.progress = { ...this.progress, damageTakenCount: this.progress.damageTakenCount + 1 }
+    if (this.progress.damageTakenCount === 1) {
+      // 設計判断: 実績「初めてダメージを受ける」達成時に、次の操作開始向けのセリフを積む。
+      this.enqueueSpeech('痛い...！', 'achievement-first-damage')
+    }
 
     if (damage > this.progress.maxDamageTaken) {
       this.history.push({ type: 'max-damage', prevValue: this.progress.maxDamageTaken })
@@ -205,11 +219,36 @@ export class AchievementProgressManager {
       this.progress = { ...this.progress, orcHeroDefeated: last.prevValue }
     } else if (last.type === 'beam-cannon-defeated') {
       this.progress = { ...this.progress, beamCannonDefeated: last.prevValue }
+    } else if (last.type === 'speech-queued') {
+      this.speechQueue = this.speechQueue.filter((entry) => entry.id !== last.entryId)
     }
   }
 
   /** 進行度のスナップショットを返す（Battle 終了時にストアへ反映する用途） */
   exportProgress(): AchievementProgress {
     return { ...this.progress }
+  }
+
+  /**
+   * 表示待ちの発話キューを取り出し、キューを空にする。
+   * View 側の「次の操作開始時」トリガーで呼び出すことを想定している。
+   */
+  consumePlayerSpeechQueue(): PlayerSpeechEntry[] {
+    const queued = [...this.speechQueue]
+    this.speechQueue = []
+    return queued
+  }
+
+  private enqueueSpeech(text: string, reason: PlayerSpeechReason): void {
+    if (this.speechQueue.some((entry) => entry.reason === reason)) {
+      return
+    }
+    const entry: PlayerSpeechEntry = {
+      id: Date.now() + Math.random(),
+      text,
+      reason,
+    }
+    this.speechQueue.push(entry)
+    this.history.push({ type: 'speech-queued', entryId: entry.id })
   }
 }

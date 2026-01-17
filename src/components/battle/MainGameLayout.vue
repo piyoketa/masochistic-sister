@@ -23,6 +23,8 @@ const props = defineProps<{
   playerStates?: string[]
   playerStateSnapshots?: StateSnapshot[]
   playerPredictedHp?: number | null
+  playerSpeechText?: string | null
+  playerSpeechKey?: string | number | null
   relicGlow?: boolean
   relics?: RelicDisplayEntry[]
 }>()
@@ -90,6 +92,8 @@ defineExpose({ getPlayerCardRect })
                 :states="resolvedStates"
                 :state-snapshots="resolvedStateSnapshots"
                 :predicted-hp="playerPredictedHp ?? undefined"
+                :speech-text="playerSpeechText ?? null"
+                :speech-key="playerSpeechKey ?? null"
               />
             </div>
           </aside>

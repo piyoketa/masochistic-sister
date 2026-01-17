@@ -145,6 +145,11 @@ const router = createRouter({
       component: () => import('@/views/RelicIconDemoView.vue'),
     },
     {
+      path: '/demo/player-speech',
+      name: 'player-speech-demo',
+      component: () => import('@/views/PlayerSpeechDemoView.vue'),
+    },
+    {
       path: '/demo/overlays',
       name: 'overlay-demo',
       component: () => import('@/views/OverlayDemoView.vue'),
