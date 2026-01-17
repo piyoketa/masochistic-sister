@@ -61,6 +61,20 @@ export const usePlayerStore = defineStore('player', {
       this.initialDeckPreset = preset
       this.initialized = true
     },
+    resetDeckAndHpForContinue(): void {
+      const repository = new CardRepository()
+      const preset = this.initialDeckPreset ?? 'holy'
+      const { deck } =
+        preset === 'magic' ? buildMagicDeck(repository) : buildDefaultDeck(repository)
+      // つづきから開始時はデッキ/現在HP/レリック/上限を初期状態へ戻し、金や最大HPは保持する方針にする。
+      this.deck = deck.map((card) => cardToBlueprint(card))
+      this.hp = this.maxHp
+      // 設計上の決定: つづきからでも初期レリック構成を維持し、レリック上限はデフォルトに戻す。
+      this.relicLimit = DEFAULT_RELIC_LIMIT
+      this.relics = [...INITIAL_RELICS_BY_PRESET[preset]]
+      useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
+      this.initialized = true
+    },
     setDeckPreset(preset: DeckPreset): void {
       this.resetDeckToPreset(preset)
     },

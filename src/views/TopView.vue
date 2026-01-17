@@ -19,6 +19,7 @@ import GameLayout from '@/components/GameLayout.vue'
 import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
 import { useRunProgressStore } from '@/stores/runProgressStore'
 import { useFieldStore } from '@/stores/fieldStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { loadRunSaveData, type RunSaveData } from '@/utils/runSaveStorage'
 import { FIELD_LABELS, FIELD_ORDER, findNextFieldId, resolveFieldPath } from '@/constants/fieldProgress'
 
@@ -26,6 +27,7 @@ const router = useRouter()
 const achievementProgressStore = useAchievementProgressStore()
 const runProgressStore = useRunProgressStore()
 const fieldStore = useFieldStore()
+const playerStore = usePlayerStore()
 
 achievementProgressStore.ensureInitialized()
 runProgressStore.ensureInitialized()
@@ -85,6 +87,8 @@ function handleStartContinue(): void {
     continueNotice.value = 'すべてのフィールドがクリア済みです。'
     return
   }
+  // つづきから開始時は、プレイヤーのデッキとHPを初期化してから進行を再開する。
+  playerStore.resetDeckAndHpForContinue()
   // セーブ対象外のノード進行は復元できないため、フィールド内部を初期化してから遷移する。
   fieldStore.initializeField(nextField)
   void router.push(resolveFieldPath(nextField))
