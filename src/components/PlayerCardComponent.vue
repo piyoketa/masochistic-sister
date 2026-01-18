@@ -277,7 +277,7 @@ onMounted(() => {
 .player-card__caption {
   position: absolute;
     left: 70px;
-    top: -40px;
+    top: 20px;
   z-index: 3;
   margin: 0;
     width: 200px;
