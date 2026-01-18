@@ -7,23 +7,26 @@ TopView の責務:
 - フィールド内の進行計算やバトル起動。
 主な通信相手とインターフェース:
 - Router: `router.push` で StartStoryView / FieldView へ遷移する。
+- achievementStore: `resetHistory` で称号/報酬の達成状態を初期化する。
 - achievementProgressStore: `resetForNewRun` / `replaceProgress` で実績進行を初期化/復元する。
 - runProgressStore: `resetForNewRun` / `replaceClearedFieldIds` でフィールドクリア状況を初期化/復元する。
 - fieldStore: `initializeField` でフィールドの内部進行状態をリセットする。
-- runSaveStorage: `loadRunSaveData` でセーブデータ(RunSaveData: achievementProgress, clearedFieldIds, savedAt)を読む。
+- runSaveStorage: `loadRunSaveData` / `deleteRunSaveData` でセーブデータ(RunSaveData: achievementProgress, clearedFieldIds, savedAt)を読む/削除する。
 -->
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import GameLayout from '@/components/GameLayout.vue'
+import { useAchievementStore } from '@/stores/achievementStore'
 import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
 import { useRunProgressStore } from '@/stores/runProgressStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { usePlayerStore } from '@/stores/playerStore'
-import { loadRunSaveData, type RunSaveData } from '@/utils/runSaveStorage'
+import { deleteRunSaveData, loadRunSaveData, type RunSaveData } from '@/utils/runSaveStorage'
 import { FIELD_LABELS, FIELD_ORDER, findNextFieldId, resolveFieldPath } from '@/constants/fieldProgress'
 
 const router = useRouter()
+const achievementStore = useAchievementStore()
 const achievementProgressStore = useAchievementProgressStore()
 const runProgressStore = useRunProgressStore()
 const fieldStore = useFieldStore()
@@ -60,8 +63,11 @@ function refreshSaveData(): void {
 
 function handleStartNew(): void {
   // 新規開始時はセーブデータを読まず、進行状況を完全リセットする。
+  achievementStore.resetHistory()
   achievementProgressStore.resetForNewRun()
   runProgressStore.resetForNewRun()
+  deleteRunSaveData()
+  saveData.value = null
   // セーブ対象外のノード進行は復元できないため、フィールド内部も必ず初期化する。
   fieldStore.initializeField('first-field')
   void router.push({ name: 'start-story', query: { fieldId: 'first-field' } })

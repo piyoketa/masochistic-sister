@@ -58,6 +58,11 @@ const router = createRouter({
       component: () => import('@/views/DamageEffectsDemoView.vue'),
     },
     {
+      path: '/demo/damage-flash',
+      name: 'damage-flash-demo',
+      component: () => import('@/views/DamageFlashDemoView.vue'),
+    },
+    {
       path: '/demo/trait-highlight',
       name: 'trait-highlight-demo',
       component: () => import('@/views/TraitHighlightDemoView.vue'),

@@ -113,6 +113,11 @@ const demoLinks: LinkEntry[] = [
     to: '/demo/damage-effects',
   },
   {
+    label: 'Damage Flash Demo',
+    description: '被ダメージ時の赤フラッシュ演出を確認',
+    to: '/demo/damage-flash',
+  },
+  {
     label: 'EnemyCard Demo',
     description: 'OrcEnemy の EnemyCard 表示を確認',
     to: '/demo/enemy-card',
