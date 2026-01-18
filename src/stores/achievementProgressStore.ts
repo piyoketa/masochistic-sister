@@ -49,6 +49,7 @@ export const useAchievementProgressStore = defineStore('achievementProgress', {
       // セーブデータからの復元専用。バリデーション済みデータを前提に丸ごと差し替える。
       this.ensureInitialized()
       this.progress = {
+        battleStartedCount: progress.battleStartedCount,
         corrosionAccumulated: progress.corrosionAccumulated,
         stickyAccumulated: progress.stickyAccumulated,
         damageTakenCount: progress.damageTakenCount,
@@ -66,6 +67,9 @@ export const useAchievementProgressStore = defineStore('achievementProgress', {
         defeatCount: progress.defeatCount,
         orcHeroDefeated: progress.orcHeroDefeated,
         beamCannonDefeated: progress.beamCannonDefeated,
+        maxStateProgressCount: progress.maxStateProgressCount,
+        maxFaceExpressionLevel: progress.maxFaceExpressionLevel,
+        arm2ExpressionApplied: progress.arm2ExpressionApplied,
       }
     },
     recordRelicOwnedCount(count: number): void {

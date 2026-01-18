@@ -122,7 +122,17 @@ function validateAchievementProgress(raw: unknown): AchievementProgress | null {
   if (!isValidNumber(record.defeatCount, 0)) return null
   if (typeof record.orcHeroDefeated !== 'boolean') return null
   if (typeof record.beamCannonDefeated !== 'boolean') return null
+  const battleStartedCount = isValidNumber(record.battleStartedCount, 0) ? record.battleStartedCount : 0
+  const maxStateProgressCount = isValidNumber(record.maxStateProgressCount, 1)
+    ? record.maxStateProgressCount
+    : 1
+  const maxFaceExpressionLevel = isValidNumber(record.maxFaceExpressionLevel, 0)
+    ? record.maxFaceExpressionLevel
+    : 0
+  const arm2ExpressionApplied =
+    typeof record.arm2ExpressionApplied === 'boolean' ? record.arm2ExpressionApplied : false
   return {
+    battleStartedCount,
     corrosionAccumulated: record.corrosionAccumulated,
     stickyAccumulated: record.stickyAccumulated,
     damageTakenCount: record.damageTakenCount,
@@ -140,11 +150,15 @@ function validateAchievementProgress(raw: unknown): AchievementProgress | null {
     defeatCount: record.defeatCount,
     orcHeroDefeated: record.orcHeroDefeated,
     beamCannonDefeated: record.beamCannonDefeated,
+    maxStateProgressCount,
+    maxFaceExpressionLevel,
+    arm2ExpressionApplied,
   }
 }
 
 function cloneAchievementProgress(progress: AchievementProgress): AchievementProgress {
   return {
+    battleStartedCount: progress.battleStartedCount,
     corrosionAccumulated: progress.corrosionAccumulated,
     stickyAccumulated: progress.stickyAccumulated,
     damageTakenCount: progress.damageTakenCount,
@@ -162,6 +176,9 @@ function cloneAchievementProgress(progress: AchievementProgress): AchievementPro
     defeatCount: progress.defeatCount,
     orcHeroDefeated: progress.orcHeroDefeated,
     beamCannonDefeated: progress.beamCannonDefeated,
+    maxStateProgressCount: progress.maxStateProgressCount,
+    maxFaceExpressionLevel: progress.maxFaceExpressionLevel,
+    arm2ExpressionApplied: progress.arm2ExpressionApplied,
   }
 }
 

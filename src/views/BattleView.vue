@@ -285,7 +285,7 @@ function hasPlayerSpeechReason(reason: PlayerSpeechReason): boolean {
   return playerSpeechQueue.value.some((entry) => entry.reason === reason)
 }
 
-function enqueuePlayerSpeech(text: string, reason: PlayerSpeechReason): void {
+function enqueuePlayerSpeech(text: string, reason: PlayerSpeechReason, priority: number = 0): void {
   const trimmed = text.trim()
   if (!trimmed || hasPlayerSpeechReason(reason)) {
     return
@@ -296,6 +296,7 @@ function enqueuePlayerSpeech(text: string, reason: PlayerSpeechReason): void {
       id: Date.now() + Math.random(),
       text: trimmed,
       reason,
+      priority,
     },
   ]
 }
@@ -323,7 +324,7 @@ function pullSpeechQueueFromAchievementManager(): void {
     return
   }
   // 設計判断: 実績側が管理したセリフを、表示用キューに移し替えるだけに留める。
-  entries.forEach((entry) => enqueuePlayerSpeech(entry.text, entry.reason))
+  entries.forEach((entry) => enqueuePlayerSpeech(entry.text, entry.reason, entry.priority))
 }
 
 function playTurnIndicatorOverlay(variant: 'player' | 'enemy'): void {

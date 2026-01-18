@@ -110,7 +110,7 @@ describe('戦闘中の発話キュー', () => {
     setActivePinia(pinia)
   })
 
-  it('初戦の被虐のオーラ使用後、操作開始時に「痛い...！」が表示される', async () => {
+  it('初戦の被虐のオーラ使用後、操作開始時に「これで戦える...」が表示される', async () => {
     vi.useFakeTimers()
 
     const viewManager = new ViewManager({
@@ -137,9 +137,9 @@ describe('戦闘中の発話キュー', () => {
       vi.useRealTimers()
       return
     }
-    // 初戦の前提: 実績の被ダメージ回数が0から開始していることを確認する。
+    // 初戦の前提: 被虐のオーラ使用回数が0から開始していることを確認する。
     const initialProgress = battle.achievementProgressManager?.exportProgress()
-    expect(initialProgress?.damageTakenCount).toBe(0)
+    expect(initialProgress?.masochisticAuraUsedCount).toBe(0)
 
     const auraCard = battle.hand.list().find((card) => card.title === '被虐のオーラ')
     expect(auraCard).toBeTruthy()
@@ -174,7 +174,7 @@ describe('戦闘中の発話キュー', () => {
       await vi.advanceTimersByTimeAsync(250)
       await flushPromises()
       const caption = wrapper.find('.player-card__caption')
-      if (caption.exists() && caption.text().includes('痛い...！')) {
+      if (caption.exists() && caption.text().includes('これで戦える...')) {
         speechFound = true
         break
       }

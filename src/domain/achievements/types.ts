@@ -6,6 +6,8 @@
  * - 記憶ポイント系の称号はこの進行度から達成判定を行う。
  */
 export type AchievementProgress = {
+  /** バトル開始回数（初回戦闘の発話判定に使う） */
+  battleStartedCount: number
   /** 腐食スタックの累計獲得量 */
   corrosionAccumulated: number
   /** 粘液スタックの累計獲得量 */
@@ -40,10 +42,17 @@ export type AchievementProgress = {
   orcHeroDefeated: boolean
   /** ビーム砲ボス撃破フラグ（敵チーム単位で判定） */
   beamCannonDefeated: boolean
+  /** 到達済みの最大状態進行度（前半パート1〜6の達成判定用） */
+  maxStateProgressCount: number
+  /** 到達済みの最大表情差分レベル（0/2/3） */
+  maxFaceExpressionLevel: number
+  /** 腕2のダメージ表現が適用済みかどうか */
+  arm2ExpressionApplied: boolean
 }
 
 export function createDefaultAchievementProgress(): AchievementProgress {
   return {
+    battleStartedCount: 0,
     corrosionAccumulated: 0,
     stickyAccumulated: 0,
     damageTakenCount: 0,
@@ -61,5 +70,8 @@ export function createDefaultAchievementProgress(): AchievementProgress {
     defeatCount: 0,
     orcHeroDefeated: false,
     beamCannonDefeated: false,
+    maxStateProgressCount: 1,
+    maxFaceExpressionLevel: 0,
+    arm2ExpressionApplied: false,
   }
 }

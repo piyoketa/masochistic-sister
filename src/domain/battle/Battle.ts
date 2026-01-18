@@ -40,6 +40,8 @@ const RETAIN_CARD_TAG_ID = 'tag-retain'
 const DEBUG_RELIC_USABLE_LOG =
   (typeof process !== 'undefined' && process.env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true') ||
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DEBUG_RELIC_USABLE_LOG === 'true')
+// 実績用に「腕2」の適用を検知するためのIDを明示する。
+const ARM2_DAMAGE_EXPRESSION_ID: PlayerDamageExpressionId = '腕2'
 
 export type BattleStatus = 'in-progress' | 'victory' | 'gameover'
 
@@ -355,6 +357,7 @@ export class Battle {
   /** 状態進行: 腐食付与などのイベントを通知する。 */
   recordPlayerStateProgressStateApplied(state: unknown): void {
     this.playerStateProgressManager.recordStateApplied(state)
+    this.syncAchievementProgressWithStateProgress()
   }
 
   /** 実績進行度: カードプレイを通知し、カード種別に応じて Manager がカウントする。 */
@@ -389,16 +392,34 @@ export class Battle {
   /** 状態進行: プレイヤーが受けた合計ダメージから進行判定を行う。 */
   recordPlayerStateProgressDamageTaken(totalDamage: number): void {
     this.playerStateProgressManager.recordDamageTaken(totalDamage)
+    this.syncAchievementProgressWithStateProgress()
   }
 
   /** 状態進行: HP回復イベントを通知する（報酬以外）。 */
   recordPlayerStateProgressHeal(amount: number): void {
     this.playerStateProgressManager.recordHeal(amount)
+    this.syncAchievementProgressWithStateProgress()
   }
 
   /** 状態進行: 報酬由来のHP回復を通知する。 */
   recordPlayerStateProgressRewardHeal(amount: number): void {
     this.playerStateProgressManager.recordRewardHeal(amount)
+    this.syncAchievementProgressWithStateProgress()
+  }
+
+  private syncAchievementProgressWithStateProgress(): void {
+    if (!this.achievementProgressManager) {
+      return
+    }
+    // 設計判断: 状態進行の変化は AchievementProgress 側に最大到達値だけ記録し、再発話を防ぐ。
+    const count = this.playerStateProgressManager.getCount()
+    const faceExpressionLevel = this.playerStateProgressManager.getFaceExpressionLevel()
+    const appliedDamageExpressions = this.playerStateProgressManager.getAppliedDamageExpressionIds()
+    this.achievementProgressManager.recordStateProgressCount(count)
+    this.achievementProgressManager.recordFaceExpressionLevel(faceExpressionLevel)
+    if (appliedDamageExpressions.includes(ARM2_DAMAGE_EXPRESSION_ID)) {
+      this.achievementProgressManager.recordDamageExpressionApplied(ARM2_DAMAGE_EXPRESSION_ID)
+    }
   }
 
   /** 実績進行度: 敗北を通知する。 */
@@ -869,6 +890,7 @@ export class Battle {
 
   initialize(): void {
     // バトル開始時は山札の上から3枚を初期手札として配る。最初のターン開始時ドローとは切り分け、カードの並びを固定できるようにする。
+    this.achievementProgressManager?.recordBattleStarted()
     this.turnValue.setState({
       turnCount: 1,
       activeSide: 'player',
@@ -878,6 +900,7 @@ export class Battle {
     const initialDraw = this.playerValue.calculateInitialDraw(this)
     this.drawForPlayer(initialDraw)
     this.pendingDrawAnimationEvents = []
+    this.syncAchievementProgressWithStateProgress()
   }
 
   startPlayerTurn(): void {

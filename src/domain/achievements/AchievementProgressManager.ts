@@ -12,6 +12,7 @@ import type { Enemy } from '../entities/Enemy'
 import { TentacleEnemy } from '../entities/enemies/TentacleEnemy'
 import type { DamageEffectType, DamagePattern } from '../entities/Damages'
 import { mapActionToCardId, type CardId } from '../library/Library'
+import type { FaceExpressionLevel, PlayerDamageExpressionId } from '../progress/PlayerStateProgressManager'
 import { createDefaultAchievementProgress, type AchievementProgress } from './types'
 
 const KISS_EFFECT_TYPE: DamageEffectType = 'kiss'
@@ -19,15 +20,65 @@ const KISS_CARD_TITLE = '口づけ'
 const MASOCHISTIC_AURA_TITLE = '被虐のオーラ'
 const HEAVEN_CHAIN_CARD_ID: CardId = 'heaven-chain'
 
-export type PlayerSpeechReason = 'achievement-first-damage'
+export type PlayerSpeechReason =
+  | 'achievement-battle-started'
+  | 'achievement-corrosion-first'
+  | 'achievement-sticky-first'
+  | 'achievement-kiss-received-first'
+  | 'achievement-kiss-used-first'
+  | 'achievement-aura-first'
+  | 'achievement-aura-5'
+  | 'achievement-state-progress-3'
+  | 'achievement-state-progress-4'
+  | 'achievement-state-progress-5'
+  | 'achievement-state-progress-6'
+  | 'achievement-face-2'
+  | 'achievement-face-3'
+  | 'achievement-arm2'
 
 export type PlayerSpeechEntry = {
   id: number
   text: string
   reason: PlayerSpeechReason
+  priority: number
+}
+
+type PlayerSpeechDefinition = {
+  text: string
+  priority: number
+}
+
+const PLAYER_SPEECH_DEFINITIONS: Record<PlayerSpeechReason, PlayerSpeechDefinition> = {
+  'achievement-battle-started': { text: '私が戦わないと...', priority: 1 },
+  'achievement-corrosion-first': { text: '修道服...\n大切にしてたのに...', priority: 1 },
+  'achievement-sticky-first': { text: 'ネバネバして\n動きづらい...', priority: 1 },
+  'achievement-kiss-received-first': { text: 'キス...\nはじめてだったのに...', priority: 1 },
+  'achievement-kiss-used-first': { text: '化け物に...\n自分からするなんて...', priority: 1 },
+  'achievement-aura-first': { text: 'これで戦える...', priority: 1 },
+  'achievement-aura-5': { text: 'もっと傷を受けなきゃ...', priority: 1 },
+  'achievement-state-progress-3': { text: '早く倒さないと...', priority: 107 },
+  'achievement-state-progress-4': { text: 'もうボロボロ...', priority: 108 },
+  'achievement-state-progress-5': { text: '痛い...\nこれ以上は...', priority: 109 },
+  'achievement-state-progress-6': { text: 'もう...\n右腕が上がらない...', priority: 110 },
+  'achievement-face-2': { text: 'あはは...意識が...', priority: 111 },
+  'achievement-face-3': { text: 'これだけ喰らえば...\n無敵ですよねぇ...？', priority: 112 },
+  'achievement-arm2': { text: 'あは...腕が...', priority: 113 },
+}
+
+const STATE_PROGRESS_SPEECH_BY_LEVEL: Partial<Record<number, PlayerSpeechReason>> = {
+  3: 'achievement-state-progress-3',
+  4: 'achievement-state-progress-4',
+  5: 'achievement-state-progress-5',
+  6: 'achievement-state-progress-6',
+}
+
+const FACE_EXPRESSION_SPEECH_BY_LEVEL: Partial<Record<number, PlayerSpeechReason>> = {
+  2: 'achievement-face-2',
+  3: 'achievement-face-3',
 }
 
 type HistoryEntry =
+  | { type: 'battle-started'; prevValue: number }
   | { type: 'corrosion'; prevValue: number }
   | { type: 'sticky'; prevValue: number }
   | { type: 'damage-taken'; prevValue: number }
@@ -44,15 +95,28 @@ type HistoryEntry =
   | { type: 'defeat'; prevValue: number }
   | { type: 'orc-hero-defeated'; prevValue: boolean }
   | { type: 'beam-cannon-defeated'; prevValue: boolean }
-  | { type: 'speech-queued'; entryId: number }
+  | { type: 'max-state-progress'; prevValue: number }
+  | { type: 'max-face-expression'; prevValue: number }
+  | { type: 'arm2-expression'; prevValue: boolean }
+  | { type: 'speech-queued'; prevEntry: PlayerSpeechEntry | null }
 
 export class AchievementProgressManager {
   private progress: AchievementProgress
   private history: HistoryEntry[] = []
-  private speechQueue: PlayerSpeechEntry[] = []
+  private speechQueue: PlayerSpeechEntry | null = null
 
   constructor(initial?: AchievementProgress) {
     this.progress = initial ? { ...initial } : createDefaultAchievementProgress()
+  }
+
+  recordBattleStarted(): void {
+    const nextCount = this.progress.battleStartedCount + 1
+    this.history.push({ type: 'battle-started', prevValue: this.progress.battleStartedCount })
+    this.progress = { ...this.progress, battleStartedCount: nextCount }
+    if (nextCount === 1) {
+      // 初戦の開始時のみ、固定セリフを発話キューへ積む。
+      this.enqueueSpeechByReason('achievement-battle-started')
+    }
   }
 
   recordStateApplied(state: unknown): void {
@@ -61,8 +125,14 @@ export class AchievementProgressManager {
       if (add <= 0) {
         return
       }
-      this.history.push({ type: 'corrosion', prevValue: this.progress.corrosionAccumulated })
-      this.progress = { ...this.progress, corrosionAccumulated: this.progress.corrosionAccumulated + add }
+      const prev = this.progress.corrosionAccumulated
+      const next = prev + add
+      this.history.push({ type: 'corrosion', prevValue: prev })
+      this.progress = { ...this.progress, corrosionAccumulated: next }
+      if (prev < 1 && next >= 1) {
+        // 腐食を初めて受けたタイミングだけを拾う。
+        this.enqueueSpeechByReason('achievement-corrosion-first')
+      }
       return
     }
 
@@ -71,8 +141,14 @@ export class AchievementProgressManager {
       if (add <= 0) {
         return
       }
-      this.history.push({ type: 'sticky', prevValue: this.progress.stickyAccumulated })
-      this.progress = { ...this.progress, stickyAccumulated: this.progress.stickyAccumulated + add }
+      const prev = this.progress.stickyAccumulated
+      const next = prev + add
+      this.history.push({ type: 'sticky', prevValue: prev })
+      this.progress = { ...this.progress, stickyAccumulated: next }
+      if (prev < 1 && next >= 1) {
+        // 粘液も初回のみ発話対象にする。
+        this.enqueueSpeechByReason('achievement-sticky-first')
+      }
     }
   }
 
@@ -84,12 +160,22 @@ export class AchievementProgressManager {
       this.progress = { ...this.progress, heavenChainUsedCount: this.progress.heavenChainUsedCount + 1 }
     }
     if (card.definition.title === KISS_CARD_TITLE) {
+      const next = this.progress.kissUsedCount + 1
       this.history.push({ type: 'kiss-used', prevValue: this.progress.kissUsedCount })
-      this.progress = { ...this.progress, kissUsedCount: this.progress.kissUsedCount + 1 }
+      this.progress = { ...this.progress, kissUsedCount: next }
+      if (next === 1) {
+        this.enqueueSpeechByReason('achievement-kiss-used-first')
+      }
     }
     if (card.definition.title === MASOCHISTIC_AURA_TITLE) {
+      const next = this.progress.masochisticAuraUsedCount + 1
       this.history.push({ type: 'aura-used', prevValue: this.progress.masochisticAuraUsedCount })
-      this.progress = { ...this.progress, masochisticAuraUsedCount: this.progress.masochisticAuraUsedCount + 1 }
+      this.progress = { ...this.progress, masochisticAuraUsedCount: next }
+      if (next === 1) {
+        this.enqueueSpeechByReason('achievement-aura-first')
+      } else if (next === 5) {
+        this.enqueueSpeechByReason('achievement-aura-5')
+      }
     }
   }
 
@@ -106,10 +192,6 @@ export class AchievementProgressManager {
 
     this.history.push({ type: 'damage-taken', prevValue: this.progress.damageTakenCount })
     this.progress = { ...this.progress, damageTakenCount: this.progress.damageTakenCount + 1 }
-    if (this.progress.damageTakenCount === 1) {
-      // 設計判断: 実績「初めてダメージを受ける」達成時に、次の操作開始向けのセリフを積む。
-      this.enqueueSpeech('痛い...！', 'achievement-first-damage')
-    }
 
     if (damage > this.progress.maxDamageTaken) {
       this.history.push({ type: 'max-damage', prevValue: this.progress.maxDamageTaken })
@@ -126,9 +208,58 @@ export class AchievementProgressManager {
     }
 
     if (params.effectType === KISS_EFFECT_TYPE) {
+      const next = this.progress.kissReceivedCount + 1
       this.history.push({ type: 'kiss-received', prevValue: this.progress.kissReceivedCount })
-      this.progress = { ...this.progress, kissReceivedCount: this.progress.kissReceivedCount + 1 }
+      this.progress = { ...this.progress, kissReceivedCount: next }
+      if (next === 1) {
+        this.enqueueSpeechByReason('achievement-kiss-received-first')
+      }
     }
+  }
+
+  recordStateProgressCount(count: number): void {
+    if (!Number.isFinite(count)) {
+      return
+    }
+    const normalized = Math.max(1, Math.floor(count))
+    if (normalized <= this.progress.maxStateProgressCount) {
+      return
+    }
+    const prev = this.progress.maxStateProgressCount
+    this.history.push({ type: 'max-state-progress', prevValue: prev })
+    this.progress = { ...this.progress, maxStateProgressCount: normalized }
+    // 設計判断: 状態進行の到達は「最大値更新」に合わせて一度だけ喋る。
+    for (let level = prev + 1; level <= normalized; level += 1) {
+      const reason = STATE_PROGRESS_SPEECH_BY_LEVEL[level]
+      if (reason) {
+        this.enqueueSpeechByReason(reason)
+      }
+    }
+  }
+
+  recordFaceExpressionLevel(level: FaceExpressionLevel): void {
+    const normalized = level === 2 || level === 3 ? level : 0
+    if (normalized <= this.progress.maxFaceExpressionLevel) {
+      return
+    }
+    const prev = this.progress.maxFaceExpressionLevel
+    this.history.push({ type: 'max-face-expression', prevValue: prev })
+    this.progress = { ...this.progress, maxFaceExpressionLevel: normalized }
+    for (let candidate = prev + 1; candidate <= normalized; candidate += 1) {
+      const reason = FACE_EXPRESSION_SPEECH_BY_LEVEL[candidate]
+      if (reason) {
+        this.enqueueSpeechByReason(reason)
+      }
+    }
+  }
+
+  recordDamageExpressionApplied(expressionId: PlayerDamageExpressionId): void {
+    if (expressionId !== '腕2' || this.progress.arm2ExpressionApplied) {
+      return
+    }
+    this.history.push({ type: 'arm2-expression', prevValue: this.progress.arm2ExpressionApplied })
+    this.progress = { ...this.progress, arm2ExpressionApplied: true }
+    this.enqueueSpeechByReason('achievement-arm2')
   }
 
   recordEnemyDefeated(enemy: Enemy): void {
@@ -187,7 +318,9 @@ export class AchievementProgressManager {
   undoLast(): void {
     const last = this.history.pop()
     if (!last) return
-    if (last.type === 'corrosion') {
+    if (last.type === 'battle-started') {
+      this.progress = { ...this.progress, battleStartedCount: last.prevValue }
+    } else if (last.type === 'corrosion') {
       this.progress = { ...this.progress, corrosionAccumulated: last.prevValue }
     } else if (last.type === 'sticky') {
       this.progress = { ...this.progress, stickyAccumulated: last.prevValue }
@@ -219,8 +352,14 @@ export class AchievementProgressManager {
       this.progress = { ...this.progress, orcHeroDefeated: last.prevValue }
     } else if (last.type === 'beam-cannon-defeated') {
       this.progress = { ...this.progress, beamCannonDefeated: last.prevValue }
+    } else if (last.type === 'max-state-progress') {
+      this.progress = { ...this.progress, maxStateProgressCount: last.prevValue }
+    } else if (last.type === 'max-face-expression') {
+      this.progress = { ...this.progress, maxFaceExpressionLevel: last.prevValue }
+    } else if (last.type === 'arm2-expression') {
+      this.progress = { ...this.progress, arm2ExpressionApplied: last.prevValue }
     } else if (last.type === 'speech-queued') {
-      this.speechQueue = this.speechQueue.filter((entry) => entry.id !== last.entryId)
+      this.speechQueue = last.prevEntry ? { ...last.prevEntry } : null
     }
   }
 
@@ -234,21 +373,38 @@ export class AchievementProgressManager {
    * View 側の「次の操作開始時」トリガーで呼び出すことを想定している。
    */
   consumePlayerSpeechQueue(): PlayerSpeechEntry[] {
-    const queued = [...this.speechQueue]
-    this.speechQueue = []
+    const queued = this.speechQueue ? [{ ...this.speechQueue }] : []
+    this.speechQueue = null
     return queued
   }
 
-  private enqueueSpeech(text: string, reason: PlayerSpeechReason): void {
-    if (this.speechQueue.some((entry) => entry.reason === reason)) {
+  private enqueueSpeechByReason(reason: PlayerSpeechReason): void {
+    const definition = PLAYER_SPEECH_DEFINITIONS[reason]
+    if (!definition) {
       return
     }
+    this.enqueueSpeech(definition.text, reason, definition.priority)
+  }
+
+  private enqueueSpeech(text: string, reason: PlayerSpeechReason, priority: number): void {
+    const normalizedPriority = Math.floor(priority)
     const entry: PlayerSpeechEntry = {
       id: Date.now() + Math.random(),
       text,
       reason,
+      priority: normalizedPriority,
     }
-    this.speechQueue.push(entry)
-    this.history.push({ type: 'speech-queued', entryId: entry.id })
+    const current = this.speechQueue
+    if (!current) {
+      this.history.push({ type: 'speech-queued', prevEntry: null })
+      this.speechQueue = entry
+      return
+    }
+    // 設計判断: 発話は常に1件のみ保持し、優先度が高い場合だけ差し替える。
+    if (normalizedPriority <= current.priority) {
+      return
+    }
+    this.history.push({ type: 'speech-queued', prevEntry: { ...current } })
+    this.speechQueue = entry
   }
 }
