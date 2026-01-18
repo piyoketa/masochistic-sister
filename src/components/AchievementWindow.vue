@@ -1,7 +1,7 @@
 <!--
 Componentの責務:
 - 実績ウィンドウをモーダルとして表示し、「報酬」「称号」タブの切り替えと一覧描画を担当する。
-- 「獲得」ボタン押下をイベントとして親へ通知し、表示だけに専念する。
+- 報酬の選択や獲得処理は別画面に委譲し、本コンポーネントは表示専用とする。
 
 責務ではないこと:
 - 実績達成判定、記憶ポイント集計、報酬の付与や永続化。これらはストア/親コンポーネントで完結させる。
@@ -10,27 +10,30 @@ Componentの責務:
 - 親コンポーネント（FieldView など）。
   - props:
     - visible: モーダルの表示/非表示。
-    - rewardEntries: RewardAchievementCardView[]。報酬実績の表示カードで、status は not-achieved/achieved/owned を持つ。
-    - titleEntries: TitleAchievementRowView[]。称号実績の行表示で、status は not-achieved/achieved のみ（報酬と違い owned を持たない）。
+    - rewardEntries: RewardAchievementCardView[]。報酬実績の表示カードで、status は not-achieved/achieved を持つ。
+    - titleEntries: TitleAchievementRowView[]。称号実績の行表示で、status は not-achieved/achieved のみ。
     - memoryPointSummary: MemoryPointSummary（used/total/available の集計結果）。
   - events:
     - close: モーダルを閉じる要求。
-    - claim: { id: string } を通知し、報酬獲得処理は親に委譲する。
 -->
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { AchievementStatus } from '@/stores/achievementStore'
+
+export type RewardAchievementStatus = 'not-achieved' | 'achieved'
 
 export type RewardAchievementCardView = {
   id: string
   title: string
   description: string
   rewardLabel: string
-  status: AchievementStatus
+  status: RewardAchievementStatus
   progressLabel?: string
   progressRatio?: number
   costLabel: string
-  canClaim: boolean
+  memoryPointCost: number
+  rewardType: 'relic' | 'relic-limit' | 'max-hp'
+  relicClassName?: string
+  relicLimitIncrease?: number
 }
 
 export type TitleAchievementStatus = 'not-achieved' | 'achieved'
@@ -60,21 +63,18 @@ defineProps<{
 
 const emit = defineEmits<{
   (event: 'close'): void
-  (event: 'claim', payload: { id: string }): void
 }>()
 
 const activeTab = ref<'reward' | 'title'>('reward')
 
-const rewardStatusLabels: Record<AchievementStatus, string> = {
+const rewardStatusLabels: Record<RewardAchievementStatus, string> = {
   'not-achieved': '未達成',
   achieved: '達成',
-  owned: '所持中',
 }
 
-const rewardStatusVariants: Record<AchievementStatus, string> = {
+const rewardStatusVariants: Record<RewardAchievementStatus, string> = {
   'not-achieved': 'achievement-card--not-achieved',
   achieved: 'achievement-card--achieved',
-  owned: 'achievement-card--owned',
 }
 
 const titleStatusLabels: Record<TitleAchievementStatus, string> = {
@@ -87,13 +87,6 @@ function progressWidth(ratio?: number): string {
   return `${safe * 100}%`
 }
 
-function handleClaim(entry: RewardAchievementCardView): void {
-  // ボタン表示条件は親で判定済みだが、誤操作防止のためここでもガードする。
-  if (!entry.canClaim) {
-    return
-  }
-  emit('claim', { id: entry.id })
-}
 </script>
 
 <template>
@@ -169,7 +162,7 @@ function handleClaim(entry: RewardAchievementCardView): void {
                   {{ rewardStatusLabels[entry.status] }}
                 </div>
                 <div class="achievement-card__title">{{ entry.title }}</div>
-                <p class="achievement-card__description">{{ entry.description }}</p>
+                <p v-if="entry.status === 'not-achieved'" class="achievement-card__description">{{ entry.description }}</p>
 
                 <div v-if="entry.status === 'not-achieved' && entry.progressLabel" class="achievement-card__progress">
                   <div class="achievement-card__progress-label">進行: {{ entry.progressLabel }}</div>
@@ -186,14 +179,6 @@ function handleClaim(entry: RewardAchievementCardView): void {
 
                 <div class="achievement-card__footer">
                   <span class="achievement-card__status-label">{{ rewardStatusLabels[entry.status] }}</span>
-                  <button
-                    v-if="entry.canClaim"
-                    type="button"
-                    class="achievement-card__action"
-                    @click="handleClaim(entry)"
-                  >
-                    獲得
-                  </button>
                 </div>
               </article>
             </div>
@@ -489,12 +474,15 @@ function handleClaim(entry: RewardAchievementCardView): void {
 }
 
 .achievement-card__cost {
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(122, 186, 255, 0.16);
-  border: 1px solid rgba(122, 186, 255, 0.45);
-  color: #d6e8ff;
-  font-size: 12px;
+  background: rgba(255, 176, 100, 0.2);
+  border: 1px solid rgba(255, 176, 100, 0.6);
+  color: #ffe9c8;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: inset 0 0 10px rgba(255, 176, 100, 0.2);
 }
 
 .achievement-card__footer {
@@ -510,26 +498,6 @@ function handleClaim(entry: RewardAchievementCardView): void {
   color: rgba(255, 255, 255, 0.78);
 }
 
-.achievement-card__action {
-  min-width: 120px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 227, 115, 0.16);
-  color: #ffe181;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
-}
-
-.achievement-card__action:hover,
-.achievement-card__action:focus-visible {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
-  background: rgba(255, 227, 115, 0.28);
-  border-color: rgba(255, 227, 115, 0.7);
-}
 
 .achievement-card--not-achieved {
   border-color: rgba(255, 255, 255, 0.08);
@@ -549,14 +517,6 @@ function handleClaim(entry: RewardAchievementCardView): void {
   background: linear-gradient(180deg, #ffd166, #ff9f1c);
 }
 
-.achievement-card--owned {
-  border-color: rgba(160, 223, 180, 0.6);
-  background: linear-gradient(180deg, rgba(38, 62, 48, 0.7), rgba(18, 24, 20, 0.9));
-}
-
-.achievement-card--owned .achievement-card__status-dot {
-  background: linear-gradient(180deg, #8af7b0, #2dd373);
-}
 
 .title-list {
   display: flex;

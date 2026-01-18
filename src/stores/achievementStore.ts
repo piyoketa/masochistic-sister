@@ -1,7 +1,8 @@
 /**
  * 実績達成履歴を保持するストア。
- * - 目的: 実績の状態を localStorage に保存し、UI と報酬取得処理に供給する。
- * - 設計上の重要な決定: 記憶ポイントは履歴から集計するため state では保持しない。
+ * - 目的: 実績の状態を localStorage に保存し、UI 表示と達成判定に供給する。
+ * - 設計上の重要な決定: 報酬の「取得状態」はセーブに残さず、画面ごとの選択結果だけを使う。
+ * - 記憶ポイントは履歴から集計するため state では保持しない。
  *   仕様変更に伴い STORAGE_VERSION を更新して全リセットする。
  */
 import { defineStore } from 'pinia'
@@ -354,6 +355,10 @@ function normalizeStatus(def: AchievementDefinition, status: AchievementStatus):
     // 称号は「所持中」を持たないため、誤った状態は達成扱いに寄せる。
     return 'achieved'
   }
+  if (def.category === 'reward' && status === 'owned') {
+    // 報酬の取得状態は保存しないため、読み込み時は達成状態へ戻す。
+    return 'achieved'
+  }
   return status
 }
 
@@ -438,6 +443,33 @@ function mergeHistoryWithDefinitions(history: AchievementHistoryEntry[]): Achiev
       status: resolveInitialStatus(def),
     }
   })
+}
+
+function applyRewardToPlayer(
+  reward: AchievementReward,
+  playerStore: ReturnType<typeof usePlayerStore>,
+): { success: boolean; message: string } {
+  if (reward.type === 'relic') {
+    return playerStore.addRelic(reward.relicClassName)
+  }
+  if (reward.type === 'relic-limit') {
+    const increase = Math.max(0, Math.floor(reward.limitIncrease))
+    if (increase > 0) {
+      // 上限解放はレリック獲得前提の報酬なので、減らさず加算のみ許可する。
+      playerStore.setRelicLimit(playerStore.relicLimit + increase)
+    }
+    return { success: true, message: 'レリック上限を拡張しました' }
+  }
+  const maxHpGain = Math.max(0, Math.floor(reward.maxHpGain))
+  const healAmount = Math.max(0, Math.floor(reward.healAmount))
+  if (maxHpGain > 0) {
+    // 最大HP上昇と同時に、増加分を即時回復して達成のご褒美感を出す。
+    playerStore.setMaxHp(playerStore.maxHp + maxHpGain)
+  }
+  if (healAmount > 0) {
+    playerStore.healHp(healAmount)
+  }
+  return { success: true, message: '最大HPを強化しました' }
 }
 
 export const useAchievementStore = defineStore('achievement', {
@@ -581,57 +613,64 @@ export const useAchievementStore = defineStore('achievement', {
 
       this.persist()
     },
-    claimAchievement(id: string): { success: boolean; message: string } {
+    applyRewardSelection(selectedIds: string[]): { success: boolean; message: string } {
+      // 設計判断: 報酬取得は出撃前の選択結果のみを反映し、履歴には保存しない。
       this.ensureInitialized()
-      const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id)
-      if (!def) {
-        return { success: false, message: '不明な実績です' }
+      const uniqueIds = [...new Set(selectedIds)]
+      if (uniqueIds.length === 0) {
+        return { success: true, message: '報酬の選択はありません' }
       }
-      if (def.category !== 'reward') {
-        return { success: false, message: '称号は報酬として獲得できません' }
+      const definitionMap = new Map(ACHIEVEMENT_DEFINITIONS.map((def) => [def.id, def]))
+      const rewardDefs: RewardAchievementDefinition[] = []
+      for (const id of uniqueIds) {
+        const def = definitionMap.get(id)
+        if (!def || def.category !== 'reward') {
+          return { success: false, message: '不明な報酬が含まれています' }
+        }
+        rewardDefs.push(def)
       }
-      const historyEntry = this.historyMap.get(id)
-      if (!historyEntry) {
-        return { success: false, message: '履歴の同期に失敗しました' }
-      }
-      if (historyEntry.status !== 'achieved') {
-        return { success: false, message: '獲得できる状態ではありません' }
-      }
-      if (this.availableMemoryPoints < def.memoryPointCost) {
+
+      const totalCost = rewardDefs.reduce((sum, def) => sum + def.memoryPointCost, 0)
+      if (totalCost > this.earnedMemoryPointsTotal) {
         return { success: false, message: '記憶ポイントが不足しています' }
+      }
+      const historyMap = this.historyMap
+      for (const def of rewardDefs) {
+        const status = normalizeStatus(def, historyMap.get(def.id)?.status ?? resolveInitialStatus(def))
+        if (status !== 'achieved') {
+          return { success: false, message: '未達成の報酬が選択されています' }
+        }
       }
 
       const playerStore = usePlayerStore()
       playerStore.ensureInitialized()
-      if (def.reward.type === 'relic') {
-        const result = playerStore.addRelic(def.reward.relicClassName)
+      const relicRewards = rewardDefs.filter(
+        (def): def is RewardAchievementDefinition & { reward: { type: 'relic'; relicClassName: string } } =>
+          def.reward.type === 'relic',
+      )
+      const relicNames = relicRewards.map((def) => def.reward.relicClassName)
+      const relicNameSet = new Set(relicNames)
+      if (relicNameSet.size !== relicNames.length) {
+        return { success: false, message: '同じレリックが複数選択されています' }
+      }
+      if (relicNames.some((name) => playerStore.relics.includes(name))) {
+        return { success: false, message: '所持済みのレリックが含まれています' }
+      }
+      const relicLimitIncrease = rewardDefs
+        .filter((def) => def.reward.type === 'relic-limit')
+        .reduce((sum, def) => sum + Math.max(0, def.reward.limitIncrease), 0)
+      if (playerStore.relics.length + relicRewards.length > playerStore.relicLimit + relicLimitIncrease) {
+        return { success: false, message: 'レリック上限を超える選択です' }
+      }
+      const order = { 'relic-limit': 0, 'max-hp': 1, relic: 2 } as const
+      const sorted = [...rewardDefs].sort((a, b) => order[a.reward.type] - order[b.reward.type])
+      // 設計判断: レリック上限の解放を先に適用し、後続のレリック付与が失敗しない順で実行する。
+      for (const def of sorted) {
+        const result = applyRewardToPlayer(def.reward, playerStore)
         if (!result.success) {
           return { success: false, message: result.message }
         }
-      } else if (def.reward.type === 'relic-limit') {
-        const increase = Math.max(0, Math.floor(def.reward.limitIncrease))
-        if (increase > 0) {
-          // 上限解放はレリック獲得前提の報酬なので、減らさず加算のみ許可する。
-          playerStore.setRelicLimit(playerStore.relicLimit + increase)
-        }
-      } else if (def.reward.type === 'max-hp') {
-        const maxHpGain = Math.max(0, Math.floor(def.reward.maxHpGain))
-        const healAmount = Math.max(0, Math.floor(def.reward.healAmount))
-        if (maxHpGain > 0) {
-          // 最大HP上昇と同時に、増加分を即時回復して達成のご褒美感を出す。
-          playerStore.setMaxHp(playerStore.maxHp + maxHpGain)
-        }
-        if (healAmount > 0) {
-          playerStore.healHp(healAmount)
-        }
       }
-
-      const updated: AchievementHistoryEntry = {
-        ...historyEntry,
-        status: 'owned',
-      }
-      this.history = this.history.map((entry) => (entry.id === id ? updated : entry))
-      this.persist()
       return { success: true, message: '報酬を獲得しました' }
     },
     resetHistory(): void {
@@ -640,9 +679,16 @@ export const useAchievementStore = defineStore('achievement', {
       this.persist()
     },
     persist(): void {
+      const definitionMap = new Map(ACHIEVEMENT_DEFINITIONS.map((def) => [def.id, def]))
       const payload: AchievementPersistedPayload = {
         version: STORAGE_VERSION,
-        entries: this.history.map((entry) => ({ ...entry })),
+        entries: this.history.map((entry) => {
+          const def = definitionMap.get(entry.id)
+          return {
+            id: entry.id,
+            status: def ? normalizeStatus(def, entry.status) : entry.status,
+          }
+        }),
       }
       savePersisted(payload)
     },

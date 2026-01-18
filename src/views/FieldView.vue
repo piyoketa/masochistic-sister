@@ -28,12 +28,11 @@ const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
 const playerDeckOverlayStore = usePlayerDeckOverlayStore()
-// 実績ウィンドウ用の表示データと獲得処理を composable に集約する。
+// 実績ウィンドウ用の表示データを composable に集約する。
 const {
   memoryPointSummary: achievementMemoryPointSummary,
   rewardEntries: rewardAchievementEntries,
   titleEntries: titleAchievementEntries,
-  claimAchievement,
 } = useAchievementWindow()
 const imageHub = useImageHub()
 const SISTER_ICON_SRC = '/assets/players/icons/sister_dot.png'
@@ -157,15 +156,6 @@ function openDeckOverlay(): void {
   playerDeckOverlayStore.open(deckCardInfos.value)
 }
 
-function handleClaimAchievement(payload: { id: string }): void {
-  const result = claimAchievement(payload.id)
-  if (!result.success) {
-    window.alert(result.message)
-    return
-  }
-  // 報酬の付与はストア内で完結するため、ここでは UI 側の再計算に任せる。
-}
-
 async function handleEnter(node: FieldNode, levelIndex: number, nodeIndex: number): Promise<void> {
   const reachable = isReachable(levelIndex, nodeIndex)
   const alreadyCleared = fieldStore.isNodeCleared(node.id)
@@ -237,7 +227,6 @@ onMounted(() => {
       :title-entries="titleAchievementEntries"
       :memory-point-summary="achievementMemoryPointSummary"
       @close="achievementWindowOpen = false"
-      @claim="handleClaimAchievement"
     />
     <PlayerStatusHeader
       class="field-header"

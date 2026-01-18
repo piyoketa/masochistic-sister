@@ -6,7 +6,6 @@ import type {
 } from '@/components/AchievementWindow.vue'
 import { useAchievementStore } from '@/stores/achievementStore'
 import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
-import { usePlayerStore } from '@/stores/playerStore'
 import {
   ORC_HERO_ACHIEVEMENT_ID,
   ORC_HERO_TARGET,
@@ -81,10 +80,8 @@ function resolveProgressLabel(entry: ProgressEntry): { label: string; ratio: num
 export function useAchievementWindow() {
   const achievementStore = useAchievementStore()
   const achievementProgressStore = useAchievementProgressStore()
-  const playerStore = usePlayerStore()
   achievementStore.ensureInitialized()
   achievementProgressStore.ensureInitialized()
-  playerStore.ensureInitialized()
 
   watch(
     () => achievementProgressStore.progress,
@@ -216,26 +213,34 @@ export function useAchievementWindow() {
   })
 
   const rewardEntries = computed<RewardAchievementCardView[]>(() => {
-    const available = memoryPointSummary.value.available
-    const relicLimitReached = playerStore.relicLimitReached
-    return achievementStore.rewardEntriesForView.map((entry) => {
+    // 設計判断: 獲得可能な報酬を上に並べ、未達成は下にまとめて表示する。
+    const prepared = achievementStore.rewardEntriesForView.map((entry, index) => {
       const progress = achievementProgressMap.value.get(entry.id)
       const showProgress = entry.status === 'not-achieved'
       const progressLabel = progress ? resolveProgressLabel(progress) : null
-      const relicBlocked = entry.reward.type === 'relic' && relicLimitReached
+      const status = entry.status === 'owned' ? 'achieved' : entry.status
       return {
-        id: entry.id,
-        title: entry.title,
-        description: entry.description,
-        rewardLabel: entry.reward.label,
-        status: entry.status,
-        progressLabel: showProgress ? progressLabel?.label ?? entry.progressLabel : undefined,
-        progressRatio: showProgress ? progressLabel?.ratio ?? entry.progressRatio : undefined,
-        costLabel: `必要 ${entry.memoryPointCost} pt`,
-        // 記憶ポイント残量で獲得可能かを判断し、ボタンの表示制御に使う。
-        canClaim: entry.status === 'achieved' && available >= entry.memoryPointCost && !relicBlocked,
+        index,
+        view: {
+          id: entry.id,
+          title: entry.title,
+          description: entry.description,
+          rewardLabel: entry.reward.label,
+          status,
+          progressLabel: showProgress ? progressLabel?.label ?? entry.progressLabel : undefined,
+          progressRatio: showProgress ? progressLabel?.ratio ?? entry.progressRatio : undefined,
+          costLabel: `必要 ${entry.memoryPointCost} pt`,
+          memoryPointCost: entry.memoryPointCost,
+          rewardType: entry.reward.type,
+          relicClassName: entry.reward.type === 'relic' ? entry.reward.relicClassName : undefined,
+          relicLimitIncrease: entry.reward.type === 'relic-limit' ? entry.reward.limitIncrease : undefined,
+        },
       }
     })
+    const weight = (entry: RewardAchievementCardView) => (entry.status === 'achieved' ? 0 : 1)
+    return prepared
+      .sort((a, b) => weight(a.view) - weight(b.view) || a.index - b.index)
+      .map((entry) => entry.view)
   })
 
   const titleEntries = computed<TitleAchievementRowView[]>(() =>
@@ -255,14 +260,9 @@ export function useAchievementWindow() {
     }),
   )
 
-  function claimAchievement(id: string) {
-    return achievementStore.claimAchievement(id)
-  }
-
   return {
     memoryPointSummary,
     rewardEntries,
     titleEntries,
-    claimAchievement,
   }
 }

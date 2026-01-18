@@ -442,7 +442,7 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
           <div class="achievement-row__text">
             <div class="achievement-row__title">実績達成履歴</div>
             <p class="achievement-row__description">
-              実績ウィンドウの表示状態と localStorage の履歴を初期化します。レリック付与履歴も忘れた扱いになります。
+              実績ウィンドウの表示状態と localStorage の達成履歴を初期化します。報酬の取得状態は保存されないため、選択は毎回リセットされます。
             </p>
           </div>
           <button type="button" class="deck-button deck-button--danger" @click="resetAchievementHistory">

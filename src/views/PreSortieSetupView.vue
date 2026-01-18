@@ -1,15 +1,16 @@
 <!--
 PreSortieSetupView の責務:
 - 出撃前の設定ページとして、出撃先情報と実績一覧（報酬/称号）を表示する。
+- 報酬タブでは記憶ポイントの範囲内で報酬を選択し、「ゲーム開始」で報酬を付与する。
 - 「ゲーム開始」操作でスタートマスをクリア扱いにし、フィールド画面へ戻す導線を提供する。
 
 責務ではないこと:
-- 実績達成判定や報酬付与などのドメイン処理は扱わない（ストアに委譲する）。
+- 実績達成判定や進行度の集計は扱わない（ストアに委譲する）。
 - フィールド進行の詳細なノード選択は行わない（フィールド画面で操作する）。
 
 主な通信相手とインターフェース:
 - fieldStore: フィールド初期化と現在マスのクリア処理を行う。
-- useAchievementWindow: 実績表示用のデータと獲得処理を受け取る。
+- useAchievementWindow: 実績表示用のデータを受け取る（報酬の適用は achievementStore を利用）。
 - router: フィールド画面への遷移を行う。
 -->
 <script setup lang="ts">
@@ -17,6 +18,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import GameLayout from '@/components/GameLayout.vue'
 import { useFieldStore } from '@/stores/fieldStore'
+import { useAchievementStore } from '@/stores/achievementStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { useAchievementWindow } from '@/composables/useAchievementWindow'
 import type {
   RewardAchievementCardView,
@@ -42,24 +45,25 @@ const targetFieldLabel = computed(() => {
 const masochisticLevel = 1
 
 const {
-  memoryPointSummary: achievementMemoryPointSummary,
   rewardEntries: rewardAchievementEntries,
   titleEntries: titleAchievementEntries,
-  claimAchievement,
 } = useAchievementWindow()
+const achievementStore = useAchievementStore()
+achievementStore.ensureInitialized()
+const playerStore = usePlayerStore()
+playerStore.ensureInitialized()
 
 const activeTab = ref<'reward' | 'title'>('reward')
+const selectedRewardIds = ref<Set<string>>(new Set())
 
 const rewardStatusLabels: Record<RewardAchievementCardView['status'], string> = {
   'not-achieved': '未達成',
   achieved: '達成',
-  owned: '所持中',
 }
 
 const rewardStatusVariants: Record<RewardAchievementCardView['status'], string> = {
   'not-achieved': 'reward-row--not-achieved',
   achieved: 'reward-row--achieved',
-  owned: 'reward-row--owned',
 }
 
 const titleStatusLabels: Record<TitleAchievementRowView['status'], string> = {
@@ -72,14 +76,90 @@ function progressWidth(ratio?: number): string {
   return `${safe * 100}%`
 }
 
-function handleClaimAchievement(entry: RewardAchievementCardView): void {
-  const result = claimAchievement(entry.id)
-  if (!result.success) {
-    window.alert(result.message)
+const selectedRewardEntries = computed(() =>
+  rewardAchievementEntries.value.filter((entry) => selectedRewardIds.value.has(entry.id)),
+)
+const totalMemoryPoints = computed(() => achievementStore.earnedMemoryPointsTotal)
+const usedMemoryPoints = computed(() =>
+  selectedRewardEntries.value.reduce((sum, entry) => sum + entry.memoryPointCost, 0),
+)
+const selectedRelicLimitIncrease = computed(() =>
+  selectedRewardEntries.value.reduce((sum, entry) => sum + Math.max(0, entry.relicLimitIncrease ?? 0), 0),
+)
+// 設計判断: レリック上限の拡張を先に反映し、選択可能なレリック数を事前計算する。
+const effectiveRelicLimit = computed(
+  () => playerStore.relicLimit + selectedRelicLimitIncrease.value,
+)
+const selectedRelicCount = computed(
+  () => selectedRewardEntries.value.filter((entry) => entry.rewardType === 'relic').length,
+)
+const selectedRelicNames = computed(() => {
+  // 重複レリックの選択を防ぐため、選択済みのクラス名を集計する。
+  const names = new Set<string>()
+  selectedRewardEntries.value.forEach((entry) => {
+    if (entry.rewardType === 'relic' && entry.relicClassName) {
+      names.add(entry.relicClassName)
+    }
+  })
+  return names
+})
+const availableRelicSlots = computed(
+  () => Math.max(0, effectiveRelicLimit.value - playerStore.relics.length),
+)
+
+function isRewardSelected(entry: RewardAchievementCardView): boolean {
+  return selectedRewardIds.value.has(entry.id)
+}
+
+function canSelectReward(entry: RewardAchievementCardView): boolean {
+  // 設計判断: 達成済み・記憶ポイント範囲内・レリック枠内だけ選択を許可する。
+  if (isRewardSelected(entry)) {
+    return true
   }
+  if (entry.status !== 'achieved') {
+    return false
+  }
+  const nextCost = usedMemoryPoints.value + entry.memoryPointCost
+  if (nextCost > totalMemoryPoints.value) {
+    return false
+  }
+  if (entry.rewardType === 'relic') {
+    if (!entry.relicClassName) {
+      return false
+    }
+    if (playerStore.relics.includes(entry.relicClassName)) {
+      return false
+    }
+    if (selectedRelicNames.value.has(entry.relicClassName)) {
+      return false
+    }
+    return selectedRelicCount.value + 1 <= availableRelicSlots.value
+  }
+  return true
+}
+
+function toggleRewardSelection(entry: RewardAchievementCardView): void {
+  // 設計判断: 選択の可否は画面側で閉じ、ストアへの不正入力を防ぐ。
+  if (!canSelectReward(entry)) {
+    return
+  }
+  const next = new Set(selectedRewardIds.value)
+  if (next.has(entry.id)) {
+    next.delete(entry.id)
+  } else {
+    next.add(entry.id)
+  }
+  selectedRewardIds.value = next
 }
 
 async function handleStartGame(): Promise<void> {
+  if (selectedRewardIds.value.size > 0) {
+    const result = achievementStore.applyRewardSelection([...selectedRewardIds.value])
+    if (!result.success) {
+      window.alert(result.message)
+      return
+    }
+  }
   // 設計判断: StartStoryView と同じ進行規則に合わせ、現在マスをクリア扱いにしてから戻る。
   fieldStore.markCurrentCleared()
   const nextPath = isFieldId(targetFieldId.value) ? resolveFieldPath(targetFieldId.value) : '/field'
@@ -122,54 +202,57 @@ onMounted(() => {
 
         <section class="achievement-panel">
           <header class="achievement-panel__header">
-            <div>
+            <div class="achievement-panel__title">
               <h2>実績</h2>
               <p>報酬/称号の進行と獲得状況を確認できます。</p>
             </div>
-            <div class="achievement-panel__tabs">
-              <button
-                type="button"
-                class="achievement-panel__tab"
-                :class="{ 'achievement-panel__tab--active': activeTab === 'reward' }"
-                @click="activeTab = 'reward'"
-              >
-                報酬
-              </button>
-              <button
-                type="button"
-                class="achievement-panel__tab"
-                :class="{ 'achievement-panel__tab--active': activeTab === 'title' }"
-                @click="activeTab = 'title'"
-              >
-                称号
-              </button>
+            <div class="achievement-panel__controls">
+              <div v-if="activeTab === 'reward'" class="achievement-summary achievement-summary--header">
+                <span class="achievement-summary__label">記憶ポイント使用量</span>
+                <span class="achievement-summary__value">
+                  {{ usedMemoryPoints }} / {{ totalMemoryPoints }} pt
+                </span>
+              </div>
+              <div v-else class="achievement-summary achievement-summary--header">
+                <span class="achievement-summary__label">獲得記憶ポイント</span>
+                <span class="achievement-summary__value">{{ totalMemoryPoints }} pt</span>
+              </div>
+              <div class="achievement-panel__tabs">
+                <button
+                  type="button"
+                  class="achievement-panel__tab"
+                  :class="{ 'achievement-panel__tab--active': activeTab === 'reward' }"
+                  @click="activeTab = 'reward'"
+                >
+                  報酬
+                </button>
+                <button
+                  type="button"
+                  class="achievement-panel__tab"
+                  :class="{ 'achievement-panel__tab--active': activeTab === 'title' }"
+                  @click="activeTab = 'title'"
+                >
+                  称号
+                </button>
+              </div>
             </div>
           </header>
 
           <div class="achievement-panel__body">
             <div v-if="activeTab === 'reward'" class="achievement-section">
-              <div class="achievement-summary">
-                <span class="achievement-summary__label">記憶ポイント使用量</span>
-                <span class="achievement-summary__value">
-                  {{ achievementMemoryPointSummary.used }} / {{ achievementMemoryPointSummary.total }} pt
-                </span>
-              </div>
               <div class="reward-list">
                 <article
                   v-for="entry in rewardAchievementEntries"
                   :key="entry.id"
                   class="reward-row"
-                  :class="rewardStatusVariants[entry.status]"
+                  :class="[rewardStatusVariants[entry.status], { 'reward-row--selected': isRewardSelected(entry) }]"
                 >
                   <div class="reward-row__status">{{ rewardStatusLabels[entry.status] }}</div>
                   <div class="reward-row__body">
                     <div v-if="entry.status === 'not-achieved'" class="reward-row__condition">
                       {{ entry.description }}
                     </div>
-                    <div v-else>
-                      <div class="reward-row__title">{{ entry.title }}</div>
-                      <div class="reward-row__description">{{ entry.description }}</div>
-                    </div>
+                    <div v-else class="reward-row__title">{{ entry.title }}</div>
                     <div v-if="entry.status === 'not-achieved' && entry.progressLabel" class="reward-row__progress">
                       <div class="reward-row__progress-label">進行: {{ entry.progressLabel }}</div>
                       <div class="reward-row__progress-bar">
@@ -185,24 +268,26 @@ onMounted(() => {
                     <div v-if="entry.status !== 'not-achieved'" class="reward-row__cost">
                       {{ entry.costLabel }}
                     </div>
-                    <button
-                      v-if="entry.canClaim"
-                      type="button"
-                      class="reward-row__action"
-                      @click="handleClaimAchievement(entry)"
+                    <label
+                      v-if="entry.status !== 'not-achieved'"
+                      class="reward-row__select"
+                      :class="{ 'reward-row__select--disabled': !canSelectReward(entry) }"
                     >
-                      獲得
-                    </button>
+                      <input
+                        type="checkbox"
+                        class="reward-row__checkbox"
+                        :checked="isRewardSelected(entry)"
+                        :disabled="!canSelectReward(entry)"
+                        @change="toggleRewardSelection(entry)"
+                      />
+                      <span>{{ isRewardSelected(entry) ? '選択中' : '選択' }}</span>
+                    </label>
                   </div>
                 </article>
               </div>
             </div>
 
             <div v-else class="achievement-section">
-              <div class="achievement-summary">
-                <span class="achievement-summary__label">獲得記憶ポイント</span>
-                <span class="achievement-summary__value">{{ achievementMemoryPointSummary.total }} pt</span>
-              </div>
               <div class="title-list">
                 <article
                   v-for="entry in titleAchievementEntries"
@@ -375,6 +460,12 @@ onMounted(() => {
   gap: 12px;
 }
 
+.achievement-panel__title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .achievement-panel__header h2 {
   margin: 0 0 4px;
   font-size: 18px;
@@ -385,6 +476,13 @@ onMounted(() => {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
+}
+
+.achievement-panel__controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .achievement-panel__tabs {
@@ -435,6 +533,10 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.achievement-summary--header {
+  min-width: 200px;
+}
+
 .achievement-summary__label {
   color: var(--muted);
   letter-spacing: 0.1em;
@@ -473,8 +575,8 @@ onMounted(() => {
   border-color: rgba(255, 193, 120, 0.45);
 }
 
-.reward-row--owned {
-  border-color: rgba(120, 210, 190, 0.45);
+.reward-row--selected {
+  box-shadow: 0 0 0 1px rgba(255, 176, 100, 0.45), 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 .reward-row__status,
@@ -490,7 +592,6 @@ onMounted(() => {
   letter-spacing: 0.06em;
 }
 
-.reward-row__description,
 .title-row__condition {
   font-size: 12px;
   color: var(--muted);
@@ -551,19 +652,41 @@ onMounted(() => {
 }
 
 .reward-row__cost {
-  font-size: 11px;
-  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffe9c8;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 176, 100, 0.55);
+  background: rgba(255, 176, 100, 0.22);
+  letter-spacing: 0.08em;
+  box-shadow: inset 0 0 10px rgba(255, 176, 100, 0.2);
 }
 
-.reward-row__action {
-  border: none;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(255, 176, 100, 0.25);
-  color: #ffe6c4;
+.reward-row__select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   letter-spacing: 0.08em;
+  color: #ffe6c4;
   cursor: pointer;
+}
+
+.reward-row__select--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reward-row__checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent-strong);
+  cursor: pointer;
+}
+
+.reward-row__select--disabled .reward-row__checkbox {
+  cursor: not-allowed;
 }
 
 .title-row__point {
@@ -576,6 +699,19 @@ onMounted(() => {
   .pre-sortie__header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .achievement-panel__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .achievement-panel__controls {
+    align-items: flex-start;
+  }
+
+  .achievement-summary--header {
+    width: 100%;
   }
 
   .reward-row,

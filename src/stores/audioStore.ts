@@ -10,7 +10,8 @@ interface AudioState {
 export const useAudioStore = defineStore('audio', {
   state: (): AudioState => ({
     bgmVolume: 0.1,
-    seVolume: 1.0,
+    // 設計判断: 音量スライダーは 0〜1 の正規化値なので、初期値 50% は 0.5 に合わせる。
+    seVolume: 0.5,
     hub: null,
   }),
   actions: {
