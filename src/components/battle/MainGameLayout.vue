@@ -1,6 +1,6 @@
 <!--
 Componentの責務: Battle画面共通の枠組み（ヘッダー/プレイヤーカード/コンテンツスロット）を提供し、個別のビューはmainスロットに戦闘固有UIのみを描く。
-責務ではないこと: バトル進行ロジックや表示データの計算（プレイヤー状態はstoreから取得し、バトルスナップショットは扱わない）。
+責務ではないこと: バトル進行ロジックや表示データの計算（プレイヤー状態は props が優先、未指定時のみ store から取得する）。
 主な通信相手: 親(BattleViewなど)。ヘッダー右側のボタン群はactionsスロット経由で親から注入し、overlaysスロットでオーバーレイを重ねる。
 -->
 <script setup lang="ts">
@@ -13,6 +13,10 @@ import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { StateSnapshot } from '@/types/battle'
 import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
+import type {
+  FaceExpressionLevel,
+  PlayerDamageExpressionId,
+} from '@/domain/progress/PlayerStateProgressManager'
 
 const props = defineProps<{
   playerCardKey?: string | number
@@ -23,6 +27,8 @@ const props = defineProps<{
   playerStates?: string[]
   playerStateSnapshots?: StateSnapshot[]
   playerStateProgressCount?: number
+  playerDamageExpressions?: PlayerDamageExpressionId[]
+  playerFaceExpressionLevel?: FaceExpressionLevel
   playerPredictedHp?: number | null
   playerSpeechText?: string | null
   playerSpeechKey?: string | number | null
@@ -54,7 +60,13 @@ const resolvedSelectionTheme = computed<EnemySelectionTheme>(() => props.playerS
 const resolvedOutcomes = computed<DamageOutcome[]>(() => props.playerOutcomes ?? [])
 const resolvedStates = computed<string[]>(() => props.playerStates ?? [])
 const resolvedStateSnapshots = computed<StateSnapshot[]>(() => props.playerStateSnapshots ?? [])
-const resolvedStateProgressCount = computed(() => props.playerStateProgressCount ?? 1)
+const resolvedStateProgressCount = computed(() => props.playerStateProgressCount ?? playerStore.stateProgressCount)
+const resolvedDamageExpressions = computed<PlayerDamageExpressionId[]>(() =>
+  props.playerDamageExpressions ?? playerStore.appliedDamageExpressions.map((entry) => entry.id),
+)
+const resolvedFaceExpressionLevel = computed<FaceExpressionLevel>(() =>
+  props.playerFaceExpressionLevel ?? playerStore.faceExpressionLevel,
+)
 
 function getPlayerCardRect(): DOMRect | null {
   const el = playerCardRef.value?.$el as HTMLElement | undefined
@@ -94,6 +106,8 @@ defineExpose({ getPlayerCardRect })
                 :states="resolvedStates"
                 :state-snapshots="resolvedStateSnapshots"
                 :state-progress-count="resolvedStateProgressCount"
+                :damage-expressions="resolvedDamageExpressions"
+                :face-expression-level="resolvedFaceExpressionLevel"
                 :predicted-hp="playerPredictedHp ?? undefined"
                 :speech-text="playerSpeechText ?? null"
                 :speech-key="playerSpeechKey ?? null"

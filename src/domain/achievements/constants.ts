@@ -61,15 +61,6 @@ export const DAMAGE_40_TARGET = 40
 export const DAMAGE_50_ACHIEVEMENT_ID = 'damage-50'
 export const DAMAGE_50_TARGET = 50
 
-export const STATE_PROGRESS_2_ACHIEVEMENT_ID = 'state-progress-2'
-export const STATE_PROGRESS_2_TARGET = 2
-export const STATE_PROGRESS_5_ACHIEVEMENT_ID = 'state-progress-5'
-export const STATE_PROGRESS_5_TARGET = 5
-export const STATE_PROGRESS_8_ACHIEVEMENT_ID = 'state-progress-8'
-export const STATE_PROGRESS_8_TARGET = 8
-export const STATE_PROGRESS_10_ACHIEVEMENT_ID = 'state-progress-10'
-export const STATE_PROGRESS_10_TARGET = 10
-
 export const KISS_RECEIVED_ACHIEVEMENT_ID = 'first-kiss'
 export const KISS_RECEIVED_TARGET = 1
 export const KISS_USED_ACHIEVEMENT_ID = 'kiss-used-3'

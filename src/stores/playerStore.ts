@@ -9,6 +9,7 @@ import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
 import { createCardFromBlueprint, buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
 import { Card } from '@/domain/entities/Card'
 import { deleteSlot, listSlots, loadSlot, saveSlot, type PlayerSaveData, type SaveSlotSummary } from '@/utils/saveStorage'
+import type { FaceExpressionLevel, PlayerDamageExpressionEntry } from '@/domain/progress/PlayerStateProgressManager'
 
 // store外からデッキ型を参照できるように明示的に再エクスポートする
 export type { CardId, CardBlueprint } from '@/domain/library/Library'
@@ -29,8 +30,14 @@ export const usePlayerStore = defineStore('player', {
     deck: [] as CardBlueprint[],
     relics: [] as string[],
     relicLimit: DEFAULT_RELIC_LIMIT,
-    // 立ち絵の状態進行度。戦闘間で持ち越す。
+    // 立ち絵の状態進行度（前半パート: 1〜6）。戦闘間で持ち越す。
     stateProgressCount: 1,
+    // 後半パートのダメージ表現（表示用にIDと由来を保持する）。
+    appliedDamageExpressions: [] as PlayerDamageExpressionEntry[],
+    // 表情差分判定用の総ダメージ量。
+    totalDamageAmount: 0,
+    // 表情差分の段階（0/2/3）。
+    faceExpressionLevel: 0 as FaceExpressionLevel,
     initialized: false,
     initialDeckPreset: 'holy' as DeckPreset,
   }),
@@ -61,7 +68,7 @@ export const usePlayerStore = defineStore('player', {
       // レリック数達成系の進行度を更新する。
       useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
       // 設計上の決定: 新規ラン開始時に状態進行度は初期値へ戻す。
-      this.stateProgressCount = 1
+      this.resetStateProgress()
       this.initialDeckPreset = preset
       this.initialized = true
     },
@@ -78,7 +85,7 @@ export const usePlayerStore = defineStore('player', {
       this.relics = [...INITIAL_RELICS_BY_PRESET[preset]]
       useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
       // つづきから開始時は進行度を初期値へ戻す（ラン内の戦闘進行とは区別する）。
-      this.stateProgressCount = 1
+      this.resetStateProgress()
       this.initialized = true
     },
     setDeckPreset(preset: DeckPreset): void {
@@ -213,7 +220,6 @@ export const usePlayerStore = defineStore('player', {
         deck: this.deck.map((b) => ({ ...b })),
         relics: [...this.relics],
         relicLimit: this.relicLimit,
-        stateProgressCount: this.stateProgressCount,
       }
       return saveSlot(slotId, payload)
     },
@@ -233,7 +239,8 @@ export const usePlayerStore = defineStore('player', {
       this.deck = data.deck.map((b) => ({ ...b }))
       this.relics = [...data.relics]
       this.relicLimit = data.relicLimit
-      this.stateProgressCount = data.stateProgressCount
+      // 設計上の決定: 状態進行はセーブ対象外のため初期値へ戻す。
+      this.resetStateProgress()
       useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
       this.initialized = true
       return { success: true, message: 'セーブデータを読み込みました' }
@@ -243,6 +250,13 @@ export const usePlayerStore = defineStore('player', {
     },
     deleteSaveSlot(slotId: string): void {
       deleteSlot(slotId)
+    },
+    resetStateProgress(): void {
+      const defaults = createDefaultStateProgress()
+      this.stateProgressCount = defaults.stateProgressCount
+      this.appliedDamageExpressions = defaults.appliedDamageExpressions
+      this.totalDamageAmount = defaults.totalDamageAmount
+      this.faceExpressionLevel = defaults.faceExpressionLevel
     },
   },
 })
@@ -258,4 +272,18 @@ function shuffle<T>(items: T[]): T[] {
     ;[copied[i], copied[j]] = [copied[j]!, copied[i]!]
   }
   return copied
+}
+
+function createDefaultStateProgress(): {
+  stateProgressCount: number
+  appliedDamageExpressions: PlayerDamageExpressionEntry[]
+  totalDamageAmount: number
+  faceExpressionLevel: FaceExpressionLevel
+} {
+  return {
+    stateProgressCount: 1,
+    appliedDamageExpressions: [],
+    totalDamageAmount: 0,
+    faceExpressionLevel: 0,
+  }
 }

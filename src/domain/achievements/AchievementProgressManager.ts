@@ -33,7 +33,6 @@ type HistoryEntry =
   | { type: 'damage-taken'; prevValue: number }
   | { type: 'max-damage'; prevValue: number }
   | { type: 'max-multi-hit'; prevValue: number }
-  | { type: 'state-progress'; prevValue: number }
   | { type: 'heaven-chain-used'; prevValue: number }
   | { type: 'coward-flee'; prevValue: number }
   | { type: 'coward-defeat'; prevValue: number }
@@ -132,16 +131,6 @@ export class AchievementProgressManager {
     }
   }
 
-  /** 状態進行度（立ち絵段階）の更新を記録する。 */
-  recordPlayerStateProgressCount(count: number): void {
-    const next = Math.min(10, Math.max(1, Math.floor(count)))
-    if (next <= this.progress.stateProgressCount) {
-      return
-    }
-    this.history.push({ type: 'state-progress', prevValue: this.progress.stateProgressCount })
-    this.progress = { ...this.progress, stateProgressCount: next }
-  }
-
   recordEnemyDefeated(enemy: Enemy): void {
     // 設計上の決定: 臆病判定は CowardTrait の有無で行い、敵の種類は TentacleEnemy で厳密判定する。
     const isCoward = enemy.getStates().some((state) => state instanceof CowardTrait)
@@ -208,8 +197,6 @@ export class AchievementProgressManager {
       this.progress = { ...this.progress, maxDamageTaken: last.prevValue }
     } else if (last.type === 'max-multi-hit') {
       this.progress = { ...this.progress, maxMultiHitReceived: last.prevValue }
-    } else if (last.type === 'state-progress') {
-      this.progress = { ...this.progress, stateProgressCount: last.prevValue }
     } else if (last.type === 'heaven-chain-used') {
       this.progress = { ...this.progress, heavenChainUsedCount: last.prevValue }
     } else if (last.type === 'coward-flee') {

@@ -88,6 +88,8 @@ async function handleProceed(): Promise<void> {
               :states="states"
               :state-snapshots="[]"
               :state-progress-count="playerStore.stateProgressCount"
+              :damage-expressions="playerStore.appliedDamageExpressions.map((entry) => entry.id)"
+              :face-expression-level="playerStore.faceExpressionLevel"
               :show-hp-gauge="false"
             />
           </aside>

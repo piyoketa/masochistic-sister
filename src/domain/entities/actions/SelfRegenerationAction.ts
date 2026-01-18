@@ -50,7 +50,11 @@ export class SelfRegenerationAction extends Skill {
       context.metadata = { ...(context.metadata ?? {}), skipped: true, skipReason: 'hp-full' }
       return
     }
-    // Player/Enemy ともに heal メソッドを持つので直接呼び出し
+    // Player/Enemy ともに heal を持つが、状態進行通知はプレイヤーのみ行う。
+    if (context.battle && context.battle.player === source) {
+      ;(source as Player).heal(HEAL_AMOUNT, { battle: context.battle })
+      return
+    }
     ;(source as Enemy | Player).heal(HEAL_AMOUNT)
   }
 }

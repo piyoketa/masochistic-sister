@@ -488,7 +488,7 @@ export abstract class Attack extends Action {
 
     const source = params.source
     if (this.isPlayer(source)) {
-      source.heal(amount)
+      source.heal(amount, { battle: params.battle })
       return
     }
 

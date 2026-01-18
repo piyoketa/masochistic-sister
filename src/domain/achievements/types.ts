@@ -16,8 +16,6 @@ export type AchievementProgress = {
   maxDamageTaken: number
   /** 連続攻撃カテゴリで受けた最大ヒット数（元の baseCount を保持） */
   maxMultiHitReceived: number
-  /** 立ち絵の状態進行度（1〜10）。 */
-  stateProgressCount: number
   /** 所持したレリック数の最高値（上限解放実績の達成判定に使う） */
   maxRelicOwnedCount: number
   /** 天の鎖を使用した回数（カードIDで判定） */
@@ -51,7 +49,6 @@ export function createDefaultAchievementProgress(): AchievementProgress {
     damageTakenCount: 0,
     maxDamageTaken: 0,
     maxMultiHitReceived: 0,
-    stateProgressCount: 1,
     maxRelicOwnedCount: 0,
     heavenChainUsedCount: 0,
     cowardFleeCount: 0,

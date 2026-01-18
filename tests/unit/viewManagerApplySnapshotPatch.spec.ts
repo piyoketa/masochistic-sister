@@ -23,6 +23,9 @@ function createBaseSnapshot(): BattleSnapshot {
       currentMana: 3,
       maxMana: 5,
       relics: [],
+      stateProgressCount: 1,
+      appliedDamageExpressions: [],
+      faceExpressionLevel: 0,
     },
     enemies: [
       {

@@ -3,6 +3,7 @@ PlayerImageComponent の責務:
 - プレイヤーの現在HPに応じた立ち絵画像を表示し、TargetEnemyOperation 中は背景色をテーマ色（Arcane/Sacred/Default）で強調する。
 - ImageHub が事前にプリロードした画像を利用し、HP変化・表情差分・状態差分を重ね描画する。
 - プレイヤーの状態（腐食/粘液など）や表情差分を指定数だけ重ね描画する。
+- 後半パートのダメージ表現と表情差分を、立ち絵の上に重ねて描画する。
 - 環境変数によって、HP依存の立ち絵切替と「状態進行カウント」依存の切替を切り替える。
 
 責務ではないこと:
@@ -11,13 +12,19 @@ PlayerImageComponent の責務:
 
 主な通信相手とインターフェース:
 - BattleView / PlayerCardComponent: props で HP・選択状態・テーマ色・プレイヤー状態を受け取り、背景色と差分表示を同期する。ダメージ演出などは slot を通じて子要素として受ける。
-- PlayerCardComponent: 新ロジック時は stateProgressCount を受け取り、1〜10の画像へ切替する。
+- PlayerCardComponent: 新ロジック時は stateProgressCount を受け取り、対応する画像へ切替する。
+- PlayerCardComponent: damageExpressions / faceExpressionLevel を受け取り、後半パートの表現を重ねる。
 -->
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
 import { useImageHub } from '@/composables/imageHub'
+import type { FaceExpressionLevel, PlayerDamageExpressionId } from '@/domain/progress/PlayerStateProgressManager'
+import {
+  PLAYER_DAMAGE_EXPRESSION_IDS,
+  PLAYER_FACE_EXPRESSION_IDS,
+} from '@/domain/progress/PlayerStateProgressManager'
 
 const props = defineProps<{
   currentHp: number
@@ -27,6 +34,8 @@ const props = defineProps<{
   faceDiffOverride?: 'damaged-arcane' | 'damaged-normal' | null
   states?: string[]
   stateProgressCount?: number
+  damageExpressions?: PlayerDamageExpressionId[]
+  faceExpressionLevel?: FaceExpressionLevel
 }>()
 
 const newImageLogicEnabled =
@@ -47,6 +56,11 @@ const FACE_DIFF_SOURCES: Partial<Record<EnemySelectionTheme | 'damaged-arcane' |
 const STATUS_DIFF_SOURCES: Partial<Record<string, string>> = {
   // 'state-corrosion': buildStatusDiffSrc('CorrosionState.png'),
   'state-sticky': buildStatusDiffSrc('StickyState.png'),
+}
+const DAMAGE_EXPRESSION_SOURCES = PLAYER_DAMAGE_EXPRESSION_IDS.map((id) => buildDamageExpressionSrc(id))
+const FACE_EXPRESSION_SOURCES: Partial<Record<FaceExpressionLevel, string>> = {
+  2: buildDamageExpressionSrc(PLAYER_FACE_EXPRESSION_IDS[0]),
+  3: buildDamageExpressionSrc(PLAYER_FACE_EXPRESSION_IDS[1]),
 }
 const debugEnabled =
   (typeof import.meta !== 'undefined' && import.meta.env?.DEV === true) ||
@@ -117,6 +131,29 @@ const statusDiffElements = computed(() => {
   return collected
 })
 
+const damageOverlayElements = computed(() => {
+  const ids = props.damageExpressions ?? []
+  const collected: HTMLImageElement[] = []
+  for (const id of ids) {
+    const src = buildDamageExpressionSrc(id)
+    const resolved = imageHub.getElement(src)
+    if (resolved) {
+      collected.push(resolved)
+    }
+  }
+  return collected
+})
+
+const faceExpressionElement = computed(() => {
+  // HP0 のときは表情差分を表示しない。
+  if (props.currentHp <= 0) {
+    return null
+  }
+  const level = props.faceExpressionLevel ?? 0
+  const src = FACE_EXPRESSION_SOURCES[level]
+  return src ? imageHub.getElement(src) ?? null : null
+})
+
 const styleVars = computed(() => {
   const theme = props.selectionTheme ?? 'default'
   const palette = SELECTION_THEME_COLORS[theme] ?? SELECTION_THEME_COLORS.default
@@ -132,7 +169,9 @@ onMounted(() => {
   )
   const faceDiffs = Object.values(FACE_DIFF_SOURCES).filter(Boolean) as string[]
   const statusDiffs = Object.values(STATUS_DIFF_SOURCES).filter(Boolean) as string[]
-  void imageHub.preloadAll([...frameSrcs, ...faceDiffs, ...statusDiffs]).catch((error) => {
+  const faceExpressionDiffs = Object.values(FACE_EXPRESSION_SOURCES).filter(Boolean) as string[]
+  const damageDiffs = [...DAMAGE_EXPRESSION_SOURCES, ...faceExpressionDiffs]
+  void imageHub.preloadAll([...frameSrcs, ...faceDiffs, ...statusDiffs, ...damageDiffs]).catch((error) => {
     if (debugEnabled) {
       // eslint-disable-next-line no-console
       console.warn('[PlayerImageComponent] 画像プリロードに失敗しました', error)
@@ -148,6 +187,8 @@ watch(
     baseImage.value?.src ?? '',
     faceDiffElement.value?.src ?? '',
     statusDiffElements.value.map((img) => img.src).join('|'),
+    damageOverlayElements.value.map((img) => img.src).join('|'),
+    faceExpressionElement.value?.src ?? '',
   ],
   () => requestAnimationFrame(draw),
   { immediate: true },
@@ -187,6 +228,10 @@ function buildStatusDiffSrc(fileName: string): string {
   return `/assets/players/diffs/${fileName}`
 }
 
+function buildDamageExpressionSrc(fileName: string): string {
+  return `/assets/players/damages/${fileName}.png`
+}
+
 function resolveStateProgressValue(raw: number | undefined): number {
   // 設計判断: 未指定時は初期値1を使い、1〜10の範囲に収める。
   const base = Number.isFinite(raw) ? Math.floor(raw ?? 1) : 1
@@ -205,6 +250,11 @@ function draw(): void {
     layers.push(baseImage.value)
   }
   layers.push(...statusDiffElements.value)
+  // 設計上の決定: ダメージ表現は FACE_DIFF_SOURCES より下に重ねる。
+  layers.push(...damageOverlayElements.value)
+  if (faceExpressionElement.value) {
+    layers.push(faceExpressionElement.value)
+  }
   if (faceDiffElement.value) {
     layers.push(faceDiffElement.value)
   }

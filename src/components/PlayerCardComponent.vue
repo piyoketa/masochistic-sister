@@ -17,7 +17,9 @@ PlayerCardComponent の責務:
   - selectionTheme: 表情差分選択用
   - states?: string[] プレイヤーに付与されている状態のID（差分表示用）
   - stateSnapshots?: StateSnapshot[] HPバー直下に EnemyStateChip 形式で表示するステート一覧
-  - stateProgressCount?: number 立ち絵の状態進行度（1〜10想定）
+  - stateProgressCount?: number 立ち絵の状態進行度（前半パート: 1〜6想定）
+  - damageExpressions?: string[] 後半パートのダメージ表現ID一覧
+  - faceExpressionLevel?: number 表情差分の段階（0/2/3）
   - speechText?: string | null 頭上に表示する発話テキスト
   - speechKey?: number | string | null 同じ文言でも再生できるようにするためのキー
   - showHpGauge?: HPゲージ表示を切り替えるフラグ（デフォルト true）
@@ -45,6 +47,8 @@ const props = withDefaults(
     states?: string[]
     stateSnapshots?: StateSnapshot[]
     stateProgressCount?: number
+    damageExpressions?: string[]
+    faceExpressionLevel?: number
     predictedHp?: number | null
     speechText?: string | null
     speechKey?: number | string | null
@@ -89,6 +93,8 @@ const speechDisplayText = computed(() => (props.speechText ?? '').trim())
 // 設計判断: 同一文言でも再生できるよう、外部キーがあれば優先して描画キーに使う。
 const speechRenderKey = computed(() => props.speechKey ?? speechDisplayText.value)
 const resolvedStateProgressCount = computed(() => props.stateProgressCount ?? 1)
+const resolvedDamageExpressions = computed(() => props.damageExpressions ?? [])
+const resolvedFaceExpressionLevel = computed(() => props.faceExpressionLevel ?? 0)
 
 watch(
   () => props.preHp,
@@ -187,6 +193,8 @@ onMounted(() => {
         :states="states"
         :face-diff-override="faceDiffOverride"
         :state-progress-count="resolvedStateProgressCount"
+        :damage-expressions="resolvedDamageExpressions"
+        :face-expression-level="resolvedFaceExpressionLevel"
       >
       </PlayerImageComponent>
     </div>

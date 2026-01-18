@@ -487,6 +487,8 @@ const playerStates = computed(() =>
   (snapshot.value?.player.states ?? []).map((state) => state.id),
 )
 const playerStateProgressCount = computed(() => snapshot.value?.player.stateProgressCount ?? 1)
+const playerDamageExpressions = computed(() => snapshot.value?.player.appliedDamageExpressions ?? [])
+const playerFaceExpressionLevel = computed(() => snapshot.value?.player.faceExpressionLevel ?? 0)
 const playerStateSnapshots = computed(() => {
   const handStateIds = new Set<string>()
   const hand = snapshot.value?.hand ?? []
@@ -901,8 +903,6 @@ function syncAchievementProgressAfterBattle(battle: Battle | null): void {
     achievementProgressStore.updateFromManager(battle.achievementProgressManager)
     achievementStore.applyProgress(achievementProgressStore.progress)
   }
-  // 戦闘終了時点の状態進行度をストアへ反映し、次の戦闘へ持ち越す。
-  playerStore.stateProgressCount = battle.playerStateProgressManager.exportProgressCount()
 }
 
 function handleRelicHover(event: MouseEvent | FocusEvent, relic: RelicDisplayEntry): void {
@@ -1229,7 +1229,7 @@ function createBattleFromPlayerStore(
     // ラン進行度をBattleへ注入し、バトル内で rememberState などから実績をカウントできるようにする。
     achievementProgressManager: achievementProgressStore.buildManager(),
     // 状態進行度はPlayerStoreから引き継ぎ、バトル中の進行計算に利用する。
-    playerStateProgressManager: new PlayerStateProgressManager(playerStore.stateProgressCount),
+    playerStateProgressManager: new PlayerStateProgressManager({ store: playerStore }),
   })
 }
 
@@ -1262,6 +1262,8 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
     :player-states="playerStates"
     :player-state-snapshots="playerStateSnapshots"
     :player-state-progress-count="playerStateProgressCount"
+    :player-damage-expressions="playerDamageExpressions"
+    :player-face-expression-level="playerFaceExpressionLevel"
     :player-predicted-hp="projectedPlayerHp ?? undefined"
     :player-speech-text="playerSpeechText"
     :player-speech-key="playerSpeechKey"

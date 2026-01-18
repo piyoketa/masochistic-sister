@@ -17,6 +17,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { useAudioStore } from '@/stores/audioStore'
 import { buildCardInfosFromBlueprints, type CardBlueprint } from '@/domain/library/Library'
+import { PlayerStateProgressManager } from '@/domain/progress/PlayerStateProgressManager'
 
 type RewardViewProps = {
   fieldId?: string
@@ -105,6 +106,8 @@ async function handleClaimHp(): Promise<void> {
   claimError.value = null
   try {
     playerStore.healHp(rewardSummary.value.hpHeal)
+    // 報酬回復は前半パートで -1、後半パートではダメージ表現の解除対象にする。
+    new PlayerStateProgressManager({ store: playerStore }).recordRewardHeal(rewardSummary.value.hpHeal)
     audioStore.playSe('/sounds/fields/gain_hp.mp3')
     hpClaimed.value = true
   } catch (error) {

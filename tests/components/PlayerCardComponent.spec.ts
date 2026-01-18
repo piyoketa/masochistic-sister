@@ -11,8 +11,17 @@ const playerImageStub = defineComponent({
       type: Number,
       default: 1,
     },
+    damageExpressions: {
+      type: Array,
+      default: () => [],
+    },
+    faceExpressionLevel: {
+      type: Number,
+      default: 0,
+    },
   },
-  template: '<div class="player-image-stub" :data-progress="stateProgressCount"></div>',
+  template:
+    '<div class="player-image-stub" :data-progress="stateProgressCount" :data-damage="damageExpressions.join(\",\")" :data-face="faceExpressionLevel"></div>',
 })
 
 const damageEffectsStub = defineComponent({
@@ -41,12 +50,15 @@ const hpGaugeStub = defineComponent({
   template: '<div class="hp-gauge-stub"></div>',
 })
 
-function createWrapper(outcomes: DamageOutcome[]) {
+function createWrapper(outcomes: DamageOutcome[], overrides?: { stateProgressCount?: number; damageExpressions?: string[]; faceExpressionLevel?: number }) {
   return mount(PlayerCardComponent, {
     props: {
       preHp: { current: 30, max: 30 },
       postHp: { current: 30, max: 30 },
       outcomes,
+      stateProgressCount: overrides?.stateProgressCount,
+      damageExpressions: overrides?.damageExpressions,
+      faceExpressionLevel: overrides?.faceExpressionLevel,
       show: true,
     },
     global: {
@@ -64,31 +76,18 @@ function readProgress(wrapper: ReturnType<typeof createWrapper>): number {
   return wrapper.getComponent({ name: 'PlayerImageComponent' }).props('stateProgressCount') as number
 }
 
-describe('PlayerCardComponent の状態進行イベント', () => {
-  it('合計19ダメージでは状態進行が進まない', async () => {
-    // 初期状態の進行度を観測するために、最小限のpropsでマウントする。
-    const wrapper = createWrapper([])
-    expect(readProgress(wrapper)).toBe(1)
-
-    // 20未満のダメージでは進行度が変わらないことを確認する。
-    await wrapper.setProps({
-      outcomes: [{ damage: 19, effectType: 'normal' }],
+describe('PlayerCardComponent の表示パラメータ', () => {
+  it('状態進行・ダメージ表現・表情差分を PlayerImageComponent に渡す', async () => {
+    const wrapper = createWrapper([], {
+      stateProgressCount: 4,
+      damageExpressions: ['脚の傷_小'],
+      faceExpressionLevel: 2,
     })
+
     await nextTick()
 
-    expect(readProgress(wrapper)).toBe(1)
-  })
-
-  it('合計20ダメージで状態進行が進む', async () => {
-    // 20以上のダメージで、進行度が1つ進むことを確認する。
-    const wrapper = createWrapper([])
-    expect(readProgress(wrapper)).toBe(1)
-
-    await wrapper.setProps({
-      outcomes: [{ damage: 20, effectType: 'normal' }],
-    })
-    await nextTick()
-
-    expect(readProgress(wrapper)).toBe(2)
+    expect(readProgress(wrapper)).toBe(4)
+    expect(wrapper.getComponent({ name: 'PlayerImageComponent' }).props('damageExpressions')).toEqual(['脚の傷_小'])
+    expect(wrapper.getComponent({ name: 'PlayerImageComponent' }).props('faceExpressionLevel')).toBe(2)
   })
 })

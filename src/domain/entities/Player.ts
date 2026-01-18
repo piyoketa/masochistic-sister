@@ -91,8 +91,16 @@ export class Player {
     // 特殊ダメージでは現状演出なし。必要に応じてbattle.recordDamageAnimationを追加する。
   }
 
-  heal(amount: number): void {
-    this.currentHpValue = Math.min(this.maxHpValue, this.currentHpValue + Math.max(0, Math.floor(amount)))
+  heal(amount: number, options?: { battle?: Battle }): void {
+    const heal = Math.max(0, Math.floor(amount))
+    if (heal <= 0) {
+      return
+    }
+    this.currentHpValue = Math.min(this.maxHpValue, this.currentHpValue + heal)
+    if (options?.battle) {
+      // 状態進行: 回復イベントを Battle 側へ通知する。
+      options.battle.recordPlayerStateProgressHeal(heal)
+    }
   }
 
   spendMana(cost: number, options?: { battle?: Battle }): void {

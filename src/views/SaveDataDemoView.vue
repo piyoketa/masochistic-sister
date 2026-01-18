@@ -54,27 +54,6 @@ const savedFieldStates = computed(() =>
   })),
 )
 
-const progressSummary = computed(() => ({
-  corrosionAccumulated: achievementProgressStore.progress.corrosionAccumulated,
-  stickyAccumulated: achievementProgressStore.progress.stickyAccumulated,
-  damageTakenCount: achievementProgressStore.progress.damageTakenCount,
-  maxDamageTaken: achievementProgressStore.progress.maxDamageTaken,
-  maxMultiHitReceived: achievementProgressStore.progress.maxMultiHitReceived,
-  stateProgressCount: achievementProgressStore.progress.stateProgressCount,
-  maxRelicOwnedCount: achievementProgressStore.progress.maxRelicOwnedCount,
-  heavenChainUsedCount: achievementProgressStore.progress.heavenChainUsedCount,
-  cowardFleeCount: achievementProgressStore.progress.cowardFleeCount,
-  cowardDefeatCount: achievementProgressStore.progress.cowardDefeatCount,
-  tentacleDefeatCount: achievementProgressStore.progress.tentacleDefeatCount,
-  resultHpAtMost30Count: achievementProgressStore.progress.resultHpAtMost30Count,
-  kissReceivedCount: achievementProgressStore.progress.kissReceivedCount,
-  kissUsedCount: achievementProgressStore.progress.kissUsedCount,
-  masochisticAuraUsedCount: achievementProgressStore.progress.masochisticAuraUsedCount,
-  defeatCount: achievementProgressStore.progress.defeatCount,
-  orcHeroDefeated: achievementProgressStore.progress.orcHeroDefeated,
-  beamCannonDefeated: achievementProgressStore.progress.beamCannonDefeated,
-}))
-
 function refreshSavedData(): void {
   savedData.value = loadRunSaveData()
 }

@@ -39,6 +39,9 @@ function createSnapshot(withEnemy = false, enemyLevel?: number): BattleSnapshot 
       currentMana: 3,
       maxMana: 3,
       relics: [],
+      stateProgressCount: 1,
+      appliedDamageExpressions: [],
+      faceExpressionLevel: 0,
     },
     enemies: [
       {

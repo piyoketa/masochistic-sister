@@ -21,6 +21,7 @@ import { useAudioStore } from '@/stores/audioStore'
 import { createCardFromBlueprint, listCardIdOptions } from '@/domain/library/Library'
 import type { SaveSlotSummary } from '@/utils/saveStorage'
 import { useAchievementStore } from '@/stores/achievementStore'
+import { PlayerStateProgressManager } from '@/domain/progress/PlayerStateProgressManager'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -178,6 +179,8 @@ function buyHeal(): void {
   }
   playerStore.spendGold(price)
   playerStore.healHp(shopState.value.heal.amount)
+  // ショップ回復は報酬ではないため、前半パートの -1 は行わない。
+  new PlayerStateProgressManager({ store: playerStore }).recordHeal(shopState.value.heal.amount)
   audioStore.playSe('/sounds/fields/gain_hp.mp3')
   syncStatusEditors()
   shopManager.markHealPurchased()

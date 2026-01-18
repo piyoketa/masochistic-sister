@@ -10,7 +10,7 @@ PlayerSpeechDemoView の責務:
 主な通信相手とインターフェース:
 - PlayerCardComponent: `speechText` と `speechKey` を props で渡し、頭上テキストの表示を制御する。
   受け渡すのは表示文字列(string)と、同一文言の再生用のキー(number)のみで、BattleSnapshot 等の状態更新は扱わない。
-- PlayerStore: `stateProgressCount` を参照し、戦闘外でも現在の状態進行度を表示に反映する。
+- PlayerStore: `stateProgressCount` / `appliedDamageExpressions` / `faceExpressionLevel` を参照し、戦闘外でも現在の状態進行を表示に反映する。
 -->
 <script setup lang="ts">
 import { onBeforeUnmount, ref, computed } from 'vue'
@@ -150,6 +150,8 @@ onBeforeUnmount(() => {
             :speech-text="activeSpeechText"
             :speech-key="activeSpeechKey"
             :state-progress-count="playerStore.stateProgressCount"
+            :damage-expressions="playerStore.appliedDamageExpressions.map((entry) => entry.id)"
+            :face-expression-level="playerStore.faceExpressionLevel"
             :show-hp-gauge="true"
             :show="true"
           />
