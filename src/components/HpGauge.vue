@@ -68,7 +68,8 @@ const showPredictedText = computed(
 <style scoped>
 .hp-gauge {
   position: relative;
-  width: 100%;
+  width: 90%;
+  margin: auto;
   height: 28px;
   font-weight: 600;
   letter-spacing: 0.04em;
