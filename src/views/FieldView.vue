@@ -6,10 +6,10 @@ import { useFieldStore } from '@/stores/fieldStore'
 import type { FieldNode } from '@/fields/domains/FieldNode'
 import PlayerStatusHeader from '@/components/battle/PlayerStatusHeader.vue'
 import AchievementWindow from '@/components/AchievementWindow.vue'
-import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
+import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
 import { useAchievementWindow } from '@/composables/useAchievementWindow'
 import { useAudioStore } from '@/stores/audioStore'
-import { usePileOverlayStore } from '@/stores/pileOverlayStore'
+import { usePlayerDeckOverlayStore } from '@/stores/playerDeckOverlayStore'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import type { CardInfo } from '@/types/battle'
@@ -27,7 +27,7 @@ const props = defineProps<FieldViewProps>()
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
 const fieldStore = useFieldStore()
-const pileOverlayStore = usePileOverlayStore()
+const playerDeckOverlayStore = usePlayerDeckOverlayStore()
 // 実績ウィンドウ用の表示データと獲得処理を composable に集約する。
 const {
   memoryPointSummary: achievementMemoryPointSummary,
@@ -45,7 +45,7 @@ const debugMode = ref(false)
 const debugMenuOpen = ref(false)
 const achievementWindowOpen = ref(false)
 
-const { show: showDescription, hide: hideDescription } = useDescriptionOverlay()
+const { show: showRelicOverlay, hide: hideRelicOverlay } = useRelicCardOverlay()
 const audioStore = useAudioStore()
 const deckCardInfos = computed<CardInfo[]>(() => {
   const repository = new CardRepository()
@@ -86,8 +86,8 @@ const ENEMY_EFFECTIVE_HINTS: Record<string, string> = {
   'orc-hero-elite': 'なし',
 }
 
-function showRelicTooltip(relic: RelicDisplayEntry, event: MouseEvent | FocusEvent): void {
-  // レリックツールチップは名称と説明をまとめて表示し、アイコン単体でも何の効果か判断できるようにする
+function handleRelicHover(relic: RelicDisplayEntry, event: MouseEvent | FocusEvent): void {
+  // レリック詳細オーバーレイは名称/説明を一体で見せ、一覧からでも効果を判断できるようにする。
   let x = 0
   let y = 0
   if ('clientX' in event) {
@@ -98,11 +98,7 @@ function showRelicTooltip(relic: RelicDisplayEntry, event: MouseEvent | FocusEve
     x = rect.left + rect.width / 2
     y = rect.top
   }
-  showDescription(
-    `${relic.name}\n${relic.description}`,
-    { x, y },
-    { emphasizeFirstLine: true },
-  )
+  showRelicOverlay(relic, { x, y })
 }
 
 function nodeLabel(node: FieldNode): string {
@@ -157,7 +153,8 @@ function isReachable(levelIndex: number, nodeIndex: number): boolean {
 }
 
 function openDeckOverlay(): void {
-  pileOverlayStore.openDeck(deckCardInfos.value, [])
+  // フィールド系のデッキ確認は専用オーバーレイで表示する。
+  playerDeckOverlayStore.open(deckCardInfos.value)
 }
 
 function handleClaimAchievement(payload: { id: string }): void {
@@ -245,9 +242,8 @@ onMounted(() => {
     <PlayerStatusHeader
       class="field-header"
       :enable-glow="false"
-      @relic-hover="(relic, e) => showRelicTooltip(relic, e)"
-      @relic-leave="hideDescription"
-      @relic-click="() => undefined"
+      @relic-hover="(relic, e) => handleRelicHover(relic, e)"
+      @relic-leave="hideRelicOverlay"
       @deck-click="openDeckOverlay"
     >
       <template #actions>

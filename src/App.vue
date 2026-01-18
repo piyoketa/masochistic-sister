@@ -8,6 +8,7 @@ import DescriptionOverlayLayer from '@/components/DescriptionOverlayLayer.vue'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
 import ActionCardOverlayLayer from '@/components/ActionCardOverlayLayer.vue'
 import RelicCardOverlayLayer from '@/components/RelicCardOverlayLayer.vue'
+import PlayerDeckOverlay from '@/components/PlayerDeckOverlay.vue'
 import TextWindowOverlayLayer from '@/components/TextWindowOverlayLayer.vue'
 import { useAudioStore } from '@/stores/audioStore'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
@@ -92,6 +93,7 @@ function toggleVolumePanel(): void {
     <DescriptionOverlayLayer />
     <ActionCardOverlayLayer />
     <RelicCardOverlayLayer />
+    <PlayerDeckOverlay />
     <TextWindowOverlayLayer v-if="hasScenario" />
     <PileOverlay
       :active-pile="pileOverlayStore.activePile"

@@ -11,14 +11,19 @@ import PlayerStatusHeader from '@/components/battle/PlayerStatusHeader.vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import type { DamageOutcome } from '@/domain/entities/Damages'
-import type { StateSnapshot } from '@/types/battle'
+import type { CardInfo, StateSnapshot } from '@/types/battle'
 import type { RelicDisplayEntry } from '@/view/relicDisplayMapper'
 import type {
   FaceExpressionLevel,
   PlayerDamageExpressionId,
 } from '@/domain/progress/PlayerStateProgressManager'
+import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
+import { usePlayerDeckOverlayStore } from '@/stores/playerDeckOverlayStore'
+import { CardRepository } from '@/domain/repository/CardRepository'
+import { createCardFromBlueprint } from '@/domain/library/Library'
+import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   playerCardKey?: string | number
   playerPreHp?: { current: number; max: number }
   playerPostHp?: { current: number; max: number }
@@ -34,7 +39,12 @@ const props = defineProps<{
   playerSpeechKey?: string | number | null
   relicGlow?: boolean
   relics?: RelicDisplayEntry[]
-}>()
+  /** battle 以外でヘッダーから詳細オーバーレイを開くかどうか。battle 側は false 推奨。 */
+  enableHeaderOverlay?: boolean
+}>(), {
+  // battle 以外ではヘッダーからのデッキ/レリック詳細を既定で開けるよう true に寄せる。
+  enableHeaderOverlay: true,
+})
 
 const emit = defineEmits<{
   (eventName: 'contextmenu'): void
@@ -46,6 +56,8 @@ const emit = defineEmits<{
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
+const playerDeckOverlayStore = usePlayerDeckOverlayStore()
+const { show: showRelicOverlay, hide: hideRelicOverlay } = useRelicCardOverlay()
 
 const playerCardRef = ref<InstanceType<typeof PlayerCardComponent> | null>(null)
 
@@ -67,6 +79,61 @@ const resolvedDamageExpressions = computed<PlayerDamageExpressionId[]>(() =>
 const resolvedFaceExpressionLevel = computed<FaceExpressionLevel>(() =>
   props.playerFaceExpressionLevel ?? playerStore.faceExpressionLevel,
 )
+// 設計判断: バトル画面ではレリッククリックがアクティブ使用になるため、詳細オーバーレイを無効化できるようにする。
+const headerOverlayEnabled = computed(() => props.enableHeaderOverlay !== false)
+const deckCardInfos = computed<CardInfo[]>(() => {
+  // battle 以外の画面でも並びが安定するよう、タイプ順に固定して表示する。
+  const repository = new CardRepository()
+  const sorted = [...playerStore.deck].sort((a, b) => a.type.localeCompare(b.type))
+  return sorted
+    .map((blueprint, index) => createCardFromBlueprint(blueprint, repository))
+    .map((card, index) =>
+      buildCardInfoFromCard(card, {
+        id: `player-deck-${card.id ?? index}`,
+        affordable: true,
+        disabled: true,
+      }),
+    )
+    .filter((info): info is CardInfo => info !== null)
+})
+
+function resolveOverlayPosition(event: MouseEvent | FocusEvent): { x: number; y: number } {
+  // フォーカス経由でも位置を計算できるよう、ターゲットの矩形中心を使う。
+  if ('clientX' in event) {
+    return { x: event.clientX, y: event.clientY }
+  }
+  if (event.target instanceof HTMLElement) {
+    const rect = event.target.getBoundingClientRect()
+    return { x: rect.left + rect.width / 2, y: rect.top }
+  }
+  return { x: 0, y: 0 }
+}
+
+function handleHeaderRelicHover(relic: RelicDisplayEntry, event: MouseEvent | FocusEvent): void {
+  if (headerOverlayEnabled.value) {
+    const position = resolveOverlayPosition(event)
+    showRelicOverlay(relic, position)
+  }
+  emit('relic-hover', relic, event)
+}
+
+function handleHeaderRelicLeave(): void {
+  if (headerOverlayEnabled.value) {
+    hideRelicOverlay()
+  }
+  emit('relic-leave')
+}
+
+function handleHeaderRelicClick(relic: RelicDisplayEntry): void {
+  emit('relic-click', relic)
+}
+
+function handleHeaderDeckClick(): void {
+  if (headerOverlayEnabled.value) {
+    playerDeckOverlayStore.open(deckCardInfos.value)
+  }
+  emit('deck-click')
+}
 
 function getPlayerCardRect(): DOMRect | null {
   const el = playerCardRef.value?.$el as HTMLElement | undefined
@@ -84,10 +151,10 @@ defineExpose({ getPlayerCardRect })
         <PlayerStatusHeader
           :enable-glow="props.relicGlow !== false"
           :battle-relics="props.relics"
-          @relic-hover="(relic, event) => emit('relic-hover', relic, event)"
-          @relic-leave="emit('relic-leave')"
-          @relic-click="(relic) => emit('relic-click', relic)"
-          @deck-click="emit('deck-click')"
+          @relic-hover="handleHeaderRelicHover"
+          @relic-leave="handleHeaderRelicLeave"
+          @relic-click="handleHeaderRelicClick"
+          @deck-click="handleHeaderDeckClick"
         >
           <template #actions>
             <slot name="actions" />

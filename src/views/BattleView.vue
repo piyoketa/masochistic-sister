@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import { useRouter } from 'vue-router'
 import BattleEnemyArea from '@/components/battle/BattleEnemyArea.vue'
 import BattleHandArea from '@/components/battle/BattleHandArea.vue'
+import BattleActiveRelicList from '@/components/battle/BattleActiveRelicList.vue'
 import {
   ViewManager,
   type AnimationCommand,
@@ -68,6 +69,7 @@ import type { Card } from '@/domain/entities/Card'
 import { useDescriptionOverlay } from '@/composables/descriptionOverlay'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { usePileOverlayStore } from '@/stores/pileOverlayStore'
+import { usePlayerDeckOverlayStore } from '@/stores/playerDeckOverlayStore'
 import { createCardFromBlueprint, type CardBlueprint } from '@/domain/library/Library'
 import { safeClearTimeout, safeSetTimeout, type SafeTimeoutHandle } from '@/utils/safeTimeout'
 import TurnIndicatorModal from '@/components/battle/TurnIndicatorModal.vue'
@@ -113,6 +115,7 @@ const fieldStore = useFieldStore()
 const achievementStore = useAchievementStore()
 const achievementProgressStore = useAchievementProgressStore()
 const pileOverlayStore = usePileOverlayStore()
+const playerDeckOverlayStore = usePlayerDeckOverlayStore()
 
 const battleFactory = resolveBattleFactory(props, playerStore, achievementProgressStore)
 const viewManager = props.viewManager ?? createDefaultViewManager(battleFactory)
@@ -218,7 +221,9 @@ const battleRelics = computed<RelicDisplayEntry[]>(() =>
       })
     : [],
 )
-const deckOverlaySource = ref<'player' | 'battle'>('player')
+const activeBattleRelics = computed<RelicDisplayEntry[]>(() =>
+  battleRelics.value.filter((relic) => relic.usageType === 'active'),
+)
 const audioStore = useAudioStore()
 const imageHub = createImageHub()
 provideImageHub(imageHub)
@@ -578,21 +583,9 @@ watch(
   },
 )
 watch(
-  () => deckCardInfos.value,
-  (cards) => {
-    if (pileOverlayStore.activePile !== 'deck' || deckOverlaySource.value !== 'player') {
-      return
-    }
-    // ヘッダー経由で開いている場合はplayerStoreのID順を維持して再描画する。
-    randomizedDeckCardInfos.value = [...cards]
-    pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
-  },
-)
-
-watch(
   () => battleDeckCardInfos.value,
   (cards) => {
-    if (pileOverlayStore.activePile !== 'deck' || deckOverlaySource.value !== 'battle') {
+    if (pileOverlayStore.activePile !== 'deck') {
       return
     }
     // 山札表示中にバトルの山札が変化した場合も秘匿のため毎回シャッフルする。
@@ -746,14 +739,11 @@ function logPileSnapshot(pile: 'deck' | 'discard'): void {
 }
 
 function openPlayerDeckOverlay(): void {
-  deckOverlaySource.value = 'player'
-  randomizedDeckCardInfos.value = [...deckCardInfos.value]
-  pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
-  logPileSnapshot('deck')
+  // ヘッダー経由のデッキ確認は専用オーバーレイを使い、戦闘用の山札/捨て札表示と分離する。
+  playerDeckOverlayStore.open(deckCardInfos.value)
 }
 
 function openBattleDeckOverlay(): void {
-  deckOverlaySource.value = 'battle'
   randomizedDeckCardInfos.value = shuffleCardInfosForDisplay(battleDeckCardInfos.value)
   pileOverlayStore.openDeck(randomizedDeckCardInfos.value, discardCardInfos.value)
   logPileSnapshot('deck')
@@ -1284,6 +1274,7 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
     :player-speech-text="playerSpeechText"
     :player-speech-key="playerSpeechKey"
     :relics="battleRelics"
+    :enable-header-overlay="false"
     @contextmenu="handleContextMenu"
     @relic-hover="(relic, event) => handleRelicHover(event, relic)"
     @relic-leave="handleRelicLeave"
@@ -1431,28 +1422,36 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
       />
 
       <div class="battle-main__lower">
-        <BattleHandArea
-          :key="`hand-area-${viewResetToken}`"
-          ref="handAreaRef"
-          :snapshot="snapshot"
-          :hovered-enemy-id="hoveredEnemyId"
-          :is-initializing="isInitializing"
-          :stage-event="latestStageEvent"
-          :is-player-turn="isPlayerTurn"
-          :is-input-locked="isInputLocked"
-          :view-manager="viewManager"
-          :request-enemy-target="requestEnemyTarget"
-          :cancel-enemy-selection="cancelEnemySelectionInternal"
-          :player-origin-rect="getPlayerOriginRect"
-          @play-card="handleHandPlayCard"
-          @error="handleHandError"
-          @hide-overlay="handleHandHideOverlay"
-          @show-enemy-selection-hints="handleEnemySelectionHints"
-          @clear-enemy-selection-hints="handleClearEnemySelectionHints"
-          @open-deck-overlay="openBattleDeckOverlay"
-          @open-discard-overlay="openDiscardOverlay"
-          @open-pile-choice="handleOpenPileChoice"
-        />
+        <div class="battle-main__lower-left">
+          <BattleActiveRelicList
+            :active-relics="activeBattleRelics"
+            @relic-hover="(relic, event) => handleRelicHover(event, relic)"
+            @relic-leave="handleRelicLeave"
+            @relic-click="handleRelicClick"
+          />
+          <BattleHandArea
+            :key="`hand-area-${viewResetToken}`"
+            ref="handAreaRef"
+            :snapshot="snapshot"
+            :hovered-enemy-id="hoveredEnemyId"
+            :is-initializing="isInitializing"
+            :stage-event="latestStageEvent"
+            :is-player-turn="isPlayerTurn"
+            :is-input-locked="isInputLocked"
+            :view-manager="viewManager"
+            :request-enemy-target="requestEnemyTarget"
+            :cancel-enemy-selection="cancelEnemySelectionInternal"
+            :player-origin-rect="getPlayerOriginRect"
+            @play-card="handleHandPlayCard"
+            @error="handleHandError"
+            @hide-overlay="handleHandHideOverlay"
+            @show-enemy-selection-hints="handleEnemySelectionHints"
+            @clear-enemy-selection-hints="handleClearEnemySelectionHints"
+            @open-deck-overlay="openBattleDeckOverlay"
+            @open-discard-overlay="openDiscardOverlay"
+            @open-pile-choice="handleOpenPileChoice"
+          />
+        </div>
         <div class="battle-main__overlay">
           <div class="battle-main__overlay-inner">
             <div class="battle-main__overlay-left">
@@ -1691,18 +1690,6 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
   padding: 4px;
 }
 
-.relic-icon--active {
-  cursor: pointer;
-  border-color: rgba(255, 214, 140, 0.7);
-  background: rgba(255, 214, 140, 0.18);
-}
-
-.relic-icon--active:hover,
-.relic-icon--active:focus-visible {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
-}
-
 .relic-icon--passive {
   opacity: 0.85;
 }
@@ -1861,6 +1848,12 @@ function resolveEnemyTeam(teamId: string, options?: EnemyTeamFactoryOptions): En
   grid-template-columns: minmax(0, 1fr) minmax(150px, 150px);
   min-height: 0;
   align-items: stretch;
+}
+
+.battle-main__lower-left {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .enemy-area-wrapper {

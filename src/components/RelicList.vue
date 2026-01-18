@@ -55,13 +55,15 @@ function resolveUiState(relic: RelicDisplayEntry): RelicUiState {
   return 'disabled'
 }
 
+// 設計判断: RelicList は一覧表示専用とし、アクティブレリックは常に無効表示にする。
+function resolveEffectiveUiState(relic: RelicDisplayEntry): RelicUiState {
+  const state = resolveUiState(relic)
+  if (relic.usageType === 'active') return 'disabled'
+  return state
+}
+
 function isEnabledState(state: RelicUiState): boolean {
-  return (
-    state === 'passive-inactive' ||
-    state === 'passive-active' ||
-    state === 'active-ready' ||
-    state === 'active-processing'
-  )
+  return state === 'passive-inactive' || state === 'passive-active'
 }
 
 function isGlowState(state: RelicUiState): boolean {
@@ -73,24 +75,21 @@ function isDisabledState(state: RelicUiState): boolean {
 }
 
 function isButtonDisabled(relic: RelicDisplayEntry): boolean {
-  const state = resolveUiState(relic)
+  const state = resolveEffectiveUiState(relic)
   if (relic.usageType !== 'active') return true
   return state !== 'active-ready'
 }
 
 function buildClass(relic: RelicDisplayEntry) {
-  const state = resolveUiState(relic)
+  const state = resolveEffectiveUiState(relic)
   return {
-    'relic-icon--active': relic.usageType === 'active',
     'relic-icon--passive': relic.usageType === 'passive',
     'relic-icon--field': relic.usageType === 'field' || state === 'field-disabled',
-    'relic-icon--ready': state === 'active-ready',
     'relic-icon--enabled': isEnabledState(state),
     // パッシブの発動中は必ず縁光沢を付与する（uiStateが欠落しても active フラグをフォールバック利用）
     'relic-icon--glow':
       (isGlowState(state) || (relic.usageType === 'passive' && relic.active)) && props.enableGlow !== false,
     'relic-icon--disabled': isDisabledState(state),
-    'relic-icon--processing': state === 'active-processing',
   }
 }
 </script>
@@ -103,7 +102,7 @@ function buildClass(relic: RelicDisplayEntry) {
       type="button"
       class="relic-icon"
       :class="buildClass(relic)"
-      :data-ui-state="resolveUiState(relic)"
+      :data-ui-state="resolveEffectiveUiState(relic)"
       :data-active="relic.active"
       :aria-label="relic.name"
       :aria-disabled="isButtonDisabled(relic) ? 'true' : undefined"
@@ -148,10 +147,6 @@ function buildClass(relic: RelicDisplayEntry) {
   font-size: 14px;
 }
 
-.relic-icon--active {
-  box-shadow: 0 0 10px rgba(255, 215, 128, 0.55);
-}
-
 .relic-icon--passive {
   opacity: 0.9;
 }
@@ -166,46 +161,8 @@ function buildClass(relic: RelicDisplayEntry) {
   box-shadow: 0 0 8px rgba(255, 236, 170, 0.6);
 }
 
-.relic-icon--processing {
-  background: linear-gradient(180deg, rgba(255, 130, 130, 0.18), rgba(255, 82, 82, 0.08)),
-    rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 142, 142, 0.9);
-  box-shadow:
-    0 0 10px rgba(255, 132, 132, 0.55),
-    0 0 0 1px rgba(255, 132, 132, 0.35);
-}
-
-.relic-icon--processing .relic-icon__glyph {
-  color: #ffe7e7;
-}
-
-.relic-icon--ready:hover {
-  border-color: rgba(255, 142, 142, 0.9);
-  box-shadow:
-    0 0 10px rgba(255, 132, 132, 0.55),
-    0 0 0 1px rgba(255, 132, 132, 0.35);
-  background: linear-gradient(180deg, rgba(255, 130, 130, 0.12), rgba(255, 82, 82, 0.06)),
-    rgba(255, 255, 255, 0.04);
-}
-
-.relic-icon--ready:focus-visible {
-  animation: relic-focus-pop 0.24s ease;
-}
-
 .relic-icon--enabled:hover {
   transform: scale(1.06);
-}
-
-@keyframes relic-focus-pop {
-  0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(1.12);
-  }
-  100% {
-    transform: scale(1);
-  }
 }
 
 /* BattleView の発動中レリックに、card-glow 相当の縁光沢を付与 */
