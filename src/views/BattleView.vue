@@ -179,6 +179,8 @@ const manaPulseKey = ref(0)
 const playerSpeechQueue = ref<PlayerSpeechEntry[]>([])
 const activePlayerSpeech = ref<PlayerSpeechEntry | null>(null)
 let playerSpeechTimer: SafeTimeoutHandle = null
+// 戦闘開始後の最初のプレイ開始時にも判定したいので、初回実行フラグを保持する。
+const hasCheckedSpeechAtFirstPlayStart = ref(false)
 const enemySelectionHints = ref<TargetEnemyAvailabilityEntry[]>([])
 const enemySelectionTheme = ref<EnemySelectionTheme>('default')
 const viewResetToken = ref(0)
@@ -274,6 +276,7 @@ function resetPlayerSpeechQueue(): void {
   clearPlayerSpeechTimer()
   activePlayerSpeech.value = null
   playerSpeechQueue.value = []
+  hasCheckedSpeechAtFirstPlayStart.value = false
   // View側のリセット時に、実績マネージャーの発話キューも空にする。
   viewManager.battle?.achievementProgressManager?.consumePlayerSpeechQueue()
 }
@@ -325,6 +328,16 @@ function pullSpeechQueueFromAchievementManager(): void {
   }
   // 設計判断: 実績側が管理したセリフを、表示用キューに移し替えるだけに留める。
   entries.forEach((entry) => enqueuePlayerSpeech(entry.text, entry.reason, entry.priority))
+}
+
+function maybeCheckSpeechOnFirstPlayStart(): void {
+  if (hasCheckedSpeechAtFirstPlayStart.value) {
+    return
+  }
+  // 設計判断: 「最初のプレイ開始時」にも発話判定を差し込み、戦闘開始直後の取りこぼしを防ぐ。
+  pullSpeechQueueFromAchievementManager()
+  showNextPlayerSpeechAtActionStart()
+  hasCheckedSpeechAtFirstPlayStart.value = true
 }
 
 function playTurnIndicatorOverlay(variant: 'player' | 'enemy'): void {
@@ -880,6 +893,7 @@ function handleHandPlayCard(payload: { cardId: number; operations: CardOperation
   // デバッグ用: HandArea からのプレイ要求を記録
   // eslint-disable-next-line no-console
   // console.info('[BattleView] handleHandPlayCard', payload)
+  maybeCheckSpeechOnFirstPlayStart()
   viewManager.queuePlayerAction({ type: 'play-card', cardId: payload.cardId, operations: payload.operations })
   resetErrorMessage()
 }
@@ -963,6 +977,7 @@ function handleRelicClick(_relic: RelicDisplayEntry): void {
     showTransientError('このレリックは現在使用できません')
     return
   }
+  maybeCheckSpeechOnFirstPlayStart()
   viewManager.queuePlayerAction({ type: 'play-relic', relicId: _relic.id, operations: [] })
   resetErrorMessage()
 }
