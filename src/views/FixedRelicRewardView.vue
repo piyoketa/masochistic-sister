@@ -87,6 +87,7 @@ async function handleProceed(): Promise<void> {
               :selection-theme="selectionTheme"
               :states="states"
               :state-snapshots="[]"
+              :state-progress-count="playerStore.stateProgressCount"
               :show-hp-gauge="false"
             />
           </aside>
