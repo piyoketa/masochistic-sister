@@ -1,7 +1,7 @@
 <!--
 PlayerImageComponent の責務:
-- プレイヤーの現在HPに応じた立ち絵画像を表示し、TargetEnemyOperation 中は背景色をテーマ色（Arcane/Sacred/Default）で強調する。
-- ImageHub が事前にプリロードした画像を利用し、HP変化・表情差分・状態差分を重ね描画する。
+- プレイヤーの現在HPに応じた立ち絵画像を表示し、ImageHub が事前にプリロードした画像を重ね描画する。
+- TargetEnemyOperation 中の表情差分（Arcane/Sacred など）と、HP変化・状態差分を合成する。
 - プレイヤーの状態（腐食/粘液など）や表情差分を指定数だけ重ね描画する。
 - 後半パートのダメージ表現と表情差分を、立ち絵の上に重ねて描画する。
 - 環境変数によって、HP依存の立ち絵切替と「状態進行カウント」依存の切替を切り替える。
@@ -9,16 +9,16 @@ PlayerImageComponent の責務:
 責務ではないこと:
 - 戦闘ロジックやHP計算の決定は行わない（渡された currentHp/maxHp に従う）。
 - 画像のプリロード制御は行わない（ImageHub に委譲）。ダメージ演出の制御や操作受付は持たず、slot 経由で渡されたオーバーレイを重ねるのみ。
+- TargetEnemyOperation 中の背景色強調は行わない（PlayerCardComponent に委譲）。
 
 主な通信相手とインターフェース:
-- BattleView / PlayerCardComponent: props で HP・選択状態・テーマ色・プレイヤー状態を受け取り、背景色と差分表示を同期する。ダメージ演出などは slot を通じて子要素として受ける。
+- BattleView / PlayerCardComponent: props で HP・テーマ色・プレイヤー状態を受け取り、差分表示を同期する。背景色強調は PlayerCardComponent 側で行い、ダメージ演出などは slot を通じて子要素として受ける。
 - PlayerCardComponent: 新ロジック時は stateProgressCount を受け取り、対応する画像へ切替する。
 - PlayerCardComponent: damageExpressions / faceExpressionLevel を受け取り、後半パートの表現を重ねる。
 -->
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
-import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
 import { useImageHub } from '@/composables/imageHub'
 import type { FaceExpressionLevel, PlayerDamageExpressionId } from '@/domain/progress/PlayerStateProgressManager'
 import {
@@ -154,15 +154,6 @@ const faceExpressionElement = computed(() => {
   return src ? imageHub.getElement(src) ?? null : null
 })
 
-const styleVars = computed(() => {
-  const theme = props.selectionTheme ?? 'default'
-  const palette = SELECTION_THEME_COLORS[theme] ?? SELECTION_THEME_COLORS.default
-  return {
-    '--player-accent-strong': palette.strong,
-    '--player-accent-soft': palette.background,
-  }
-})
-
 onMounted(() => {
   const frameSrcs = PLAYER_FRAME_VALUES.map((value) =>
     newImageLogicEnabled ? buildNewImageSrc(value) : buildImageSrc(value),
@@ -282,7 +273,7 @@ function draw(): void {
 </script>
 
 <template>
-  <div class="player-image" :class="{ 'player-image--selecting': selectionThemeActive }" :style="styleVars">
+  <div class="player-image">
     <div class="player-image__frame">
       <canvas ref="canvasRef" class="player-image__canvas" :width="BASE_DRAW.dw" :height="BASE_DRAW.dh"></canvas>
       <div class="player-image__overlay">
@@ -299,13 +290,6 @@ function draw(): void {
   height: 590px;
   border-radius: 0;
   overflow: visible;
-  /* background: linear-gradient(180deg, rgba(12, 12, 22, 0.95), rgba(8, 8, 18, 0.88)); */
-  transition: background 160ms ease, box-shadow 180ms ease;
-}
-
-.player-image--selecting {
-  background: radial-gradient(circle at 40% 30%, var(--player-accent-soft, rgba(255, 116, 116, 0.2)), rgba(8, 8, 18, 0.92));
-  box-shadow: inset 0 0 24px var(--player-accent-soft, rgba(255, 116, 116, 0.18));
 }
 
 .player-image__frame {

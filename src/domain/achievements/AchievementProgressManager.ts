@@ -115,7 +115,7 @@ export class AchievementProgressManager {
     this.progress = { ...this.progress, battleStartedCount: nextCount }
     if (nextCount === 1) {
       // 初戦の開始時のみ、固定セリフを発話キューへ積む。
-      this.enqueueSpeechByReason('achievement-battle-started')
+      // this.enqueueSpeechByReason('achievement-battle-started')
     }
   }
 

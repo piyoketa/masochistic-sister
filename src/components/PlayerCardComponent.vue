@@ -3,6 +3,7 @@ PlayerCardComponent の責務:
 - プレイヤー立ち絵・HPバー・ダメージ演出を一体化し、表示用HPの更新を一元管理する。
 - ダメージ演出(DamageEffects)の開始と完了に合わせて displayHp を制御し、HpGauge/PlayerImageComponent の表示を同期させる。
 - 表情差分: 受傷中は damaged を最優先し、完了後に selectionTheme に応じた差分（Arcane/Sacredなど）を表示。プレイヤー状態による差分も重ねる。
+- EnemyTargetOperation 中の背景色強調を `.player-card__image` に適用し、選択テーマの視覚表現を担う。
 - HPバー直下で EnemyStateChip 形式のステート一覧を描画し、手札では表現されないプレイヤー状態を可視化する。
 - プレイヤーの頭上に表示する発話テキストを受け取り、演出表示と同期する。
 
@@ -35,6 +36,7 @@ import EnemyStateChip from '@/components/EnemyStateChip.vue'
 import type { DamageOutcome } from '@/domain/entities/Damages'
 import type { StateSnapshot } from '@/types/battle'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
+import { SELECTION_THEME_COLORS } from '@/types/selectionTheme'
 
 const debugEnabled = false;
 
@@ -85,6 +87,20 @@ const faceDiffOverride = computed<'damaged-arcane' | 'damaged-normal' | null>(()
     return null
   }
   return props.selectionTheme === 'arcane' ? 'damaged-arcane' : 'damaged-normal'
+})
+
+// 設計判断: default テーマは背景強調を行わず、これまでの見た目を維持する。
+const selectionThemeActive = computed(
+  () => props.selectionTheme !== undefined && props.selectionTheme !== 'default',
+)
+const selectionThemeVars = computed(() => {
+  // 設計判断: 背景色強調は PlayerImageComponent ではなく外枠で制御し、画像描画の責務を分離する。
+  const theme = props.selectionTheme ?? 'default'
+  const palette = SELECTION_THEME_COLORS[theme] ?? SELECTION_THEME_COLORS.default
+  return {
+    '--player-accent-strong': palette.strong,
+    '--player-accent-soft': palette.background,
+  }
 })
 
 const baseHpStart = computed(() => sanitizeHp(props.preHp))
@@ -176,7 +192,11 @@ onMounted(() => {
 
 <template>
   <div class="player-card" v-if="props.show">
-    <div class="player-card__image">
+    <div
+      class="player-card__image"
+      :class="{ 'player-card__image--selecting': selectionThemeActive }"
+      :style="selectionThemeVars"
+    >
       <Transition name="player-caption" mode="out-in">
         <p
           v-if="speechDisplayText"
@@ -244,6 +264,14 @@ onMounted(() => {
   position: relative;
   display: flex;
   top: 60px;
+  padding-top: 60px;
+  margin-top: -60px;
+  transition: background 160ms ease, box-shadow 180ms ease;
+}
+
+.player-card__image--selecting {
+  background: radial-gradient(circle at 40% 30%, var(--player-accent-soft, rgba(255, 116, 116, 0.2)), rgba(8, 8, 18, 0.92));
+  box-shadow: inset 0 0 24px var(--player-accent-soft, rgba(255, 116, 116, 0.18));
 }
 
 .player-card__caption {
