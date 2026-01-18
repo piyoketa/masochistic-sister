@@ -23,7 +23,7 @@ import { useRunProgressStore } from '@/stores/runProgressStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { deleteRunSaveData, loadRunSaveData, type RunSaveData } from '@/utils/runSaveStorage'
-import { FIELD_LABELS, FIELD_ORDER, findNextFieldId, resolveFieldPath } from '@/constants/fieldProgress'
+import { FIELD_LABELS, FIELD_ORDER, findNextFieldId } from '@/constants/fieldProgress'
 
 const router = useRouter()
 const achievementStore = useAchievementStore()
@@ -97,7 +97,7 @@ function handleStartContinue(): void {
   playerStore.resetDeckAndHpForContinue()
   // セーブ対象外のノード進行は復元できないため、フィールド内部を初期化してから遷移する。
   fieldStore.initializeField(nextField)
-  void router.push(resolveFieldPath(nextField))
+  void router.push({ name: 'pre-sortie', query: { fieldId: nextField } })
 }
 
 function formatSavedAt(timestamp: number): string {

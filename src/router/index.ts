@@ -181,6 +181,12 @@ const router = createRouter({
       props: (route) => ({ fieldId: (route.query.fieldId as string | undefined) ?? 'first-field' }),
     },
     {
+      path: '/field/pre-sortie',
+      name: 'pre-sortie',
+      component: () => import('@/views/PreSortieSetupView.vue'),
+      props: (route) => ({ fieldId: (route.query.fieldId as string | undefined) ?? 'first-field' }),
+    },
+    {
       path: '/field/goal',
       name: 'field-goal',
       component: () => import('@/views/GoalStoryView.vue'),
