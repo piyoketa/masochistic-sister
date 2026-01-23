@@ -23,6 +23,7 @@ const CHEER_PROPS: AllyBuffSkillProps = {
  * 味方1体に打点上昇(10)を付与する支援スキル。
  */
 export class CheerAction extends AllyBuffSkill {
+  static readonly cardId = 'cheer'
   constructor() {
     super(CHEER_PROPS)
   }

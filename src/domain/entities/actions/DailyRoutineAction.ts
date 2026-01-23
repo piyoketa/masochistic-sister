@@ -15,6 +15,7 @@ import { Skill, type ActionContext } from '../Action'
 import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 
 export class DailyRoutineAction extends Skill {
+  static readonly cardId = 'daily-routine'
   constructor() {
     super({
       name: '日課',

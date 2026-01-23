@@ -36,6 +36,7 @@ const ALLY_CLEANSE_PROPS: AllyStateSkillProps = {
 }
 
 export class AllyCleanseAction extends AllyStateSkill {
+  static readonly cardId = 'ally-cleanse'
   constructor() {
     super(ALLY_CLEANSE_PROPS)
   }

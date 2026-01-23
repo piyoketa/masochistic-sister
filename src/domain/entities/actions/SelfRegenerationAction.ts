@@ -20,6 +20,7 @@ import type { Player } from '../Player'
 const HEAL_AMOUNT = 40
 
 export class SelfRegenerationAction extends Skill {
+  static readonly cardId = 'self-regeneration'
   constructor() {
     super({
       name: '自己再生',

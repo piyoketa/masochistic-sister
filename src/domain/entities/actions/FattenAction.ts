@@ -7,6 +7,7 @@ import { HeavyweightState } from '../states/HeavyweightState'
  * 太らせる: 単体5ダメージ + 対象に重量化を付与するデバフ攻撃。
  */
 export class FattenAction extends Attack {
+  static readonly cardId = 'fatten'
   constructor() {
     super({
       name: '太らせる',

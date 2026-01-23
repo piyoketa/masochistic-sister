@@ -22,6 +22,7 @@ import { DamageLinkState } from '../states/DamageLinkState'
 import { TargetEnemyOperation, type Operation } from '../operations'
 
 export class LifeChainAction extends Skill {
+  static readonly cardId = 'life-chain'
   constructor() {
     super({
       name: '命の鎖',

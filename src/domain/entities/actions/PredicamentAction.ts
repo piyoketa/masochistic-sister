@@ -15,6 +15,7 @@ import { Skill, type ActionContext } from '../Action'
 import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 
 export class PredicamentAction extends Skill {
+  static readonly cardId = 'predicament'
   constructor() {
     super({
       name: '窮地',

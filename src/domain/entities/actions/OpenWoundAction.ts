@@ -23,6 +23,7 @@ import type { CardRepository } from '../../repository/CardRepository'
 const PLAYER_SELF_DAMAGE = 20
 
 export class OpenWoundAction extends Skill {
+  static readonly cardId = 'open-wound'
   constructor() {
     super({
       name: '傷が開く',

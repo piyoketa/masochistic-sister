@@ -26,6 +26,7 @@ const PROPS: AllyStateSkillProps = {
 }
 
 export class CureBadStateAction extends AllyStateSkill {
+  static readonly cardId = 'cure-bad-state'
   constructor() {
     super(PROPS)
   }

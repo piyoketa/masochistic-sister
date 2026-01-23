@@ -5,6 +5,7 @@ import { EnemySingleTargetCardTag, MultiAttackCardTag } from '../cardTags'
 // FlurryAction は追加効果のない連続攻撃の汎用アクション。攻撃回数や威力が異なる場合でも
 // cloneWithDamages を介して複製し、必要なダメージプロファイルに調整して利用する。
 export class FlurryAction extends Attack {
+  static readonly cardId = 'flurry'
   constructor() {
     super({
       name: '突き刺す',

@@ -20,6 +20,7 @@ import { SelectHandCardOperation } from '../operations'
 import type { Card } from '../Card'
 
 export class NonViolencePrayerAction extends Skill {
+  static readonly cardId = 'non-violence-prayer'
   constructor() {
     super({
       name: '平和',

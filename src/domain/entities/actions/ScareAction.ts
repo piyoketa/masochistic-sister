@@ -4,6 +4,7 @@ import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 import { WeakState } from '../states/WeakState'
 
 export class ScareAction extends Attack {
+  static readonly cardId = 'scare'
   constructor() {
     super({
       name: 'おどかす',

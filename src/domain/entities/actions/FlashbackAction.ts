@@ -18,6 +18,7 @@ import { Card } from '../Card'
 type BattleInstance = import('../../battle/Battle').Battle
 
 export class FlashbackAction extends Skill {
+  static readonly cardId = 'flashback'
   constructor() {
     super({
       name: '蘇る記憶',

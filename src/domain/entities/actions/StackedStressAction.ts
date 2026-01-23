@@ -16,6 +16,7 @@ import { StackedStressState } from '../states/StackedStressState'
 import { ArcaneCardTag, SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 
 export class StackedStressAction extends Skill {
+  static readonly cardId = 'stacked-stress'
   constructor() {
     super({
       name: '重なるストレス',

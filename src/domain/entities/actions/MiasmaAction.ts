@@ -18,6 +18,7 @@ import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 const DEFAULT_MAGNITUDE = 10
 
 export class MiasmaAction extends Skill {
+  static readonly cardId = 'miasma'
   constructor() {
     super({
       name: '瘴気をまとう',

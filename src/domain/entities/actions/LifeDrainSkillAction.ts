@@ -24,6 +24,7 @@ import { SelectHandCardOperation, type Operation } from '../operations'
 import type { Card } from '../Card'
 
 export class LifeDrainSkillAction extends Skill {
+  static readonly cardId = 'life-drain-skill'
   constructor() {
     super({
       name: '生命収奪',

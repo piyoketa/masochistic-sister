@@ -4,6 +4,7 @@ import { EnemySingleTargetCardTag, SingleAttackCardTag, StrikeCardTag } from '..
 import { JointDamageState } from '../states/JointDamageState'
 
 export class JointLockAction extends Attack {
+  static readonly cardId = 'joint-lock'
   constructor() {
     super({
       name: '叩き潰す',

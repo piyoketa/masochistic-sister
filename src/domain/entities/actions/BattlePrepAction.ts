@@ -2,6 +2,7 @@ import { Skill, type ActionContext } from '../Action'
 import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 
 export class BattlePrepAction extends Skill {
+  static readonly cardId = 'battle-prep'
   constructor() {
     super({
       name: '戦いの準備',

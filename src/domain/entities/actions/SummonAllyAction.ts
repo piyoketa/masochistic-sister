@@ -9,6 +9,7 @@ import { AcidSpitAction } from './AcidSpitAction'
 const MAX_ENEMIES = 5
 
 export class SummonAllyAction extends Skill {
+  static readonly cardId = 'summon-ally'
   constructor() {
     super({
       name: '仲間を呼ぶ',

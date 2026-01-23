@@ -21,6 +21,7 @@ const REDRAW_RELIC_DRAW_COUNT = 4
 const RETAIN_CARD_TAG_ID = 'tag-retain'
 
 export class RedrawRelicAction extends Skill {
+  static readonly cardId = 'redraw-relic'
   constructor() {
     super({
       name: 'リドロー',

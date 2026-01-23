@@ -16,6 +16,7 @@ import { SkillTypeCardTag } from '../cardTags'
 import { StickyState } from '../states/StickyState'
 
 export class MucusOrbAction extends Skill {
+  static readonly cardId = 'mucus-orb'
   constructor() {
     super({
       name: '粘液玉',

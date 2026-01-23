@@ -8,6 +8,7 @@ import { Damages } from '../Damages'
 import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 
 export class BeamShotAction extends Attack {
+  static readonly cardId = 'beam-shot'
   constructor(baseAmount: number) {
     super({
       name: 'ビーム',

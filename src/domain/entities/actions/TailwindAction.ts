@@ -5,6 +5,7 @@ import type { ActionContext } from '../Action/ActionBase'
 import type { Enemy } from '../Enemy'
 
 export class TailwindAction extends AllyBuffSkill {
+  static readonly cardId = 'tailwind'
   private readonly magnitude: number
 
   constructor(magnitude = 1) {

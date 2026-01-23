@@ -28,6 +28,7 @@ import type { CardRepository } from '../../repository/CardRepository'
 const MEMORY_TAG_ID = 'tag-memory'
 
 export class ScarRegenerationAction extends Skill {
+  static readonly cardId = 'scar-regeneration'
   constructor() {
     super({
       name: '疼き',

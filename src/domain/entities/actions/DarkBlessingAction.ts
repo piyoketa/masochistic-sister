@@ -25,6 +25,7 @@ const PROPS: AllyBuffSkillProps = {
 }
 
 export class DarkBlessingAction extends AllyBuffSkill {
+  static readonly cardId = 'dark-blessing'
   constructor() {
     super(PROPS)
   }

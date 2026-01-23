@@ -4,6 +4,7 @@ import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 import { CorrosionState } from '../states/CorrosionState'
 
 export class AcidSpitAction extends Attack {
+  static readonly cardId = 'acid-spit'
   constructor() {
     super({
       name: '溶かす',

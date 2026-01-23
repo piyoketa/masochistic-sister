@@ -8,6 +8,7 @@ import { SkillTypeCardTag, EnemySingleTargetCardTag } from '../cardTags'
 import { EvilThoughtState } from '../states/EvilThoughtState'
 
 export class ConfusingGazeAction extends Skill {
+  static readonly cardId = 'confusing-gaze'
   private readonly magnitude: number
 
   constructor(magnitude = 1) {

@@ -25,6 +25,7 @@ import type { Card } from '../Card'
 import type { OperationContext } from '../operations/OperationBase'
 
 export class PeelingScabAction extends Skill {
+  static readonly cardId = 'peeling-scab'
   constructor() {
     super({
       name: '剥がれた瘡蓋',

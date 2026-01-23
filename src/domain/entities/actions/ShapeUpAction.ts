@@ -18,6 +18,7 @@ import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 import { LightweightState } from '../states/LightweightState'
 
 export class ShapeUpAction extends Attack {
+  static readonly cardId = 'shape-up'
   constructor() {
     super({
       name: 'シェイプアップ',

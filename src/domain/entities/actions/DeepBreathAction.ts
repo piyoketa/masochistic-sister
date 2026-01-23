@@ -16,6 +16,7 @@ import { SkillTypeCardTag, SelfTargetCardTag, ArcaneCardTag } from '../cardTags'
 import type { Operation } from '../operations'
 
 export class DeepBreathAction extends Skill {
+  static readonly cardId = 'deep-breath'
   constructor() {
     super({
       name: '深呼吸',

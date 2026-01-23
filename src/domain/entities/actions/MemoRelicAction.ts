@@ -18,6 +18,7 @@ import { SelectHandCardOperation } from '../operations'
 import type { Operation } from '../operations'
 
 export class MemoRelicAction extends Skill {
+  static readonly cardId = 'memo-relic'
   constructor() {
     super({
       name: 'メモ',

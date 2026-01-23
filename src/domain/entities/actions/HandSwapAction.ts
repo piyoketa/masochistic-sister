@@ -4,6 +4,7 @@ import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import type { Operation } from '../operations'
 
 export class HandSwapAction extends Skill {
+  static readonly cardId = 'hand-swap'
   constructor() {
     super({
       name: '手札入れ替え',

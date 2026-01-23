@@ -18,6 +18,7 @@ import { TackleAction } from './TackleAction'
 import type { Card } from '../Card'
 
 export class SoloBodyAction extends Skill {
+  static readonly cardId = 'solo-body'
   constructor() {
     super({
       name: 'この身一つ',

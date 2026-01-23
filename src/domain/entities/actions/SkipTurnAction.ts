@@ -3,6 +3,7 @@ import type { Enemy } from '../Enemy'
 import { SkipTypeCardTag } from '../cardTags'
 
 export class SkipTurnAction extends Action {
+  static readonly cardId = 'skip-turn'
   static readonly ICON = '⛓'
   private readonly messageTemplate: (enemy: Enemy) => string
 

@@ -530,6 +530,11 @@ function instantiateActionForComparison(candidate: ActionConstructor): Action | 
 }
 
 function toActionCardId(constructor: ActionConstructor): ActionCardId {
+  // 設計上の決定: Action側で明示されたカードIDを優先し、ミニファイによるクラス名変化の影響を排除する。
+  const explicitId = (constructor as { cardId?: string }).cardId
+  if (typeof explicitId === 'string' && explicitId.length > 0) {
+    return explicitId as ActionCardId
+  }
   const className = constructor.name ?? ''
   const trimmed = className.endsWith('Action') ? className.slice(0, -6) : className
   const kebab = trimmed

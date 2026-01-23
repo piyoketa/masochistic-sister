@@ -17,6 +17,7 @@ import { Skill, type ActionContext } from '../Action'
 import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 
 export class ReloadAction extends Skill {
+  static readonly cardId = 'reload'
   constructor() {
     super({
       name: '再装填',

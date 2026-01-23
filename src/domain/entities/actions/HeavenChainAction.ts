@@ -12,6 +12,7 @@ import { LargeState } from '../states/LargeState'
 import { NoViolenceRelic } from '../relics/NoViolenceRelic'
 
 export class HeavenChainAction extends Skill {
+  static readonly cardId = 'heaven-chain'
   constructor() {
     super({
       name: '天の鎖',

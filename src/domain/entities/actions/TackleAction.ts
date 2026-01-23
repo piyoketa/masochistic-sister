@@ -3,6 +3,7 @@ import { Damages } from '../Damages'
 import { EnemySingleTargetCardTag, SingleAttackCardTag, StrikeCardTag } from '../cardTags'
 
 export class TackleAction extends Attack {
+  static readonly cardId = 'tackle'
   constructor() {
     super({
       name: '殴打',

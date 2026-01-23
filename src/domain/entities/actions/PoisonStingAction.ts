@@ -4,6 +4,7 @@ import { EnemySingleTargetCardTag, SingleAttackCardTag } from '../cardTags'
 import { PoisonState } from '../states/PoisonState'
 
 export class PoisonStingAction extends Attack {
+  static readonly cardId = 'poison-sting'
   constructor() {
     super({
       name: '毒針',

@@ -22,6 +22,7 @@ import {
 } from '../cardTags'
 
 export class BloodSuckAction extends Attack {
+  static readonly cardId = 'blood-suck'
   constructor() {
     super({
       name: '口づけ',

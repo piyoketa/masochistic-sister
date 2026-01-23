@@ -3,6 +3,7 @@ import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import { StrengthState } from '../states/StrengthState'
 
 export class BuildUpAction extends Skill {
+  static readonly cardId = 'build-up'
   constructor() {
     super({
       name: 'ビルドアップ',

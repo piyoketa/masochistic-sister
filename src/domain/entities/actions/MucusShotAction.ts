@@ -7,6 +7,7 @@ import type { Enemy } from '../Enemy'
 import { isPlayerEntity } from '../typeGuards'
 
 export class MucusShotAction extends Attack {
+  static readonly cardId = 'mucus-shot'
   constructor() {
     super({
       name: '体液をかける',

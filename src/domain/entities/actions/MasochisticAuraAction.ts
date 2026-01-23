@@ -6,6 +6,7 @@ import type { Operation } from '../operations'
 import { ArcaneAdaptationRelic } from '../relics/ArcaneAdaptationRelic'
 
 export class MasochisticAuraAction extends Skill {
+  static readonly cardId = 'masochistic-aura'
   constructor() {
     super({
       name: '被虐のオーラ',

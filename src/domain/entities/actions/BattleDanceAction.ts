@@ -3,6 +3,7 @@ import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 import { AccelerationState } from '../states/AccelerationState'
 
 export class BattleDanceAction extends Skill {
+  static readonly cardId = 'battle-dance'
   constructor() {
     super({
       name: '戦いの舞い',

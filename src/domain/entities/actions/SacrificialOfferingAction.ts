@@ -15,6 +15,7 @@ import { SkillTypeCardTag } from '../cardTags'
 import { SacrificeState } from '../states/SacrificeState'
 
 export class SacrificialOfferingAction extends Skill {
+  static readonly cardId = 'sacrificial-offering'
   constructor() {
     super({
       name: '贄の儀式',

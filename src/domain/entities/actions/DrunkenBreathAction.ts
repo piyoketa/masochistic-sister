@@ -7,6 +7,7 @@ import { EnemySingleTargetCardTag, SkillTypeCardTag } from '../cardTags'
  * 対象に酩酊を付与するだけのスキル。ダメージは与えない。
  */
 export class DrunkenBreathAction extends Skill {
+  static readonly cardId = 'drunken-breath'
   constructor(magnitude = 1) {
     super({
       name: '酒の息',

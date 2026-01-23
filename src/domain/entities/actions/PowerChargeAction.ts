@@ -8,6 +8,7 @@ import { ChargeState } from '../states/ChargeState'
 import { SelfTargetCardTag, SkillTypeCardTag } from '../cardTags'
 
 export class PowerChargeAction extends Skill {
+  static readonly cardId = 'power-charge'
   constructor(magnitude: number) {
     super({
       name: 'パワーチャージ',

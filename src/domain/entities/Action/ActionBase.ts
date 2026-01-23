@@ -105,6 +105,11 @@ export abstract class Action {
     if (typeof maybeStateId === 'string' && maybeStateId.startsWith('state-')) {
       return maybeStateId as CardId
     }
+    // 設計上の決定: 本番ビルドでのクラス名短縮に左右されないよう、明示カードIDを最優先で採用する。
+    const explicitId = (this.constructor as { cardId?: CardId }).cardId
+    if (typeof explicitId === 'string' && explicitId.length > 0) {
+      return explicitId
+    }
     const ctorName = (this.constructor as { name?: string }).name ?? ''
     const trimmed = ctorName.endsWith('Action') ? ctorName.slice(0, -6) : ctorName
     const kebab = trimmed
