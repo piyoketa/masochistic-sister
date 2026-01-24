@@ -60,7 +60,7 @@ import { mapSnapshotRelics } from '@/view/relicDisplayMapper'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import { BattleReward } from '@/domain/battle/BattleReward'
 import { useAudioStore } from '@/stores/audioStore'
-import { createImageHub, provideImageHub } from '@/composables/imageHub'
+import { useImageHub } from '@/composables/imageHub'
 import PileOverlay from '@/components/battle/PileOverlay.vue'
 import PileChoiceOverlay from '@/components/battle/PileChoiceOverlay.vue'
 import type { CardInfo } from '@/types/battle'
@@ -225,8 +225,9 @@ const activeBattleRelics = computed<RelicDisplayEntry[]>(() =>
   battleRelics.value.filter((relic) => relic.usageType === 'active'),
 )
 const audioStore = useAudioStore()
-const imageHub = createImageHub()
-provideImageHub(imageHub)
+// 重要な設計判断: 画像プリロードは App で生成した共有 ImageHub を使い回し、
+// BattleView 側で新規 Hub を作らないことで二重プリロードを避ける。
+const imageHub = useImageHub()
 const animationDebugLoggingEnabled =
   (typeof window !== 'undefined' && Boolean(window.__MASO_ANIMATION_DEBUG__)) ||
   import.meta.env.VITE_DEBUG_ANIMATION_LOG === 'true'

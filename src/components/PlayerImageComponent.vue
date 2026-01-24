@@ -42,7 +42,7 @@ const newImageLogicEnabled =
   String(import.meta.env?.VITE_NEW_PLAYER_IMAGE_LOGIC ?? '').toLowerCase() === 'true' ||
   String(import.meta.env?.VITE_NEW_PLAYER_IMAGE_LOGIC ?? '') === '1'
 const LEGACY_PLAYER_FRAME_VALUES = [0, 30, 60, 90, 120, 150]
-const NEW_PLAYER_FRAME_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const NEW_PLAYER_FRAME_VALUES = [1, 2, 3, 4, 5, 6]
 // 設計判断: 切替後も描画処理を共通化できるよう、参照先を PLAYER_FRAME_VALUES に揃える。
 const PLAYER_FRAME_VALUES = newImageLogicEnabled ? NEW_PLAYER_FRAME_VALUES : LEGACY_PLAYER_FRAME_VALUES
 
