@@ -21,12 +21,11 @@ function dedupe(list: string[]): string[] {
 // 全音声（/sounds/**）
 let globSoundAssets: string[] = []
 try {
-  const modules = import.meta.glob('/public/sounds/**/*', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  })
-  globSoundAssets = Object.values(modules).map((value) => normalizePublicPath(String(value)))
+  // 重要な設計判断:
+  // public 配下のURLはビルド時のハッシュURLと混在させないため、glob の key を採用する。
+  // これにより /sounds/... の静的URLで統一され、再アクセス時に別URLでの再取得が発生しない。
+  const modules = import.meta.glob('/public/sounds/**/*', { eager: true })
+  globSoundAssets = Object.keys(modules).map((value) => normalizePublicPath(value))
   if (ENABLE_PRELOAD_LOG) {
     console.info('[preloadManifest] glob sounds', globSoundAssets.length)
   }
@@ -40,12 +39,11 @@ try {
 // 全画像（/assets/**）
 let globImageAssets: string[] = []
 try {
-  const modules = import.meta.glob('/public/assets/**/*', {
-    eager: true,
-    query: '?url',
-    import: 'default',
-  })
-  globImageAssets = Object.values(modules).map((value) => normalizePublicPath(String(value)))
+  // 重要な設計判断:
+  // public 配下のURLはビルド時のハッシュURLと混在させないため、glob の key を採用する。
+  // これにより /assets/... の静的URLで統一され、再アクセス時に別URLでの再取得が発生しない。
+  const modules = import.meta.glob('/public/assets/**/*', { eager: true })
+  globImageAssets = Object.keys(modules).map((value) => normalizePublicPath(value))
   if (ENABLE_PRELOAD_LOG) {
     console.info('[preloadManifest] glob assets', globImageAssets.length)
   }
