@@ -232,7 +232,7 @@ export function useAchievementWindow() {
           costLabel: `必要 ${entry.memoryPointCost} pt`,
           memoryPointCost: entry.memoryPointCost,
           rewardType: entry.reward.type,
-          relicClassName: entry.reward.type === 'relic' ? entry.reward.relicClassName : undefined,
+          relicId: entry.reward.type === 'relic' ? entry.reward.relicId : undefined,
           relicLimitIncrease: entry.reward.type === 'relic-limit' ? entry.reward.limitIncrease : undefined,
         },
       }

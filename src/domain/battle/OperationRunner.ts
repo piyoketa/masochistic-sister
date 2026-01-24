@@ -818,7 +818,7 @@ export class OperationRunner {
       })),
       relicStates: source.relicStates
         ? source.relicStates.map((entry) => ({
-            className: entry.className,
+            relicId: entry.relicId,
             state: entry.state && typeof entry.state === 'object' ? { ...(entry.state as object) } : entry.state,
           }))
         : undefined,
@@ -848,7 +848,7 @@ export class OperationRunner {
         })),
         relicStates: this.battle
           .getRelicInstances()
-          .map((relic) => ({ className: relic.constructor.name, state: relic.saveState() })),
+          .map((relic) => ({ relicId: relic.id, state: relic.saveState() })),
       })
       const simBattle = this.createBattle()
       simBattle.restoreFullSnapshot(currentSnapshot)

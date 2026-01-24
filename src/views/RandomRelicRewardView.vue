@@ -9,9 +9,9 @@ RandomRelicRewardView の責務:
 
 主な通信相手とインターフェース:
 - useFieldStore: `currentNode` から RandomRelicRewardNode を取得し、`markCurrentCleared()` で進行を記録。
-- usePlayerStore: `relics` を参照して所持済みを除外し、`addRelic(className)` で新規レリックを獲得する（上限到達時は獲得せず進行のみ）。
+- usePlayerStore: `relics` を参照して所持済みを除外し、`addRelic(relicId)` で新規レリックを獲得する（上限到達時は獲得せず進行のみ）。
 - vue-router: `router.push('/field')` でフィールド画面へ復帰する。
-- relicLibrary: `getRelicInfo(className)` で表示用の名称・説明を取得し、RelicCard へ受け渡す。
+- relicLibrary: `getRelicInfo(relicId)` で表示用の名称・説明を取得し、RelicCard へ受け渡す。
 -->
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
@@ -21,6 +21,7 @@ import RelicCard from '@/components/RelicCard.vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { getRelicInfo, type RelicInfo } from '@/domain/entities/relics/relicLibrary'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 
 const playerStore = usePlayerStore()
 playerStore.ensureInitialized()
@@ -44,7 +45,7 @@ const offerCount = computed(() => {
 })
 
 const drawnRelics = ref<RelicInfo[]>([])
-const selectedRelicId = ref<string | null>(null)
+const selectedRelicId = ref<RelicId | null>(null)
 const isProcessing = ref(false)
 const claimError = ref<string | null>(null)
 const relicLimitReached = computed(() => playerStore.relicLimitReached)
@@ -84,18 +85,18 @@ onMounted(() => {
   selectedRelicId.value = null
 })
 
-function drawRelicOptions(classNames: string[], owned: string[], offer: number): RelicInfo[] {
-  if (offer <= 0 || classNames.length === 0) return []
+function drawRelicOptions(relicIds: RelicId[], owned: RelicId[], offer: number): RelicInfo[] {
+  if (offer <= 0 || relicIds.length === 0) return []
   const ownedSet = new Set(owned)
   // 所持済みを除外しつつ重複を避けるために一度ユニーク化する。
-  const pool = classNames.filter((name, idx) => classNames.indexOf(name) === idx && !ownedSet.has(name))
+  const pool = relicIds.filter((relicId, idx) => relicIds.indexOf(relicId) === idx && !ownedSet.has(relicId))
   if (pool.length === 0) {
     return []
   }
   const shuffled = shuffle(pool)
   const picks = shuffled.slice(0, Math.min(offer, shuffled.length))
   return picks
-    .map((className) => getRelicInfo(className, { playerSnapshot: { maxHp: playerStore.maxHp } }))
+    .map((relicId) => getRelicInfo(relicId, { playerSnapshot: { maxHp: playerStore.maxHp } }))
     .filter((info): info is RelicInfo => Boolean(info))
 }
 
@@ -114,8 +115,8 @@ function shuffle<T>(items: T[]): T[] {
   return copied
 }
 
-function handleSelectRelic(className: string): void {
-  selectedRelicId.value = className
+function handleSelectRelic(relicId: RelicId): void {
+  selectedRelicId.value = relicId
   claimError.value = null
 }
 
@@ -129,21 +130,21 @@ async function handleClaim(): Promise<void> {
     await router.push('/field')
     return
   }
-  const relic = drawnRelics.value.find((info) => info.className === selectedRelicId.value)
+  const relic = drawnRelics.value.find((info) => info.id === selectedRelicId.value)
   if (!relic) {
     claimError.value = '選択したレリックを特定できませんでした'
     isProcessing.value = false
     return
   }
   // 二重獲得を防ぐため、最終チェックでも所持済みを弾く。
-  if (playerStore.relics.includes(relic.className)) {
+  if (playerStore.relics.includes(relic.id)) {
     claimError.value = 'このレリックはすでに所持しています'
     isProcessing.value = false
     return
   }
 
   try {
-    const result = playerStore.addRelic(relic.className)
+    const result = playerStore.addRelic(relic.id)
     if (!result.success) {
       claimError.value = result.message
       isProcessing.value = false
@@ -173,11 +174,11 @@ async function handleClaim(): Promise<void> {
         <div v-if="drawnRelics.length" class="relic-grid">
           <button
             v-for="relic in drawnRelics"
-            :key="relic.className"
+            :key="relic.id"
             type="button"
             class="relic-option"
-            :class="{ 'relic-option--selected': relic.className === selectedRelicId }"
-            @click="handleSelectRelic(relic.className)"
+            :class="{ 'relic-option--selected': relic.id === selectedRelicId }"
+            @click="handleSelectRelic(relic.id)"
           >
             <RelicCard :icon="relic.icon" :name="relic.name" :description="relic.description" />
           </button>

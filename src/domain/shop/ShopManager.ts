@@ -12,13 +12,14 @@ ShopManager.ts の責務:
 */
 import type { CardInfo } from '@/types/battle'
 import { listStandardShopCardBlueprints, type CardBlueprint } from '@/domain/library/Library'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 
-export const RELIC_CANDIDATES = [
-  'LightweightCombatRelic',
-  'PureBodyRelic',
-  'NoViolenceRelic',
-  'ArcaneAdaptationRelic',
-  'ThoroughPreparationRelic',
+export const RELIC_CANDIDATES: RelicId[] = [
+  'lightweight-combat',
+  'pure-body',
+  'no-violence',
+  'arcane-adaptation',
+  'thorough-preparation',
 ]
 
 export type CardOffer = {
@@ -28,7 +29,7 @@ export type CardOffer = {
 }
 
 export type RelicOffer = {
-  relicClassName: string
+  relicId: RelicId
   price: number
   sale: boolean
 }
@@ -66,7 +67,7 @@ export class ShopManager {
    * - カード: 候補からランダムに4枚、うち1枚をセール品にする。
    * - レリック: 未所持からランダムに3つ、うち1つをセール品にする。
    */
-  setupOffers(params: { ownedRelics: string[] }): void {
+  setupOffers(params: { ownedRelics: RelicId[] }): void {
     const { ownedRelics } = params
     const cardBlueprints = pickUnique(listStandardShopCardBlueprints(), 4)
     const cardOffers: CardOffer[] = cardBlueprints.map((blueprint) => ({
@@ -76,10 +77,10 @@ export class ShopManager {
     }))
     markRandomSale(cardOffers, CARD_PRICE_SALE)
 
-    const relicCandidates = RELIC_CANDIDATES.filter((className) => !ownedRelics.includes(className))
+    const relicCandidates = RELIC_CANDIDATES.filter((relicId) => !ownedRelics.includes(relicId))
     const relicTypes = pickUnique(relicCandidates, 3)
-    const relicOffers: RelicOffer[] = relicTypes.map((relicClassName) => ({
-      relicClassName,
+    const relicOffers: RelicOffer[] = relicTypes.map((relicId) => ({
+      relicId,
       price: RELIC_PRICE,
       sale: false,
     }))
@@ -95,7 +96,7 @@ export class ShopManager {
   /**
    * 既に品揃えが決まっていない場合のみ setupOffers を実行する。
    */
-  ensureOffers(ownedRelics: string[]): void {
+  ensureOffers(ownedRelics: RelicId[]): void {
     if (this.state.cards.length === 0 && this.state.relics.length === 0) {
       this.setupOffers({ ownedRelics })
     }
@@ -105,8 +106,8 @@ export class ShopManager {
     this.state.cards = this.state.cards.filter((offer) => offer.blueprint.type !== blueprint.type)
   }
 
-  markRelicSold(className: string): void {
-    this.state.relics = this.state.relics.filter((offer) => offer.relicClassName !== className)
+  markRelicSold(relicId: RelicId): void {
+    this.state.relics = this.state.relics.filter((offer) => offer.relicId !== relicId)
   }
 
   markHealPurchased(): void {

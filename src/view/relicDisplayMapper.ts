@@ -1,6 +1,7 @@
 import type { RelicDescriptionContext } from '@/domain/entities/relics/Relic'
 import type { RelicInfo } from '@/domain/entities/relics/relicLibrary'
 import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 import type { BattleSnapshotRelic } from '@/domain/battle/Battle'
 
 export type RelicUiState =
@@ -26,7 +27,7 @@ export function mapSnapshotRelics(
 ): RelicDisplayEntry[] {
   return relics
     .map((entry) => {
-      const info = getRelicInfo(entry.className, context)
+      const info = getRelicInfo(entry.id, context)
       if (!info) return null
       return {
         ...info,
@@ -39,13 +40,13 @@ export function mapSnapshotRelics(
     .filter((entry): entry is RelicDisplayEntry => entry !== null)
 }
 
-export function mapClassNamesToDisplay(
-  classNames: string[],
+export function mapRelicIdsToDisplay(
+  relicIds: RelicId[],
   context?: RelicDescriptionContext,
 ): RelicDisplayEntry[] {
-  return classNames
-    .map((className) => {
-      const info = getRelicInfo(className, context)
+  return relicIds
+    .map((relicId) => {
+      const info = getRelicInfo(relicId, context)
       if (!info) return null
       return { ...info, active: true, usable: true }
     })

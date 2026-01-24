@@ -18,6 +18,7 @@ Componentの責務:
 -->
 <script setup lang="ts">
 import { ref } from 'vue'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 
 export type RewardAchievementStatus = 'not-achieved' | 'achieved'
 
@@ -32,7 +33,7 @@ export type RewardAchievementCardView = {
   costLabel: string
   memoryPointCost: number
   rewardType: 'relic' | 'relic-limit' | 'max-hp'
-  relicClassName?: string
+  relicId?: RelicId
   relicLimitIncrease?: number
 }
 

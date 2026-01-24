@@ -21,7 +21,6 @@ import type { Relic, RelicDescriptionContext, RelicUsageType } from './Relic'
 import type { RelicId } from './relicTypes'
 
 export type RelicInfo = {
-  className: string
   id: RelicId
   name: string
   usageType: RelicUsageType
@@ -29,34 +28,64 @@ export type RelicInfo = {
   description: string
 }
 
-const RELIC_FACTORIES: Record<string, () => Relic> = {
-  MemorySaintRelic: () => new MemorySaintRelic(),
-  SacrificialAwarenessRelic: () => new SacrificialAwarenessRelic(),
-  MucusOrbRelic: () => new MucusOrbRelic(),
-  MemoRelic: () => new MemoRelic(),
-  AdversityExcitementRelic: () => new AdversityExcitementRelic(),
-  LightweightCombatRelic: () => new LightweightCombatRelic(),
-  ActionForceRelic: () => new ActionForceRelic(),
-  PureBodyRelic: () => new PureBodyRelic(),
-  NoViolenceRelic: () => new NoViolenceRelic(),
-  SlipperyTouchRelic: () => new SlipperyTouchRelic(),
-  DevoutBelieverRelic: () => new DevoutBelieverRelic(),
-  ArcaneAdaptationRelic: () => new ArcaneAdaptationRelic(),
-  RedrawRelic: () => new RedrawRelic(),
-  ThoroughPreparationRelic: () => new ThoroughPreparationRelic(),
-  RepulsionRelic: () => new RepulsionRelic(),
-  DeathMatchRelic: () => new DeathMatchRelic(),
-  DevilsKissRelic: () => new DevilsKissRelic(),
-  HolyProtectionRelic: () => new HolyProtectionRelic(),
-  DailyRoutineRelic: () => new DailyRoutineRelic(),
+const RELIC_FACTORIES: Record<RelicId, () => Relic> = {
+  'memory-saint-relic': () => new MemorySaintRelic(),
+  'sacrificial-awareness': () => new SacrificialAwarenessRelic(),
+  'mucus-orb': () => new MucusOrbRelic(),
+  'memo-relic': () => new MemoRelic(),
+  'adversity-excitement': () => new AdversityExcitementRelic(),
+  'lightweight-combat': () => new LightweightCombatRelic(),
+  'action-force': () => new ActionForceRelic(),
+  'pure-body': () => new PureBodyRelic(),
+  'no-violence': () => new NoViolenceRelic(),
+  'slippery-touch': () => new SlipperyTouchRelic(),
+  'devout-believer': () => new DevoutBelieverRelic(),
+  'arcane-adaptation': () => new ArcaneAdaptationRelic(),
+  'redraw-relic': () => new RedrawRelic(),
+  'thorough-preparation': () => new ThoroughPreparationRelic(),
+  'repulsion': () => new RepulsionRelic(),
+  'death-match': () => new DeathMatchRelic(),
+  'devils-kiss': () => new DevilsKissRelic(),
+  'holy-protection': () => new HolyProtectionRelic(),
+  'daily-routine-relic': () => new DailyRoutineRelic(),
 }
 
-export function listRelicClassNames(): string[] {
-  return Object.keys(RELIC_FACTORIES)
+// 設計上の決定: 旧セーブや実績報酬のクラス名文字列を RelicId へ移行するための変換表を保持する。
+const LEGACY_RELIC_CLASSNAME_TO_ID: Record<string, RelicId> = {
+  MemorySaintRelic: 'memory-saint-relic',
+  SacrificialAwarenessRelic: 'sacrificial-awareness',
+  MucusOrbRelic: 'mucus-orb',
+  MemoRelic: 'memo-relic',
+  AdversityExcitementRelic: 'adversity-excitement',
+  LightweightCombatRelic: 'lightweight-combat',
+  ActionForceRelic: 'action-force',
+  PureBodyRelic: 'pure-body',
+  NoViolenceRelic: 'no-violence',
+  SlipperyTouchRelic: 'slippery-touch',
+  DevoutBelieverRelic: 'devout-believer',
+  ArcaneAdaptationRelic: 'arcane-adaptation',
+  RedrawRelic: 'redraw-relic',
+  ThoroughPreparationRelic: 'thorough-preparation',
+  RepulsionRelic: 'repulsion',
+  DeathMatchRelic: 'death-match',
+  DevilsKissRelic: 'devils-kiss',
+  HolyProtectionRelic: 'holy-protection',
+  DailyRoutineRelic: 'daily-routine-relic',
 }
 
-export function instantiateRelic(className: string): Relic | null {
-  const factory = RELIC_FACTORIES[className]
+export function listRelicIds(): RelicId[] {
+  return Object.keys(RELIC_FACTORIES) as RelicId[]
+}
+
+export function resolveRelicId(value: string): RelicId | null {
+  if (value in RELIC_FACTORIES) {
+    return value as RelicId
+  }
+  return LEGACY_RELIC_CLASSNAME_TO_ID[value] ?? null
+}
+
+export function instantiateRelic(relicId: RelicId): Relic | null {
+  const factory = RELIC_FACTORIES[relicId]
   if (!factory) return null
   try {
     return factory()
@@ -65,11 +94,10 @@ export function instantiateRelic(className: string): Relic | null {
   }
 }
 
-export function getRelicInfo(className: string, context?: RelicDescriptionContext): RelicInfo | null {
-  const relic = instantiateRelic(className)
+export function getRelicInfo(relicId: RelicId, context?: RelicDescriptionContext): RelicInfo | null {
+  const relic = instantiateRelic(relicId)
   if (!relic) return null
   return {
-    className,
     id: relic.id,
     name: relic.name,
     usageType: relic.usageType,

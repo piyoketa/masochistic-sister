@@ -26,6 +26,7 @@ import type {
   TitleAchievementRowView,
 } from '@/components/AchievementWindow.vue'
 import { FIELD_LABELS, isFieldId, resolveFieldPath } from '@/constants/fieldProgress'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 
 type PreSortieSetupProps = {
   fieldId?: string
@@ -93,15 +94,15 @@ const effectiveRelicLimit = computed(
 const selectedRelicCount = computed(
   () => selectedRewardEntries.value.filter((entry) => entry.rewardType === 'relic').length,
 )
-const selectedRelicNames = computed(() => {
-  // 重複レリックの選択を防ぐため、選択済みのクラス名を集計する。
-  const names = new Set<string>()
+const selectedRelicIds = computed(() => {
+  // 重複レリックの選択を防ぐため、選択済みのレリックIDを集計する。
+  const ids = new Set<RelicId>()
   selectedRewardEntries.value.forEach((entry) => {
-    if (entry.rewardType === 'relic' && entry.relicClassName) {
-      names.add(entry.relicClassName)
+    if (entry.rewardType === 'relic' && entry.relicId) {
+      ids.add(entry.relicId)
     }
   })
-  return names
+  return ids
 })
 const availableRelicSlots = computed(
   () => Math.max(0, effectiveRelicLimit.value - playerStore.relics.length),
@@ -124,13 +125,13 @@ function canSelectReward(entry: RewardAchievementCardView): boolean {
     return false
   }
   if (entry.rewardType === 'relic') {
-    if (!entry.relicClassName) {
+    if (!entry.relicId) {
       return false
     }
-    if (playerStore.relics.includes(entry.relicClassName)) {
+    if (playerStore.relics.includes(entry.relicId)) {
       return false
     }
-    if (selectedRelicNames.value.has(entry.relicClassName)) {
+    if (selectedRelicIds.value.has(entry.relicId)) {
       return false
     }
     return selectedRelicCount.value + 1 <= availableRelicSlots.value

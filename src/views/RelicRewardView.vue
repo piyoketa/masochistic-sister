@@ -14,6 +14,7 @@ import MainGameLayout from '@/components/battle/MainGameLayout.vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useFieldStore } from '@/stores/fieldStore'
 import { getRelicInfo, type RelicInfo } from '@/domain/entities/relics/relicLibrary'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 import type { EnemySelectionTheme } from '@/types/selectionTheme'
 import type { CardInfo } from '@/types/battle'
 import RelicCard from '@/components/RelicCard.vue'
@@ -75,12 +76,12 @@ onMounted(() => {
   drawnRelics.value = drawRelics(candidateRelics.value, drawCount.value)
 })
 
-function drawRelics(classNames: string[], count: number): RelicInfo[] {
-  if (count <= 0 || classNames.length === 0) {
+function drawRelics(relicIds: RelicId[], count: number): RelicInfo[] {
+  if (count <= 0 || relicIds.length === 0) {
     return []
   }
   const owned = new Set(playerStore.relics)
-  const pool = classNames.filter((name) => !owned.has(name))
+  const pool = relicIds.filter((relicId) => !owned.has(relicId))
   if (pool.length === 0) {
     return []
   }
@@ -106,7 +107,7 @@ async function handleClaim(): Promise<void> {
     await router.push('/field')
     return
   }
-  const result = playerStore.addRelic(relic.className)
+  const result = playerStore.addRelic(relic.id)
   if (!result.success) {
     claimError.value = result.message
     return
@@ -120,7 +121,7 @@ const relicCardInfos = computed<CardInfo[]>(() =>
   firstRelic.value
     ? [
         {
-          id: firstRelic.value.className ?? 'relic-card',
+          id: firstRelic.value.id ?? 'relic-card',
           type: 'status',
           cost: 0,
           title: firstRelic.value.name,

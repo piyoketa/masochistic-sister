@@ -36,7 +36,7 @@ function createBattleWithAchievementProgress(): Battle {
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
-    relicClassNames: [],
+    relicIds: [],
     // 初戦の実績進行度を明示的に0から始めるため、空のManagerを注入する。
     achievementProgressManager: new AchievementProgressManager(),
   })

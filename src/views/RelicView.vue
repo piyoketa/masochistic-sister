@@ -9,7 +9,7 @@ RelicView の責務:
 
 主な通信相手とインターフェース:
 - playerStore: 所持レリックリストを読み書きし、重複を避けつつ追加・削除を行う。
-- relicLibrary: `listRelicClassNames` / `getRelicInfo` を通して表示用データを取得。
+- relicLibrary: `listRelicIds` / `getRelicInfo` を通して表示用データを取得。
 - GameLayout: 共通レイアウト内で表示。
 -->
 <script setup lang="ts">
@@ -17,7 +17,8 @@ import { computed, ref } from 'vue'
 import GameLayout from '@/components/GameLayout.vue'
 import RelicList from '@/components/RelicList.vue'
 import { usePlayerStore } from '@/stores/playerStore'
-import { getRelicInfo, listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
+import { getRelicInfo, listRelicIds } from '@/domain/entities/relics/relicLibrary'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 import { renderRichText } from '@/utils/richText'
 
 const playerStore = usePlayerStore()
@@ -25,44 +26,44 @@ playerStore.ensureInitialized()
 
 const ownedRelics = computed(() =>
   playerStore.relics
-    .map((className) => getRelicInfo(className, { playerSnapshot: { maxHp: playerStore.maxHp } }))
+    .map((relicId) => getRelicInfo(relicId, { playerSnapshot: { maxHp: playerStore.maxHp } }))
     .filter((info): info is NonNullable<ReturnType<typeof getRelicInfo>> => info !== null),
 )
 
 const addableRelics = computed(() =>
-  listRelicClassNames()
-    .filter((className) => !playerStore.relics.includes(className))
-    .map((className) => getRelicInfo(className, { playerSnapshot: { maxHp: playerStore.maxHp } }))
+  listRelicIds()
+    .filter((relicId) => !playerStore.relics.includes(relicId))
+    .map((relicId) => getRelicInfo(relicId, { playerSnapshot: { maxHp: playerStore.maxHp } }))
     .filter((info): info is NonNullable<ReturnType<typeof getRelicInfo>> => info !== null),
 )
 
-const selectedAddClass = ref<string | null>(addableRelics.value[0]?.className ?? null)
+const selectedAddRelicId = ref<RelicId | null>(addableRelics.value[0]?.id ?? null)
 const hoverDescription = ref<string | null>(null)
 const addError = ref<string | null>(null)
 const relicLimitReached = computed(() => playerStore.relicLimitReached)
 
 function handleAdd(): void {
-  const className = selectedAddClass.value
-  if (!className) return
+  const relicId = selectedAddRelicId.value
+  if (!relicId) return
   addError.value = null
   // 上限到達時は追加できないため、理由を表示して終了する。
   if (relicLimitReached.value) {
     addError.value = 'レリック上限に達しているため追加できません'
     return
   }
-  const result = playerStore.addRelic(className)
+  const result = playerStore.addRelic(relicId)
   if (!result.success) {
     addError.value = result.message
     return
   }
   const next = addableRelics.value[0]
-  selectedAddClass.value = next?.className ?? null
+  selectedAddRelicId.value = next?.id ?? null
 }
 
-function handleRemove(className: string): void {
-  playerStore.removeRelic(className)
+function handleRemove(relicId: RelicId): void {
+  playerStore.removeRelic(relicId)
   if (playerStore.relics.length === 0) {
-    selectedAddClass.value = addableRelics.value[0]?.className ?? null
+    selectedAddRelicId.value = addableRelics.value[0]?.id ?? null
   }
 }
 
@@ -88,7 +89,7 @@ const renderDescription = (text: string): string => renderRichText(text)
           <div v-else class="owned-list">
             <div
               v-for="relic in ownedRelics"
-              :key="relic.className"
+              :key="relic.id"
               class="owned-item"
               @mouseenter="hoverDescription = relic.description"
               @mouseleave="hoverDescription = null"
@@ -100,7 +101,7 @@ const renderDescription = (text: string): string => renderRichText(text)
                   <div class="owned-desc" v-html="renderDescription(relic.description)"></div>
                 </div>
               </div>
-              <button type="button" class="btn btn-danger" @click="handleRemove(relic.className)">
+              <button type="button" class="btn btn-danger" @click="handleRemove(relic.id)">
                 削除
               </button>
             </div>
@@ -110,32 +111,32 @@ const renderDescription = (text: string): string => renderRichText(text)
         <section class="section">
           <h2>レリックを追加</h2>
           <div class="add-row">
-            <select v-model="selectedAddClass">
-              <option v-for="relic in addableRelics" :key="relic.className" :value="relic.className">
+            <select v-model="selectedAddRelicId">
+              <option v-for="relic in addableRelics" :key="relic.id" :value="relic.id">
                 {{ relic.name }}
               </option>
             </select>
             <button
               type="button"
               class="btn btn-primary"
-              :disabled="!selectedAddClass || relicLimitReached"
+              :disabled="!selectedAddRelicId || relicLimitReached"
               @click="handleAdd"
             >
               追加
             </button>
           </div>
           <p v-if="addError" class="add-error">{{ addError }}</p>
-          <div v-if="selectedAddClass" class="preview">
+          <div v-if="selectedAddRelicId" class="preview">
             <h3>プレビュー</h3>
             <RelicList
               :relics="
                 addableRelics
-                  .filter((r) => r.className === selectedAddClass)
+                  .filter((r) => r.id === selectedAddRelicId)
                   .map((r) => ({ ...r, active: true }))
               "
               :enable-glow="false"
             />
-            <p class="preview-desc" v-html="renderDescription(addableRelics.find((r) => r.className === selectedAddClass)?.description ?? '説明はありません')"></p>
+            <p class="preview-desc" v-html="renderDescription(addableRelics.find((r) => r.id === selectedAddRelicId)?.description ?? '説明はありません')"></p>
           </div>
         </section>
 

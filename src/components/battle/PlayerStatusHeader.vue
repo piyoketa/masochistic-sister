@@ -7,7 +7,7 @@ Componentの責務: プレイヤーの基本情報（レリック・所持金・
 import { computed } from 'vue'
 import RelicList from '@/components/RelicList.vue'
 import { usePlayerStore } from '@/stores/playerStore'
-import { mapClassNamesToDisplay, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
+import { mapRelicIdsToDisplay, type RelicDisplayEntry } from '@/view/relicDisplayMapper'
 
 const props = withDefaults(
   defineProps<{
@@ -33,7 +33,7 @@ playerStore.ensureInitialized()
 const playerRelics = computed<RelicDisplayEntry[]>(() =>
   props.battleRelics
     ? [...props.battleRelics]
-    : mapClassNamesToDisplay(playerStore.relics, {
+    : mapRelicIdsToDisplay(playerStore.relics, {
         playerSnapshot: { maxHp: playerStore.maxHp },
       }),
 )

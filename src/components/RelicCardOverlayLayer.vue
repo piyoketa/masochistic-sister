@@ -6,7 +6,7 @@ Componentの責務: マウス付近にレリック情報カードを表示する
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
-import { getRelicInfoByClassName } from '@/domain/library/Library'
+import { getRelicInfoById } from '@/domain/library/Library'
 import RelicCard from '@/components/RelicCard.vue'
 
 const { state } = useRelicCardOverlay()
@@ -18,7 +18,7 @@ const overlayStyle = computed(() => ({
 
 const overlayRelic = computed(() => {
   if (state.relic) return state.relic
-  if (state.relicClassName) return getRelicInfoByClassName(state.relicClassName)
+  if (state.relicId) return getRelicInfoById(state.relicId)
   return null
 })
 </script>

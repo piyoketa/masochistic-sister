@@ -1231,7 +1231,7 @@ function createBattleFromPlayerStore(
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
-    relicClassNames: [...playerStore.relics],
+    relicIds: [...playerStore.relics],
     // ラン進行度をBattleへ注入し、バトル内で rememberState などから実績をカウントできるようにする。
     achievementProgressManager: achievementProgressStore.buildManager(),
     // 状態進行度はPlayerStoreから引き継ぎ、バトル中の進行計算に利用する。

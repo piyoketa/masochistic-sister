@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia'
 import { CardRepository } from '@/domain/repository/CardRepository'
 import { buildDefaultDeck, buildMagicDeck } from '@/domain/entities/decks'
-import { listRelicClassNames } from '@/domain/entities/relics/relicLibrary'
-import { MemorySaintRelic } from '@/domain/entities/relics/MemorySaintRelic'
-import { DevilsKissRelic } from '@/domain/entities/relics/DevilsKissRelic'
-import { HolyProtectionRelic } from '@/domain/entities/relics/HolyProtectionRelic'
+import { listRelicIds, resolveRelicId } from '@/domain/entities/relics/relicLibrary'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 import { useAchievementProgressStore } from '@/stores/achievementProgressStore'
 import { createCardFromBlueprint, buildBlueprintFromCard, type CardBlueprint } from '@/domain/library/Library'
 import { Card } from '@/domain/entities/Card'
@@ -16,9 +14,9 @@ export type { CardId, CardBlueprint } from '@/domain/library/Library'
 export type DeckPreset = 'holy' | 'magic'
 
 // デッキプリセットごとの初期所持レリックを明示しておく。プリセット切替時に不要なレリックが残らないようにする。
-const INITIAL_RELICS_BY_PRESET: Record<DeckPreset, string[]> = {
-  holy: [MemorySaintRelic.name, HolyProtectionRelic.name],
-  magic: [DevilsKissRelic.name],
+const INITIAL_RELICS_BY_PRESET: Record<DeckPreset, RelicId[]> = {
+  holy: ['memory-saint-relic', 'holy-protection'],
+  magic: ['devils-kiss'],
 }
 const DEFAULT_RELIC_LIMIT = 3
 
@@ -28,7 +26,7 @@ export const usePlayerStore = defineStore('player', {
     maxHp: 150,
     gold: 0,
     deck: [] as CardBlueprint[],
-    relics: [] as string[],
+    relics: [] as RelicId[],
     relicLimit: DEFAULT_RELIC_LIMIT,
     // 立ち絵の状態進行度（前半パート: 1〜6）。戦闘間で持ち越す。
     stateProgressCount: 1,
@@ -180,8 +178,8 @@ export const usePlayerStore = defineStore('player', {
       }
       this.hp = Math.min(this.maxHp, this.hp + heal)
     },
-    setRelics(classNames: string[]): void {
-      this.relics = [...classNames]
+    setRelics(relicIds: RelicId[]): void {
+      this.relics = [...relicIds]
       // レリック数達成系の進行度を更新する。
       useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
       this.initialized = true
@@ -190,24 +188,24 @@ export const usePlayerStore = defineStore('player', {
       // レリック上限は最低1に丸め、0以下で無効化しないようにする。
       this.relicLimit = Math.max(1, Math.floor(limit))
     },
-    addRelic(className: string): { success: boolean; message: string } {
-      const known = listRelicClassNames()
-      if (known.length > 0 && !known.includes(className)) {
+    addRelic(relicId: RelicId): { success: boolean; message: string } {
+      const known = listRelicIds()
+      if (known.length > 0 && !known.includes(relicId)) {
         return { success: false, message: '不明なレリックです' }
       }
-      if (this.relics.includes(className)) {
+      if (this.relics.includes(relicId)) {
         return { success: false, message: 'このレリックはすでに所持しています' }
       }
       // 設計上の決定: 所持上限に到達している場合は獲得処理を行わない。
       if (this.relics.length >= this.relicLimit) {
         return { success: false, message: 'レリック上限に達しています' }
       }
-      this.relics = [...this.relics, className]
+      this.relics = [...this.relics, relicId]
       useAchievementProgressStore().recordRelicOwnedCount(this.relics.length)
       return { success: true, message: 'レリックを獲得しました' }
     },
-    removeRelic(className: string): void {
-      this.relics = this.relics.filter((name) => name !== className)
+    removeRelic(relicId: RelicId): void {
+      this.relics = this.relics.filter((name) => name !== relicId)
     },
     saveCurrentToSlot(slotId: string): { success: boolean; message: string } {
       this.ensureInitialized()
@@ -237,7 +235,8 @@ export const usePlayerStore = defineStore('player', {
       }
       this.gold = data.gold
       this.deck = data.deck.map((b) => ({ ...b }))
-      this.relics = [...data.relics]
+      // 設計上の決定: 旧セーブ（クラス名）と新セーブ（RelicId）を両対応し、ここで正規化する。
+      this.relics = normalizeRelicIds(data.relics)
       this.relicLimit = data.relicLimit
       // 設計上の決定: 状態進行はセーブ対象外のため初期値へ戻す。
       this.resetStateProgress()
@@ -263,6 +262,22 @@ export const usePlayerStore = defineStore('player', {
 
 function cardToBlueprint(card: Card): CardBlueprint {
   return buildBlueprintFromCard(card)
+}
+
+function normalizeRelicIds(candidates: string[]): RelicId[] {
+  const resolved = candidates
+    .map((entry) => resolveRelicId(entry))
+    .filter((entry): entry is RelicId => entry !== null)
+  const seen = new Set<RelicId>()
+  const unique: RelicId[] = []
+  for (const entry of resolved) {
+    if (seen.has(entry)) {
+      continue
+    }
+    seen.add(entry)
+    unique.push(entry)
+  }
+  return unique
 }
 
 function shuffle<T>(items: T[]): T[] {

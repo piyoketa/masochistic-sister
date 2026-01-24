@@ -23,6 +23,7 @@ import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { createStateActionFromState } from '@/domain/entities/Card'
 import { Damages } from '@/domain/entities/Damages'
 import { getRelicInfo, type RelicInfo } from '@/domain/entities/relics/relicLibrary'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 import { StateAction } from '../entities/Action/StateAction'
 // デッキに入るカード ID と Blueprint
 export type ActionCardId = string
@@ -68,7 +69,7 @@ type ActionConstructor = new () => Action
 type StateConstructor = new () => StateType
 type CardRepositoryLike = { create: (factory: () => Card) => Card }
 
-// デッキに入る Action クラスの一覧。ID はクラス名から kebab-case 化して決定する。
+// デッキに入る Action クラスの一覧。ID は各 Action の static cardId で固定する。
 const DECK_ACTION_CLASSES: ActionConstructor[] = [
   HeavenChainAction,
   BattlePrepAction,
@@ -289,15 +290,15 @@ export function listStandardSampleCardBlueprints(): CardBlueprint[] {
   return [...actionBlueprints, ...stateBlueprints]
 }
 
-export function listAttackSupportRelicClassNames(): string[] {
-  return ATTACK_SUPPORT_RELICS.map((ctor) => ctor.name)
+export function listAttackSupportRelicIds(): RelicId[] {
+  return ATTACK_SUPPORT_RELICS.map((ctor) => new ctor().id)
 }
 
-export function getRelicInfoByClassName(
-  className: string,
+export function getRelicInfoById(
+  relicId: RelicId,
   context?: import('../entities/relics/Relic').RelicDescriptionContext,
 ): RelicInfo | null {
-  return getRelicInfo(className, context)
+  return getRelicInfo(relicId, context)
 }
 
 export class Library {
@@ -530,18 +531,13 @@ function instantiateActionForComparison(candidate: ActionConstructor): Action | 
 }
 
 function toActionCardId(constructor: ActionConstructor): ActionCardId {
-  // 設計上の決定: Action側で明示されたカードIDを優先し、ミニファイによるクラス名変化の影響を排除する。
+  // 設計上の決定: Action側で明示されたカードIDのみを許可し、ミニファイによるクラス名変化の影響を排除する。
   const explicitId = (constructor as { cardId?: string }).cardId
-  if (typeof explicitId === 'string' && explicitId.length > 0) {
-    return explicitId as ActionCardId
+  if (typeof explicitId !== 'string' || explicitId.length === 0) {
+    // 明示IDが無い Action は本番ビルドでカードIDが崩れるため即座に検知する。
+    throw new Error(`Action.cardId が定義されていません: ${constructor.name}`)
   }
-  const className = constructor.name ?? ''
-  const trimmed = className.endsWith('Action') ? className.slice(0, -6) : className
-  const kebab = trimmed
-    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
-    .toLowerCase()
-  return kebab as ActionCardId
+  return explicitId as ActionCardId
 }
 
 function toStateCardId(state: StateType): StateCardId | null {

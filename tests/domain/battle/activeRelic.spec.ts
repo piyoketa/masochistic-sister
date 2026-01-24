@@ -30,7 +30,7 @@ describe('アクティブレリックの起動', () => {
       log: new BattleLog(),
       turn: new TurnManager(),
       cardRepository,
-      relicClassNames: ['SacrificialAwarenessRelic'],
+      relicIds: ['sacrificial-awareness'],
     })
 
     const runner = new OperationRunner({ battle })
@@ -70,7 +70,7 @@ describe('アクティブレリックの起動', () => {
       log: new BattleLog(),
       turn: new TurnManager(),
       cardRepository,
-      relicClassNames: ['DailyRoutineRelic'],
+      relicIds: ['daily-routine-relic'],
     })
 
     const runner = new OperationRunner({ battle })
@@ -107,7 +107,7 @@ describe('アクティブレリックの起動', () => {
       log: new BattleLog(),
       turn: new TurnManager(),
       cardRepository,
-      relicClassNames: ['DailyRoutineRelic'],
+      relicIds: ['daily-routine-relic'],
     })
 
     const runner = new OperationRunner({ battle })

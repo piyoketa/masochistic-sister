@@ -62,13 +62,14 @@ import {
   AURA_5_TARGET,
 } from '@/domain/achievements/constants'
 import type { AchievementProgress } from '@/domain/achievements/types'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 
 export type AchievementStatus = 'not-achieved' | 'achieved' | 'owned'
 
 type AchievementReward =
   | {
       type: 'relic'
-      relicClassName: string
+      relicId: RelicId
       label: string
     }
   | {
@@ -164,7 +165,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     category: 'reward',
     title: 'レリック「メモ」',
     description: '「天の鎖」を10回使用する',
-    reward: { type: 'relic', relicClassName: 'MemoRelic', label: 'レリック: メモ' },
+    reward: { type: 'relic', relicId: 'memo-relic', label: 'レリック: メモ' },
     memoryPointCost: 3,
     initialStatus: 'not-achieved',
   },
@@ -173,7 +174,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     category: 'reward',
     title: 'レリック「リドロー」',
     description: '「臆病」な敵に逃走される',
-    reward: { type: 'relic', relicClassName: 'RedrawRelic', label: 'レリック: リドロー' },
+    reward: { type: 'relic', relicId: 'redraw-relic', label: 'レリック: リドロー' },
     memoryPointCost: 3,
     initialStatus: 'not-achieved',
   },
@@ -182,7 +183,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     category: 'reward',
     title: 'レリック「日課」',
     description: '「臆病」な敵を倒す',
-    reward: { type: 'relic', relicClassName: 'DailyRoutineRelic', label: 'レリック: 日課' },
+    reward: { type: 'relic', relicId: 'daily-routine-relic', label: 'レリック: 日課' },
     memoryPointCost: 3,
     initialStatus: 'not-achieved',
   },
@@ -191,7 +192,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     category: 'reward',
     title: 'レリック「粘液玉」',
     description: '敵「触手」を倒す',
-    reward: { type: 'relic', relicClassName: 'MucusOrbRelic', label: 'レリック: 粘液玉' },
+    reward: { type: 'relic', relicId: 'mucus-orb', label: 'レリック: 粘液玉' },
     memoryPointCost: 3,
     initialStatus: 'not-achieved',
   },
@@ -200,7 +201,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     category: 'reward',
     title: 'レリック「軽装戦闘」',
     description: 'HPが30以下になる',
-    reward: { type: 'relic', relicClassName: 'LightweightCombatRelic', label: 'レリック: 軽装戦闘' },
+    reward: { type: 'relic', relicId: 'lightweight-combat', label: 'レリック: 軽装戦闘' },
     memoryPointCost: 3,
     initialStatus: 'not-achieved',
   },
@@ -450,7 +451,7 @@ function applyRewardToPlayer(
   playerStore: ReturnType<typeof usePlayerStore>,
 ): { success: boolean; message: string } {
   if (reward.type === 'relic') {
-    return playerStore.addRelic(reward.relicClassName)
+    return playerStore.addRelic(reward.relicId)
   }
   if (reward.type === 'relic-limit') {
     const increase = Math.max(0, Math.floor(reward.limitIncrease))
@@ -645,15 +646,15 @@ export const useAchievementStore = defineStore('achievement', {
       const playerStore = usePlayerStore()
       playerStore.ensureInitialized()
       const relicRewards = rewardDefs.filter(
-        (def): def is RewardAchievementDefinition & { reward: { type: 'relic'; relicClassName: string } } =>
+        (def): def is RewardAchievementDefinition & { reward: { type: 'relic'; relicId: RelicId } } =>
           def.reward.type === 'relic',
       )
-      const relicNames = relicRewards.map((def) => def.reward.relicClassName)
-      const relicNameSet = new Set(relicNames)
-      if (relicNameSet.size !== relicNames.length) {
+      const relicIds = relicRewards.map((def) => def.reward.relicId)
+      const relicIdSet = new Set(relicIds)
+      if (relicIdSet.size !== relicIds.length) {
         return { success: false, message: '同じレリックが複数選択されています' }
       }
-      if (relicNames.some((name) => playerStore.relics.includes(name))) {
+      if (relicIds.some((id) => playerStore.relics.includes(id))) {
         return { success: false, message: '所持済みのレリックが含まれています' }
       }
       const relicLimitIncrease = rewardDefs

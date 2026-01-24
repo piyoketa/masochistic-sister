@@ -36,7 +36,7 @@ function hideActionCard(): void {
 }
 
 function showRelicCard(event: MouseEvent): void {
-  relicOverlay.showByClassName('MemorySaintRelic', { x: event.clientX, y: event.clientY })
+  relicOverlay.showByRelicId('memory-saint-relic', { x: event.clientX, y: event.clientY })
 }
 
 function hideRelicCard(): void {

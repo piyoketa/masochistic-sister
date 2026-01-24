@@ -58,7 +58,7 @@ function createBattleFromPreset(preset: BattlePreset): Battle {
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
-    relicClassNames: [],
+    relicIds: [],
   })
 }
 
@@ -143,6 +143,6 @@ export function createTestCaseBattle3(): Battle {
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
-    relicClassNames: ['SacrificialAwarenessRelic'],
+    relicIds: ['sacrificial-awareness'],
   })
 }

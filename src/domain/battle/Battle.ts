@@ -66,13 +66,12 @@ export interface BattleConfig {
   log?: BattleLog
   turn?: TurnManager
   cardRepository?: CardRepository
-  relicClassNames?: string[]
+  relicIds?: RelicId[]
   achievementProgressManager?: AchievementProgressManager
   playerStateProgressManager?: PlayerStateProgressManager
 }
 
 export interface BattleSnapshotRelic {
-  className: string
   id: RelicId
   name: string
   usageType: RelicUsageType
@@ -200,7 +199,7 @@ export interface FullBattleSnapshot {
     enemyId: number
     queue: EnemyQueueSnapshot
   }>
-  relicStates?: Array<{ className: string; state: unknown }>
+  relicStates?: Array<{ relicId: RelicId; state: unknown }>
 }
 
 export interface EnemyTurnSummary {
@@ -258,7 +257,7 @@ export class Battle {
   private readonly logValue: BattleLog
   private readonly turnValue: TurnManager
   private readonly cardRepositoryValue: CardRepository
-  private relicClassNames: string[]
+  private relicIds: RelicId[]
   private relicInstances: Relic[]
   private logSequence = 0
   private executedActionLogIndex = -1
@@ -310,8 +309,8 @@ export class Battle {
     this.achievementProgressManager = config.achievementProgressManager
     // 設計判断: Battle が必ず状態進行を持てるよう、未指定の場合は初期値1で生成する。
     this.playerStateProgressManager = config.playerStateProgressManager ?? new PlayerStateProgressManager()
-    this.relicClassNames = [...(config.relicClassNames ?? [])]
-    this.relicInstances = this.buildRelicInstances(this.relicClassNames, [])
+    this.relicIds = [...(config.relicIds ?? [])]
+    this.relicInstances = this.buildRelicInstances(this.relicIds, [])
     this.playerValue.bindHand(this.handValue)
     this.cardRepositoryValue.bindZones({
       deck: this.deckValue,
@@ -705,7 +704,6 @@ export class Battle {
         })
       }
       return {
-        className: relic.constructor.name,
         id: relic.id,
         name: relic.name,
         usageType,
@@ -717,7 +715,6 @@ export class Battle {
     }
 
     return {
-      className: relic.constructor.name,
       id: relic.id,
       name: relic.name,
       usageType,
@@ -783,14 +780,14 @@ export class Battle {
       snapshot: base,
       enemyQueues,
       relicStates: this.relicInstances.map((relic) => ({
-        className: relic.constructor.name,
+        relicId: relic.id,
         state: relic.saveState(),
       })),
     }
   }
 
-  getRelicClassNames(): string[] {
-    return [...this.relicClassNames]
+  getRelicIds(): RelicId[] {
+    return [...this.relicIds]
   }
 
   getRelicInstances(): Relic[] {
@@ -846,7 +843,7 @@ export class Battle {
     this.eventsValue.replace(base.events)
     this.turnValue.setState(base.turn)
     this.logValue.replace(base.log)
-    this.rebuildRelics(base.player.relics.map((relic) => relic.className), state.relicStates)
+    this.rebuildRelics(base.player.relics.map((relic) => relic.id), state.relicStates)
 
     const idToEnemy = new Map<number, Enemy>()
     for (const enemy of this.enemyTeamValue.members) {
@@ -1868,14 +1865,14 @@ export class Battle {
   }
 
   private buildRelicInstances(
-    classNames: string[],
-    states: Array<{ className: string; state: unknown }> | undefined,
+    relicIds: RelicId[],
+    states: Array<{ relicId: RelicId; state: unknown }> | undefined,
   ): Relic[] {
-    return classNames
-      .map((className) => {
-        const relic = instantiateRelic(className)
+    return relicIds
+      .map((relicId) => {
+        const relic = instantiateRelic(relicId)
         if (!relic) return null
-        const saved = states?.find((entry) => entry.className === className)
+        const saved = states?.find((entry) => entry.relicId === relicId)
         if (saved) {
           relic.restoreState(saved.state)
         }
@@ -1885,11 +1882,11 @@ export class Battle {
   }
 
   private rebuildRelics(
-    classNames: string[],
-    states: Array<{ className: string; state: unknown }> | undefined,
+    relicIds: RelicId[],
+    states: Array<{ relicId: RelicId; state: unknown }> | undefined,
   ): void {
-    this.relicClassNames = [...classNames]
-    this.relicInstances = this.buildRelicInstances(this.relicClassNames, states)
+    this.relicIds = [...relicIds]
+    this.relicInstances = this.buildRelicInstances(this.relicIds, states)
   }
 
   private recordOutcome(outcome: BattleStatus): void {

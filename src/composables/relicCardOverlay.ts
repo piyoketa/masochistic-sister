@@ -1,7 +1,8 @@
 import { reactive } from 'vue'
 import type { RelicDescriptionContext } from '@/domain/entities/relics/Relic'
 import type { RelicInfo } from '@/domain/entities/relics/relicLibrary'
-import { getRelicInfoByClassName } from '@/domain/library/Library'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
+import { getRelicInfoById } from '@/domain/library/Library'
 
 interface OverlayPosition {
   x: number
@@ -11,13 +12,13 @@ interface OverlayPosition {
 interface RelicCardOverlayState extends OverlayPosition {
   visible: boolean
   relic: RelicInfo | null
-  relicClassName: string | null
+  relicId: RelicId | null
 }
 
 const overlayState = reactive<RelicCardOverlayState>({
   visible: false,
   relic: null,
-  relicClassName: null,
+  relicId: null,
   x: 0,
   y: 0,
 })
@@ -25,15 +26,15 @@ const overlayState = reactive<RelicCardOverlayState>({
 export function useRelicCardOverlay() {
   const show = (relic: RelicInfo, position: OverlayPosition) => {
     overlayState.relic = relic
-    overlayState.relicClassName = relic.className
+    overlayState.relicId = relic.id
     overlayState.x = position.x
     overlayState.y = position.y
     overlayState.visible = true
   }
 
-  const showByClassName = (className: string, position: OverlayPosition, context?: RelicDescriptionContext) => {
-    const relic = getRelicInfoByClassName(className, context)
-    overlayState.relicClassName = className
+  const showByRelicId = (relicId: RelicId, position: OverlayPosition, context?: RelicDescriptionContext) => {
+    const relic = getRelicInfoById(relicId, context)
+    overlayState.relicId = relicId
     overlayState.relic = relic
     overlayState.x = position.x
     overlayState.y = position.y
@@ -43,7 +44,7 @@ export function useRelicCardOverlay() {
   const hide = () => {
     overlayState.visible = false
     overlayState.relic = null
-    overlayState.relicClassName = null
+    overlayState.relicId = null
   }
 
   const updatePosition = (position: OverlayPosition) => {
@@ -54,7 +55,7 @@ export function useRelicCardOverlay() {
   return {
     state: overlayState,
     show,
-    showByClassName,
+    showByRelicId,
     hide,
     updatePosition,
   }

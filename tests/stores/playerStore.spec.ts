@@ -39,7 +39,9 @@ describe('playerStore', () => {
       overrideCount: (blueprint.overrideCount ?? 1) + index,
     }))
     store.setDeck(customizedDeck)
-    store.setRelics([MemorySaintRelic.name, DevilsKissRelic.name])
+    const memorySaintId = new MemorySaintRelic().id
+    const devilsKissId = new DevilsKissRelic().id
+    store.setRelics([memorySaintId, devilsKissId])
 
     const saveResult = store.saveCurrentToSlot('slot-1')
     expect(saveResult.success).toBe(true)
@@ -57,6 +59,6 @@ describe('playerStore', () => {
     expect(store.hp).toBe(120)
     expect(store.gold).toBe(345)
     expect(store.deck).toEqual(customizedDeck)
-    expect(store.relics).toEqual([MemorySaintRelic.name, DevilsKissRelic.name])
+    expect(store.relics).toEqual([memorySaintId, devilsKissId])
   })
 })

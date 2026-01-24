@@ -40,7 +40,7 @@ const playerHp = computed(() => ({
 }))
 
 const alreadyOwned = computed(() =>
-  relicInfo.value ? playerStore.relics.includes(relicInfo.value.className) : false,
+  relicInfo.value ? playerStore.relics.includes(relicInfo.value.id) : false,
 )
 const relicLimitReached = computed(() => playerStore.relicLimitReached)
 
@@ -52,7 +52,7 @@ const renderDescription = (text: string): string => renderRichText(text)
 
 function handleClaim(): void {
   if (!relicInfo.value || claimed.value || alreadyOwned.value || relicLimitReached.value) return
-  const result = playerStore.addRelic(relicInfo.value.className)
+  const result = playerStore.addRelic(relicInfo.value.id)
   if (!result.success) {
     return
   }

@@ -1,4 +1,5 @@
 import type { CardBlueprint } from '@/domain/library/Library'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 
 export type FieldNodeType =
   | 'start'
@@ -41,7 +42,7 @@ export interface CardRewardNode extends FieldNode {
 
 export interface RelicRewardNode extends FieldNode {
   type: 'relic-reward'
-  candidateRelics: string[]
+  candidateRelics: RelicId[]
   drawCount: number
 }
 
@@ -54,15 +55,15 @@ export interface RandomCardRewardNode extends FieldNode {
 
 export interface RandomRelicRewardNode extends FieldNode {
   type: 'random-relic-reward'
-  candidateRelics: string[]
+  candidateRelics: RelicId[]
   offerCount: number
   drawCount: number
 }
 
 export interface FixedRelicRewardNode extends FieldNode {
   type: 'fixed-relic-reward'
-  candidateRelics: string[]
-  selectedRelic: string
+  candidateRelics: RelicId[]
+  selectedRelic: RelicId
 }
 
 export interface DevilStatueNode extends FieldNode {

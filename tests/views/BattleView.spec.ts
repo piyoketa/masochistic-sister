@@ -105,7 +105,7 @@ function createBattleStub(): Battle {
     hasActiveRelic: vi.fn(() => false),
     hasRelic: vi.fn(() => false),
     getRelicById: vi.fn(() => undefined),
-    getRelicClassNames: vi.fn(() => []),
+    getRelicIds: vi.fn(() => []),
   } as unknown as Battle
 }
 

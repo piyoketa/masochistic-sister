@@ -15,6 +15,7 @@ import { Attack } from '@/domain/entities/Action'
 import { buildCardInfoFromCard } from '@/utils/cardInfoBuilder'
 import { shopManager } from '@/domain/shop/ShopManager'
 import { getRelicInfo } from '@/domain/entities/relics/relicLibrary'
+import type { RelicId } from '@/domain/entities/relics/relicTypes'
 import { useActionCardOverlay } from '@/composables/actionCardOverlay'
 import { useRelicCardOverlay } from '@/composables/relicCardOverlay'
 import { useAudioStore } from '@/stores/audioStore'
@@ -202,19 +203,19 @@ function buyRelic(offer: (typeof shopState.value.relics)[number]): void {
   if (playerStore.gold < offer.price) {
     return
   }
-  if (playerStore.relics.includes(offer.relicClassName)) {
+  if (playerStore.relics.includes(offer.relicId)) {
     return
   }
   if (relicLimitReached.value) {
     return
   }
-  const result = playerStore.addRelic(offer.relicClassName)
+  const result = playerStore.addRelic(offer.relicId)
   if (!result.success) {
     return
   }
   playerStore.spendGold(offer.price)
   syncStatusEditors()
-  shopManager.markRelicSold(offer.relicClassName)
+  shopManager.markRelicSold(offer.relicId)
   refreshShopState()
 }
 
@@ -229,8 +230,8 @@ function resolveCardLabel(deckType: CardId): string {
   return found?.label ?? deckType
 }
 
-function resolveRelicLabel(className: string): string {
-  return getRelicInfo(className)?.name ?? className
+function resolveRelicLabel(relicId: RelicId): string {
+  return getRelicInfo(relicId)?.name ?? relicId
 }
 
 function showCardOverlay(blueprint: CardBlueprint, event: MouseEvent): void {
@@ -241,8 +242,8 @@ function hideCardOverlay(): void {
   actionOverlay.hide()
 }
 
-function showRelicOverlay(className: string, event: MouseEvent): void {
-  relicOverlay.showByClassName(className, { x: event.clientX, y: event.clientY }, {
+function showRelicOverlay(relicId: RelicId, event: MouseEvent): void {
+  relicOverlay.showByRelicId(relicId, { x: event.clientX, y: event.clientY }, {
     playerSnapshot: { maxHp: playerStore.maxHp },
   })
 }
@@ -521,14 +522,14 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
         <div class="shop-card">
           <div class="shop-title">レリック</div>
           <ul class="shop-list">
-            <li v-for="offer in shopState.relics" :key="offer.relicClassName" class="shop-item">
+            <li v-for="offer in shopState.relics" :key="offer.relicId" class="shop-item">
               <div>
                 <span
                   class="shop-item__name"
-                  @mouseenter="(e) => showRelicOverlay(offer.relicClassName, e as MouseEvent)"
+                  @mouseenter="(e) => showRelicOverlay(offer.relicId, e as MouseEvent)"
                   @mouseleave="hideRelicOverlay"
                 >
-                  {{ resolveRelicLabel(offer.relicClassName) }}
+                  {{ resolveRelicLabel(offer.relicId) }}
                 </span>
                 <span v-if="offer.sale" class="shop-badge">SALE</span>
               </div>
@@ -537,7 +538,7 @@ function deriveAttackStyle(type: Attack['baseProfile']['type']): AttackStyle {
                 <button
                   type="button"
                   class="deck-button"
-                  :disabled="playerGold < offer.price || playerStore.relics.includes(offer.relicClassName) || relicLimitReached"
+                  :disabled="playerGold < offer.price || playerStore.relics.includes(offer.relicId) || relicLimitReached"
                   @click="buyRelic(offer)"
                 >
                   購入

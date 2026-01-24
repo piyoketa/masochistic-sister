@@ -58,7 +58,7 @@ const battleFactory = () => {
     events: new BattleEventQueue(),
     log: new BattleLog(),
     turn: new TurnManager(),
-    relicClassNames: ['SacrificialAwarenessRelic'],
+    relicIds: ['sacrificial-awareness'],
   })
 }
 
